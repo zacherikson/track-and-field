@@ -1,0 +1,69 @@
+/**
+ * Every setting the in-game tuning panel exposes, in plain language.
+ * `path` points into CONFIG (dot-separated; array items by index).
+ * `scale` converts the stored value for display (e.g. seconds -> ms).
+ */
+export const GROUPS = [
+  {
+    title: 'Tapping pace',
+    blurb: 'The game averages your recent correct taps into a pace. Your pace sets how fast the runner wants to go.',
+    params: [
+      { path: 'runner.cadenceForTopSpeed', label: 'Pace for top speed', unit: 'taps/s', min: 2, max: 8, step: 0.1, help: 'How fast you must hit targets to reach full speed. Lower is easier.' },
+      { path: 'runner.topSpeed', label: 'Top speed', unit: 'm/s', min: 8, max: 16, step: 0.1, kmh: true, help: 'The fastest anyone can run. Sets how low times can go.' },
+      { path: 'runner.speedCurve', label: 'Forgiveness curve', unit: '', min: 0.4, max: 1.6, step: 0.05, help: 'Below 1: slow tapping still goes fairly fast. Above 1: only fast tapping pays off.' },
+      { path: 'runner.cadenceSmoothing', label: 'Newest tap weight', unit: '', min: 0.1, max: 0.9, step: 0.05, help: 'How much the latest tap moves your pace. Higher = each tap matters more, but speed gets jumpier.' },
+    ],
+  },
+  {
+    title: 'Speeding up',
+    blurb: 'How quickly the runner catches up to the speed your pace asks for.',
+    params: [
+      { path: 'runner.accelMax', label: 'Acceleration', unit: 'm/s²', min: 3, max: 25, step: 0.5, help: 'Punchy vs. sluggish. Higher = speed responds to your taps sooner.' },
+      { path: 'runner.accelFalloff', label: 'Acceleration fade', unit: '%', scale: 100, min: 0, max: 0.95, step: 0.01, help: 'How much harder it gets to gain speed once you are already fast.' },
+    ],
+  },
+  {
+    title: 'Slowing down',
+    blurb: 'What happens when your pace drops or you stop tapping.',
+    params: [
+      { path: 'runner.coastDecel', label: 'Slow-down rate', unit: 'm/s²', min: 0.5, max: 15, step: 0.25, help: 'How fast you lose speed when your pace drops or you stop.' },
+      { path: 'runner.idleGrace', label: 'Hesitation allowance', unit: '× gap', min: 1, max: 3, step: 0.1, help: 'How much longer than your usual gap you can pause before you start slowing.' },
+      { path: 'runner.maxIntervalForAvg', label: 'Longest gap counted', unit: 'ms', scale: 1000, min: 0.3, max: 1.5, step: 0.05, help: 'After a long pause, lower = you get your pace back sooner.' },
+    ],
+  },
+  {
+    title: 'Mistakes',
+    blurb: 'Tapping the wrong side. A mistake also leaves a gap in your taps, which pulls your pace down too.',
+    params: [
+      { path: 'sprint100.targets.missSpeedLoss', label: 'Speed lost', unit: 'm/s', min: 0, max: 5, step: 0.1, kmh: true, help: 'Taken away instantly on a wrong tap.' },
+      { path: 'sprint100.targets.missLockout', label: 'Penalty pause', unit: 'ms', scale: 1000, min: 0, max: 0.8, step: 0.01, help: 'How long the red ✕ blocks you before the target comes back.' },
+      { path: 'runner.minStrideInterval', label: 'Double-press guard', unit: 'ms', scale: 1000, min: 0, max: 0.15, step: 0.005, help: 'Taps this soon after a correct one are ignored, so slamming both thumbs can’t count twice.' },
+    ],
+  },
+  {
+    title: 'Targets',
+    blurb: 'Where the green target appears.',
+    params: [
+      { path: 'sprint100.targets.maxSameSide', label: 'Max same side in a row', unit: '', min: 1, max: 4, step: 1, help: 'After this many on one side, the next is guaranteed to switch.' },
+      { path: 'sprint100.targets.switchChance', label: 'Chance of switching', unit: '%', scale: 100, min: 0, max: 1, step: 0.05, help: 'When the side isn’t forced, how often it switches.' },
+    ],
+  },
+  {
+    title: 'Finish dip',
+    blurb: 'Near the line, taps stop counting and you coast into your dip.',
+    params: [
+      { path: 'dip.promptDistance', label: 'Dip zone length', unit: 'm', min: 5, max: 30, step: 1, help: 'How far before the line the orange pads appear.' },
+      { path: 'dip.carryDecel', label: 'Coasting slow-down', unit: 'm/s²', min: 0, max: 3, step: 0.1, help: 'Speed lost per second while coasting through the dip zone.' },
+    ],
+  },
+  {
+    title: 'Rivals (Amateur)',
+    blurb: 'Rivals hit targets at their own pace, through the same physics as you.',
+    params: [
+      { path: 'ai.amateur.cadence.0', label: 'Slowest rival pace', unit: 'taps/s', min: 1.5, max: 7, step: 0.1, help: 'Each rival gets a pace between slowest and fastest.' },
+      { path: 'ai.amateur.cadence.1', label: 'Fastest rival pace', unit: 'taps/s', min: 1.5, max: 7, step: 0.1, help: 'Raise to make the field harder to beat.' },
+    ],
+  },
+];
+
+export const PARAMS = GROUPS.flatMap((g) => g.params);

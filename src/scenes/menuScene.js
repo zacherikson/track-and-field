@@ -19,6 +19,7 @@ export class MenuScene {
           onTap: () => flow.intro(this.game, ev),
         }),
     );
+    this.tuneButton = new Button({ label: '⚙ Tuning', w: 132, h: 44, color: 'rgba(255,255,255,0.15)', onTap: () => flow.tuning(this.game) });
     this.fsButton = document.fullscreenEnabled
       ? new Button({ label: '⛶', w: 48, h: 44, color: 'rgba(255,255,255,0.15)', onTap: () => toggleFullscreen() })
       : null;
@@ -41,6 +42,8 @@ export class MenuScene {
       b.x = (view.w - total) / 2 + i * (w + gap);
       b.y = 205;
     });
+    this.tuneButton.x = 14 + view.safe.l;
+    this.tuneButton.y = 14 + view.safe.t;
     if (this.fsButton) {
       this.fsButton.x = view.w - 48 - 14 - view.safe.r;
       this.fsButton.y = 14 + view.safe.t;
@@ -51,10 +54,12 @@ export class MenuScene {
     for (const ev of this.game.input.consume(t + dt)) {
       if (ev.type !== 'down') continue;
       if (this.fsButton?.tap(ev.x, ev.y)) continue;
+      if (this.tuneButton.tap(ev.x, ev.y)) continue;
       for (const b of this.buttons) if (b.tap(ev.x, ev.y)) break;
     }
     this.buttons.forEach((b) => b.update(dt));
     this.fsButton?.update(dt);
+    this.tuneButton.update(dt);
 
     // Demo runner loops across the bottom of the screen.
     const speed = 9;
@@ -73,6 +78,7 @@ export class MenuScene {
     text(ctx, `Five events. Two thumbs. Starring ${HERO.name}.`, view.w / 2, 140, { size: 18, weight: 500, color: 'rgba(255,255,255,0.8)' });
     this.buttons.forEach((b) => b.draw(ctx));
     this.fsButton?.draw(ctx);
+    this.tuneButton.draw(ctx);
 
     // Track strip + demo runner.
     const trackY = 470;

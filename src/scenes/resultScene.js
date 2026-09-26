@@ -9,9 +9,10 @@ import { flow } from '../flow.js';
  * `results` is a sorted array of { name, lane, mark, status: 'ok'|'dnf'|'dq', isPlayer, colors }.
  */
 export class ResultScene {
-  constructor(ev, results) {
+  constructor(ev, results, stats = null) {
     this.ev = ev;
     this.results = results;
+    this.stats = stats; // { hits, misses, topSpeed } for the player, when the event tracks them
   }
 
   enter() {
@@ -28,6 +29,7 @@ export class ResultScene {
     this.buttons = [
       new Button({ label: 'Race again', color: '#2bb673', onTap: () => flow.play(this.game, this.ev) }),
       new Button({ label: 'Menu', color: 'rgba(255,255,255,0.18)', onTap: () => flow.menu(this.game) }),
+      new Button({ label: '⚙ Tuning', color: 'rgba(255,255,255,0.18)', onTap: () => flow.tuning(this.game) }),
     ];
     this.layout(this.game.view);
   }
@@ -37,9 +39,10 @@ export class ResultScene {
   }
 
   layout(view) {
-    const w = 190;
-    const gap = 16;
-    const x0 = view.w / 2 - w - gap / 2;
+    const w = 180;
+    const gap = 14;
+    const n = this.buttons.length;
+    const x0 = view.w / 2 - (n * w + (n - 1) * gap) / 2;
     this.buttons.forEach((b, i) => Object.assign(b, { x: x0 + i * (w + gap), y: 458, w, h: 58 }));
   }
 
@@ -85,6 +88,14 @@ export class ResultScene {
     }
     text(ctx, `Personal best  ${formatMark(this.ev, this.best)}`, cx, y + 8, { size: 18, weight: 500, color: 'rgba(255,255,255,0.8)' });
     text(ctx, `World record  ${formatMark(this.ev, this.ev.record)}`, cx, y + 36, { size: 18, weight: 500, color: 'rgba(255,255,255,0.8)' });
+    if (this.stats && me.status === 'ok') {
+      // Numbers to talk about when tuning.
+      const s = this.stats;
+      const pace = s.hits / me.mark;
+      text(ctx, `${s.hits} hits · ${s.misses} ${s.misses === 1 ? 'miss' : 'misses'} · ${pace.toFixed(1)} hits/s · top ${(s.topSpeed * 3.6).toFixed(0)} km/h`, cx, y + 72, {
+        size: 15, weight: 500, color: 'rgba(255,255,255,0.65)', maxWidth: colW,
+      });
+    }
 
     // Right column: standings.
     roundRect(ctx, rx, 30, colW, 400, 16);

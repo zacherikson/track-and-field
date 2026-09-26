@@ -174,6 +174,7 @@ export class LaneRace {
     const D = this.cfg.distance;
     for (const a of this.athletes) {
       this.stepAthlete(a, dt, t);
+      if (a.isPlayer) this.playerTopV = Math.max(this.playerTopV ?? 0, a.runner.v);
       const cross = a.runner.crossing(D, t, dt);
       if (cross != null && a.mark == null && a.status === 'ok') {
         a.mark = cross - this.goT;
@@ -223,7 +224,7 @@ export class LaneRace {
     }));
     const rank = (r) => (r.status === 'ok' ? r.mark : r.status === 'dnf' ? 1e6 : 2e6);
     results.sort((a, b) => rank(a) - rank(b));
-    flow.results(this.game, this.ev, results);
+    flow.results(this.game, this.ev, results, this.raceStats?.());
   }
 
   hitExit(e) {

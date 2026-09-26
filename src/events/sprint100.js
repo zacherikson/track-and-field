@@ -46,6 +46,11 @@ export class Sprint100 extends LaneRace {
     this.judge = new StrideTargets(this.player.runner, CONFIG.sprint100.targets);
   }
 
+  /** Player numbers for the results screen. */
+  raceStats() {
+    return { hits: this.judge.hits, misses: this.judge.misses, topSpeed: this.playerTopV ?? 0 };
+  }
+
   get target() {
     return this.judge?.target ?? null;
   }

@@ -35,7 +35,12 @@ Open http://localhost:8000. To test on a phone on the same Wi-Fi, open `http://<
 
 ## Tuning
 
-Every feel number lives in [`src/config.js`](src/config.js). To see what a change does
+**On the phone:** tap **⚙ Tuning** on the menu or results screen. Every speed
+setting has a slider, and live estimates show the resulting race times. Changes
+are saved on that device. **Copy changes** gives a summary to paste into chat so
+the good ones can be made the defaults.
+
+**In code:** every feel number lives in [`src/config.js`](src/config.js). To see what a change does
 without playing, run the headless simulator:
 
 ```sh
@@ -68,6 +73,7 @@ src/events/
   laneRace.js         base for lane races: countdown FSM, false starts, AI, HUD, results
   sprint100.js        100m: random-side target pads, wrong-tap ✕, dip prompt
 src/render/track.js   stadium, lanes, lines, parallax crowd
+src/tuning/           in-game tuning panel (params list, saved overrides, live estimates)
 tools/simulate.mjs    headless tuning simulator
 ```
 

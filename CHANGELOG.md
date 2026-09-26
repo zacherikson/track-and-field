@@ -4,6 +4,21 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 2.6: in-game tuning panel
+- New **⚙ Tuning** button on the menu and results screens. It opens an overlay
+  with every speed-related setting in plain language: tapping pace, speeding up,
+  slowing down, mistakes, targets, finish dip, and rival pace.
+- Each setting has a slider, − / + buttons, its default, and a reset link.
+  Changed settings are outlined in green.
+- Live estimates run the real physics:
+  - 100m time at 3, 4 and 5 hits/s
+  - what one mistake costs
+  - the Amateur rivals' usual winning time
+- Changes apply to the next race and are saved on the device (localStorage).
+  **Copy changes** puts a readable summary on the clipboard to paste into chat.
+  Adopted changes get baked into `src/config.js` and logged here.
+- Results screen now shows hits · misses · hits/s · top speed.
+
 ## Step 2.5: two states only, brighter colors
 - Only two states: a green target (tap now) or a red ✕ (wrong side, wait). The
   grey "locked" target is gone. After a wrong tap the target is hidden behind the

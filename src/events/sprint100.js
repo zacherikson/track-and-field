@@ -12,15 +12,17 @@ const DIP_KEYS = ['Space', 'ArrowUp', 'ArrowDown'];
  * more than two in a row on the same side (see strideTargets.js). Reading the
  * pattern, not mashing, is what makes you fast.
  *
- * - Hit zones are whole screen halves, so a thumb never "misses" physically.
- *   Tapping the unlit side is a wrong tap: red ✕, speed loss, short lockout
+ * - Each side's target always lands on the same spot, so your eyes and thumbs
+ *   learn where to go.
+ * - The circle is only a cue: the hit zone is that whole half of the screen, so
+ *   touching just outside the circle still counts.
+ * - Tapping the unlit side is a wrong tap: red ✕, speed loss, short lockout
  *   (the target greys out until you can go again).
- * - Each side's target settles where that thumb last tapped (no reaching), but
- *   every appearance FLIES IN: from a slightly different angle each time, with an
- *   overshoot, a motion trail and a ring closing in on the landing spot. A hit
- *   bursts into a ring and sparks. See drawSpawn() and CONFIG.sprint100.pads.spawn.
- * - Before the gun both pads are red. In the dip zone both turn orange: press
- *   both together to dip.
+ * - Nothing is shown during the countdown. The first thing to appear is the
+ *   first green target at GO; tapping before it is a false start.
+ * - Every appearance flies in (random approach angle, overshoot, trail, closing
+ *   ring) so it doesn't feel static. A hit bursts into a ring and sparks.
+ * - In the dip zone both pads appear orange: press both together to dip.
  */
 export class Sprint100 extends LaneRace {
   constructor(ev) {
@@ -30,8 +32,8 @@ export class Sprint100 extends LaneRace {
   enter() {
     const r = CONFIG.sprint100.pads.radius;
     this.pads = {
-      L: { home: { x: 0, y: 0 }, pos: null, spawnT: -Infinity, spawnAngle: 0, r },
-      R: { home: { x: 0, y: 0 }, pos: null, spawnT: -Infinity, spawnAngle: 0, r },
+      L: { home: { x: 0, y: 0 }, spawnT: -Infinity, spawnAngle: 0, r },
+      R: { home: { x: 0, y: 0 }, spawnT: -Infinity, spawnAngle: 0, r },
     };
     this.fx = []; // short-lived effects: { kind: 'ring' | 'x' | 'sparks', x, y, t0 }
     this.dipShown = false;
@@ -50,16 +52,12 @@ export class Sprint100 extends LaneRace {
     const y = view.h * cfg.homeY;
     L.home = { x: view.safe.l + cfg.edgeInset + L.r, y };
     R.home = { x: view.w - view.safe.r - cfg.edgeInset - R.r, y };
-    L.pos = null; // re-home after a resize
-    R.pos = null;
   }
 
   onCountdown() {
     this.fx = [];
     this.dipShown = false;
     if (this.judge) this.judge.target = null;
-    this.spawn('L');
-    this.spawn('R');
   }
 
   onGo() {
@@ -88,25 +86,13 @@ export class Sprint100 extends LaneRace {
   }
 
   padPos(side) {
-    const p = this.pads[side];
-    return p.pos ?? p.home;
+    return this.pads[side].home;
   }
 
-  /** Keep a remembered thumb spot inside that thumb's half of the screen. */
-  clampToZone(side, x, y) {
-    const v = this.game.view;
-    const r = this.pads[side].r;
-    const half = v.w / 2;
-    const minX = side === 'L' ? v.safe.l + r + 6 : half + r + 10;
-    const maxX = side === 'L' ? half - r - 10 : v.w - v.safe.r - r - 6;
-    return { x: clamp(x, minX, maxX), y: clamp(y, 110 + r, v.h - r - 6) };
-  }
-
-  onPlayerAction(side, t, e) {
+  onPlayerAction(side, t) {
     if (side === 'DIP') return;
     const result = this.judge.press(side, t);
     const now = this.game.time;
-    const touch = e.type === 'down' ? { x: e.x, y: e.y } : null;
     if (result === 'hit') {
       const at = this.padTransform(side, now);
       this.fx.push({ kind: 'ring', x: at.x, y: at.y, t0: now });
@@ -117,10 +103,9 @@ export class Sprint100 extends LaneRace {
         t0: now,
         parts: Array.from({ length: 8 }, (_, i) => ({ a: (i / 8) * Math.PI * 2 + rand(-0.3, 0.3), v: rand(160, 320) })),
       });
-      if (touch && CONFIG.sprint100.pads.followThumb) this.pads[side].pos = this.clampToZone(side, touch.x, touch.y);
       this.spawn(this.target); // flies in again even if it's the same side
     } else if (result === 'miss') {
-      const at = touch ?? this.padPos(side);
+      const at = this.padPos(side);
       this.fx.push({ kind: 'x', x: at.x, y: at.y, t0: now });
       navigator.vibrate?.(40);
     }
@@ -139,14 +124,10 @@ export class Sprint100 extends LaneRace {
   drawControls(ctx) {
     const now = this.game.time;
     const mode = this.player.runner.mode;
-    const before = this.state === 'ready' || this.state === 'set';
     const racing = this.state === 'race';
 
-    if (before) {
-      for (const side of ['L', 'R']) this.drawSpawn(ctx, side, '#d7263d', 0.9);
-    } else if (racing && mode === 'run' && this.target) {
-      // Faint rings where each thumb rests; the lit side gets the green target.
-      for (const side of ['L', 'R']) if (side !== this.target) this.drawGhost(ctx, side);
+    // Nothing during the countdown: the first green target at GO is the cue.
+    if (racing && mode === 'run' && this.target) {
       const locked = now < this.judge.lockedUntil;
       this.drawSpawn(ctx, this.target, locked ? '#7d8a86' : '#2bb673', 1);
     } else if (racing && mode === 'carry') {
@@ -277,17 +258,6 @@ export class Sprint100 extends LaneRace {
     ctx.restore();
   }
 
-  /** Faint outline where the other thumb will go next. */
-  drawGhost(ctx, side) {
-    const p = this.padPos(side);
-    ctx.save();
-    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, this.pads[side].r, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
-  }
 }
 
 /** 0 -> 1 with an overshoot past 1 near the end (s controls how far). */

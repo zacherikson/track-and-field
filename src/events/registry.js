@@ -11,7 +11,7 @@ export const EVENTS = [
     lowerIsBetter: true,
     available: true,
     howTo: [
-      'Wait for GREEN. Tapping while the pads are red is a false start.',
+      'At GO a green target appears. Tapping before it is a false start.',
       'Tap the side the green target is on. It jumps around at random!',
       'Tap the wrong side and you stumble.',
       'Near the line the pads turn ORANGE: press BOTH together to dip.',

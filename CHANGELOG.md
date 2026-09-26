@@ -4,6 +4,16 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 2.4: fixed target spots, no countdown pads
+- Each side's target always lands on the same spot (removed `pads.followThumb`).
+  Following the thumb added nothing, because the hit zone was already the whole
+  screen half. A fixed spot is easier to read and learn.
+- Removed the red pads during READY / GET SET. The first thing to appear is the
+  first green target at GO. Tapping before it is still a false start.
+- Removed the faint outline ring on the unlit side. During the race the only
+  circle is the green target (plus hit and miss effects).
+- The fly-in entrance is unchanged; it just always lands on the fixed spot.
+
 ## Step 2.3: target entrance animation
 Previously each target popped up in the same spot every time, which looked static.
 Now every appearance flies in (config `sprint100.pads.spawn`):

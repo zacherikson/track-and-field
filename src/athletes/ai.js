@@ -13,6 +13,7 @@ export class AIController {
     this.reaction = rand(...level.reaction);
     this.nextTapT = Infinity;
     this.side = 'L';
+    this.dipError = rand(...level.dipError);
   }
 
   go(t) {
@@ -20,8 +21,13 @@ export class AIController {
     this.nextTapT = t + this.reaction;
   }
 
-  /** Emit every tap due within [t, t + dt). `progress` is 0..1 of the race. */
-  update(t, dt, progress) {
+  /**
+   * Emit every tap due within [t, t + dt). `progress` is 0..1 of the race,
+   * `toLine` the meters left, used to time the finish dip.
+   */
+  update(t, dt, progress, toLine = Infinity) {
+    const r = this.runner;
+    if (r.mode === 'carry' && toLine <= r.idealDipDistance() + this.dipError) r.dive();
     const lv = this.level;
     const tired = 1 - lv.fatigue * Math.max(0, (progress - 0.6) / 0.4);
     while (this.nextTapT < t + dt) {

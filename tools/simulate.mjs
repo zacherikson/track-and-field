@@ -10,6 +10,8 @@ import { AIController } from '../src/athletes/ai.js';
 const STEP = CONFIG.loop.fixedStep;
 const D = CONFIG.sprint100.distance;
 
+const DIP = CONFIG.dip;
+
 function race(level, cadence) {
   const r = new Runner();
   const ai = new AIController(r, level, cadence);
@@ -17,7 +19,8 @@ function race(level, cadence) {
   let t = 0;
   let splits = {};
   while (t < 40) {
-    ai.update(t, STEP, r.x / D);
+    if (D - r.x <= DIP.promptDistance) r.carry();
+    ai.update(t, STEP, r.x / D, D - r.x);
     r.update(STEP, t);
     for (const m of [10, 30, 60]) if (splits[m] == null && r.x >= m) splits[m] = t;
     const cross = r.crossing(D, t, STEP);
@@ -27,9 +30,9 @@ function race(level, cadence) {
   return { time: Infinity, splits, top: r.v };
 }
 
-const human = { reaction: [0.22, 0.22], jitter: 0.1, fatigue: 0.03 };
+const human = { reaction: [0.22, 0.22], jitter: 0.1, fatigue: 0.03, dipError: [0, 0] };
 console.log('Player-like tapper (0.22s reaction, 10% jitter):');
-console.log('taps/s   time    10m    30m    60m   top km/h');
+console.log('taps/s   time    10m    30m    60m   km/h at line');
 for (const c of [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]) {
   const runs = Array.from({ length: 20 }, () => race(human, c));
   const avg = (f) => runs.reduce((s, x) => s + f(x), 0) / runs.length;
@@ -37,6 +40,19 @@ for (const c of [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]) {
     `${String(c).padStart(5)}  ${avg((x) => x.time).toFixed(2).padStart(6)} ${avg((x) => x.splits[10]).toFixed(2).padStart(6)} ` +
       `${avg((x) => x.splits[30]).toFixed(2).padStart(6)} ${avg((x) => x.splits[60]).toFixed(2).padStart(6)}   ${(avg((x) => x.top) * 3.6).toFixed(1)}`,
   );
+}
+
+console.log('\nFinish dip timing at 12 taps/s (dip = meters early vs. ideal; ideal is about ' +
+  `${(10.5 * DIP.riseTime + DIP.reach).toFixed(1)}m out at top speed):`);
+const at12 = (dipError) => {
+  const runs = Array.from({ length: 20 }, () => race({ ...human, dipError: [dipError, dipError] }, 12));
+  return runs.reduce((s, x) => s + x.time, 0) / runs.length;
+};
+const noDip = at12(-99);
+console.log(`  no dip       ${noDip.toFixed(3)}`);
+for (const e of [-2, -1, -0.5, 0, 0.5, 1, 2, 3, 4, 6]) {
+  const tm = at12(e);
+  console.log(`  ${(e >= 0 ? '+' : '') + e}m`.padEnd(13) + ` ${tm.toFixed(3)}  (${(tm - noDip >= 0 ? '+' : '') + (tm - noDip).toFixed(3)})`);
 }
 
 for (const name of Object.keys(CONFIG.ai)) {

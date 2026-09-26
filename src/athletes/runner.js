@@ -6,8 +6,9 @@ import { CONFIG } from '../config.js';
  * are identical for everyone. Pure logic: no DOM, so tools/simulate.mjs can run it in Node.
  */
 export class Runner {
-  constructor(params = CONFIG.runner) {
+  constructor(params = CONFIG.runner, dip = CONFIG.dip) {
     this.p = params;
+    this.dip = dip;
     this.reset();
   }
 
@@ -22,6 +23,41 @@ export class Runner {
     this.avgInterval = null; // smoothed seconds between valid taps
     this.taps = 0;
     this.finished = false; // true after crossing the line: brake, ignore taps
+    // Finish-dip state. 'run' -> 'carry' (in the dip zone: strides stop counting,
+    // momentum carries you) -> 'dive' (lunging for the line).
+    this.mode = 'run';
+    this.diveT = 0;
+    this.reach = 0; // meters the chest is ahead of the hips (the chest is what crosses the line)
+    this.prevFront = 0;
+    this.dipUsed = false;
+  }
+
+  /** Front of the torso: finish times are taken when this crosses the line. */
+  get front() {
+    return this.x + this.reach;
+  }
+
+  get airborne() {
+    return this.mode === 'dive' && this.diveT < this.dip.riseTime + this.dip.airTime;
+  }
+
+  /** Enter the dip zone: stop reacting to strides, carry your speed. */
+  carry() {
+    if (this.mode === 'run' && !this.dipUsed && !this.finished) this.mode = 'carry';
+  }
+
+  /** Distance from the line at which a dive puts the chest at full stretch right on it. */
+  idealDipDistance() {
+    return this.v * this.dip.riseTime + this.dip.reach;
+  }
+
+  /** Throw yourself at the line. Returns false if a dip isn't possible now. */
+  dive() {
+    if (this.dipUsed || this.finished || !this.started) return false;
+    this.mode = 'dive';
+    this.dipUsed = true;
+    this.diveT = 0;
+    return true;
   }
 
   /** Start the clock for tap intervals: the first interval is your reaction time. */
@@ -35,7 +71,7 @@ export class Runner {
    * 'fast' (too close to the previous tap: ignored) or 'idle'.
    */
   tap(side, t) {
-    if (!this.started || this.finished) return 'idle';
+    if (!this.started || this.finished || this.mode !== 'run') return 'idle';
     if (side === this.lastSide) return 'same';
     const interval = t - this.lastTapT;
     const first = this.taps === 0;
@@ -65,8 +101,13 @@ export class Runner {
   update(dt, t) {
     const p = this.p;
     this.prevX = this.x;
-    if (this.finished) {
+    this.prevFront = this.front;
+    if (this.mode === 'dive') {
+      this.updateDive(dt);
+    } else if (this.finished) {
       this.v = Math.max(0, this.v - p.finishDecel * dt);
+    } else if (this.mode === 'carry') {
+      this.v = Math.max(0, this.v - this.dip.carryDecel * dt);
     } else if (this.started) {
       const target = this.targetSpeed(this.cadence(t));
       if (this.v < target) {
@@ -81,14 +122,36 @@ export class Runner {
   }
 
   /**
-   * If this step carried the runner across `lineX`, return the exact crossing
+   * The dive: the chest lunges forward by up to `reach` meters (smoothstep over
+   * riseTime), hangs for airTime, then the athlete hits the track and slides.
+   * Dive too early and you slide to a stop before the line, then have to get
+   * up and run again: a big penalty. Dive at the right moment and your chest
+   * crosses the line a few hundredths early.
+   */
+  updateDive(dt) {
+    const d = this.dip;
+    this.diveT += dt;
+    const k = Math.min(1, this.diveT / d.riseTime);
+    this.reach = d.reach * k * k * (3 - 2 * k); // smoothstep: a late dip barely gets going
+    const decel = this.airborne ? d.airDecel : d.slideDecel;
+    this.v = Math.max(0, this.v - decel * dt);
+    if (this.v === 0 && !this.finished) {
+      // Slid to a stop short of the line: get up and run it in.
+      this.mode = 'run';
+      this.reach = 0;
+      this.avgInterval = null;
+    }
+  }
+
+  /**
+   * If this step carried the runner's chest across `lineX`, return the exact crossing
    * time (linear interpolation within the step), else null. Without this, times
    * would be rounded to the step size and ties would be common.
    */
   crossing(lineX, stepStartT, dt) {
-    if (this.prevX < lineX && this.x >= lineX) {
-      return stepStartT + (dt * (lineX - this.prevX)) / (this.x - this.prevX);
-    }
+    const a = this.prevFront;
+    const b = this.front;
+    if (a < lineX && b >= lineX) return stepStartT + (dt * (lineX - a)) / (b - a);
     return null;
   }
 }

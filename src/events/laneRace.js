@@ -75,6 +75,8 @@ export class LaneRace {
       a.mark = null;
     }
     this.camera.snapTo(this.player.runner.x);
+    this.dipPress = null;
+    this.carryT = Infinity;
     this.state = 'ready';
     this.stateT = t;
     this.setT = t + c.readyTime;
@@ -99,6 +101,7 @@ export class LaneRace {
     if (this.state === 'set' && end >= this.goT) {
       this.setState('race', this.goT);
       for (const a of this.athletes) (a.ai ?? a.runner).go(this.goT);
+      this.onGo?.();
     }
 
     // 2. Input, each event at its own precise time.
@@ -112,7 +115,10 @@ export class LaneRace {
         this.falseStart(t);
         break;
       }
-      if (this.state === 'race') this.onPlayerAction(action, e.t);
+      if (this.state !== 'race') continue;
+      const mode = this.player.runner.mode;
+      if (mode === 'carry') this.onDipAction(action, e);
+      else if (mode === 'run') this.onPlayerAction(action, e.t, e);
     }
 
     // 3. Simulation.
@@ -135,11 +141,39 @@ export class LaneRace {
     this.camera.follow(pr.x, pr.v, dt);
   }
 
+  /** One physics step for one athlete, shared by live play and the fast-forward in finish(). */
+  stepAthlete(a, dt, t) {
+    const D = this.cfg.distance;
+    const r = a.runner;
+    if (D - r.x <= CONFIG.dip.promptDistance && r.mode === 'run' && !r.dipUsed) {
+      r.carry();
+      if (a.isPlayer) this.carryT = t;
+    }
+    a.ai?.update(t, dt, r.x / D, D - r.x);
+    r.update(dt, t);
+  }
+
+  /**
+   * Finish dip input. Strides don't count in the dip zone: press BOTH thumbs
+   * together (within chordWindow) to lunge. Space / Up arrow on a keyboard.
+   */
+  onDipAction(action, e) {
+    const dip = CONFIG.dip;
+    if (e.t - this.carryT < dip.armDelay) return; // stray stride taps as the zone begins
+    if (action === 'DIP') {
+      this.player.runner.dive();
+      return;
+    }
+    this.dipPress ??= { L: -Infinity, R: -Infinity };
+    this.dipPress[action] = e.t;
+    const other = action === 'L' ? 'R' : 'L';
+    if (e.t - this.dipPress[other] <= dip.chordWindow) this.player.runner.dive();
+  }
+
   simulate(dt, t) {
     const D = this.cfg.distance;
     for (const a of this.athletes) {
-      a.ai?.update(t, dt, a.runner.x / D);
-      a.runner.update(dt, t);
+      this.stepAthlete(a, dt, t);
       const cross = a.runner.crossing(D, t, dt);
       if (cross != null && a.mark == null && a.status === 'ok') {
         a.mark = cross - this.goT;
@@ -172,8 +206,7 @@ export class LaneRace {
     const pending = () => this.athletes.filter((a) => !a.isPlayer && a.mark == null);
     for (let guard = 0; pending().length && guard < 60 / step; guard++) {
       for (const a of pending()) {
-        a.ai.update(t, step, a.runner.x / D);
-        a.runner.update(step, t);
+        this.stepAthlete(a, step, t);
         const cross = a.runner.crossing(D, t, step);
         if (cross != null) a.mark = cross - goT;
       }
@@ -206,7 +239,7 @@ export class LaneRace {
     const H = CONFIG.figure.height * this.camera.ppm;
     for (let i = this.athletes.length - 1; i >= 0; i--) {
       const a = this.athletes[i];
-      const p = this.track.toScreen(this.camera, view, a.runner.x, a.lane);
+      const p = this.track.toScreen(this.camera, view, a.runner.x + a.runner.reach * 0.5, a.lane);
       if (p.x < -80 || p.x > view.w + 80) continue;
       const scale = 1 - (a.lane - 1) * 0.035; // slightly smaller further back
       const head = drawFigure(ctx, p.x, p.y + 4, H * scale, this.poseFor(a), a.colors);
@@ -226,6 +259,11 @@ export class LaneRace {
     // Racing: blend out of the set position over the first ~1.2m, into standing as they stop.
     const amp = clamp(r.v / 9, 0.3, 1);
     const run = runPose(r.phase, amp);
+    if (r.mode === 'dive') {
+      const d = CONFIG.dip;
+      if (r.airborne) return lerpPose(run, POSES.dive, clamp(r.diveT / d.riseTime, 0, 1));
+      return lerpPose(POSES.dive, POSES.sprawl, clamp((r.diveT - d.riseTime - d.airTime) / 0.15, 0, 1));
+    }
     if (r.x < 1.2) return lerpPose(POSES.set, run, clamp(r.x / 1.2, 0, 1));
     if (r.finished && r.v < 2) return lerpPose(POSES.stand, run, r.v / 2);
     return run;
@@ -309,6 +347,14 @@ export class LaneRace {
         break;
       case 'race':
         if (now - this.goT < this.cfg.countdown.goBanner) big('GO!', '#59cd90');
+        else if (this.player.runner.mode === 'carry') {
+          const pulse = 0.75 + 0.25 * Math.sin(now * 18);
+          text(ctx, 'DIP!', cx, cy, { size: 64, color: `rgba(255,140,40,${pulse})`, shadow: true });
+          roundRect(ctx, cx - 130, cy + 32, 260, 32, 16);
+          ctx.fillStyle = 'rgba(0,0,0,0.6)';
+          ctx.fill();
+          text(ctx, 'Both thumbs together', cx, cy + 49, { size: 19 });
+        }
         break;
       case 'falseStart':
         big('FALSE START', '#ff5252');

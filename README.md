@@ -28,7 +28,7 @@ python3 -m http.server 8000        # or: npx serve .
 Open http://localhost:8000. To test on a phone on the same Wi-Fi, open `http://<computer-ip>:8000`.
 
 - `?debug` in the URL shows fps, cadence, target speed and speed.
-- Keyboard: ← / → (or Z / X) are the left and right thumbs. Esc quits a race.
+- Keyboard: ← / → (or Z / X) are the left and right thumbs, Space dips at the finish. Esc quits a race.
 
 ## Tuning
 
@@ -95,7 +95,8 @@ tools/simulate.mjs    headless tuning simulator
   - reward curve: `speedCurve`
   - explosiveness: `accelMax`
   - punishment for stopping: `coastDecel`
-- **Juice.** Small feedback makes input feel good: pad flash on a valid tap, a shake
-  on a same-side tap, a "tap me next" ring, parallax crowd and grass, and a speed bar.
+- **Juice.** Small feedback makes input feel good: a ring burst on each hit, a red ✕
+  on a wrong-side tap, a target that pops in where your thumb already is, a pulsing
+  orange DIP prompt, a parallax crowd and grass, and a speed bar.
 - **Frame-rate independent smoothing.** The camera uses `damp()`
   (`lerp` with `1 - e^(-k·dt)`), so it glides the same at any refresh rate.

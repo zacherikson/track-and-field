@@ -56,6 +56,26 @@ export const CONFIG = {
     strideLength: 2.2, // m per full leg cycle (animation only)
   },
 
+  /**
+   * FINISH DIP (shared by lane races). Near the line the stride targets turn
+   * into a two-thumb "DIP!" prompt. Strides stop counting there: you carry your
+   * speed. Press both thumbs together to lunge. Best timing puts your chest at
+   * full stretch right on the line (about 5m out at top speed). Too early and
+   * you slide to a stop short of it.
+   */
+  dip: {
+    promptDistance: 15, // m before the line where strides stop and the DIP prompt shows
+    chordWindow: 0.06, // s; left + right presses this close together count as both thumbs
+    // (must stay below a fast tapper's alternating interval, ~0.07s at 15 taps/s)
+    armDelay: 0.3, // s after entering the zone before a dip can trigger (stray stride taps)
+    reach: 1.0, // m the chest lunges ahead of the hips at full stretch
+    riseTime: 0.25, // s to reach full stretch
+    airTime: 0.08, // s of flight at full stretch before hitting the track
+    airDecel: 1.5, // m/s^2 lost while flying
+    slideDecel: 18, // m/s^2 lost sliding on the track (dived too early)
+    carryDecel: 0.6, // m/s^2 lost while carrying speed through the dip zone
+  },
+
   sprint100: {
     distance: 100,
     lanes: 6,
@@ -68,7 +88,13 @@ export const CONFIG = {
     },
     falseStartsAllowed: 1, // warnings before disqualification
     falseStartPause: 1.6, // s on the FALSE START message before restarting
-    finishHold: 2.2, // s after you cross before the results screen
+    pads: {
+      radius: 56, // tap target size (visual only; the hit zone is the whole screen half)
+      homeY: 0.66, // starting height of the targets, as a fraction of screen height
+      edgeInset: 26, // px from the screen edge (plus safe area) for the starting spots
+      followThumb: true, // each target reappears where that thumb last tapped
+    },
+    finishHold: 2.4, // s after you cross before the results screen
     maxRaceTime: 25, // s; give up and DNF after this
   },
 
@@ -82,12 +108,14 @@ export const CONFIG = {
       reaction: [0.15, 0.3], // s from GO to first tap
       jitter: 0.12, // +/- fraction of randomness on each tap interval
       fatigue: 0.06, // cadence lost by the finish (fades in over the last 40%)
+      dipError: [-1.2, 2.5], // m; AI dips at the ideal spot plus this (negative = late)
     },
     pro: {
       cadence: [11.6, 13.8],
       reaction: [0.13, 0.2],
       jitter: 0.08,
       fatigue: 0.04,
+      dipError: [-0.6, 1.2],
     },
   },
 };

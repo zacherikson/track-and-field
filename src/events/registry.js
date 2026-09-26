@@ -11,10 +11,10 @@ export const EVENTS = [
     lowerIsBetter: true,
     available: true,
     howTo: [
-      'Wait for GREEN. Tapping while the buttons are red is a false start.',
-      'Then alternate LEFT and RIGHT thumbs as fast as you can.',
-      "Same thumb twice doesn't count. Stop tapping and you slow down.",
-      'Desktop: ← → arrow keys (or Z / X).',
+      'Wait for GREEN. Tapping while the pads are red is a false start.',
+      'Tap the green target, then the other side: left, right, left… fast!',
+      'Near the line the pads turn ORANGE: stop and press BOTH to dip.',
+      'Desktop: ← → to run, Space to dip.',
     ],
     create() {
       return new Sprint100(this);

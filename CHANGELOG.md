@@ -4,6 +4,36 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 2.1: 100m changes from the reference gameplay video
+Frame-by-frame study of a 100m run in the 2009 original. Only the mechanics are
+reimplemented here; the art and presentation are our own.
+- **One target at a time.** Instead of two fixed pads, a single green target
+  alternates sides. The first target after GO is always on the left.
+  - Each side's target reappears where that thumb last tapped (`pads.followThumb`).
+  - The hit zone is still the whole screen half, so it stays forgiving.
+  - A faint ring marks where the other thumb goes next.
+- Hit feedback: the target bursts into an expanding ring. A wrong-side tap shows a
+  red ✕ and doesn't count.
+- **Finish dip** (new `dip` config).
+  - 15m out, strides stop counting and you carry your speed (`carryDecel` 0.6 m/s²).
+  - Both pads pulse orange. Press both thumbs within 60ms (Space on desktop) to lunge.
+  - The chest leads by up to 1.0m. Finish time is when the chest crosses the line.
+  - Measured with `tools/simulate.mjs` at 12 taps/s:
+
+    | Dip | Effect |
+    |---|---|
+    | Perfect (about 3.5m out) | −0.10s |
+    | 2m late | −0.04s |
+    | No dip | 0 |
+    | More than about 3m early | +0.8s (slide to a stop, get up, run it in) |
+
+  - `armDelay` 0.3s and `chordWindow` 0.06s stop a fast tapper's last strides from
+    triggering an accidental early dip.
+- AI rivals dip too, with timing error per difficulty (`ai.*.dipError`).
+- Open question: in the video the target switches only about 2.5 times per second,
+  yet the runner is at full speed, so the original may be rhythm-based rather than
+  mash-based. Not changed yet.
+
 ## Step 2: 100m Dash playable
 - Runner physics: taps → smoothed cadence → target speed → speed (limited accel / coast decel).
 - Initial calibration with the simulator (0.22s reaction):

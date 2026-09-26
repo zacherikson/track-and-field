@@ -3,6 +3,10 @@ import { clamp, rand } from '../core/math.js';
 import { LaneRace } from './laneRace.js';
 import { StrideTargets } from './strideTargets.js';
 
+// Glossy "candy" button palettes: highlight, body, and rim shade.
+const GREEN = { hi: '#b6ff8a', mid: '#39e626', lo: '#0f9e1c' };
+const ORANGE = { hi: '#ffe08a', mid: '#ff9d14', lo: '#d9580a' };
+
 const LEFT_KEYS = ['ArrowLeft', 'KeyA', 'KeyZ', 'KeyF'];
 const RIGHT_KEYS = ['ArrowRight', 'KeyD', 'KeyX', 'KeyJ'];
 const DIP_KEYS = ['Space', 'ArrowUp', 'ArrowDown'];
@@ -16,8 +20,9 @@ const DIP_KEYS = ['Space', 'ArrowUp', 'ArrowDown'];
  *   learn where to go.
  * - The circle is only a cue: the hit zone is that whole half of the screen, so
  *   touching just outside the circle still counts.
- * - Tapping the unlit side is a wrong tap: red ✕, speed loss, short lockout
- *   (the target greys out until you can go again).
+ * - Only two states: a green target (tap now) or a red ✕ (wrong side, wait).
+ *   A wrong tap costs speed and hides the target behind the ✕ for the short
+ *   lockout; then the target flies back in.
  * - Nothing is shown during the countdown. The first thing to appear is the
  *   first green target at GO; tapping before it is a false start.
  * - Every appearance flies in (random approach angle, overshoot, trail, closing
@@ -106,14 +111,17 @@ export class Sprint100 extends LaneRace {
       this.spawn(this.target); // flies in again even if it's the same side
     } else if (result === 'miss') {
       const at = this.padPos(side);
-      this.fx.push({ kind: 'x', x: at.x, y: at.y, t0: now });
+      this.fx.push({ kind: 'x', x: at.x, y: at.y, t0: now, until: this.judge.lockedUntil });
+      // The target stays hidden during the lockout, then flies back in.
+      this.spawn(this.target);
+      this.pads[this.target].spawnT = this.judge.lockedUntil;
       navigator.vibrate?.(40);
     }
   }
 
   updateControls() {
     const now = this.game.time;
-    this.fx = this.fx.filter((f) => now - f.t0 < 0.4);
+    this.fx = this.fx.filter((f) => (f.kind === 'x' ? now < f.until + 0.1 : now - f.t0 < 0.4));
     if (this.state === 'race' && this.player.runner.mode === 'carry' && !this.dipShown) {
       this.dipShown = true;
       this.spawn('L');
@@ -128,11 +136,11 @@ export class Sprint100 extends LaneRace {
 
     // Nothing during the countdown: the first green target at GO is the cue.
     if (racing && mode === 'run' && this.target) {
-      const locked = now < this.judge.lockedUntil;
-      this.drawSpawn(ctx, this.target, locked ? '#7d8a86' : '#2bb673', 1);
+      // Two states only: green target, or (during a miss lockout) just the red ✕.
+      if (now >= this.judge.lockedUntil) this.drawSpawn(ctx, this.target, GREEN, 1);
     } else if (racing && mode === 'carry') {
       const pulse = 0.5 + 0.5 * Math.sin(now * 18);
-      for (const side of ['L', 'R']) this.drawSpawn(ctx, side, '#ff8c28', 0.8 + 0.2 * pulse);
+      for (const side of ['L', 'R']) this.drawSpawn(ctx, side, ORANGE, 0.8 + 0.2 * pulse);
     }
 
     for (const f of this.fx) {
@@ -154,16 +162,37 @@ export class Sprint100 extends LaneRace {
         ctx.arc(f.x, f.y, this.pads.L.r * (1 + 0.6 * k), 0, Math.PI * 2);
         ctx.stroke();
       } else {
-        const s = 26;
-        ctx.translate(f.x + Math.sin(k * 40) * 4 * (1 - k), f.y);
-        ctx.strokeStyle = '#ff3b30';
-        ctx.lineWidth = 10;
+        // Bold red ✕ with a white outline: solid for the whole lockout, then a quick fade.
+        const fade = clamp((now - f.until) / 0.1, 0, 1);
+        const pop = clamp((now - f.t0) / 0.06, 0, 1);
+        const shake = Math.sin((now - f.t0) * 70) * 5 * Math.max(0, 1 - (now - f.t0) / 0.2);
+        ctx.globalAlpha = 1 - fade;
+        ctx.translate(f.x + shake, f.y);
+        ctx.scale(0.6 + 0.4 * pop, 0.6 + 0.4 * pop);
+        const s = 30;
+        const cross = () => {
+          ctx.beginPath();
+          ctx.moveTo(-s, -s);
+          ctx.lineTo(s, s);
+          ctx.moveTo(s, -s);
+          ctx.lineTo(-s, s);
+        };
         ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(-s, -s);
-        ctx.lineTo(s, s);
-        ctx.moveTo(s, -s);
-        ctx.lineTo(-s, s);
+        ctx.shadowColor = 'rgba(0,0,0,0.35)';
+        ctx.shadowBlur = 8;
+        ctx.shadowOffsetY = 3;
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 24;
+        cross();
+        ctx.stroke();
+        ctx.shadowColor = 'transparent';
+        const g = ctx.createLinearGradient(0, -s, 0, s);
+        g.addColorStop(0, '#ff6b5e');
+        g.addColorStop(0.5, '#ff1f1f');
+        g.addColorStop(1, '#c80d12');
+        ctx.strokeStyle = g;
+        ctx.lineWidth = 14;
+        cross();
         ctx.stroke();
       }
       ctx.restore();
@@ -199,7 +228,7 @@ export class Sprint100 extends LaneRace {
   }
 
   /** A pad with its fly-in: motion trail, closing ring, then the pad itself. */
-  drawSpawn(ctx, side, color, alpha) {
+  drawSpawn(ctx, side, pal, alpha) {
     const cfg = CONFIG.sprint100.pads.spawn;
     const now = this.game.time;
     const tf = this.padTransform(side, now);
@@ -212,7 +241,7 @@ export class Sprint100 extends LaneRace {
         const q = tf.at(kk);
         ctx.save();
         ctx.globalAlpha = alpha * 0.45 * (1 - i / (cfg.trail + 1)) * (1 - tf.k);
-        ctx.fillStyle = color;
+        ctx.fillStyle = pal.mid;
         ctx.beginPath();
         ctx.arc(q.x, q.y, r * (0.7 + 0.3 * kk), 0, Math.PI * 2);
         ctx.fill();
@@ -232,10 +261,11 @@ export class Sprint100 extends LaneRace {
       ctx.stroke();
       ctx.restore();
     }
-    this.drawPad(ctx, color, { ...tf, r: r * tf.scale, alpha: alpha * tf.alpha });
+    this.drawPad(ctx, pal, { ...tf, r: r * tf.scale, alpha: alpha * tf.alpha });
   }
 
-  drawPad(ctx, color, { x, y, r, alpha, angle = 0, stretch = 1 }) {
+  /** A glossy candy button: gradient body, darker rim, thick white ring, highlight. */
+  drawPad(ctx, pal, { x, y, r, alpha, angle = 0, stretch = 1 }) {
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.translate(x, y);
@@ -243,21 +273,38 @@ export class Sprint100 extends LaneRace {
     ctx.rotate(angle);
     ctx.scale(stretch, 1 / stretch);
     ctx.rotate(-angle);
-    ctx.fillStyle = color;
+
+    // White ring with a soft drop shadow so it pops off the busy track.
+    ctx.shadowColor = 'rgba(0,0,0,0.35)';
+    ctx.shadowBlur = 10;
+    ctx.shadowOffsetY = 4;
+    ctx.fillStyle = '#fff';
     ctx.beginPath();
     ctx.arc(0, 0, r, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.95)';
-    ctx.lineWidth = 4;
-    ctx.stroke();
-    // Glossy highlight so it reads as a button.
-    ctx.fillStyle = 'rgba(255,255,255,0.28)';
+    ctx.shadowColor = 'transparent';
+
+    // Body: light from the top-left, deep shade at the bottom rim.
+    const inner = r * 0.84;
+    const g = ctx.createRadialGradient(-inner * 0.3, -inner * 0.4, inner * 0.1, 0, 0, inner * 1.05);
+    g.addColorStop(0, pal.hi);
+    g.addColorStop(0.45, pal.mid);
+    g.addColorStop(1, pal.lo);
+    ctx.fillStyle = g;
     ctx.beginPath();
-    ctx.ellipse(-r * 0.18, -r * 0.4, r * 0.55, r * 0.3, -0.3, 0, Math.PI * 2);
+    ctx.arc(0, 0, inner, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Glossy highlight across the top half.
+    const hg = ctx.createLinearGradient(0, -inner, 0, -inner * 0.1);
+    hg.addColorStop(0, 'rgba(255,255,255,0.75)');
+    hg.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = hg;
+    ctx.beginPath();
+    ctx.ellipse(0, -inner * 0.45, inner * 0.72, inner * 0.45, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }
-
 }
 
 /** 0 -> 1 with an overshoot past 1 near the end (s controls how far). */

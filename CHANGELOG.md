@@ -4,6 +4,14 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 2.5: two states only, brighter colors
+- Only two states: a green target (tap now) or a red ✕ (wrong side, wait). The
+  grey "locked" target is gone. After a wrong tap the target is hidden behind the
+  ✕ for the whole 0.25s lockout, then flies back in.
+- The ✕ is bold red with a white outline and pops in with a short shake.
+- Pads are glossy candy buttons: vivid gradient body (green #39e626, orange
+  #ff9d14), darker rim, thick white ring, highlight and a soft drop shadow.
+
 ## Step 2.4: fixed target spots, no countdown pads
 - Each side's target always lands on the same spot (removed `pads.followThumb`).
   Following the thumb added nothing, because the hit zone was already the whole

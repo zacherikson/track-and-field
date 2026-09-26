@@ -1,22 +1,24 @@
 import { CONFIG } from '../config.js';
 import { clamp } from '../core/math.js';
 import { LaneRace } from './laneRace.js';
+import { StrideTargets } from './strideTargets.js';
 
 const LEFT_KEYS = ['ArrowLeft', 'KeyA', 'KeyZ', 'KeyF'];
 const RIGHT_KEYS = ['ArrowRight', 'KeyD', 'KeyX', 'KeyJ'];
 const DIP_KEYS = ['Space', 'ArrowUp', 'ArrowDown'];
 
 /**
- * 100m Dash controls: ONE green target at a time, alternating sides.
+ * 100m Dash controls: ONE green target at a time, on a RANDOM side, but never
+ * more than two in a row on the same side (see strideTargets.js). Reading the
+ * pattern, not mashing, is what makes you fast.
  *
- * - Hit zones are whole screen halves, so a thumb never "misses". The target is
- *   the visual cue for which thumb goes next.
- * - Each side's target reappears where that thumb last tapped, so it follows
- *   your grip instead of making you reach for a fixed spot.
- * - A hit bursts into an expanding ring. A tap on the wrong side shows a red ✕
- *   and doesn't count.
- * - Before the gun both pads are red. The first target after GO is on the left.
- * - In the dip zone both pads turn orange: press both together to dip.
+ * - Hit zones are whole screen halves, so a thumb never "misses" physically.
+ *   Tapping the unlit side is a wrong tap: red ✕, speed loss, short lockout
+ *   (the target greys out until you can go again).
+ * - Each side's target appears where that thumb last tapped, following your grip.
+ * - A hit bursts into an expanding ring. A repeat on the same side pops in again.
+ * - Before the gun both pads are red. In the dip zone both turn orange: press
+ *   both together to dip.
  */
 export class Sprint100 extends LaneRace {
   constructor(ev) {
@@ -29,9 +31,13 @@ export class Sprint100 extends LaneRace {
       L: { home: { x: 0, y: 0 }, pos: null, spawnT: -1, r },
       R: { home: { x: 0, y: 0 }, pos: null, spawnT: -1, r },
     };
-    this.target = 'L';
     this.fx = []; // short-lived effects: { kind: 'ring' | 'x', x, y, t0 }
     super.enter();
+    this.judge = new StrideTargets(this.player.runner, CONFIG.sprint100.targets);
+  }
+
+  get target() {
+    return this.judge?.target ?? null;
   }
 
   onResize(view) {
@@ -46,15 +52,13 @@ export class Sprint100 extends LaneRace {
   }
 
   onCountdown() {
-    this.target = 'L';
     this.fx = [];
+    if (this.judge) this.judge.target = null;
   }
 
   onGo() {
-    // The first target is on the left, so the first valid stride is a left tap.
-    this.player.runner.lastSide = 'R';
-    this.target = 'L';
-    this.pads.L.spawnT = this.game.time;
+    this.judge.start(this.goT);
+    this.pads[this.target].spawnT = this.game.time;
   }
 
   mapInput(e) {
@@ -82,17 +86,18 @@ export class Sprint100 extends LaneRace {
 
   onPlayerAction(side, t, e) {
     if (side === 'DIP') return;
-    const result = this.player.runner.tap(side, t);
+    const result = this.judge.press(side, t);
     const now = this.game.time;
-    if (result === 'ok') {
+    const touch = e.type === 'down' ? { x: e.x, y: e.y } : null;
+    if (result === 'hit') {
       const at = this.padPos(side);
       this.fx.push({ kind: 'ring', x: at.x, y: at.y, t0: now });
-      if (e.type === 'down' && CONFIG.sprint100.pads.followThumb) this.pads[side].pos = this.clampToZone(side, e.x, e.y);
-      this.target = side === 'L' ? 'R' : 'L';
-      this.pads[this.target].spawnT = now;
-    } else if (result === 'same') {
-      const at = e.type === 'down' ? { x: e.x, y: e.y } : this.padPos(side);
+      if (touch && CONFIG.sprint100.pads.followThumb) this.pads[side].pos = this.clampToZone(side, touch.x, touch.y);
+      this.pads[this.target].spawnT = now; // pops in again even if it's the same side
+    } else if (result === 'miss') {
+      const at = touch ?? this.padPos(side);
       this.fx.push({ kind: 'x', x: at.x, y: at.y, t0: now });
+      navigator.vibrate?.(40);
     }
   }
 
@@ -109,12 +114,13 @@ export class Sprint100 extends LaneRace {
 
     if (before) {
       for (const side of ['L', 'R']) this.drawPad(ctx, side, '#d7263d', 0.85, 1);
-    } else if (racing && mode === 'run') {
-      const off = this.target === 'L' ? 'R' : 'L';
-      this.drawGhost(ctx, off);
+    } else if (racing && mode === 'run' && this.target) {
+      // Faint rings where each thumb rests; the lit side gets the green target.
+      for (const side of ['L', 'R']) if (side !== this.target) this.drawGhost(ctx, side);
       // Pop-in: the new target grows from 60% over ~0.1s so the switch reads instantly.
       const k = clamp((now - this.pads[this.target].spawnT) / 0.1, 0, 1);
-      this.drawPad(ctx, this.target, '#2bb673', 0.5 + 0.45 * k, 0.6 + 0.4 * k);
+      const locked = now < this.judge.lockedUntil;
+      this.drawPad(ctx, this.target, locked ? '#7d8a86' : '#2bb673', 0.5 + 0.45 * k, 0.6 + 0.4 * k);
     } else if (racing && mode === 'carry') {
       const pulse = 0.5 + 0.5 * Math.sin(now * 18);
       for (const side of ['L', 'R']) this.drawPad(ctx, side, '#ff8c28', 0.8 + 0.15 * pulse, 0.95 + 0.08 * pulse);

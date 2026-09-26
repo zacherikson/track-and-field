@@ -12,8 +12,9 @@ export const EVENTS = [
     available: true,
     howTo: [
       'Wait for GREEN. Tapping while the pads are red is a false start.',
-      'Tap the green target, then the other side: left, right, left… fast!',
-      'Near the line the pads turn ORANGE: stop and press BOTH to dip.',
+      'Tap the side the green target is on. It jumps around at random!',
+      'Wrong side = stumble. Watch for patterns and you will get quicker.',
+      'Near the line the pads turn ORANGE: press BOTH together to dip.',
       'Desktop: ← → to run, Space to dip.',
     ],
     create() {

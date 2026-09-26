@@ -4,11 +4,48 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 2.2: random targets (never 3 in a row), because reading beats mashing
+Per design feedback on the original: the target side is random, but there are never
+more than 2 in a row on one side. After two lefts the next is guaranteed right, so
+you can learn to pre-empt it.
+- New `src/events/strideTargets.js` (`TargetSequence` + `StrideTargets`), config
+  `sprint100.targets`: `maxSameSide` 2, `switchChance` 0.5 (overall switch rate 2/3).
+- Tapping the lit side = a stride. Same-side repeats are now valid.
+- Wrong-side tap: red ✕, −1.5 m/s, and a 0.25s lockout (the target greys out).
+  First try was −0.8 m/s and 0.15s, but then blindly alternating at 14 taps/s
+  (9.6s) beat a good reader (10.4s).
+- Inputs within 60ms of a hit are ignored (`minStrideInterval`), so drumming both
+  thumbs can't score two strides per press.
+- Runner API: `stride(t)` and `stumble(loss)` replace `tap(side, t)`. Each event now
+  decides what a correct input is (the hurdles' 1-2-3 will reuse this).
+- Retuned for reaction-paced play (about 3–6 hits/s instead of 12–15 taps/s):
+  - `cadenceForTopSpeed` 15 → 5.2 strides/s
+  - `maxIntervalForAvg` 0.5 → 0.7
+  - new `idleGrace` 1.4: a normal hesitation doesn't wobble your speed
+- AI rivals: cadence ranges retuned (amateur 2.9–3.8, pro 3.9–4.9 strides/s), plus
+  occasional misreads that cost them the same penalty (`missChance`).
+- Fix: a slow runner could coast to a standstill in the dip zone and never finish.
+  They now keep running normally below `dip.minCarrySpeed` (5 m/s).
+- Simulator (`node tools/simulate.mjs`) now races strategies through the real rules:
+
+  | Strategy | Time |
+  |---|---|
+  | Novice reader | 12.9s |
+  | Casual reader | 11.0s |
+  | Casual, ignoring the max-2 rule | 12.25s |
+  | Good reader | 9.7s |
+  | Expert | 9.1s |
+  | Alternating masher (best case, 10/s) | 10.7s, and often never finishes |
+  | Guessing / drumming both thumbs | 15–17s |
+  | Amateur AI winner (median) | 10.8s |
+  | Pro AI winner (median) | 9.2s |
+
 ## Step 2.1: 100m changes from the reference gameplay video
 Frame-by-frame study of a 100m run in the 2009 original. Only the mechanics are
 reimplemented here; the art and presentation are our own.
 - **One target at a time.** Instead of two fixed pads, a single green target
   alternates sides. The first target after GO is always on the left.
+  (Superseded in 2.2 by random sides.)
   - Each side's target reappears where that thumb last tapped (`pads.followThumb`).
   - The hit zone is still the whole screen half, so it stays forgiving.
   - A faint ring marks where the other thumb goes next.
@@ -32,7 +69,7 @@ reimplemented here; the art and presentation are our own.
 - AI rivals dip too, with timing error per difficulty (`ai.*.dipError`).
 - Open question: in the video the target switches only about 2.5 times per second,
   yet the runner is at full speed, so the original may be rhythm-based rather than
-  mash-based. Not changed yet.
+  mash-based. Not changed yet. (Answered in 2.2: it's random targets.)
 
 ## Step 2: 100m Dash playable
 - Runner physics: taps → smoothed cadence → target speed → speed (limited accel / coast decel).

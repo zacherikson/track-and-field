@@ -1,9 +1,9 @@
 import { rand } from '../core/math.js';
 
 /**
- * AI "thumbs": generates alternating taps at a personal cadence and feeds them
- * into a Runner, exactly like the player's input does. Difficulty = the
- * cadence range in CONFIG.ai.<level>.
+ * AI "thumbs": hits stride targets at a personal cadence (with reaction-time
+ * jitter and the occasional misread) and feeds them into a Runner, exactly like
+ * the player's input does. Difficulty = the cadence range in CONFIG.ai.<level>.
  */
 export class AIController {
   constructor(runner, level, cadence = rand(...level.cadence)) {
@@ -12,7 +12,6 @@ export class AIController {
     this.cadence = cadence;
     this.reaction = rand(...level.reaction);
     this.nextTapT = Infinity;
-    this.side = 'L';
     this.dipError = rand(...level.dipError);
   }
 
@@ -31,9 +30,14 @@ export class AIController {
     const lv = this.level;
     const tired = 1 - lv.fatigue * Math.max(0, (progress - 0.6) / 0.4);
     while (this.nextTapT < t + dt) {
-      this.runner.tap(this.side, this.nextTapT);
-      this.side = this.side === 'L' ? 'R' : 'L';
-      const interval = (1 / (this.cadence * tired)) * (1 + rand(-lv.jitter, lv.jitter));
+      let interval = (1 / (this.cadence * tired)) * (1 + rand(-lv.jitter, lv.jitter));
+      if (Math.random() < lv.missChance) {
+        // Rivals misread a target now and then, and pay the same price the player does.
+        r.stumble(lv.missSpeedLoss);
+        interval += lv.missLockout;
+      } else {
+        r.stride(this.nextTapT);
+      }
       this.nextTapT += interval;
     }
   }

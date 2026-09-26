@@ -32,27 +32,29 @@ export const CONFIG = {
   /**
    * RUNNER PHYSICS (shared by every running event, player and AI alike).
    *
-   *   taps -> cadence (taps/s, smoothed) -> target speed -> actual speed
+   *   correct inputs ("strides") -> cadence (strides/s, smoothed) -> target speed -> speed
    *
-   * - Cadence is 1 / (smoothed interval between valid alternating taps). If you
-   *   stop tapping, the time since your last tap counts as the interval, so the
-   *   target speed falls away smoothly instead of instantly.
-   * - Target speed = topSpeed * (cadence / cadenceForTopSpeed) ^ speedCurve
-   *   (curve < 1 is forgiving: casual tapping still gets a decent speed).
-   * - Actual speed chases the target: up at a limited acceleration that fades
-   *   as you get faster (a real sprinter's drive phase), down at coastDecel.
+   * - Cadence is 1 / (smoothed interval between strides). If you stop, the time
+   *   since your last stride (divided by idleGrace) counts as the interval, so
+   *   the target speed falls away smoothly instead of instantly.
+   * - Target speed = topSpeed * (cadence / cadenceForTopSpeed) ^ speedCurve.
+   * - Actual speed chases the target: up at a limited acceleration that fades as
+   *   you get faster (a real sprinter's drive phase), down at coastDecel.
+   * In the 100m a stride is a tap on the lit target. Reading random targets caps
+   * humans at roughly 3-6 strides/s, so the numbers below are tuned for that.
    */
   runner: {
-    cadenceForTopSpeed: 15, // taps/s needed for top speed (two thumbs alternating)
-    speedCurve: 0.75, // <1 = forgiving, 1 = linear, >1 = rewards only elite tapping
+    cadenceForTopSpeed: 5.2, // strides/s needed for top speed
+    speedCurve: 0.75, // <1 = forgiving, 1 = linear, >1 = rewards only elite play
     topSpeed: 13.4, // m/s at full cadence
     accelMax: 9.0, // m/s^2 from standstill
     accelFalloff: 0.72, // accel shrinks by this fraction as speed approaches topSpeed
-    coastDecel: 4.0, // m/s^2 lost when tapping slower than your current speed needs
+    coastDecel: 4.0, // m/s^2 lost when your cadence is below what your speed needs
     finishDecel: 3.5, // m/s^2 braking after crossing the line
-    cadenceSmoothing: 0.3, // 0..1 weight of the newest tap interval (higher = twitchier)
-    maxIntervalForAvg: 0.5, // s; long pauses count as this, so you recover quickly
-    minTapInterval: 0.04, // s; alternating taps closer than this are ignored (anti-mash)
+    cadenceSmoothing: 0.3, // 0..1 weight of the newest stride interval (higher = twitchier)
+    idleGrace: 1.4, // a gap must exceed this x your usual interval before it slows you
+    maxIntervalForAvg: 0.7, // s; long pauses count as this, so you recover quickly
+    minStrideInterval: 0.06, // s; inputs closer than this to the last stride are ignored (two-thumb chords)
     strideLength: 2.2, // m per full leg cycle (animation only)
   },
 
@@ -74,6 +76,7 @@ export const CONFIG = {
     airDecel: 1.5, // m/s^2 lost while flying
     slideDecel: 18, // m/s^2 lost sliding on the track (dived too early)
     carryDecel: 0.6, // m/s^2 lost while carrying speed through the dip zone
+    minCarrySpeed: 5, // m/s; slower than this and you just keep running (no coasting to a halt)
   },
 
   sprint100: {
@@ -88,6 +91,14 @@ export const CONFIG = {
     },
     falseStartsAllowed: 1, // warnings before disqualification
     falseStartPause: 1.6, // s on the FALSE START message before restarting
+    // Random targets: never more than maxSameSide in a row on one side, so after
+    // two on the left the next is guaranteed right: learn it and pre-empt it.
+    targets: {
+      maxSameSide: 2,
+      switchChance: 0.5, // chance of switching sides when not forced
+      missLockout: 0.25, // s; a wrong-side tap freezes your input this long
+      missSpeedLoss: 1.5, // m/s lost on a wrong-side tap
+    },
     pads: {
       radius: 56, // tap target size (visual only; the hit zone is the whole screen half)
       homeY: 0.66, // starting height of the targets, as a fraction of screen height
@@ -104,17 +115,23 @@ export const CONFIG = {
    */
   ai: {
     amateur: {
-      cadence: [8.6, 11.0], // taps/s range across the field
-      reaction: [0.15, 0.3], // s from GO to first tap
-      jitter: 0.12, // +/- fraction of randomness on each tap interval
-      fatigue: 0.06, // cadence lost by the finish (fades in over the last 40%)
+      cadence: [2.9, 3.8], // strides/s range across the field
+      reaction: [0.2, 0.35], // s from GO to first stride
+      jitter: 0.3, // +/- fraction of randomness on each stride interval (reaction variance)
+      fatigue: 0.05, // cadence lost by the finish (fades in over the last 40%)
+      missChance: 0.03, // chance a stride is a wrong-side tap instead
+      missSpeedLoss: 1.5,
+      missLockout: 0.25,
       dipError: [-1.2, 2.5], // m; AI dips at the ideal spot plus this (negative = late)
     },
     pro: {
-      cadence: [11.6, 13.8],
-      reaction: [0.13, 0.2],
-      jitter: 0.08,
-      fatigue: 0.04,
+      cadence: [3.9, 4.9],
+      reaction: [0.16, 0.24],
+      jitter: 0.22,
+      fatigue: 0.03,
+      missChance: 0.015,
+      missSpeedLoss: 1.5,
+      missLockout: 0.25,
       dipError: [-0.6, 1.2],
     },
   },

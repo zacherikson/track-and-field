@@ -2,8 +2,10 @@ import { CONFIG } from '../config.js';
 
 /**
  * Runner physics shared by every running event (100m, hurdles, run-ups).
- * Player and AI both drive a Runner only through `tap(side, t)`, so the rules
- * are identical for everyone. Pure logic: no DOM, so tools/simulate.mjs can run it in Node.
+ * Player and AI both drive a Runner only through `stride(t)` (one correct input
+ * = one stride) and `stumble()`, so the physics is identical for everyone. Each
+ * event decides what counts as a correct input (random L/R targets, 1-2-3...).
+ * Pure logic: no DOM, so tools/simulate.mjs can run it in Node.
  */
 export class Runner {
   constructor(params = CONFIG.runner, dip = CONFIG.dip) {
@@ -18,7 +20,6 @@ export class Runner {
     this.v = 0; // m/s
     this.phase = 0; // stride animation phase (radians)
     this.started = false;
-    this.lastSide = null;
     this.lastTapT = 0;
     this.avgInterval = null; // smoothed seconds between valid taps
     this.taps = 0;
@@ -43,7 +44,8 @@ export class Runner {
 
   /** Enter the dip zone: stop reacting to strides, carry your speed. */
   carry() {
-    if (this.mode === 'run' && !this.dipUsed && !this.finished) this.mode = 'carry';
+    // Only a runner with real momentum can coast: a slow one keeps running normally.
+    if (this.mode === 'run' && !this.dipUsed && !this.finished && this.v >= this.dip.minCarrySpeed) this.mode = 'carry';
   }
 
   /** Distance from the line at which a dive puts the chest at full stretch right on it. */
@@ -67,30 +69,35 @@ export class Runner {
   }
 
   /**
-   * Register a tap. Returns 'ok', 'same' (same side twice: ignored),
-   * 'fast' (too close to the previous tap: ignored) or 'idle'.
+   * Register one stride (a correct input). Returns 'ok', 'fast' (too soon after
+   * the previous stride: ignored) or 'idle' (not running right now).
    */
-  tap(side, t) {
+  stride(t) {
     if (!this.started || this.finished || this.mode !== 'run') return 'idle';
-    if (side === this.lastSide) return 'same';
     const interval = t - this.lastTapT;
     const first = this.taps === 0;
     // The first "interval" is your reaction time. Never reject it, but don't let
     // a lucky anticipation of the gun count as superhuman cadence either.
-    if (!first && interval < this.p.minTapInterval) return 'fast';
+    if (!first && interval < this.p.minStrideInterval) return 'fast';
     const floor = first ? 1 / this.p.cadenceForTopSpeed : 0;
     const iv = Math.min(Math.max(interval, floor), this.p.maxIntervalForAvg);
     this.avgInterval = this.avgInterval == null ? iv : this.avgInterval + this.p.cadenceSmoothing * (iv - this.avgInterval);
-    this.lastSide = side;
     this.lastTapT = t;
     this.taps++;
     return 'ok';
   }
 
+  /** A wrong input: lose some speed on the spot. */
+  stumble(speedLoss) {
+    if (this.mode === 'run' && !this.finished) this.v = Math.max(0, this.v - speedLoss);
+  }
+
   /** Current effective cadence (taps/s). Decays on its own if you stop tapping. */
   cadence(t) {
     if (this.avgInterval == null) return 0;
-    return 1 / Math.max(this.avgInterval, t - this.lastTapT);
+    // A gap only starts to cost you once it's clearly longer than your usual
+    // rhythm (idleGrace x), so an ordinary hesitation doesn't wobble your speed.
+    return 1 / Math.max(this.avgInterval, (t - this.lastTapT) / this.p.idleGrace);
   }
 
   targetSpeed(cadence) {
@@ -108,6 +115,7 @@ export class Runner {
       this.v = Math.max(0, this.v - p.finishDecel * dt);
     } else if (this.mode === 'carry') {
       this.v = Math.max(0, this.v - this.dip.carryDecel * dt);
+      if (this.v < this.dip.minCarrySpeed) this.mode = 'run';
     } else if (this.started) {
       const target = this.targetSpeed(this.cadence(t));
       if (this.v < target) {

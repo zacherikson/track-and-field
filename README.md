@@ -61,8 +61,9 @@ src/athletes/
   roster.js           Juno + rivals
 src/events/
   registry.js         event list for the menu
+  strideTargets.js    100m random targets (max 2 in a row) + hit/miss judging
   laneRace.js         base for lane races: countdown FSM, false starts, AI, HUD, results
-  sprint100.js        100m: alternating L/R tap controls
+  sprint100.js        100m: random-side target pads, wrong-tap ✕, dip prompt
 src/render/track.js   stadium, lanes, lines, parallax crowd
 tools/simulate.mjs    headless tuning simulator
 ```
@@ -87,7 +88,11 @@ tools/simulate.mjs    headless tuning simulator
   about 20% noise at race pace. Pointer Events give each finger its own id, which is
   what makes two-thumb multi-touch work. The tap zones are whole screen halves, so
   a thumb never "misses".
-- **Tuning "feel".** Speed doesn't jump on each tap. Taps become a smoothed
+- **Skill over mashing.** In the 100m the lit side is random, but never three in a
+  row on one side. Wrong taps cost speed and briefly lock you out, so reading (and
+  pre-empting a forced switch) beats hammering. `tools/simulate.mjs` proves it by
+  racing readers, mashers and drummers through the real rules.
+- **Tuning "feel".** Speed doesn't jump on each tap. Correct taps become a smoothed
   *cadence*, cadence sets a *target speed*, and actual speed chases the target with
   limited acceleration and deceleration. That separation gives each part of the
   feel its own knob:

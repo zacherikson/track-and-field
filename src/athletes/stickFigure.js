@@ -25,8 +25,8 @@ export const POSES = {
   },
   // "Get set": hips up above shoulders, weight forward on the hands.
   set: {
-    hipX: -0.12, hipY: -0.37, lean: 1.38,
-    legs: [{ thigh: 1.0, shin: -0.5 }, { thigh: 0.5, shin: -0.7 }],
+    hipX: -0.12, hipY: -0.34, lean: 1.45,
+    legs: [{ thigh: 1.0, shin: -0.5 }, { thigh: 0.5, shin: -1.0 }],
     arms: [{ upper: -0.08, fore: -0.08 }, { upper: -0.12, fore: -0.12 }],
   },
 };

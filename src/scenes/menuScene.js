@@ -4,6 +4,7 @@ import { drawFigure, runPose } from '../athletes/stickFigure.js';
 import { EVENTS, formatMark } from '../events/registry.js';
 import { getBest } from '../core/storage.js';
 import { HERO } from '../athletes/roster.js';
+import { flow } from '../flow.js';
 
 export class MenuScene {
   enter() {
@@ -15,7 +16,7 @@ export class MenuScene {
           label: ev.name,
           sub: ev.available ? `Best ${formatMark(ev, getBest(ev.id))}` : 'Coming soon',
           enabled: ev.available,
-          onTap: () => this.game.startEvent?.(ev),
+          onTap: () => flow.intro(this.game, ev),
         }),
     );
     this.fsButton = document.fullscreenEnabled

@@ -1,21 +1,101 @@
 # Thumbathlon
 
 A touch-first, mobile-browser track & field game: five events, two thumbs.
+Starring **Juno**, an original stick-figure athlete (placeholder art until step 6).
 Plain HTML5 Canvas + vanilla ES modules. No framework, no build step.
+
+**Status:** 100m Dash playable. Hurdles, long jump, javelin and pole vault are coming.
+
+## Play on your phone
+
+1. Enable GitHub Pages once: repo **Settings → Pages → Build and deployment →
+   Source: Deploy from a branch**. Pick the branch you want to play (e.g.
+   `claude/mobile-track-field-game-vgb3m4`, later `master`) and `/ (root)`, then Save.
+2. After about a minute, open `https://<your-user>.github.io/track-and-field/`.
+3. Rotate to landscape. For a real full-screen game, use **Share → Add to Home Screen**
+   (iOS) or the ⛶ button on the menu (Android), and launch it from there.
+
+Pages caches files for about 10 minutes. If a fresh push doesn't show up, wait a bit or reload.
 
 ## Run locally
 
 ES modules don't load from `file://`, so serve the folder over HTTP:
 
 ```sh
-python3 -m http.server 8000      # or: npx serve .
+python3 -m http.server 8000        # or: npx serve .
 ```
 
-Then open http://localhost:8000. Add `?debug` to the URL for a debug overlay.
+Open http://localhost:8000. To test on a phone on the same Wi-Fi, open `http://<computer-ip>:8000`.
 
-## Deploy (GitHub Pages)
+- `?debug` in the URL shows fps, cadence, target speed and speed.
+- Keyboard: ← / → (or Z / X) are the left and right thumbs. Esc quits a race.
 
-Repo **Settings → Pages → Build and deployment → Source: Deploy from a branch**,
-pick the branch and `/ (root)`, and save. The site appears at
-`https://<user>.github.io/track-and-field/` a minute later.
-`.nojekyll` makes Pages serve the files as-is.
+## Tuning
+
+Every feel number lives in [`src/config.js`](src/config.js). To see what a change does
+without playing, run the headless simulator:
+
+```sh
+node tools/simulate.mjs
+```
+
+It prints 100m times for each tapping speed, and the AI field's times per difficulty.
+Log changes you keep in [CHANGELOG.md](CHANGELOG.md).
+
+## Architecture
+
+```
+index.html            canvas + mobile gesture blocking
+src/main.js           boots the Game with the menu scene
+src/config.js         ALL tuning numbers
+src/flow.js           scene transitions: menu → intro → event → result
+src/core/
+  game.js             game loop (fixed timestep), view scaling, scene switching
+  input.js            multi-touch pointer + keyboard queue with precise timestamps
+  camera.js           side-scroll camera with smoothing + look-ahead
+  ui.js, math.js, storage.js
+src/athletes/
+  runner.js           shared runner physics (player and AI)
+  ai.js               AI "thumbs": taps at a personal cadence
+  stickFigure.js      placeholder figure: blendable poses (blocks, set, run, stand)
+  roster.js           Juno + rivals
+src/events/
+  registry.js         event list for the menu
+  laneRace.js         base for lane races: countdown FSM, false starts, AI, HUD, results
+  sprint100.js        100m: alternating L/R tap controls
+src/render/track.js   stadium, lanes, lines, parallax crowd
+tools/simulate.mjs    headless tuning simulator
+```
+
+### Game-dev concepts used here
+
+- **Game loop.** `requestAnimationFrame` calls us once per display refresh. Each frame
+  *updates* the simulation, then *renders* it. Rendering is just a picture of state;
+  all logic lives in `update`.
+- **Delta time and fixed timestep.** Phones refresh at 60, 90 or 120Hz, and frames
+  arrive unevenly. We add the real elapsed time (delta time) to an accumulator and
+  advance physics in fixed 1/120s steps. The race plays out identically on every
+  phone, and a lag spike can't break the physics. Delta time is clamped to 0.1s, so
+  switching tabs doesn't teleport the runner.
+- **State machines.** Two levels. The top level is *scenes* (menu, intro, event,
+  result), and only one is active. Inside a race: `ready → set → race → finished`,
+  plus `falseStart` and `dq`. Each state decides what a tap means. The same tap is a
+  false start in `set` and a stride in `race`. This avoids tangled boolean flags.
+- **Input handling.** Browser events arrive between frames, so we queue them with
+  their exact `event.timeStamp`, converted to simulation time. Tap speed depends on
+  the gaps between taps, and rounding them to frame boundaries (16.7ms) would add
+  about 20% noise at race pace. Pointer Events give each finger its own id, which is
+  what makes two-thumb multi-touch work. The tap zones are whole screen halves, so
+  a thumb never "misses".
+- **Tuning "feel".** Speed doesn't jump on each tap. Taps become a smoothed
+  *cadence*, cadence sets a *target speed*, and actual speed chases the target with
+  limited acceleration and deceleration. That separation gives each part of the
+  feel its own knob:
+  - responsiveness: `cadenceSmoothing`
+  - reward curve: `speedCurve`
+  - explosiveness: `accelMax`
+  - punishment for stopping: `coastDecel`
+- **Juice.** Small feedback makes input feel good: pad flash on a valid tap, a shake
+  on a same-side tap, a "tap me next" ring, parallax crowd and grass, and a speed bar.
+- **Frame-rate independent smoothing.** The camera uses `damp()`
+  (`lerp` with `1 - e^(-k·dt)`), so it glides the same at any refresh rate.

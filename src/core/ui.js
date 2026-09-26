@@ -2,8 +2,13 @@
 
 export const FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
 
-export function text(ctx, str, x, y, { size = 24, color = '#fff', align = 'center', baseline = 'middle', weight = 700, shadow = false } = {}) {
+export function text(ctx, str, x, y, { size = 24, color = '#fff', align = 'center', baseline = 'middle', weight = 700, shadow = false, maxWidth = 0 } = {}) {
   ctx.font = `${weight} ${size}px ${FONT}`;
+  if (maxWidth) {
+    // Shrink-to-fit so labels survive narrow (4:3) screens.
+    const w = ctx.measureText(str).width;
+    if (w > maxWidth) ctx.font = `${weight} ${Math.floor((size * maxWidth) / w)}px ${FONT}`;
+  }
   ctx.textAlign = align;
   ctx.textBaseline = baseline;
   if (shadow) {
@@ -53,10 +58,10 @@ export class Button {
     ctx.fill();
     const cy = this.y + this.h / 2;
     if (this.sub) {
-      text(ctx, this.label, this.x + this.w / 2, cy - 9, { size: 22, color: this.enabled ? '#fff' : 'rgba(255,255,255,0.45)' });
+      text(ctx, this.label, this.x + this.w / 2, cy - 9, { size: 22, maxWidth: this.w - 14, color: this.enabled ? '#fff' : 'rgba(255,255,255,0.45)' });
       text(ctx, this.sub, this.x + this.w / 2, cy + 14, { size: 13, weight: 500, color: this.enabled ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.35)' });
     } else {
-      text(ctx, this.label, this.x + this.w / 2, cy, { size: 22, color: this.enabled ? '#fff' : 'rgba(255,255,255,0.45)' });
+      text(ctx, this.label, this.x + this.w / 2, cy, { size: 22, maxWidth: this.w - 14, color: this.enabled ? '#fff' : 'rgba(255,255,255,0.45)' });
     }
   }
 }

@@ -103,15 +103,6 @@ export const CONFIG = {
       radius: 56, // target size (visual only; the hit zone is the whole screen half)
       homeY: 0.66, // height of each side's target spot, as a fraction of screen height
       edgeInset: 26, // px from the screen edge (plus safe area) to each side's target spot
-      // Entrance: every target flies in rather than just appearing. Keep it short:
-      // the side must read instantly (it's on the right half from frame one).
-      spawn: {
-        duration: 0.13, // s of flight
-        distance: 80, // px it travels to its fixed spot
-        arc: 0.55, // radians of random variation in the approach angle
-        overshoot: 1.7, // ease-out-back strength: how far it overshoots before settling
-        trail: 3, // fading afterimages behind it
-      },
     },
     finishHold: 2.4, // s after you cross before the results screen
     maxRaceTime: 25, // s; give up and DNF after this

@@ -4,6 +4,15 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 2.7: no animations on the targets
+Too many effects; starting fully simple.
+- The green target appears instantly on its fixed spot and disappears the moment
+  it's hit. The fly-in, trail, closing ring, breathing, hit ring burst and sparks
+  are all removed (the `sprint100.pads.spawn` config is gone).
+- The red ✕ simply shows during the lockout (no pop or shake).
+- The orange dip pads no longer pulse.
+- The glossy button look is unchanged.
+
 ## Step 2.6: in-game tuning panel
 - New **⚙ Tuning** button on the menu and results screens. It opens an overlay
   with every speed-related setting in plain language: tapping pace, speeding up,

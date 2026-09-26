@@ -4,6 +4,21 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 2.3: target entrance animation
+Previously each target popped up in the same spot every time, which looked static.
+Now every appearance flies in (config `sprint100.pads.spawn`):
+- It flies 80px toward its resting spot in 0.13s, from above and the screen-center
+  side, at a random angle (±0.55 rad), so no two entrances look the same.
+- Ease-out-back motion with a slight overshoot (`overshoot` 1.7), squash and
+  stretch along the flight path, 3 fading afterimages, and a ring that closes in
+  on the landing spot.
+- Once settled, the target gently "breathes" (±2.5% scale).
+- The resting spot still follows your thumb, so you never have to reach. The pad
+  is on the correct half of the screen from the first frame, so reading the side
+  isn't delayed.
+- A hit also throws a small burst of sparks. The red countdown pads and orange
+  DIP pads use the same entrance.
+
 ## Step 2.2: random targets (never 3 in a row), because reading beats mashing
 Per design feedback on the original: the target side is random, but there are never
 more than 2 in a row on one side. After two lefts the next is guaranteed right, so

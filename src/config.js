@@ -103,7 +103,16 @@ export const CONFIG = {
       radius: 56, // tap target size (visual only; the hit zone is the whole screen half)
       homeY: 0.66, // starting height of the targets, as a fraction of screen height
       edgeInset: 26, // px from the screen edge (plus safe area) for the starting spots
-      followThumb: true, // each target reappears where that thumb last tapped
+      followThumb: true, // each target settles where that thumb last tapped
+      // Entrance: every target flies in rather than just appearing. Keep it short:
+      // the side must read instantly (it's on the right half from frame one).
+      spawn: {
+        duration: 0.13, // s of flight
+        distance: 80, // px it travels to its resting spot
+        arc: 0.55, // radians of random variation in the approach angle
+        overshoot: 1.7, // ease-out-back strength: how far it overshoots before settling
+        trail: 3, // fading afterimages behind it
+      },
     },
     finishHold: 2.4, // s after you cross before the results screen
     maxRaceTime: 25, // s; give up and DNF after this

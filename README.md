@@ -8,14 +8,17 @@ Plain HTML5 Canvas + vanilla ES modules. No framework, no build step.
 
 ## Play on your phone
 
-1. Enable GitHub Pages once: repo **Settings → Pages → Build and deployment →
-   Source: Deploy from a branch**. Pick the branch you want to play (e.g.
-   `claude/mobile-track-field-game-vgb3m4`, later `master`) and `/ (root)`, then Save.
-2. After about a minute, open `https://<your-user>.github.io/track-and-field/`.
-3. Rotate to landscape. For a real full-screen game, use **Share → Add to Home Screen**
-   (iOS) or the ⛶ button on the menu (Android), and launch it from there.
+**Now:** the latest build is hosted as a private claude.ai page. Open
+https://claude.ai/artifact/QP9s6wP21VMToD9LcBC7dJ in your phone's browser, signed
+in to claude.ai, and turn the phone sideways. The link stays the same when a new
+build is published; reload to get it.
 
-Pages caches files for about 10 minutes. If a fresh push doesn't show up, wait a bit or reload.
+**GitHub Pages (optional, permanent public URL):** this repo is private, and on a
+free GitHub plan Pages only publishes public repos. Either make the repo public or
+use GitHub Pro. Then go to **Settings → Pages → Build and deployment → Source:
+Deploy from a branch**, pick the branch and `/ (root)`, and save. The site appears
+at `https://<user>.github.io/track-and-field/` a minute later. `.nojekyll` makes
+Pages serve the files as-is, and Pages caches files for about 10 minutes.
 
 ## Run locally
 

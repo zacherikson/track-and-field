@@ -4,8 +4,8 @@ A touch-first, mobile-browser track & field game: five events, two thumbs.
 Starring **Juno**, an original stick-figure athlete (placeholder art until step 6).
 Plain HTML5 Canvas + vanilla ES modules. No framework, no build step.
 
-**Status:** 100m Dash and 110m Hurdles playable, against Amateur or Pro rivals.
-Long jump, javelin and pole vault are coming.
+**Status:** 100m Dash, 110m Hurdles and Long Jump playable, against Amateur or Pro
+rivals. Javelin and pole vault are coming.
 
 ## Play on your phone
 
@@ -49,7 +49,8 @@ node tools/simulate.mjs
 ```
 
 It prints 100m times for each tapping style (readers, mashers), 110m hurdles times
-for each set-clearing speed, and the AI fields' times per difficulty.
+for each set-clearing speed, long jump marks and foul rates for each run-up
+speed and takeoff timing, and the AI fields' results per difficulty.
 Log changes you keep in [CHANGELOG.md](CHANGELOG.md).
 
 ## Architecture
@@ -76,8 +77,12 @@ src/events/
   sprint100.js        100m: random-side target pads, wrong-tap ✕, lean prompt
   hurdleRules.js      hurdles: shuffled 1-2-3 button sets, clear/clip rules, rival thumbs (pure, shared with the simulator)
   hurdles110.js       110m hurdles: button sets along the top, hurdles in every lane, hurdling pose
+  longJumpRules.js    long jump: flight physics, marks from the foul line, stretch, rival jumps (pure)
+  longJump.js         long jump: 3 rounds, run-up, blinking takeoff pads, flight, stretch, sand, marks
 src/render/track.js   stadium with one-point perspective (camera 1m ahead of the player), parallax crowd
-src/render/pads.js    glossy tap targets and the red ✕
+src/render/pads.js    glossy tap targets, numbered buttons and the red ✕
+src/render/targetPads.js  falling target + hit ring animations (100m, long jump run-up)
+src/render/runway.js  long jump runway, board and sand pit (on the stadium renderer)
 src/tuning/           in-game tuning panel (params list, saved overrides, live estimates)
 tools/simulate.mjs    headless tuning simulator
 ```

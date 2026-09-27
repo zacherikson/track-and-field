@@ -9,6 +9,7 @@ import { Runner } from '../src/athletes/runner.js';
 import { AIController } from '../src/athletes/ai.js';
 import { StrideTargets } from '../src/events/strideTargets.js';
 import { ButtonSet, HurdleRun, HurdleAI, hurdlePositions } from '../src/events/hurdleRules.js';
+import { jumpMark, rivalJump } from '../src/events/longJumpRules.js';
 
 const STEP = CONFIG.loop.fixedStep;
 const D = CONFIG.sprint100.distance;
@@ -258,4 +259,83 @@ for (const level of ['amateur', 'pro']) {
   all.sort((a, b) => a - b);
   const q = (arr, p) => arr[Math.floor(p * (arr.length - 1))].toFixed(2);
   console.log(`${level.padEnd(8)} individual ${q(all, 0)}–${q(all, 1)} (median ${q(all, 0.5)}); winner median ${q(winners, 0.5)}, fastest 10% ${q(winners, 0.1)}`);
+}
+
+// ------------------------------------------------------------------ long jump
+const LJ = CONFIG.longJump;
+/** Speed at takeoff after a run-up hitting targets at `rate` per s, carrying through the zone. */
+function ljRunUp(rate) {
+  const r = new Runner(undefined, undefined, -LJ.runway);
+  r.go(0);
+  let t = 0;
+  let next = 0.25;
+  while (r.x < -1) {
+    if (-r.x <= LJ.zoneDistance) r.carry();
+    else if (t >= next) {
+      r.stride(t);
+      next += 1 / rate;
+    }
+    r.update(STEP, t);
+    t += STEP;
+  }
+  return r.v;
+}
+/**
+ * A player aiming to take off `aim` s before reaching the line, with timing
+ * error of `sd` s (humans: ~0.02 practiced, ~0.05 casual), stretching `delay` s
+ * after the pads appear. Best of the rounds, and the foul rate.
+ */
+function ljPlayer(rate, aim, sd, delay) {
+  const v = ljRunUp(rate);
+  const jumps = Array.from({ length: LJ.rounds }, () => {
+    const takeoffX = -v * gauss(aim, sd);
+    if (takeoffX > 0) return null;
+    return jumpMark({ takeoffX, v, stretchK: Math.max(0, 1 - delay / LJ.stretch.window) }, LJ);
+  });
+  const ok = jumps.filter((j) => j != null);
+  return { best: ok.length ? Math.max(...ok) : 0, fouls: jumps.length - ok.length };
+}
+console.log('\nLONG JUMP (best of 3; aim = how early you press, sd = your timing error)');
+for (const [label, rate, aim, sd, delay] of [
+  ['casual   3.0/s, aim 0.06s ±0.05, stretch 0.2s', 3.0, 0.06, 0.05, 0.2],
+  ['good     3.7/s, aim 0.04s ±0.03, stretch 0.12s', 3.7, 0.04, 0.03, 0.12],
+  ['expert   4.7/s, aim 0.03s ±0.02, stretch 0.08s', 4.7, 0.03, 0.02, 0.08],
+  ['expert, risky  aim 0.015s ±0.02', 4.7, 0.015, 0.02, 0.08],
+]) {
+  const res = Array.from({ length: 200 }, () => ljPlayer(rate, aim, sd, delay));
+  const bests = res.filter((r) => r.best > 0).map((r) => r.best);
+  const avg = bests.reduce((a, b) => a + b, 0) / bests.length;
+  const fouls = res.reduce((a, r) => a + r.fouls, 0) / (res.length * LJ.rounds);
+  const nm = res.filter((r) => r.best === 0).length / res.length;
+  console.log(`${label.padEnd(48)} best ${avg.toFixed(2)}m   fouls ${(fouls * 100).toFixed(0)}%   no mark ${(nm * 100).toFixed(0)}%`);
+}
+for (const level of ['amateur', 'pro']) {
+  const lv = { ...CONFIG.ai[level], ...LJ.ai[level] };
+  const runUp = () => {
+    const r = new Runner(undefined, undefined, -LJ.runway);
+    const ai = new AIController(r, lv);
+    ai.go(0);
+    let t = 0;
+    while (r.x < -1 && t < 20) {
+      if (-r.x <= LJ.zoneDistance) r.carry();
+      ai.update(t, STEP, 0, Infinity);
+      r.update(STEP, t);
+      t += STEP;
+    }
+    return r.v;
+  };
+  const bests = [];
+  const winners = [];
+  for (let i = 0; i < 100; i++) {
+    const field = Array.from({ length: 5 }, () => {
+      const ok = Array.from({ length: LJ.rounds }, () => rivalJump(lv, LJ, runUp)).filter((j) => !j.foul).map((j) => j.mark);
+      return ok.length ? Math.max(...ok) : 0;
+    });
+    bests.push(...field);
+    winners.push(Math.max(...field));
+  }
+  bests.sort((a, b) => a - b);
+  winners.sort((a, b) => a - b);
+  const q = (arr, p) => arr[Math.floor(p * (arr.length - 1))].toFixed(2);
+  console.log(`${level.padEnd(8)} rival best-of-3 median ${q(bests, 0.5)}; winner median ${q(winners, 0.5)}, top 10% ${q(winners, 0.9)}`);
 }

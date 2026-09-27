@@ -27,7 +27,7 @@ export class ResultScene {
     this.beatWR = me.status === 'ok' && (this.ev.lowerIsBetter ? me.mark < this.ev.record : me.mark > this.ev.record);
 
     this.buttons = [
-      new Button({ label: 'Race again', color: '#2bb673', onTap: () => flow.play(this.game, this.ev) }),
+      new Button({ label: this.ev.againLabel ?? 'Race again', color: '#2bb673', onTap: () => flow.play(this.game, this.ev) }),
       new Button({ label: 'Menu', color: 'rgba(255,255,255,0.18)', onTap: () => flow.menu(this.game) }),
       new Button({ label: '⚙ Tuning', color: 'rgba(255,255,255,0.18)', onTap: () => flow.tuning(this.game) }),
     ];
@@ -68,6 +68,7 @@ export class ResultScene {
     // Left column: your result.
     let headline;
     if (me.status === 'dnf') headline = 'DID NOT FINISH';
+    else if (me.status === 'nm') headline = 'NO MARK';
     else headline = formatMark(this.ev, me.mark);
     const cx = lx + colW / 2;
     text(ctx, `${this.ev.name.toUpperCase()} · ${getDifficulty() === 'pro' ? 'PRO' : 'AMATEUR'}`, cx, 52, { size: 20, color: 'rgba(255,255,255,0.7)' });
@@ -127,7 +128,7 @@ export class ResultScene {
       ctx.fillStyle = r.colors.shirt;
       ctx.fillRect(rx + 50, ry - 9, 6, 18);
       text(ctx, r.name, rx + 66, ry, { size: 19, align: 'left', weight: r.isPlayer ? 800 : 600 });
-      text(ctx, `L${r.lane}`, rx + colW - 110, ry, { size: 14, weight: 500, color: 'rgba(255,255,255,0.6)' });
+      if (r.lane != null) text(ctx, `L${r.lane}`, rx + colW - 110, ry, { size: 14, weight: 500, color: 'rgba(255,255,255,0.6)' });
       text(ctx, mark, rx + colW - 22, ry, { size: 20, align: 'right' });
     });
 

@@ -199,6 +199,35 @@ export function tripPose(run, age, tr) {
 }
 
 /**
+ * Long jump poses (from footage of the original): the "hang" in the air after
+ * takeoff (arms up, lead knee up, trail leg back), the STRETCH (legs thrust out
+ * in front, torso and arms reaching after them), a plain landing (feet down in
+ * front) and sitting in the sand.
+ */
+export const JUMP_POSES = {
+  hang: {
+    hipX: 0, hipY: -0.5, lean: 0.05,
+    legs: [{ thigh: 1.1, shin: 0.25, toe: -0.1 }, { thigh: -0.45, shin: -1.35, toe: 0.4 }],
+    arms: [{ upper: 2.7, fore: 2.9 }, { upper: 2.4, fore: 2.7 }],
+  },
+  stretch: {
+    hipX: 0, hipY: -0.5, lean: 0.75,
+    legs: [{ thigh: 1.4, shin: 1.5, toe: -0.35 }, { thigh: 1.32, shin: 1.45, toe: -0.35 }],
+    arms: [{ upper: 1.25, fore: 1.05 }, { upper: 1.1, fore: 0.95 }],
+  },
+  land: {
+    hipX: 0, hipY: -0.5, lean: 0.35,
+    legs: [{ thigh: 0.85, shin: 0.45, toe: -0.2 }, { thigh: 0.7, shin: 0.3, toe: -0.2 }],
+    arms: [{ upper: 1.0, fore: 1.3 }, { upper: 0.8, fore: 1.1 }],
+  },
+  sit: {
+    hipX: 0, hipY: -0.19, lean: 0.45,
+    legs: [{ thigh: 1.5, shin: 1.58, toe: -0.25 }, { thigh: 1.42, shin: 1.52, toe: -0.25 }],
+    arms: [{ upper: 0.7, fore: 1.1 }, { upper: 0.55, fore: 0.95 }],
+  },
+};
+
+/**
  * Running pose from a stride phase (radians) and intensity amp (0..1, grows with
  * speed). Modelled on a real sprinter's (and the original's) run cycle; the foot
  * path relative to the hips is a loop biased BEHIND the body:
@@ -368,8 +397,9 @@ function shade(hex, k) {
  * Draw a figure with feet at (x, y) in logical pixels.
  * @param H figure height in pixels
  * @param colors { shirt, skin, shorts }
+ * @param groundY where its shadow goes (defaults to y; lower when the figure is in the air)
  */
-export function drawFigure(ctx, x, y, H, pose, colors) {
+export function drawFigure(ctx, x, y, H, pose, colors, groundY = y) {
   const THIGH = 0.25 * H, SHIN = 0.25 * H, TORSO = 0.32 * H;
   const UPPER = 0.17 * H, FORE = 0.16 * H, HEAD = 0.085 * H;
   const lw = Math.max(2, 0.065 * H);
@@ -383,10 +413,11 @@ export function drawFigure(ctx, x, y, H, pose, colors) {
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
 
-  // Ground shadow.
-  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  // Ground shadow (at groundY when the figure is in the air: smaller and fainter the higher it is).
+  const lift = Math.max(0, groundY - y) / H;
+  ctx.fillStyle = `rgba(0,0,0,${0.22 * Math.max(0.3, 1 - lift)})`;
   ctx.beginPath();
-  ctx.ellipse(x, y + 1, 0.2 * H, 0.04 * H, 0, 0, Math.PI * 2);
+  ctx.ellipse(x, groundY + 1, 0.2 * H * Math.max(0.5, 1 - lift * 0.8), 0.04 * H, 0, 0, Math.PI * 2);
   ctx.fill();
 
   const drawLeg = (leg, color) => {

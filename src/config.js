@@ -196,6 +196,39 @@ export const CONFIG = {
     },
   },
 
+  /**
+   * LONG JUMP, from footage of the original plus real rules (see
+   * longJumpRules.js). The run-up uses the 100m's targets and runner physics.
+   */
+  longJump: {
+    rounds: 3, // attempts; your best counts
+    runway: 40, // m from the start to the foul line (front edge of the board)
+    zoneDistance: 12, // m before the line where the pads turn orange: strides stop, press both to take off
+    blink: { period: 0.36, on: 0.24 }, // s: the orange takeoff pads blink, as in the original
+    chordWindow: 0.08, // s: left + right presses this close together count as both
+    overrun: 0.4, // m past the line without jumping and it's a foul
+    jump: {
+      keepX: 0.9, // share of run-up speed kept forward at takeoff
+      liftBase: 2.4, // m/s upward at takeoff...
+      liftPerMps: 0.06, // ...plus this per m/s of run-up speed
+      gravity: 9.81,
+      landDrop: 0.5, // m the hips drop below takeoff height by landing (feet reach out in front)
+      reach: 0.45, // m the heels land ahead of the hips
+    },
+    stretch: {
+      bonus: 0.5, // m extra for a perfect stretch (legs thrust forward)
+      window: 0.35, // s after the pads appear (at the top of the jump); later = less, after this = none
+      show: 0.45, // s the stretch pads stay up
+    },
+    // Rivals: run-up pace from CONFIG.ai, plus where they take off relative to
+    // the line (negative = over it: foul) and how late they stretch.
+    ai: {
+      amateur: { cadence: [3.0, 3.8], takeoffGap: [-0.1, 0.45], stretchDelay: [0.06, 0.3] },
+      pro: { cadence: [3.7, 4.5], takeoffGap: [-0.03, 0.22], stretchDelay: [0.03, 0.16] },
+    },
+    markHold: 1.6, // s after landing before the mark banner
+  },
+
   debug: {
     // 1 = draw a marker wherever the game receives each tap during a race, with
     // what it did: green hit, red miss, grey ignored (and why). A press with no

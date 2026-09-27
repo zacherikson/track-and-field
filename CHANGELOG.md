@@ -4,6 +4,54 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 4: Long Jump
+From footage of the original, with real long jump rules.
+- **Three rounds**, best jump counts, against five rivals. World record 9.86m,
+  as in the original.
+- **Run-up:** 40m, the 100m's green targets and runner physics. The first tap
+  starts your run.
+- **Takeoff zone:** 12m before the board the pads turn **orange and blink**
+  (as in the original). Strides stop and you carry your speed. Press **both**
+  to take off.
+- **Marks** are measured from the **foul line** (front edge of the white board)
+  to where your heels land.
+  - Take off early and you lose the gap.
+  - Take off past the line: **FOUL**. Run through without jumping: FOUL.
+  - The round banner says by how much: "took off 10 cm before the line",
+    "over the line by 10 cm".
+- **Flight:** a projectile from your run-up speed (`keepX` 0.9 of it forward,
+  lift 2.4 m/s + 0.06 per m/s), landing when the hips have dropped 0.5m, heels
+  0.45m ahead of the hips.
+- **Stretch:** at the top of the jump the orange pads come back. Press both to
+  thrust your legs forward, worth up to 0.5m: full at once, nothing after
+  0.35s.
+- **Landing:** sand puff, your mark stays in the sand, you sit, then get up.
+- **Round banner:** your mark (or FOUL), how you took off, your stretch %, and
+  everyone's best so far. Tap to go on. Results show "Jump again".
+- **Rivals** jump through the same physics each round: their run-up pace
+  (Amateur 3.0–3.8, Pro 3.7–4.5 hits/s), where they take off (Amateur −0.10 to
+  +0.45m from the line, Pro −0.03 to +0.22; negative = foul) and how late
+  they stretch.
+- **Look:** new `RunwayRenderer`: infield grass, the runway strip, a white
+  board with a plasticine strip, a sand pit with a meter sign every meter from
+  the line. New jump poses: hang, stretch, landing, sitting in the sand.
+  `drawFigure` takes a ground Y so the shadow stays on the ground in the air.
+- **Shared code:** the target drop and hit-ring animations moved from the 100m
+  into `render/targetPads.js`. The results screen handles "NO MARK" and events
+  without lanes.
+- **Simulator** (best of 3; human timing error 20–50 ms):
+
+  | Who | Best of 3 | Fouls |
+  |---|---|---|
+  | Casual | 7.0m | 13% |
+  | Good | 7.9m | 9% |
+  | Expert | 9.0m | 8% |
+  | Expert, pressing riskily late | 9.0m | 23% |
+  | Amateur rivals | median 7.75m, winner 8.05m | |
+  | Pro rivals | median 8.7m, winner 8.9m | |
+
+  Takeoff timing is tight: at top speed 25 cm is ~20 ms.
+
 ## Step 3.6: a stumble brakes you instead of snapping your speed
 - Catching a hurdle no longer snaps your speed to a fixed 4 m/s. For the 0.4s
   stumble you brake at `trip.decel` 15 m/s² and can't accelerate, then build

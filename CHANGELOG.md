@@ -4,6 +4,20 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 2.39: steadier pace, longer lean zone, bolder 10 m lines
+From the tuning panel:
+- `runner.cadenceSmoothing` 0.4 → 0.1: each tap moves your pace less, so speed
+  is steadier and one slow or fast tap barely registers.
+- `dip.promptDistance` 18 → 20m: the lean zone starts 2m earlier.
+- Simulator: good reader 8.81s, best masher (6/s) 9.45s, so reading still wins
+  by about 0.6s. The amateur winner's median went 9.76 → 9.59s, because their
+  interval jitter averages out more.
+
+Track:
+- The 10m lines are painted bands 0.14m wide, drawn in perspective so they
+  widen toward the viewer. They were 2px hairlines at 35% opacity.
+- Removed the "10m", "20m"… labels on the grass.
+
 ## Step 2.38: a new target clears the ✕ on its side
 - The red ✕ stays up for `missX` (0.25s) after a wrong tap. If you then hit the
   green quickly and the next target landed on the ✕'s side, both were drawn on

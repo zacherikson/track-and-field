@@ -188,14 +188,6 @@ export class TrackRenderer {
     for (let m = Math.floor(from / (stripeM * 2)) * stripeM * 2; m < to; m += stripeM * 2) {
       this.quad(ctx, camera, view, m, m + stripeM, this.zFar, this.zGrassTop);
     }
-    // Distance labels on the grass along the far edge of the track.
-    const zl = this.zFar + 0.8;
-    const [l, r] = this.rangeAt(camera, view, zl);
-    for (let m = Math.ceil(l / 10) * 10; m <= r; m += 10) {
-      if (m <= 0 || m >= this.distance) continue;
-      const p = this.project(camera, view, m, zl);
-      text(ctx, `${m}m`, p.x, p.y, { size: 14, color: 'rgba(255,255,255,0.85)' });
-    }
   }
 
   drawTrack(ctx, view, camera) {
@@ -224,8 +216,12 @@ export class TrackRenderer {
       ctx.stroke();
     };
     const [from, to] = this.rangeAt(camera, view, this.zFar);
+    // Every 10 m: a painted band across all lanes, drawn in perspective so it
+    // widens toward the viewer like the lane lines.
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    const band = 0.14; // m
     for (let m = Math.ceil(from / 10) * 10; m <= to; m += 10) {
-      if (m > 0 && m < this.distance) line(m, 2, 'rgba(255,255,255,0.35)');
+      if (m > 0 && m < this.distance) this.quad(ctx, camera, view, m - band / 2, m + band / 2, this.zNear, this.zFar);
     }
     line(0, 5, '#fff');
     // Finish (as in the original): a single white line, no checkerboard.

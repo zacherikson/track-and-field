@@ -58,7 +58,7 @@ export const CONFIG = {
     accelFalloff: 0.72, // accel shrinks by this fraction as speed approaches topSpeed
     coastDecel: 4.0, // m/s^2 lost when your cadence is below what your speed needs
     finishDecel: 3.5, // m/s^2 braking after crossing the line
-    cadenceSmoothing: 0.4, // 0..1 weight of the newest stride interval (higher = twitchier)
+    cadenceSmoothing: 0.1, // 0..1 weight of the newest stride interval (higher = twitchier)
     idleGrace: 1.2, // a gap must exceed this x your usual interval before it slows you
     maxIntervalForAvg: 0.6, // s; long pauses count as this, so you recover quickly
     minStrideInterval: 0, // s; inputs closer than this to the last stride are ignored (two-thumb chords)
@@ -77,7 +77,7 @@ export const CONFIG = {
    * the line. Too early and you're upright again and slowing when you get there.
    */
   dip: {
-    promptDistance: 18, // m before the line where strides stop and the LEAN prompt shows
+    promptDistance: 20, // m before the line where strides stop and the LEAN prompt shows
     chordWindow: 0.06, // s; left + right presses this close together count as both thumbs
     armDelay: 0.3, // s after entering the zone before a lean can trigger (stray stride taps)
     reach: 1.0, // m the chest gets ahead of the hips at full lean

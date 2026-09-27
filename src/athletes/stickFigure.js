@@ -23,6 +23,13 @@ const FOOT_L = 0.06;
  * inclined `plateAngle` (rad above the ground, rising backwards); the sole lies
  * on the plate. Front plate about 0.45 m and rear about 0.8 m behind the hands.
  */
+/**
+ * The launch pose is reached when the runner has moved LAUNCH.distance meters
+ * (the race scene blends set -> launch over that distance).
+ */
+export const LAUNCH = { distance: 0.2, blend: 0.9 }; // m: launch pose reached; fully running
+const LAUNCH_SHIFT = LAUNCH.distance / 1.8; // that distance in figure heights (1.8 m athlete)
+
 export const BLOCK_FEET = {
   front: -0.1, // toe x of the front foot
   rear: -0.3, // toe x of the rear foot
@@ -112,6 +119,36 @@ export const POSES = {
 };
 
 /**
+ * Pushing out of the blocks, k = 0 (set) .. 1 (launch). From footage of the
+ * original and of real starts: the front leg drives straight off its block (the
+ * toes stay on it the whole time, so the leg straightens instead of swinging),
+ * the rear knee punches forward low, the body stays flat and low, and the arms
+ * are thrown wide, one forward, one back. The race scene reaches k = 1 when the
+ * runner has moved LAUNCH.distance.
+ */
+export function launchPose(k) {
+  const set = POSES.set;
+  const hipX = lerp(set.hipX, 0.1, k);
+  const hipY = lerp(set.hipY, -0.4, k);
+  const toe = BLOCK_FEET.plateAngle;
+  // The block stays put while the runner moves, so it slides back in figure space.
+  const ax = BLOCK_FEET.front - FOOT_L * Math.cos(toe) - LAUNCH_SHIFT * k;
+  const ay = -FOOT_L * Math.sin(toe);
+  const rear = { thigh: 0.95, shin: -0.55, toe: -0.1 };
+  const arms = [{ upper: 1.35, fore: 2.45 }, { upper: -1.6, fore: -1.15 }];
+  return {
+    hipX,
+    hipY,
+    lean: lerp(set.lean, 1.12, k),
+    legs: [
+      { ...legIK(hipX, hipY, ax, ay), toe },
+      { thigh: lerp(set.legs[1].thigh, rear.thigh, k), shin: lerp(set.legs[1].shin, rear.shin, k), toe: lerp(set.legs[1].toe ?? 0, rear.toe, k) },
+    ],
+    arms: set.arms.map((a, i) => ({ upper: lerp(a.upper, arms[i].upper, k), fore: lerp(a.fore, arms[i].fore, k) })),
+  };
+}
+
+/**
  * Running pose from a stride phase (radians) and intensity amp (0..1, grows with
  * speed). Modelled on a real sprinter's (and the original's) run cycle; the foot
  * path relative to the hips is a loop biased BEHIND the body:
@@ -128,12 +165,17 @@ export const POSES = {
  * foot planted, highest in the split between steps.
  *
  * `drive` (0..1) is the out-of-the-blocks drive phase: body pitched forward and
- * low, feet landing further back.
+ * low, feet landing further back, and full effort (big arm swing and knee drive)
+ * even though the speed is still low.
+ *
+ * At phase 0 the near leg (0) is just pushing off and the far leg's knee is
+ * coming through: the natural continuation of the launch out of the blocks.
  */
 export function runPose(phase, amp, drive = 0) {
   const a = amp;
+  const e = Math.max(a, 0.9 * drive); // effort: arm swing and knee drive
   const reach = 0.55 + 0.45 * a; // longer foot travel at speed
-  const lift = 0.35 + 0.65 * a; // higher heel kick and knee drive at speed
+  const lift = 0.35 + 0.65 * e; // higher heel kick and knee drive with effort
   const touchX = (0.1 - 0.08 * drive) * reach; // ankle lands just ahead of the hips
   const pushX = -0.26 * reach; // ...and is well behind them at push-off
   const pushToe = 1.0; // foot angle at push-off: up on the toes
@@ -150,7 +192,7 @@ export function runPose(phase, amp, drive = 0) {
   const kneeU = stance + T[4] * (1 - stance); // point of the cycle where the knee is furthest forward
 
   // Hip height: lowest mid-stance, highest mid-flight, twice per cycle.
-  const u0 = frac(phase / (2 * Math.PI) + kneeU - 0.25);
+  const u0 = frac(phase / (2 * Math.PI) + stance);
   const bob = (0.01 + 0.015 * a) * (1 - 0.5 * drive);
   const hipY = -0.48 + 0.07 * drive + bob * Math.cos(4 * Math.PI * (u0 - stance / 2));
 
@@ -183,10 +225,10 @@ export function runPose(phase, amp, drive = 0) {
     const back = Math.max(0, Math.sin(q)); // 1 at the end of the backswing
     // Swing biased backwards: at full speed the elbow drives far behind the body
     // (upper arm about 75° back) and the hand comes up to chin height in front.
-    const upper = 0.05 - a * (0.25 + 1.05 * Math.sin(q));
+    const upper = 0.05 - e * (0.25 + 1.05 * Math.sin(q));
     // Elbow held near 90° at any speed (about 100° jogging, 94° sprinting),
     // opening a little at the back of the swing.
-    return { upper, fore: upper + 1.3 + 0.2 * a - 0.35 * a * back };
+    return { upper, fore: upper + 1.3 + 0.2 * e - 0.35 * e * back };
   });
 
   return { hipX: 0, hipY, lean: 0.06 + 0.22 * a + 0.75 * drive, legs, arms };

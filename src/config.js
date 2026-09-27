@@ -57,10 +57,10 @@ export const CONFIG = {
     maxIntervalForAvg: 0.6, // s; long pauses count as this, so you recover quickly
     minStrideInterval: 0.01, // s; inputs closer than this to the last stride are ignored (two-thumb chords)
     // Animation only: meters per full leg cycle (two steps) grows with speed, like
-    // real sprinters (about 2.5 m jogging, about 5 m at full speed). So legs turn
+    // real sprinters (about 2 m jogging, about 5.2 m at full speed). So legs turn
     // over faster AND reach further as you speed up.
-    strideBase: 1.4, // m per cycle at a standstill
-    stridePerMps: 0.3, // extra m per cycle for each m/s
+    strideBase: 0.8, // m per cycle at a standstill (short, quick first steps out of the blocks)
+    stridePerMps: 0.37, // extra m per cycle for each m/s
   },
 
   /**

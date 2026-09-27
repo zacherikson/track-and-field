@@ -4,6 +4,28 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 2.31: explosive start
+From frame-by-frame footage of the original's start (24fps): on the first
+frame after reacting, the athlete launches out flat and low, covers about a
+body length in the next 3 frames at about 45°, and is nearly upright about 0.4s
+after reacting. Ours eased out of the set pose over 0.8m with small shuffling
+steps, because arm and leg action scaled with *speed*, which is low at the start.
+- **Launch** (`launchPose`, over the first `LAUNCH.distance` 0.2m, fastest at
+  the gun): the front leg drives straight off its block (the toes stay on it,
+  so the leg straightens instead of swinging), the rear knee punches forward
+  low, the body stays flat, and the arms are thrown wide. It then flows into
+  the drive run by 0.9m (was: set → run over 0.8m).
+- **Effort, not speed, in the drive phase:** arm swing and knee drive use
+  `max(speed/11, 0.9 · drive)`. The first steps are full-effort even though the
+  foot travel (from speed) is still short.
+- **Quicker first steps:** `strideBase` 1.4 → 0.8m and `stridePerMps` 0.3 → 0.37
+  (animation only). At 4 m/s that's about 3.4 steps/s, was about 3.0; at full
+  speed it's unchanged (about 4.6 steps/s).
+- The run cycle's phase origin now puts the near leg at push-off and the far
+  knee coming through at phase 0, continuing straight on from the launch.
+- Physics unchanged: 10 m/s² from standstill already gives a realistic block
+  exit (about 3.5 m/s after 0.35s), so race times don't move.
+
 ## Step 2.30: only the rear leg kicks back into the blocks
 - Getting into the blocks, the front leg no longer kicks back. After the rear
   leg kicks into the rear block, the front foot lifts just off the track and

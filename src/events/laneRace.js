@@ -5,7 +5,7 @@ import { text, roundRect } from '../core/ui.js';
 import { Runner } from '../athletes/runner.js';
 import { AIController } from '../athletes/ai.js';
 import { HERO, RIVALS } from '../athletes/roster.js';
-import { drawFigure, runPose, lerpPose, leanPose, handReach, POSES } from '../athletes/stickFigure.js';
+import { drawFigure, runPose, lerpPose, leanPose, launchPose, handReach, POSES, LAUNCH } from '../athletes/stickFigure.js';
 import { TrackRenderer } from '../render/track.js';
 import { ORANGE, drawPad } from '../render/pads.js';
 import { flow } from '../flow.js';
@@ -335,7 +335,10 @@ export class LaneRace {
     const drive = Math.pow(clamp(1 - d / this.cfg.driveDistance, 0, 1), 1.5);
     const run = runPose(r.phase, amp, drive);
     if (r.mode === 'lean') return leanPose(run, r.leanAmount);
-    if (d < 0.8) return lerpPose(POSES.set, run, ease(clamp(d / 0.8, 0, 1)));
+    // Explode out of the blocks: snap from set into the launch pose (ease-out:
+    // fastest at the gun), then flow from the launch into the drive run.
+    if (d < LAUNCH.distance) return launchPose(1 - (1 - d / LAUNCH.distance) ** 2);
+    if (d < LAUNCH.blend) return lerpPose(launchPose(1), run, ease((d - LAUNCH.distance) / (LAUNCH.blend - LAUNCH.distance)));
     if (r.finished && r.v < 2) return lerpPose(POSES.stand, run, r.v / 2);
     return run;
   }

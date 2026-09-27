@@ -4,6 +4,11 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 4.4: minimum speed 6 → 7 m/s
+- `runner.minSpeed` 6 → 7 m/s. One tap then nothing: 17.0 → 14.7s. Tapping
+  once every 2 s (13.3s) now runs about as fast as once a second (13.1s).
+  Normal play is unchanged (simulator within noise).
+
 ## Step 4.3: minimum running speed
 - New `runner.minSpeed` 6 m/s (tuning panel: Minimum speed). Once you're off
   the blocks your pace never asks for less, however slowly you tap. Before,

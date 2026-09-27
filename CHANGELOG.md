@@ -4,6 +4,13 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 2.27: bigger sprint arm swing, elbow drives back
+- The arm swing is bigger at speed and biased backwards: at full sprint the upper
+  arm swings from about 75° behind the body to the hand at chin height in front.
+  Before, it was about ±50°, mostly in front.
+- The elbow opens slightly at the back of the swing. The swing still scales with
+  speed, so jogging arms stay small.
+
 ## Step 2.26: kick back into the blocks; speed-driven running animation
 From the original's footage:
 - **Waiting:** athletes stand *in front of* their blocks, just behind the line.

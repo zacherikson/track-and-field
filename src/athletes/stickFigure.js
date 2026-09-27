@@ -123,8 +123,12 @@ export function runPose(phase, amp) {
   });
   const arms = [0, 1].map((i) => {
     const q = phase + i * Math.PI;
-    const upper = -0.85 * amp * Math.sin(q) + 0.05;
-    return { upper, fore: upper + 0.4 + 1.1 * amp };
+    const back = Math.max(0, Math.sin(q)); // 1 at the end of the backswing
+    // Swing biased backwards: at full speed the elbow drives far behind the body
+    // (upper arm about 75° back) and the hand comes up to chin height in front.
+    const upper = 0.05 - amp * (0.25 + 1.05 * Math.sin(q));
+    // Elbow bent ~90°, opening a little at the back of the swing.
+    return { upper, fore: upper + 0.4 + 1.1 * amp - 0.35 * amp * back };
   });
   return {
     hipX: 0,

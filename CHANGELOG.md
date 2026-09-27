@@ -4,6 +4,34 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 2.8: tuning from play-testing on the phone
+Set with the in-game tuning panel after real play, then made the defaults:
+
+| Setting | Old | New |
+|---|---|---|
+| Forgiveness curve (`runner.speedCurve`) | 0.75 | 0.60 |
+| Newest tap weight (`runner.cadenceSmoothing`) | 0.30 | 0.40 |
+| Acceleration (`runner.accelMax`) | 9.0 | 10.0 m/s² |
+| Slow-down rate (`runner.coastDecel`) | 4.0 | 3.0 m/s² |
+| Hesitation allowance (`runner.idleGrace`) | 1.4× | 1.2× gap |
+| Longest gap counted (`runner.maxIntervalForAvg`) | 700 | 600 ms |
+| Speed lost on a miss (`sprint100.targets.missSpeedLoss`) | 1.5 | 1.0 m/s |
+| Penalty pause (`sprint100.targets.missLockout`) | 250 | 170 ms |
+| Coasting slow-down (`dip.carryDecel`) | 0.6 | 0.5 m/s² |
+
+- AI rivals' miss penalty now matches the player's (1.0 m/s, 170 ms).
+- Simulator after the change:
+
+  | Strategy | Before | After |
+  |---|---|---|
+  | Casual reader | 11.0s | 10.5s |
+  | Good reader | 9.7s | 9.4s |
+  | Expert | 9.1s | 8.9s |
+  | Amateur AI winner (median) | 10.8s | 10.25s |
+  | Blind alternating at 14/s | stuck | 9.7s |
+
+- Watch: cheaper mistakes make blind alternating competitive again.
+
 ## Step 2.7: no animations on the targets
 Too many effects; starting fully simple.
 - The green target appears instantly on its fixed spot and disappears the moment

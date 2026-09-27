@@ -2,11 +2,8 @@ import { CONFIG } from '../config.js';
 import { clamp } from '../core/math.js';
 import { LaneRace } from './laneRace.js';
 import { StrideTargets } from './strideTargets.js';
+import { GREEN, ORANGE, RIM, drawPad, drawX } from '../render/pads.js';
 
-// Glossy "candy" button palettes: highlight, body, and rim shade.
-const GREEN = { hi: '#b6ff8a', mid: '#39e626', lo: '#0f9e1c' };
-const ORANGE = { hi: '#ffe08a', mid: '#ff9d14', lo: '#d9580a' };
-const RIM = '#eaf8ff'; // the pad's white rim; also the colour of its echoes and hit outline
 
 const LEFT_KEYS = ['ArrowLeft', 'KeyA', 'KeyZ', 'KeyF'];
 const RIGHT_KEYS = ['ArrowRight', 'KeyD', 'KeyX', 'KeyJ'];
@@ -109,10 +106,10 @@ export class Sprint100 extends LaneRace {
     const now = this.game.time;
     if (mode === 'run' && this.target) {
       this.drawDrop(ctx, this.pads[this.target], now - this.spawnT);
-      if (now - this.missT < CONFIG.sprint100.pads.missX) this.drawX(ctx, this.pads[this.missSide].home);
+      if (now - this.missT < CONFIG.sprint100.pads.missX) drawX(ctx, this.pads[this.missSide].home.x, this.pads[this.missSide].home.y);
     } else if (mode === 'carry') {
-      this.drawPad(ctx, ORANGE, this.pads.L);
-      this.drawPad(ctx, ORANGE, this.pads.R);
+      drawPad(ctx, ORANGE, this.pads.L.home.x, this.pads.L.home.y, this.pads.L.r);
+      drawPad(ctx, ORANGE, this.pads.R.home.x, this.pads.R.home.y, this.pads.R.r);
     }
     for (const ring of this.rings) this.drawHitRing(ctx, this.pads[ring.side], now - ring.t0);
   }
@@ -142,7 +139,7 @@ export class Sprint100 extends LaneRace {
     }
     ctx.save();
     ctx.globalAlpha = cfg.startAlpha + (1 - cfg.startAlpha) * k;
-    this.drawPad(ctx, GREEN, { home: { x: pad.home.x, y: yAt(k) }, r: pad.r });
+    drawPad(ctx, GREEN, pad.home.x, yAt(k), pad.r);
     ctx.restore();
   }
 
@@ -164,72 +161,4 @@ export class Sprint100 extends LaneRace {
     ctx.restore();
   }
 
-  /** Bold red ✕ with a white outline. */
-  drawX(ctx, { x, y }) {
-    const s = 30;
-    const cross = () => {
-      ctx.beginPath();
-      ctx.moveTo(-s, -s);
-      ctx.lineTo(s, s);
-      ctx.moveTo(s, -s);
-      ctx.lineTo(-s, s);
-    };
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.lineCap = 'round';
-    ctx.shadowColor = 'rgba(0,0,0,0.35)';
-    ctx.shadowBlur = 8;
-    ctx.shadowOffsetY = 3;
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 24;
-    cross();
-    ctx.stroke();
-    ctx.shadowColor = 'transparent';
-    const g = ctx.createLinearGradient(0, -s, 0, s);
-    g.addColorStop(0, '#ff6b5e');
-    g.addColorStop(0.5, '#ff1f1f');
-    g.addColorStop(1, '#c80d12');
-    ctx.strokeStyle = g;
-    ctx.lineWidth = 14;
-    cross();
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  /** A glossy candy button: gradient body, darker rim, thick white ring, highlight. */
-  drawPad(ctx, pal, { home: { x, y }, r }) {
-    ctx.save();
-    ctx.translate(x, y);
-
-    // White ring with a soft drop shadow so it pops off the busy track.
-    ctx.shadowColor = 'rgba(0,0,0,0.35)';
-    ctx.shadowBlur = 10;
-    ctx.shadowOffsetY = 4;
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.arc(0, 0, r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.shadowColor = 'transparent';
-
-    // Body: light from the top-left, deep shade at the bottom rim.
-    const inner = r * 0.84;
-    const g = ctx.createRadialGradient(-inner * 0.3, -inner * 0.4, inner * 0.1, 0, 0, inner * 1.05);
-    g.addColorStop(0, pal.hi);
-    g.addColorStop(0.45, pal.mid);
-    g.addColorStop(1, pal.lo);
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.arc(0, 0, inner, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Glossy highlight across the top half.
-    const hg = ctx.createLinearGradient(0, -inner, 0, -inner * 0.1);
-    hg.addColorStop(0, 'rgba(255,255,255,0.75)');
-    hg.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = hg;
-    ctx.beginPath();
-    ctx.ellipse(0, -inner * 0.45, inner * 0.72, inner * 0.45, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  }
 }

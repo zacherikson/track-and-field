@@ -7,6 +7,7 @@ import { AIController } from '../athletes/ai.js';
 import { HERO, RIVALS } from '../athletes/roster.js';
 import { drawFigure, runPose, lerpPose, leanPose, POSES } from '../athletes/stickFigure.js';
 import { TrackRenderer } from '../render/track.js';
+import { ORANGE, drawPad } from '../render/pads.js';
 import { flow } from '../flow.js';
 
 /**
@@ -14,7 +15,10 @@ import { flow } from '../flow.js';
  *
  * STATE MACHINE (inner, per race):
  *
- *   ready --(timer)--> set --(random timer)--> race --(player crosses)--> finished --(timer)--> results
+ *   waiting --(tap)--> ready --(timer)--> set --(random timer)--> race --(player crosses)--> finished --(timer)--> results
+ *
+ * `waiting`: athletes stand at the line while a start button and the player's
+ * lane flash together; a tap (anywhere) starts READY / GET SET / GO.
  *
  * Each state only reacts to what matters in that state (a tap during `set` is
  * simply ignored, the same tap during `race` is a stride). Keeping this explicit
@@ -56,7 +60,20 @@ export class LaneRace {
     this.player = this.athletes.find((a) => a.isPlayer);
     this.exitBtn = { x: 0, y: 0, w: 44, h: 40 };
     this.onResize(this.game.view);
-    this.startCountdown(this.game.time);
+    this.resetField();
+    this.setState('waiting', this.game.time);
+  }
+
+  /** Everyone back on the line, camera on the player. */
+  resetField() {
+    for (const a of this.athletes) {
+      a.runner.reset();
+      if (a.ai) a.ai = new AIController(a.runner, this.difficulty, a.ai.cadence);
+      a.mark = null;
+    }
+    this.camera.snapTo(this.player.runner.x);
+    this.dipPress = null;
+    this.carryT = Infinity;
   }
 
   onResize(view) {
@@ -66,14 +83,7 @@ export class LaneRace {
 
   startCountdown(t) {
     const c = this.cfg.countdown;
-    for (const a of this.athletes) {
-      a.runner.reset();
-      if (a.ai) a.ai = new AIController(a.runner, this.difficulty, a.ai.cadence);
-      a.mark = null;
-    }
-    this.camera.snapTo(this.player.runner.x);
-    this.dipPress = null;
-    this.carryT = Infinity;
+    this.resetField();
     this.state = 'ready';
     this.stateT = t;
     this.setT = t + c.readyTime;
@@ -105,6 +115,11 @@ export class LaneRace {
     for (const e of this.game.input.consume(end)) {
       if (e.type === 'down' && this.hitExit(e)) return flow.menu(this.game);
       if (e.type === 'key' && e.code === 'Escape') return flow.menu(this.game);
+      if (this.state === 'waiting') {
+        // Any tap or key starts READY / GET SET / GO.
+        if (e.type === 'down' || this.mapInput(e) != null || e.code === 'Enter') this.startCountdown(e.t);
+        continue;
+      }
       const action = this.mapInput(e);
       if (action == null) continue;
       // Taps before GO are ignored (no false starts).
@@ -190,7 +205,7 @@ export class LaneRace {
 
     const results = this.athletes.map((a) => ({
       name: a.name,
-      lane: a.lane,
+      lane: this.track.laneNumber(a.lane),
       colors: a.colors,
       isPlayer: a.isPlayer,
       mark: a.mark,
@@ -210,6 +225,8 @@ export class LaneRace {
 
   render(ctx, view) {
     this.track.draw(ctx, view, this.camera);
+    const blinkOn = this.state === 'waiting' && this.startBlinkOn();
+    if (blinkOn) this.track.highlightLane(ctx, view, this.player.lane, 0.32);
     // Back-to-front so nearer lanes overlap further ones.
     const H = CONFIG.figure.height * this.camera.ppm;
     for (let i = this.athletes.length - 1; i >= 0; i--) {
@@ -221,14 +238,33 @@ export class LaneRace {
       if (a.isPlayer && (this.state !== 'race' || this.raceTime < 2)) this.drawYouMarker(ctx, head.headX, head.headY - 8);
     }
     this.drawHUD(ctx, view);
+    if (blinkOn) this.drawStartButton(ctx, view);
     this.drawControls(ctx, view);
     this.drawBanner(ctx, view);
     if (this.game.debug) this.drawDebug(ctx, view);
   }
 
+  /** The start button and the player's lane flash together: on, off, on, off... */
+  startBlinkOn() {
+    const b = this.cfg.startBlink;
+    return (this.game.time - this.stateT) % b.period < b.on;
+  }
+
+  /** Where the flashing start button sits: on the grass just ahead of the field. */
+  startButtonPos(view) {
+    const p = this.track.toScreen(this.camera, view, 0, this.player.lane);
+    return { x: p.x + 150, y: view.h * CONFIG.sprint100.pads.homeY };
+  }
+
+  drawStartButton(ctx, view) {
+    const { x, y } = this.startButtonPos(view);
+    drawPad(ctx, ORANGE, x, y, CONFIG.sprint100.pads.radius);
+  }
+
   poseFor(a) {
     const r = a.runner;
     const now = this.game.time;
+    if (this.state === 'waiting') return POSES.stand;
     if (this.state === 'ready') return POSES.blocks;
     if (this.state === 'set') return lerpPose(POSES.blocks, POSES.set, clamp((now - this.stateT) / 0.45, 0, 1));
     // Racing: blend out of the set position over the first ~1.2m, into standing as they stop.

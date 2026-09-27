@@ -4,6 +4,24 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 2.14: original-style camera, front lane, flashing start button
+From footage and screenshots of the original:
+- **Camera:** low and close.
+  - `world.pixelsPerMeter` 38 → 75: runners are about ¼ of the screen tall and
+    about 15m of track is visible.
+  - The track sits in the bottom third with thin lanes (28px). Far-lane runners
+    stand up over a wide infield grass band.
+  - Crossing lines slant the original way (far lanes shifted left).
+  - Camera anchor 0.3 → 0.35; look-ahead 0.35 → 0.15 m per m/s (max 1.5m).
+- **The player always runs in the front lane.** Lanes are painted 1 (far) to 6
+  (near), so the player is lane 6, and results show those numbers.
+- **New "waiting" state** before the countdown: athletes stand at the line while an
+  orange start button and the player's lane flash together (0.3s on / 0.2s off,
+  `sprint100.startBlink`). Any tap starts READY → GET SET → GO.
+- **Race targets** moved up to the grass band (`pads.homeY` 0.66 → 0.4), where the
+  original puts them.
+- Shared tap-target drawing (glossy pad, ✕) is now in `src/render/pads.js`.
+
 ## Step 2.13: quicker lean, first target appears in place
 - **Lean timing** re-measured from the original at its full frame rate (about
   25fps): about 0.2s down, only about 0.1s at the bottom, then it pops back up

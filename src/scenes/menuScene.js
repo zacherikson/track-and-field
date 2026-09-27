@@ -87,7 +87,7 @@ export class MenuScene {
     ctx.fillStyle = 'rgba(255,255,255,0.7)';
     ctx.fillRect(0, trackY - 40, view.w, 2);
     ctx.fillRect(0, trackY + 28, view.w, 2);
-    const ppm = CONFIG.world.pixelsPerMeter;
+    const ppm = 38; // the menu's little demo runner keeps its own small scale
     const span = view.w + 120;
     const sx = ((this.demoX * ppm) % span) - 60;
     drawFigure(ctx, sx, trackY + 10, CONFIG.figure.height * ppm, runPose(this.phase, 1), HERO.colors);

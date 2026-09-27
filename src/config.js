@@ -15,14 +15,14 @@ export const CONFIG = {
   },
 
   world: {
-    pixelsPerMeter: 38, // zoom level: ~30m of track visible on a typical phone
+    pixelsPerMeter: 75, // zoom level: low, close camera like the original (~15m of track visible, runners ~1/4 screen tall)
   },
 
   camera: {
-    screenAnchorX: 0.3, // where the followed runner sits horizontally (0 = left edge)
+    screenAnchorX: 0.35, // where the followed runner sits horizontally (0 = left edge)
     followSharpness: 5, // how tightly the camera chases (higher = snappier, lower = floatier)
-    lookAheadPerMps: 0.35, // meters of look-ahead per m/s of speed
-    maxLookAhead: 4, // meters
+    lookAheadPerMps: 0.15, // meters of look-ahead per m/s of speed
+    maxLookAhead: 1.5, // meters
   },
 
   figure: {
@@ -83,7 +83,8 @@ export const CONFIG = {
   sprint100: {
     distance: 100,
     lanes: 6,
-    playerLane: 4, // 1 = nearest the camera
+    playerLane: 1, // 1 = nearest the camera: the player always runs in the front lane
+    startBlink: { period: 0.5, on: 0.3 }, // s: start button + player's lane flash on/off before READY
     countdown: {
       readyTime: 1.4, // s showing "READY" (athletes settle in blocks)
       setMin: 1.1, // "GET SET" lasts a random time in [setMin, setMax]
@@ -100,7 +101,7 @@ export const CONFIG = {
     },
     pads: {
       radius: 56, // target size (visual only; the hit zone is the whole screen half)
-      homeY: 0.66, // height of each side's target spot, as a fraction of screen height
+      homeY: 0.4, // height of each side's target spot (and the start button), as a fraction of screen height
       edgeInset: 26, // px from the screen edge (plus safe area) to each side's target spot
       // Measured frame by frame from gameplay footage of the original:
       drop: {

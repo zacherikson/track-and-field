@@ -72,7 +72,8 @@ src/events/
   strideTargets.js    100m random targets (max 2 in a row) + hit/miss judging
   laneRace.js         base for lane races: countdown FSM, finish lean, AI, HUD, results
   sprint100.js        100m: random-side target pads, wrong-tap ✕, lean prompt
-src/render/track.js   stadium, lanes, lines, parallax crowd
+src/render/track.js   stadium, lanes, lines, parallax crowd (original-style low, close camera)
+src/render/pads.js    glossy tap targets and the red ✕
 src/tuning/           in-game tuning panel (params list, saved overrides, live estimates)
 tools/simulate.mjs    headless tuning simulator
 ```
@@ -88,7 +89,7 @@ tools/simulate.mjs    headless tuning simulator
   phone, and a lag spike can't break the physics. Delta time is clamped to 0.1s, so
   switching tabs doesn't teleport the runner.
 - **State machines.** Two levels. The top level is *scenes* (menu, intro, event,
-  result), and only one is active. Inside a race: `ready → set → race → finished`.
+  result), and only one is active. Inside a race: `waiting → ready → set → race → finished`.
   Each state decides what a tap means. The same tap is ignored in `set` and is a
   stride in `race`. This avoids tangled boolean flags.
 - **Input handling.** Browser events arrive between frames, so we queue them with

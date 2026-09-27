@@ -141,6 +141,13 @@ export const CONFIG = {
     maxRaceTime: 25, // s; give up and DNF after this
   },
 
+  debug: {
+    // 1 = draw a marker wherever the game receives each tap during a race, with
+    // what it did: green hit, red miss, grey ignored (and why). A press with no
+    // marker never reached the game (the phone or browser swallowed it).
+    tapMarkers: 0,
+  },
+
   /**
    * AI opponents tap like the player does, through the same runner physics,
    * with per-athlete cadence drawn from a range. Tune difficulty here.

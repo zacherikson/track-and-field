@@ -4,6 +4,21 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 2.34: tap markers (troubleshooting "my tap didn't register")
+- New tuning setting **Troubleshooting → Tap markers** (`debug.tapMarkers`,
+  off by default). During a race, every tap the game receives leaves a marker
+  where your thumb landed:
+  - green: stride;
+  - red: wrong side;
+  - grey with a label: ignored, and why (`early` before GO, `lean zone`,
+    `double press`, `after lean`, and so on).
+  - A running tally sits at the bottom of the screen.
+- A press that leaves **no marker** never reached the game: the phone or
+  browser swallowed it.
+- Verified in Chromium: a bot tapping the lit side at 5, 8 and 12 taps/s had
+  every tap delivered and scored as a stride (79/79), each handled about 12ms
+  after the touch.
+
 ## Step 2.33: start fast, slow down only if you can't keep up
 Before, speed built up from zero, with the first "interval" taken from your
 reaction time: about 4.3 m/s half a second after your first tap, 7.7 m/s after

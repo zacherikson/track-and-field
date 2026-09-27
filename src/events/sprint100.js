@@ -93,6 +93,7 @@ export class Sprint100 extends LaneRace {
       this.missT = t;
       navigator.vibrate?.(40);
     }
+    return result;
   }
 
   updateControls() {

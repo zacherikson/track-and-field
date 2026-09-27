@@ -46,8 +46,9 @@ export class TargetSequence {
  *   press on the lit side          -> 'hit'   (a stride; next target appears)
  *   press on the other side        -> 'miss'  (stumble: lose speed, brief lockout)
  *   press during a miss lockout    -> 'locked'
- *   press within minStrideInterval of the last hit -> 'ignored'
- *     (so drumming both thumbs at once can't score two strides per chord)
+ *   press within minStrideInterval of the last hit -> 'double press' (ignored,
+ *     so drumming both thumbs at once can't score two strides per chord)
+ *   no target / runner not running -> 'no target' / 'not running' (ignored)
  */
 export class StrideTargets {
   constructor(runner, cfg, rng = Math.random) {
@@ -71,16 +72,16 @@ export class StrideTargets {
   }
 
   press(side, t) {
-    if (this.target == null) return 'ignored';
+    if (this.target == null) return 'no target';
     if (t < this.lockedUntil) return 'locked';
-    if (t - this.lastHitT < this.runner.p.minStrideInterval) return 'ignored';
+    if (t - this.lastHitT < this.runner.p.minStrideInterval) return 'double press';
     if (side !== this.target) {
       this.misses++;
       this.lockedUntil = t + this.cfg.missLockout;
       this.runner.stumble(this.cfg.missSpeedLoss);
       return 'miss';
     }
-    if (this.runner.stride(t) !== 'ok') return 'ignored';
+    if (this.runner.stride(t) !== 'ok') return 'not running';
     this.hits++;
     this.lastHitT = t;
     this.target = this.seq.next();

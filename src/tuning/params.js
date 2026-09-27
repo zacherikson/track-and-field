@@ -66,6 +66,13 @@ export const GROUPS = [
       { path: 'ai.amateur.cadence.1', label: 'Fastest rival pace', unit: 'taps/s', min: 1.5, max: 7, step: 0.1, help: 'Raise to make the field harder to beat.' },
     ],
   },
+  {
+    title: 'Troubleshooting',
+    blurb: 'Tools for finding out why a tap did or didn’t count.',
+    params: [
+      { path: 'debug.tapMarkers', label: 'Tap markers (1 = on)', unit: '', min: 0, max: 1, step: 1, help: 'Marks every tap the game receives: green = stride, red = wrong side, grey = ignored (with the reason). A press that leaves no marker never reached the game.' },
+    ],
+  },
 ];
 
 export const PARAMS = GROUPS.flatMap((g) => g.params);

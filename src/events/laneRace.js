@@ -69,6 +69,8 @@ export class LaneRace {
 
   /** Everyone back on the line, camera on the player. */
   resetField() {
+    this.tapLog = []; // optional tap markers: { x, y, t, result }
+    this.tapCounts = {};
     for (const a of this.athletes) {
       a.runner.reset();
       if (a.ai) a.ai = new AIController(a.runner, this.difficulty, a.ai.cadence);
@@ -131,10 +133,14 @@ export class LaneRace {
       const action = this.mapInput(e);
       if (action == null) continue;
       // Taps before GO are ignored (no false starts).
-      if (this.state !== 'race' || e.t < this.goT) continue;
+      if (this.state !== 'race' || e.t < this.goT) {
+        this.logTap(e, 'early');
+        continue;
+      }
       const mode = this.player.runner.mode;
-      if (mode === 'carry') this.onDipAction(action, e);
-      else if (mode === 'run') this.onPlayerAction(action, e.t, e);
+      if (mode === 'carry') this.logTap(e, this.onDipAction(action, e) ?? 'lean zone');
+      else if (mode === 'run') this.logTap(e, this.onPlayerAction(action, e.t, e));
+      else this.logTap(e, 'after lean');
     }
 
     // 3. Simulation.
@@ -170,15 +176,59 @@ export class LaneRace {
    */
   onDipAction(action, e) {
     const dip = CONFIG.dip;
-    if (e.t - this.carryT < dip.armDelay) return; // stray stride taps as the zone begins
+    if (e.t - this.carryT < dip.armDelay) return 'lean zone'; // stray stride taps as the zone begins
     if (action === 'DIP') {
       this.player.runner.lean();
-      return;
+      return 'lean';
     }
     this.dipPress ??= { L: -Infinity, R: -Infinity };
     this.dipPress[action] = e.t;
     const other = action === 'L' ? 'R' : 'L';
-    if (e.t - this.dipPress[other] <= dip.chordWindow) this.player.runner.lean();
+    if (e.t - this.dipPress[other] <= dip.chordWindow && this.player.runner.lean()) return 'lean';
+    return 'lean zone';
+  }
+
+  /** Remember what a tap did, for the optional tap markers (CONFIG.debug.tapMarkers). */
+  logTap(e, result) {
+    if (e.type !== 'down' || !CONFIG.debug.tapMarkers) return;
+    this.tapLog.push({ x: e.x, y: e.y, t: e.t, result });
+    this.tapCounts[result] = (this.tapCounts[result] ?? 0) + 1;
+  }
+
+  drawTapMarkers(ctx, view) {
+    const now = this.game.time;
+    const life = 0.7;
+    this.tapLog = this.tapLog.filter((m) => now - m.t < life);
+    const colors = { hit: '#35e05a', miss: '#ff3b30', lean: '#ff9d1c' };
+    for (const m of this.tapLog) {
+      const k = 1 - (now - m.t) / life;
+      const c = colors[m.result] ?? '#c8c8c8';
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, 1.5 * k);
+      ctx.strokeStyle = c;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(m.x, m.y, 16, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = c;
+      ctx.beginPath();
+      ctx.arc(m.x, m.y, 4, 0, Math.PI * 2);
+      ctx.fill();
+      if (!(m.result in colors) || m.result === 'lean') text(ctx, m.result, m.x, m.y - 26, { size: 14, color: c, shadow: true });
+      ctx.restore();
+    }
+    // Running tally, bottom centre.
+    const c = this.tapCounts;
+    const total = Object.values(c).reduce((a, b) => a + b, 0);
+    const other = Object.entries(c).filter(([k]) => k !== 'hit' && k !== 'miss').map(([k, v]) => `${k} ${v}`).join(' · ');
+    const line = `taps ${total} · hit ${c.hit ?? 0} · miss ${c.miss ?? 0}${other ? ' · ' + other : ''}`;
+    const y = view.h - 16 - view.safe.b;
+    ctx.font = '600 14px system-ui, sans-serif';
+    const w = Math.min(view.w - 32, ctx.measureText(line).width + 24);
+    ctx.fillStyle = 'rgba(0,0,0,0.65)';
+    roundRect(ctx, view.w / 2 - w / 2, y - 13, w, 26, 13);
+    ctx.fill();
+    text(ctx, line, view.w / 2, y, { size: 14, weight: 600, color: '#fff', maxWidth: view.w - 40 });
   }
 
   simulate(dt, t) {
@@ -248,6 +298,7 @@ export class LaneRace {
     if (blinkOn) this.drawStartButton(ctx, view);
     this.drawControls(ctx, view);
     this.drawBanner(ctx, view);
+    if (CONFIG.debug.tapMarkers) this.drawTapMarkers(ctx, view);
     if (this.game.debug) this.drawDebug(ctx, view);
   }
 

@@ -4,6 +4,13 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 2.36: wrong-tap speed loss 1.0 → 1.7 m/s (tuning panel)
+- `sprint100.targets.missSpeedLoss` 1.0 → 1.7 m/s. Also the AI's, which pays
+  the same price. The double-press guard stays at 0.
+- Simulator: good reader 8.85s, expert 8.36s. Best masher (8/s) 9.47s (was
+  8.65s), so reading beats mashing again by about 0.6s. A casual reader (about
+  3 hits/s, 10.03s) still loses to a steady masher.
+
 ## Step 2.35: gentler mistakes, no double-press guard (tuning panel)
 Chosen in the tuning panel:
 - `sprint100.targets.missSpeedLoss` 2.0 → 1.0 m/s. Also the AI's, which pays

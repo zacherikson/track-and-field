@@ -4,6 +4,23 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 5.4: pole vault layout and swing from real vaulting references
+Checked against a phase diagram and a sequence photo of a real vault, with a
+new flat side-view tool (`tools/vault.html`).
+- **Pole drop:** the tip no longer dips to the track early. Through the plant
+  zone the pole turns to aim at the box and the tip stays on the line from the
+  hands to the box, sliding in at the plant.
+- **Layout:** takeoff was 4.7m from the bar; now about 3.7m, as in real
+  vaulting. `pole.length` 4.6 → 4.0m (plant 3.46m before the box),
+  `uprightX` 0.6 → 0.25m past the box, the mat starts right at the box
+  (`mat.from` 0.4 → 0), `landX` 1.8 → 1.3m.
+- **Swing:** keyed on the real phases (takeoff, swing, rock back, L,
+  extension, inversion): pole angle, bend and body angle each follow their
+  own track, so the hips rise steadily toward the box instead of jumping
+  forward and then going straight up. `swing.bend` 0.22 → 0.3.
+- Heights unchanged within noise: good 5.32m, expert 6.22m; Amateur winner
+  5.25m, Pro winner 6.00m.
+
 ## Step 5.3: pole tip up on the run-up
 - `poleVault.pole.carryAngle` −0.2 → 1.05 rad: the pole is carried tip high
   (about 60°), hands at the hip and chest, like a real vaulter. It drops

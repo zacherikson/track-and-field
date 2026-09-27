@@ -286,7 +286,7 @@ export const CONFIG = {
     runway: 55, // m from the start to the box (a long run-up, as in the original)
     // The pole plants when your hips reach plantX: hands overhead at gripY,
     // pole tip in the box (plantX = -sqrt(length² - gripY²)).
-    pole: { length: 4.6, gripY: 2.0, carryAngle: 1.05, overhang: 0.45 }, // m (box to hands), m, rad above level while running (tip high, like a real vaulter; it drops through the plant zone), m sticking out behind the hands
+    pole: { length: 4.0, gripY: 2.0, carryAngle: 1.05, overhang: 0.45 }, // m (box to hands), m, rad above level while running (tip high, like a real vaulter; it drops through the plant zone), m sticking out behind the hands
     zoneDistance: 12, // m before the plant: orange pads, strides stop, the pole tip drops to the box and the spark runs down it
     // Runway edge stripes, in m before the box (the plant is about 4.1 m out).
     runwayZones: [
@@ -302,13 +302,16 @@ export const CONFIG = {
     // Height cleared = base + perMps * (speed - vRef) + gain * quality, where
     // quality = pressWeight * plant + (1 - pressWeight) * release (each 0..1).
     height: { base: 1.4, perMps: 0.4, vRef: 9, gain: 4.0, pressWeight: 0.5 },
-    swing: { time: 1.1, bend: 0.22 }, // s from plant to the top of the pole; how much the pole bends (share of its length)
+    swing: { time: 1.1, bend: 0.3 }, // s from plant to the top of the pole; how much the pole bends (share of its length)
     // Off the pole (from the original, not gravity): rise while turning to face
     // the bar, hang face down over it, drop onto the mat (s).
     flight: { rise: 0.4, hang: 0.5, fall: 0.5 },
-    mat: { from: 0.4, to: 5.6, height: 0.8 }, // m past the box
-    uprightX: 0.6, // m past the box
-    landX: 1.8, // m past the box where you come down on the mat
+    // Layout from real vaulting (and reference photos): the standards stand just
+    // past the back of the box and the mat starts right behind the box, so you
+    // take off under one pole length from the bar.
+    mat: { from: 0.0, to: 5.2, height: 0.8 }, // m past the box
+    uprightX: 0.25, // m past the box
+    landX: 1.3, // m past the box where you come down on the mat
     markHold: 2.4, // s after landing before the result banner
     camera: { topFrac: 0.3 }, // the camera rises to keep the vaulter at least this far down the screen
     ai: {

@@ -30,17 +30,28 @@ const mirror = (p) => ({
 });
 const G = 9.81;
 const FIG_H = CONFIG.figure.height;
-// Where the hips are relative to the hands through the swing (0 = hanging
-// straight below, PI = upside down straight above).
-// From the original: hanging in behind the hands at the plant, lying back level
-// under the top of the pole, then swinging up to upside down.
-const ALPHA_KEYS = [[0, -0.35], [0.1, -0.2], [0.3, 1.15], [0.45, 1.5], [0.7, 1.75], [0.88, 2.8], [1, Math.PI]];
-function alphaAt(u) {
+// The swing, keyed from a phase diagram of a real vault (takeoff, swing,
+// rock back, L, extension, inversion), per swing progress u:
+//   phi   pole chord angle above level, as a share of the way from the plant
+//         angle to the vault's final angle (upright for a good vault)
+//   bend  how much the pole is bent (share of swing.bend)
+//   alpha where the hips are relative to the hands (0 = hanging straight
+//         below, PI/2 = level toward the pit, PI = upside down above)
+const SWING_KEYS = [
+  // u     phi    bend   alpha
+  [0, 0, 0, -0.3], // takeoff: hips behind the hands, trail leg pushing off
+  [0.22, 0.12, 0.75, 0.05], // swing: hanging under the bending pole
+  [0.45, 0.35, 1, 0.8], // rock back: lying back, feet coming up to the pole
+  [0.65, 0.6, 0.65, 1.9], // L: hips up level with the hands
+  [0.83, 0.85, 0.25, 2.8], // extension up the pole as it straightens
+  [1, 1, 0, Math.PI], // inverted over the top of the pole
+];
+function swingKey(u, col) {
   let i = 1;
-  while (i < ALPHA_KEYS.length - 1 && u > ALPHA_KEYS[i][0]) i++;
-  const [u0, a0] = ALPHA_KEYS[i - 1];
-  const [u1, a1] = ALPHA_KEYS[i];
-  return a0 + (a1 - a0) * ease(clamp((u - u0) / (u1 - u0), 0, 1));
+  while (i < SWING_KEYS.length - 1 && u > SWING_KEYS[i][0]) i++;
+  const a = SWING_KEYS[i - 1];
+  const b = SWING_KEYS[i];
+  return a[col] + (b[col] - a[col]) * ease(clamp((u - a[0]) / (b[0] - a[0]), 0, 1));
 }
 
 /**
@@ -256,12 +267,12 @@ export class PoleVault {
    */
   swingAt(u) {
     const vt = this.vault;
-    const phi = this.phi0 + (vt.phiCur - this.phi0) * (1 - Math.pow(1 - u, 1.6));
-    const c = this.L * (1 - this.cfg.swing.bend * Math.sin(Math.PI * u) ** 2); // bends slowly at first, as in the original
+    const phi = this.phi0 + (vt.phiCur - this.phi0) * swingKey(u, 1);
+    const c = this.L * (1 - this.cfg.swing.bend * swingKey(u, 2));
     const hands = { x: -c * Math.cos(phi), y: c * Math.sin(phi) };
     // A weak vault never gets the pole upright, so you don't get fully upside down either.
     const k = clamp((vt.phiCur - this.phi0) / (Math.PI / 2 - this.phi0), 0.45, 1);
-    const alpha = alphaAt(u) * k;
+    const alpha = swingKey(u, 3) * k;
     const pose = vaultSwingPose(alpha, u);
     const off = handPos(0, 0, FIG_H, pose, 0); // hand relative to the hips (m, y down)
     return { phi, c, hands, alpha, pose, hip: { x: hands.x - off.x, y: hands.y + off.y } };
@@ -584,10 +595,15 @@ export class PoleVault {
     let a, b, sag = 0; // a = hands end, b = tip end
     if (this.state === 'ready' || this.state === 'run') {
       const p = this.zoneProgress();
-      // Tip high while running, like a real vaulter; the pole drop through the plant zone brings it down to the box.
-      const psi = cfg.pole.carryAngle + (-this.phi0 - cfg.pole.carryAngle) * ease(p);
+      // Tip high while running, like a real vaulter. Through the plant zone the
+      // pole drops, turning to aim at the box: the tip stays on the line from
+      // your hands to the box, so it never touches the ground before the box
+      // and slides into it at the plant.
+      const toBox = Math.atan2(hand.y - boxP.y, boxP.x - hand.x);
+      const psi = cfg.pole.carryAngle + (toBox - cfg.pole.carryAngle) * ease(p);
+      const reach = Math.min(len, Math.hypot(boxP.x - hand.x, boxP.y - hand.y));
       a = hand;
-      b = { x: hand.x + len * Math.cos(psi), y: hand.y - len * Math.sin(psi) };
+      b = { x: hand.x + reach * Math.cos(psi), y: hand.y - reach * Math.sin(psi) };
       if (this.zoneT != null) this.sparkS = p; // the spark runs down to the tip
     } else if (this.state === 'vault') {
       const sw = this.vault.sw ?? this.swingAt(this.vault.u);

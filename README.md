@@ -54,7 +54,9 @@ speed and takeoff timing, pole vault heights for each run-up and plant/release
 timing, and the AI fields' results per difficulty.
 Log changes you keep in [CHANGELOG.md](CHANGELOG.md).
 
-`tools/sprites.html` draws Juno's long jump keyframes as a sprite sheet (serve
+`tools/vault.html` draws the pole vault's phases in a flat, true-scale side
+view (plant, swing, rock back, inversion, bar, landing) for checking against
+reference photos. `tools/sprites.html` draws Juno's long jump keyframes as a sprite sheet (serve
 the repo and open it) so poses can be checked side by side.
 
 ## Architecture

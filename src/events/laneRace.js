@@ -441,10 +441,6 @@ export class LaneRace {
         else if (this.player.runner.mode === 'carry') {
           const pulse = 0.75 + 0.25 * Math.sin(now * 18);
           text(ctx, 'LEAN!', cx, cy, { size: 64, color: `rgba(255,140,40,${pulse})`, shadow: true });
-          roundRect(ctx, cx - 130, cy + 32, 260, 32, 16);
-          ctx.fillStyle = 'rgba(0,0,0,0.6)';
-          ctx.fill();
-          text(ctx, 'Both thumbs together', cx, cy + 49, { size: 19 });
         }
         break;
       case 'finished': {

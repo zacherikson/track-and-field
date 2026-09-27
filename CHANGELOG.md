@@ -4,6 +4,10 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 2.40: no "Both thumbs together" tip
+- The lean zone shows just the pulsing LEAN! banner and the orange pads. The
+  how-to screen still explains the two-thumb lean.
+
 ## Step 2.39: steadier pace, longer lean zone, bolder 10 m lines
 From the tuning panel:
 - `runner.cadenceSmoothing` 0.4 → 0.1: each tap moves your pace less, so speed

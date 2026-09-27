@@ -20,8 +20,18 @@ const BOTH_KEYS = ['Space', 'ArrowUp'];
 const ease = (k) => k * k * (3 - 2 * k);
 const easeOut = (k) => 1 - (1 - k) * (1 - k);
 const G = 9.81;
-const PHI_MID = 1.1; // pole angle (rad above level) when the swing pauses for your release
-const U_HOLD = 0.75; // swing progress where it waits for you to let go
+const FIG_H = CONFIG.figure.height;
+// Where the hips are relative to the hands through the swing (0 = hanging
+// straight below, PI = upside down straight above): hang, swing under, rock
+// back, extend up the pole.
+const ALPHA_KEYS = [[0, 0], [0.15, 0.15], [0.45, 0.55], [0.65, 1.9], [0.85, 2.95], [1, Math.PI]];
+function alphaAt(u) {
+  let i = 1;
+  while (i < ALPHA_KEYS.length - 1 && u > ALPHA_KEYS[i][0]) i++;
+  const [u0, a0] = ALPHA_KEYS[i - 1];
+  const [u1, a1] = ALPHA_KEYS[i];
+  return a0 + (a1 - a0) * ease(clamp((u - u0) / (u1 - u0), 0, 1));
+}
 
 /**
  * Pole vault, from footage of the original (rules in poleVaultRules.js):
@@ -53,6 +63,9 @@ export class PoleVault {
     this.L = P.length;
     this.plantX = -Math.sqrt(P.length ** 2 - P.gripY ** 2);
     this.phi0 = Math.asin(P.gripY / P.length);
+    // Hips to hands upside down at the top of the pole (arms straight along the body).
+    const top = handPos(0, 0, FIG_H, vaultSwingPose(Math.PI, 1), 0);
+    this.reach = Math.hypot(top.x, top.y);
     this.track = new VaultRenderer(cfg);
     this.camera = new Camera();
     this.player = { name: HERO.name, colors: HERO.colors, isPlayer: true, jumps: [] };
@@ -202,24 +215,46 @@ export class PoleVault {
     vt.pq = pressQuality(this.holdT - this.plantT, cfg.press);
     vt.rq = this.releaseT == null ? 0 : releaseQuality(this.releaseT - this.holdT, cfg);
     vt.height = vaultHeight({ v: vt.v, pq: vt.pq, rq: vt.rq }, cfg);
-    // The pole rises as far as the vault is good: straight up for a good one.
-    const s = clamp((vt.height - 0.85) / this.L, -1, 1);
-    vt.phiEnd = s >= 1 ? Math.PI / 2 + 0.04 : Math.max(PHI_MID, Math.asin(s));
+    vt.phiEnd = this.phiFor(vt.height);
+  }
+
+  /**
+   * How far the pole rises for a vault of `height`: far enough that you're
+   * just below it (upside down over your hands) at the top of the pole, then
+   * the push takes you the rest of the way. Straight up for a good vault.
+   */
+  phiFor(height) {
+    const s = (height - 0.15 - this.reach) / this.L;
+    return s >= 1 ? Math.PI / 2 + 0.04 : clamp(Math.asin(clamp(s, -1, 1)), this.phi0 + 0.5, Math.PI / 2);
+  }
+
+  /** Until the release is known, aim the pole for a perfect release (with the plant you had). */
+  predictPhi() {
+    const vt = this.vault;
+    if (vt.phiEnd != null) return vt.phiEnd;
+    const pq = this.holdT == null ? 1 : pressQuality(this.holdT - this.plantT, this.cfg.press);
+    return this.phiFor(vaultHeight({ v: vt.v, pq, rq: 1 }, this.cfg));
   }
 
   // ---------------------------------------------------------------- simulation
 
-  /** Hands and hips on the pole at swing progress u (m; box at x = 0). */
+  /**
+   * On the pole at swing progress u (0 plant .. 1 top): the pole rotates up
+   * about the box while it bends and straightens again; the figure hangs from
+   * the top by its hands (so the hands are always on the pole), swinging from
+   * below the hands to upside down above them.
+   */
   swingAt(u) {
     const vt = this.vault;
-    const phi = u <= U_HOLD
-      ? this.phi0 + (PHI_MID - this.phi0) * easeOut(u / U_HOLD)
-      : PHI_MID + ((vt.phiEnd ?? PHI_MID) - PHI_MID) * ease((u - U_HOLD) / (1 - U_HOLD));
-    const c = this.L * (1 - this.cfg.swing.bend * Math.sin(Math.PI * Math.min(1, u / 0.85)));
+    const phi = this.phi0 + (vt.phiCur - this.phi0) * (1 - Math.pow(1 - u, 1.6));
+    const c = this.L * (1 - this.cfg.swing.bend * Math.sin(Math.PI * u));
     const hands = { x: -c * Math.cos(phi), y: c * Math.sin(phi) };
-    const alpha = Math.PI * ease(clamp((u - 0.1) / 0.85, 0, 1));
-    const R = 1.1 + (0.5 - 1.1) * ease(u);
-    return { phi, c, hands, alpha, hip: { x: hands.x + R * Math.sin(alpha), y: hands.y - R * Math.cos(alpha) } };
+    // A weak vault never gets the pole upright, so you don't get fully upside down either.
+    const k = clamp((vt.phiCur - this.phi0) / (Math.PI / 2 - this.phi0), 0.45, 1);
+    const alpha = alphaAt(u) * k;
+    const pose = vaultSwingPose(alpha, u);
+    const off = handPos(0, 0, FIG_H, pose, 0); // hand relative to the hips (m, y down)
+    return { phi, c, hands, alpha, pose, hip: { x: hands.x - off.x, y: hands.y + off.y } };
   }
 
   simulate(dt, t) {
@@ -238,18 +273,18 @@ export class PoleVault {
       if (this.state === 'run' && r.x >= this.plantX) this.plant(end);
     } else if (this.state === 'vault') {
       const vt = this.vault;
-      const S = cfg.swing;
       if (this.holdT == null && end - this.plantT > cfg.press.miss) return this.balk(end);
       // Held on too long: you get nothing from the release.
       if (this.holdT != null && this.releaseT == null && end - this.holdT > cfg.spark.climbTime + cfg.release.window) this.release(end);
-      if (this.holdT != null && vt.height == null && (this.releaseT != null || vt.u >= U_HOLD)) {
-        if (this.releaseT != null) this.decide();
-      }
-      vt.u = Math.min(vt.height != null ? 1 : U_HOLD, vt.u + dt / S.time);
+      vt.u = Math.min(1, vt.u + dt / cfg.swing.time);
+      vt.phiCur = damp(vt.phiCur, this.predictPhi(), 8, dt);
       const sw = this.swingAt(vt.u);
       vt.sw = sw;
       this.hip = sw.hip;
-      if (vt.u >= 1) this.takeOff(end);
+      if (vt.u >= 1) {
+        if (vt.height == null) this.release(end); // top of the pole: let go now
+        this.takeOff(end);
+      }
     } else if (this.state === 'fly') {
       const f = this.fly;
       const ta = Math.min(end - f.t0, f.T);
@@ -280,6 +315,7 @@ export class PoleVault {
     this.plantT = t;
     this.stats.topSpeed = Math.max(this.stats.topSpeed, r.v);
     this.vault = { v: r.v, u: 0, pq: null, rq: null, height: null, phiEnd: null };
+    this.vault.phiCur = this.predictPhi();
     // Pressed early and already let go? Then that's your release.
     if (this.holdT != null && this.releaseT != null) this.decide();
     navigator.vibrate?.(20);
@@ -412,19 +448,18 @@ export class PoleVault {
       case 'run': {
         // Running with the pole; the hands come up overhead for the plant.
         const run = runPose(r.phase, clamp(r.v / 11, 0.15, 1), 0);
-        const k = ease(clamp((this.zoneProgress() - 0.7) / 0.3, 0, 1));
+        const k = ease(clamp((this.zoneProgress() - 0.88) / 0.12, 0, 1)); // hands up over the last two strides
         const carry = { ...run, arms: V.carryArms };
         return lerpPose(carry, { ...run, arms: V.plantArms }, k);
       }
-      case 'vault': {
-        const sw = this.vault.sw ?? this.swingAt(this.vault.u);
-        return vaultSwingPose(sw.alpha, this.vault.u);
-      }
+      case 'vault':
+        return (this.vault.sw ?? this.swingAt(this.vault.u)).pose;
       case 'fly': {
+        // Off the top: push, face down over the bar (legs over first), fall back, onto your back.
         const f = this.fly;
         const k = (now - f.t0) / f.T;
-        const up = f.vy / G / f.T; // share of the flight spent going up
-        return sampleTrack([[0, V.push], [Math.max(0.15, up), V.overBar], [1, V.fallBack]], k);
+        const up = Math.max(0.2, f.vy / G / f.T); // share of the flight spent going up
+        return sampleTrack([[0, V.push], [up, V.overBar], [up + 0.55 * (1 - up), V.fallBack], [1, V.landBack]], k);
       }
       case 'balk': {
         const ta = now - this.stateT;
@@ -435,8 +470,8 @@ export class PoleVault {
         if (!this.fly) return POSES.stand;
         // On the mat: land on your back, lie there a moment, sit up, stand.
         const age = now - (this.fly.t0 + this.fly.T);
-        const from = wrapNear(this.lastAirPose ?? V.lie, V.lie);
-        return sampleTrack([[0, from], [0.12, V.lie], [0.7, V.lie], [1.2, V.sitMat], [1.8, { ...POSES.stand, hipX: 0.2 }]], age);
+        const from = { ...wrapNear(this.lastAirPose ?? V.lie, V.lie), hipY: -0.2 / FIG_H };
+        return sampleTrack([[0, from], [0.15, V.lie], [0.8, V.lie], [1.3, V.sitMat], [1.9, { ...POSES.stand, hipX: 0.2 }]], age);
       }
     }
   }
@@ -637,7 +672,7 @@ export class PoleVault {
     text(ctx, `Best ${best == null ? '—' : best.toFixed(2) + ' m'}`, view.w - 16 - s.r, 48 + s.t, { size: 15, align: 'right', color: 'rgba(255,255,255,0.85)', shadow: true });
     // Live height while in the air.
     if (this.state === 'fly' || this.state === 'landed') {
-      const h = this.state === 'fly' ? this.peak : this.vault.height;
+      const h = this.state === 'fly' ? Math.min(this.peak, this.vault.height) : this.vault.height;
       text(ctx, `${h.toFixed(2)} m`, view.w / 2, 40 + s.t, { size: 30, color: '#fff', shadow: true });
     }
   }

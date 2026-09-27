@@ -4,6 +4,22 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 5.1: pole vault animation fixes (from frame-by-frame captures)
+- The body now hangs from the top of the pole by its hands, so the hands stay
+  on the pole through the whole swing (before, the hips were placed on their
+  own and the hands floated off the pole).
+- One continuous swing, no pause: hang, swing under, rock back with the knees
+  to the chest, extend up the pole upside down. The hips move forward the whole
+  way (before, they slid 0.6m back toward the runway, then lurched forward).
+- The pole rises only as far as the vault is good (upright for a good vault,
+  low for a weak one), aimed for a perfect release until you let go. A weak
+  vault only gets partway upside down.
+- Off the top: push, face down over the bar with the legs already over, then
+  roll onto your back and land on the mat legs up, lie there, sit up, stand.
+  (Before, the body spun a full turn the wrong way.)
+- Hands come up for the plant over the last two strides only.
+- The live height in the air never shows more than your mark.
+
 ## Step 5: Pole Vault
 From footage of the original.
 - **Three vaults**, best height counts, against five rivals. World record

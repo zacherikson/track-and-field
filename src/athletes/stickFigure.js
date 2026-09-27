@@ -310,37 +310,46 @@ export const JUMP_POSES = {
  * on the mat: lie on your back, sit up, stand.
  */
 const SWING_LEGS = [
-  [0, [[1.2, 0.25], [-0.5, -0.8]]], // takeoff: lead knee up, trail leg behind
-  [0.3, [[0.35, -0.2], [-0.25, -0.7]]], // hanging on the bending pole, trail leg back
-  [0.55, [[1.9, 0.9], [1.8, 0.8]]], // rock back: knees to the chest
-  [0.8, [[0.1, 0], [0.05, 0]]], // extension: straight up the pole
+  [0, [[1.3, 0.3], [-0.6, -0.9]]], // takeoff: lead knee up, trail leg pushing off behind
+  [0.3, [[0.5, 0.0], [0.2, -0.35]]], // swinging under the pole, trail leg sweeping through
+  [0.6, [[2.1, 1.2], [2.0, 1.1]]], // rock back: knees to the chest
+  [0.82, [[0.3, 0.1], [0.25, 0.1]]], // extension: legs shoot up along the pole
   [1, [[0, 0], [0, 0]]],
 ];
 export const VAULT_POSES = {
   carryArms: [{ upper: 0.35, fore: 1.75 }, { upper: 0.75, fore: 2.05 }], // pole held at the chest
   plantArms: [{ upper: 3.0, fore: 3.05 }, { upper: 2.85, fore: 2.95 }], // hands up for the plant
+  // Off the top of the pole: upside down pushing off, rotating to face down
+  // over the bar (head toward the runway, legs already over), then rolling
+  // over onto your back as you fall, landing on the mat legs up.
   push: {
     hipX: 0, hipY: 0, lean: -Math.PI,
-    legs: [{ thigh: Math.PI, shin: Math.PI, toe: 0 }, { thigh: Math.PI - 0.05, shin: Math.PI - 0.05, toe: 0 }],
-    arms: [{ upper: 0, fore: 0 }, { upper: 0.1, fore: 0.1 }],
+    legs: [{ thigh: Math.PI, shin: Math.PI, toe: 0 }, { thigh: Math.PI - 0.06, shin: Math.PI - 0.06, toe: 0 }],
+    arms: [{ upper: 0, fore: 0 }, { upper: 0.12, fore: 0.12 }],
   },
   overBar: {
-    hipX: 0, hipY: 0, lean: -4.14,
-    legs: [{ thigh: 4.34, shin: 4.5, toe: 0 }, { thigh: 4.2, shin: 4.4, toe: 0 }],
-    arms: [{ upper: 1.0, fore: 1.0 }, { upper: 0.9, fore: 0.9 }],
+    hipX: 0, hipY: 0, lean: -1.8,
+    legs: [{ thigh: 1.3, shin: 0.8, toe: 0 }, { thigh: 1.2, shin: 0.7, toe: 0 }],
+    arms: [{ upper: -2.0, fore: -2.2 }, { upper: -1.85, fore: -2.05 }],
   },
   fallBack: {
-    hipX: 0, hipY: 0, lean: -4.78,
-    legs: [{ thigh: 3.9, shin: 4.3, toe: 0 }, { thigh: 3.8, shin: 4.2, toe: 0 }],
-    arms: [{ upper: 2.2, fore: 2.4 }, { upper: 2.0, fore: 2.2 }],
+    hipX: 0, hipY: 0, lean: -1.45,
+    legs: [{ thigh: 2.5, shin: 2.1, toe: 0 }, { thigh: 2.4, shin: 2.0, toe: 0 }],
+    arms: [{ upper: -2.3, fore: -2.5 }, { upper: -2.15, fore: -2.35 }],
+  },
+  landBack: {
+    hipX: 0, hipY: 0, lean: -1.4,
+    legs: [{ thigh: 2.8, shin: 2.3, toe: 0 }, { thigh: 2.7, shin: 2.2, toe: 0 }],
+    arms: [{ upper: -2.4, fore: -2.6 }, { upper: -2.25, fore: -2.45 }],
   },
   lie: {
-    hipX: 0, hipY: -0.08, lean: 1.52,
-    legs: [{ thigh: 3.6 - 2 * Math.PI, shin: 4.3 - 2 * Math.PI, toe: 0 }, { thigh: 3.45 - 2 * Math.PI, shin: 4.2 - 2 * Math.PI, toe: 0 }],
-    arms: [{ upper: 2.4, fore: 2.6 }, { upper: 2.2, fore: 2.4 }],
+    hipX: 0, hipY: -0.08, lean: -1.52,
+    legs: [{ thigh: 2.7, shin: 2.1, toe: 0 }, { thigh: 2.6, shin: 2.0, toe: 0 }],
+    arms: [{ upper: -2.5, fore: -2.8 }, { upper: -2.35, fore: -2.65 }],
   },
+  // Sitting up on the mat, then standing.
   sitMat: {
-    hipX: 0.05, hipY: -0.12, lean: 0.3,
+    hipX: 0, hipY: -0.12, lean: 0.35,
     legs: [{ thigh: 1.45, shin: 1.55, toe: -0.3 }, { thigh: 1.4, shin: 1.5, toe: -0.3 }],
     arms: [{ upper: 0.6, fore: 0.9 }, { upper: 0.5, fore: 0.8 }],
   },

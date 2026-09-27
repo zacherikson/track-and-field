@@ -4,6 +4,31 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 2.35: gentler mistakes, no double-press guard (tuning panel)
+Chosen in the tuning panel:
+- `sprint100.targets.missSpeedLoss` 2.0 → 1.0 m/s. Also the AI's, which pays
+  the same price.
+- `runner.minStrideInterval` (double-press guard) 10 → 0 ms.
+
+Simulator (`node tools/simulate.mjs`), before → after:
+
+| Strategy | Before | After |
+|---|---|---|
+| Good reader | 8.95s | 8.84s |
+| Expert reader | 8.41s | 8.34s |
+| Masher 6/s | 9.74s | 9.21s |
+| Masher 8/s | 10.21s | **8.65s** |
+| Masher 10/s | 11.90s | 8.80s |
+| Both-thumb drummer 7/s | 16.37s | 9.46s |
+
+**Mashing now beats good reading** (8.65 vs 8.84s). Only an expert reader
+(8.34s) beats the best masher.
+
+The guard alone barely matters: with it at 0 and the penalty at 2.0, the good
+reader still wins by about 0.8s. The penalty is what separates reading from
+mashing. At 1.4 m/s the good reader edges the best masher (8.84 vs 9.00s); at
+2.0 the lead is comfortable.
+
 ## Step 2.34: tap markers (troubleshooting "my tap didn't register")
 - New tuning setting **Troubleshooting → Tap markers** (`debug.tapMarkers`,
   off by default). During a race, every tap the game receives leaves a marker

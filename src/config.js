@@ -61,7 +61,7 @@ export const CONFIG = {
     cadenceSmoothing: 0.4, // 0..1 weight of the newest stride interval (higher = twitchier)
     idleGrace: 1.2, // a gap must exceed this x your usual interval before it slows you
     maxIntervalForAvg: 0.6, // s; long pauses count as this, so you recover quickly
-    minStrideInterval: 0.01, // s; inputs closer than this to the last stride are ignored (two-thumb chords)
+    minStrideInterval: 0, // s; inputs closer than this to the last stride are ignored (two-thumb chords)
     // Animation only: meters per full leg cycle (two steps) grows with speed, like
     // real sprinters (about 2 m jogging, about 5.2 m at full speed). So legs turn
     // over faster AND reach further as you speed up.
@@ -117,7 +117,7 @@ export const CONFIG = {
       maxSameSide: 2,
       switchChance: 0.5, // chance of switching sides when not forced
       missLockout: 0, // s; a wrong-side tap freezes your input this long (0 = none, like the original)
-      missSpeedLoss: 2.0, // m/s lost on a wrong-side tap
+      missSpeedLoss: 1.0, // m/s lost on a wrong-side tap
     },
     pads: {
       radius: 56, // target size (visual only; the hit zone is the whole screen half)
@@ -159,7 +159,7 @@ export const CONFIG = {
       jitter: 0.3, // +/- fraction of randomness on each stride interval (reaction variance)
       fatigue: 0.05, // cadence lost by the finish (fades in over the last 40%)
       missChance: 0.03, // chance a stride is a wrong-side tap instead
-      missSpeedLoss: 2.0, // same price the player pays
+      missSpeedLoss: 1.0, // same price the player pays
       missLockout: 0,
       dipError: [-1.2, 2.5], // m; AI leans at the ideal spot plus this (negative = late)
     },
@@ -169,7 +169,7 @@ export const CONFIG = {
       jitter: 0.22,
       fatigue: 0.03,
       missChance: 0.015,
-      missSpeedLoss: 2.0, // same price the player pays
+      missSpeedLoss: 1.0, // same price the player pays
       missLockout: 0,
       dipError: [-0.6, 1.2],
     },

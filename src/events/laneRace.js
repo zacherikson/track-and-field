@@ -234,8 +234,7 @@ export class LaneRace {
       const p = this.track.toScreen(this.camera, view, a.runner.x + a.runner.reach * 0.5, a.lane);
       if (p.x < -80 || p.x > view.w + 80) continue;
       const scale = this.track.figureScale(a.lane);
-      const head = drawFigure(ctx, p.x, p.y + 4, H * scale, this.poseFor(a), a.colors);
-      if (a.isPlayer && (this.state !== 'race' || this.raceTime < 2)) this.drawYouMarker(ctx, head.headX, head.headY - 8);
+      drawFigure(ctx, p.x, p.y + 4, H * scale, this.poseFor(a), a.colors);
     }
     this.drawHUD(ctx, view);
     if (blinkOn) this.drawStartButton(ctx, view);
@@ -273,17 +272,6 @@ export class LaneRace {
     if (r.x < 1.2) return lerpPose(POSES.set, run, clamp(r.x / 1.2, 0, 1));
     if (r.finished && r.v < 2) return lerpPose(POSES.stand, run, r.v / 2);
     return run;
-  }
-
-  drawYouMarker(ctx, x, y) {
-    ctx.fillStyle = '#ffb400';
-    ctx.beginPath();
-    ctx.moveTo(x - 8, y - 12);
-    ctx.lineTo(x + 8, y - 12);
-    ctx.lineTo(x, y);
-    ctx.closePath();
-    ctx.fill();
-    text(ctx, 'YOU', x, y - 24, { size: 14, color: '#ffb400', shadow: true });
   }
 
   drawHUD(ctx, view) {

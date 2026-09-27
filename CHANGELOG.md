@@ -4,6 +4,10 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 2.18: no "YOU" marker
+- Removed the "YOU" arrow above the player. The flashing lane before the start
+  (and the front-lane position) already shows which runner is yours.
+
 ## Step 2.17: start button on the centre line
 - The flashing start button sits on the screen's vertical centre line (at the
   same height as the race targets), over the column of runners, as in the

@@ -301,57 +301,79 @@ export const JUMP_POSES = {
 };
 
 /**
- * POLE VAULT (our own keyframes, from the motion of the original).
- * While on the pole the body is placed by the swing: the hips hang from the
- * hands at angle `alpha` (0 = straight below the hands, PI = straight above,
- * upside down). The torso and arms line up with the pole top; the legs are
- * keyframed relative to that line (vaultSwingPose). Then off the top of the
- * pole: push (upside down), arched face down over the bar, falling back, and
- * on the mat: lie on your back, sit up, stand.
+ * POLE VAULT KEYFRAMES, traced frame by frame from footage of the original
+ * (our own stick figure, not its art). On the pole the body hangs from the
+ * hands at swing angle `alpha` (hips relative to the hands: 0 = straight
+ * below, PI/2 = level ahead, PI = upside down above); vaultSwingPose builds
+ * the pose from `alpha` and the leg keys below.
+ *   plant       arms stretched overhead to the pole, leaning in, lead knee up
+ *   lie back    on your back under the top of the pole, head to the runway,
+ *               knees drawn up, while the pole bends
+ *   invert      legs swing up to upside down
+ * Off the top, the vaulter TURNS to face the bar: from there the figure is
+ * mirrored (flip: true; angles are then in the mirrored frame, so + = toward
+ * the runway on screen).
+ *   turn        upside down, feet tipping over the bar
+ *   overBar     face down over the bar, head to the runway, arms hanging,
+ *               legs dangling down past it (held while you hang at the top)
+ *   drop        falling upright, knees bent
+ *   landBack    onto your back on the mat, legs up
+ *   lie         lying there, legs coming down
+ *   sitMat      sitting up
+ *   crouchMat   rocking forward onto your feet
+ *   (then stand, facing the runway)
  */
 const SWING_LEGS = [
-  [0, [[1.3, 0.3], [-0.6, -0.9]]], // takeoff: lead knee up, trail leg pushing off behind
-  [0.3, [[0.5, 0.0], [0.2, -0.35]]], // swinging under the pole, trail leg sweeping through
-  [0.6, [[2.1, 1.2], [2.0, 1.1]]], // rock back: knees to the chest
-  [0.82, [[0.3, 0.1], [0.25, 0.1]]], // extension: legs shoot up along the pole
-  [1, [[0, 0], [0, 0]]],
+  // [u, [[thigh, shin] lead, [thigh, shin] trail]], angles relative to the body line (0 = straight away from the hands)
+  [0, [[1.3, 0.3], [-0.5, -0.9]]], // takeoff: lead knee driving up, trail leg back
+  [0.25, [[1.0, 1.4], [0.8, 1.2]]], // lying back: knees drawn up, feet up
+  [0.6, [[0.7, 1.5], [0.6, 1.4]]],
+  [0.85, [[0.25, 0.35], [0.2, 0.3]]], // legs swing up and straighten
+  [1, [[0, 0], [0.04, 0.04]]], // upside down, legs straight
 ];
 export const VAULT_POSES = {
-  carryArms: [{ upper: 0.35, fore: 1.75 }, { upper: 0.75, fore: 2.05 }], // pole held at the chest
-  plantArms: [{ upper: 3.0, fore: 3.05 }, { upper: 2.85, fore: 2.95 }], // hands up for the plant
-  // Off the top of the pole: upside down pushing off, rotating to face down
-  // over the bar (head toward the runway, legs already over), then rolling
-  // over onto your back as you fall, landing on the mat legs up.
-  push: {
-    hipX: 0, hipY: 0, lean: -Math.PI,
-    legs: [{ thigh: Math.PI, shin: Math.PI, toe: 0 }, { thigh: Math.PI - 0.06, shin: Math.PI - 0.06, toe: 0 }],
-    arms: [{ upper: 0, fore: 0 }, { upper: 0.12, fore: 0.12 }],
+  carryArms: [{ upper: 0.6, fore: 2.2 }, { upper: 0.9, fore: 2.4 }], // pole held up at the face, tip down the runway (as in the original)
+  plantArms: [{ upper: 2.9, fore: 2.75 }, { upper: 2.7, fore: 2.55 }], // both hands up to the pole
+  // Mirrored from here (flip: true).
+  turn: {
+    flip: true, hipX: 0, hipY: 0, lean: 2.4,
+    legs: [{ thigh: -2.35, shin: -2.3, toe: 0 }, { thigh: -2.45, shin: -2.4, toe: 0 }],
+    arms: [{ upper: 0.15, fore: 0.2 }, { upper: 0.05, fore: 0.1 }],
   },
   overBar: {
-    hipX: 0, hipY: 0, lean: -1.8,
-    legs: [{ thigh: 1.3, shin: 0.8, toe: 0 }, { thigh: 1.2, shin: 0.7, toe: 0 }],
-    arms: [{ upper: -2.0, fore: -2.2 }, { upper: -1.85, fore: -2.05 }],
+    flip: true, hipX: 0, hipY: 0, lean: 1.5,
+    legs: [{ thigh: -0.9, shin: -0.2, toe: 0.4 }, { thigh: -1.1, shin: -0.4, toe: 0.4 }],
+    arms: [{ upper: 0.25, fore: 0.35 }, { upper: 0.1, fore: 0.2 }],
   },
-  fallBack: {
-    hipX: 0, hipY: 0, lean: -1.45,
-    legs: [{ thigh: 2.5, shin: 2.1, toe: 0 }, { thigh: 2.4, shin: 2.0, toe: 0 }],
-    arms: [{ upper: -2.3, fore: -2.5 }, { upper: -2.15, fore: -2.35 }],
+  hang: {
+    flip: true, hipX: 0, hipY: 0, lean: 1.2,
+    legs: [{ thigh: -0.4, shin: 0.1, toe: 0.3 }, { thigh: -0.6, shin: -0.05, toe: 0.3 }],
+    arms: [{ upper: 0.3, fore: 0.5 }, { upper: 0.15, fore: 0.35 }],
+  },
+  drop: {
+    flip: true, hipX: 0, hipY: 0, lean: -0.3,
+    legs: [{ thigh: 1.3, shin: 0.3, toe: 0 }, { thigh: 1.1, shin: 0.15, toe: 0 }],
+    arms: [{ upper: 2.4, fore: 2.8 }, { upper: -2.2, fore: -2.6 }],
   },
   landBack: {
-    hipX: 0, hipY: 0, lean: -1.4,
-    legs: [{ thigh: 2.8, shin: 2.3, toe: 0 }, { thigh: 2.7, shin: 2.2, toe: 0 }],
-    arms: [{ upper: -2.4, fore: -2.6 }, { upper: -2.25, fore: -2.45 }],
+    flip: true, hipX: 0, hipY: -0.1, lean: -1.4,
+    legs: [{ thigh: 2.5, shin: 3.0, toe: 0 }, { thigh: 2.35, shin: 2.85, toe: 0 }],
+    arms: [{ upper: -2.6, fore: -2.9 }, { upper: -2.4, fore: -2.7 }],
   },
   lie: {
-    hipX: 0, hipY: -0.08, lean: -1.52,
-    legs: [{ thigh: 2.7, shin: 2.1, toe: 0 }, { thigh: 2.6, shin: 2.0, toe: 0 }],
-    arms: [{ upper: -2.5, fore: -2.8 }, { upper: -2.35, fore: -2.65 }],
+    flip: true, hipX: 0, hipY: -0.07, lean: -1.5,
+    legs: [{ thigh: 1.9, shin: 1.75, toe: -0.3 }, { thigh: 1.8, shin: 1.7, toe: -0.3 }],
+    arms: [{ upper: -2.2, fore: -2.5 }, { upper: -2.0, fore: -2.3 }],
   },
-  // Sitting up on the mat, then standing.
+  crouchMat: {
+    flip: true, hipX: 0, hipY: -0.28, lean: 0.55,
+    legs: [{ ...legIK(0, -0.28, 0.1, 0), toe: 0 }, { ...legIK(0, -0.28, 0.05, 0), toe: 0 }],
+    arms: [{ upper: 0.5, fore: 0.3 }, { upper: 0.4, fore: 0.2 }],
+  },
   sitMat: {
-    hipX: 0, hipY: -0.12, lean: 0.35,
+    flip: true, hipX: 0, hipY: -0.12, lean: -0.55,
     legs: [{ thigh: 1.45, shin: 1.55, toe: -0.3 }, { thigh: 1.4, shin: 1.5, toe: -0.3 }],
-    arms: [{ upper: 0.6, fore: 0.9 }, { upper: 0.5, fore: 0.8 }],
+    arms: [{ upper: -0.4, fore: -0.2 }, { upper: -0.5, fore: -0.3 }],
   },
 };
 
@@ -364,10 +386,12 @@ export function vaultSwingPose(alpha, u) {
   let k = clamp01((u - u0) / (u1 - u0));
   k = k * k * (3 - 2 * k);
   const leg = (j) => ({ thigh: alpha + lerp(a[j][0], b[j][0], k), shin: alpha + lerp(a[j][1], b[j][1], k), toe: 0 });
+  // Arms reach from the shoulders to the hands on the pole (along the body line, a little bent at first).
+  const bend = 0.35 * (1 - clamp01(u / 0.3));
   return {
     hipX: 0, hipY: 0, lean: -alpha,
     legs: [leg(0), leg(1)],
-    arms: [{ upper: alpha - Math.PI, fore: alpha - Math.PI }, { upper: alpha - Math.PI + 0.08, fore: alpha - Math.PI + 0.08 }],
+    arms: [{ upper: alpha - Math.PI - bend, fore: alpha - Math.PI + bend * 0.6 }, { upper: alpha - Math.PI - bend + 0.1, fore: alpha - Math.PI + bend * 0.6 + 0.1 }],
   };
 }
 
@@ -565,6 +589,10 @@ function shade(hex, k) {
 
 /** Screen position of hand `i` (0 near, 1 far) for a figure drawn with drawFigure(ctx, x, y, H, pose). */
 export function handPos(x, y, H, pose, i = 0) {
+  if (pose.flip) {
+    const p = handPos(x, y, H, { ...pose, flip: false }, i);
+    return { x: 2 * x - p.x, y: p.y };
+  }
   const hipX = x + pose.hipX * H;
   const hipY = y + pose.hipY * H;
   const sx = hipX + 0.9 * 0.32 * H * Math.sin(pose.lean);
@@ -591,6 +619,15 @@ export function headCircle(x, y, H, pose) {
  * @param groundY where its shadow goes (defaults to y; lower when the figure is in the air)
  */
 export function drawFigure(ctx, x, y, H, pose, colors, groundY = y) {
+  if (pose.flip) {
+    // Mirrored (facing -x): the pole vaulter after the turn at the top of the pole.
+    ctx.save();
+    ctx.translate(x, 0);
+    ctx.scale(-1, 1);
+    drawFigure(ctx, 0, y, H, { ...pose, flip: false }, colors, groundY);
+    ctx.restore();
+    return;
+  }
   const THIGH = 0.25 * H, SHIN = 0.25 * H, TORSO = 0.32 * H;
   const UPPER = 0.17 * H, FORE = 0.16 * H, HEAD = 0.085 * H;
   const lw = Math.max(2, 0.065 * H);

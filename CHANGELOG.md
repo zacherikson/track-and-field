@@ -4,6 +4,27 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 5.2: pole vault poses traced from the original, longer run-up
+Traced frame by frame (20 fps, zoomed on the athlete) from footage of the
+original and checked the same way in our game.
+- **Run-up** 40 → 55m (`poleVault.runway`). The pole is carried at the face,
+  tip down toward the track (`pole.carryAngle` 0.8 → −0.2), and sticks out
+  behind the hands (`pole.overhang` 0.45m). Plant speeds: casual 9.7, good
+  10.7, expert 12.1 m/s.
+- **Plant:** arms stretched overhead to the pole, leaning in behind it.
+- **On the pole:** lying back under the top of the pole, head toward the
+  runway, knees drawn up while it bends (it bends slowly at first now),
+  then the legs swing up to upside down.
+- **Off the top:** the vaulter turns to face the bar (the figure is mirrored
+  from here, new `flip` in drawFigure): upside down, tipping over, then face
+  down over the bar with the legs dangling, **hanging there** a moment as in
+  the original. Timed like the original rather than by gravity:
+  `poleVault.flight` { rise 0.4, hang 0.5, fall 0.5 } s.
+- **Down:** drops upright with the arms up, lands on the back with the legs
+  up, legs come down, sits up, rocks onto the feet, stands.
+- Heights: casual 4.43m, good 5.37m, expert 6.21m, near-perfect 6.78m;
+  Amateur winner 5.26m, Pro winner 5.99m (both sides moved together).
+
 ## Step 5.1: pole vault animation fixes (from frame-by-frame captures)
 - The body now hangs from the top of the pole by its hands, so the hands stay
   on the pole through the whole swing (before, the hips were placed on their

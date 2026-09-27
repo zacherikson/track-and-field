@@ -283,10 +283,10 @@ export const CONFIG = {
    */
   poleVault: {
     rounds: 3, // attempts; your best counts
-    runway: 40, // m from the start to the box
+    runway: 55, // m from the start to the box (a long run-up, as in the original)
     // The pole plants when your hips reach plantX: hands overhead at gripY,
     // pole tip in the box (plantX = -sqrt(length² - gripY²)).
-    pole: { length: 4.6, gripY: 2.0, carryAngle: 0.8 }, // m, m, rad above level while running
+    pole: { length: 4.6, gripY: 2.0, carryAngle: -0.2, overhang: 0.45 }, // m (box to hands), m, rad above level while running (negative: tip down toward the track, as in the original), m sticking out behind the hands
     zoneDistance: 12, // m before the plant: orange pads, strides stop, the pole comes down and the spark runs down it
     // Runway edge stripes, in m before the box (the plant is about 4.1 m out).
     runwayZones: [
@@ -302,7 +302,10 @@ export const CONFIG = {
     // Height cleared = base + perMps * (speed - vRef) + gain * quality, where
     // quality = pressWeight * plant + (1 - pressWeight) * release (each 0..1).
     height: { base: 1.4, perMps: 0.4, vRef: 9, gain: 4.0, pressWeight: 0.5 },
-    swing: { time: 1.2, bend: 0.22 }, // s from plant to the top of the pole; how much the pole bends (share of its length)
+    swing: { time: 1.1, bend: 0.22 }, // s from plant to the top of the pole; how much the pole bends (share of its length)
+    // Off the pole (from the original, not gravity): rise while turning to face
+    // the bar, hang face down over it, drop onto the mat (s).
+    flight: { rise: 0.4, hang: 0.5, fall: 0.5 },
     mat: { from: 0.4, to: 5.6, height: 0.8 }, // m past the box
     uprightX: 0.6, // m past the box
     landX: 1.8, // m past the box where you come down on the mat

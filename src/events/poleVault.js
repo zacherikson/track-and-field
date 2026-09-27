@@ -19,12 +19,22 @@ const RIGHT_KEYS = ['ArrowRight', 'KeyD', 'KeyX', 'KeyJ'];
 const BOTH_KEYS = ['Space', 'ArrowUp'];
 const ease = (k) => k * k * (3 - 2 * k);
 const easeOut = (k) => 1 - (1 - k) * (1 - k);
+/** The same pose seen in the mirror (for the turn at the top of the pole). */
+const mirror = (p) => ({
+  ...p,
+  flip: !p.flip,
+  hipX: -p.hipX,
+  lean: -p.lean,
+  legs: p.legs.map((l) => ({ ...l, thigh: -l.thigh, shin: -l.shin, toe: -(l.toe ?? 0) })),
+  arms: p.arms.map((a) => ({ upper: -a.upper, fore: -a.fore })),
+});
 const G = 9.81;
 const FIG_H = CONFIG.figure.height;
 // Where the hips are relative to the hands through the swing (0 = hanging
-// straight below, PI = upside down straight above): hang, swing under, rock
-// back, extend up the pole.
-const ALPHA_KEYS = [[0, 0], [0.15, 0.15], [0.45, 0.55], [0.65, 1.9], [0.85, 2.95], [1, Math.PI]];
+// straight below, PI = upside down straight above).
+// From the original: hanging in behind the hands at the plant, lying back level
+// under the top of the pole, then swinging up to upside down.
+const ALPHA_KEYS = [[0, -0.35], [0.1, -0.2], [0.3, 1.15], [0.45, 1.5], [0.7, 1.75], [0.88, 2.8], [1, Math.PI]];
 function alphaAt(u) {
   let i = 1;
   while (i < ALPHA_KEYS.length - 1 && u > ALPHA_KEYS[i][0]) i++;
@@ -247,7 +257,7 @@ export class PoleVault {
   swingAt(u) {
     const vt = this.vault;
     const phi = this.phi0 + (vt.phiCur - this.phi0) * (1 - Math.pow(1 - u, 1.6));
-    const c = this.L * (1 - this.cfg.swing.bend * Math.sin(Math.PI * u));
+    const c = this.L * (1 - this.cfg.swing.bend * Math.sin(Math.PI * u) ** 2); // bends slowly at first, as in the original
     const hands = { x: -c * Math.cos(phi), y: c * Math.sin(phi) };
     // A weak vault never gets the pole upright, so you don't get fully upside down either.
     const k = clamp((vt.phiCur - this.phi0) / (Math.PI / 2 - this.phi0), 0.45, 1);
@@ -287,8 +297,7 @@ export class PoleVault {
       }
     } else if (this.state === 'fly') {
       const f = this.fly;
-      const ta = Math.min(end - f.t0, f.T);
-      this.hip = { x: f.x0 + f.vx * ta, y: f.y0 + f.vy * ta - 0.5 * G * ta * ta };
+      this.hip = this.flyAt(Math.min(end - f.t0, f.T));
       this.peak = Math.max(this.peak, this.hip.y);
       if (end - f.t0 >= f.T) this.land(f.t0 + f.T);
     } else if (this.state === 'balk') {
@@ -322,17 +331,40 @@ export class PoleVault {
     this.setState('vault');
   }
 
-  /** Off the top of the pole: fly up to your height, over the bar, down onto the mat. */
+  /**
+   * Off the top of the pole, timed like the original rather than by gravity:
+   * rise to your height while turning to face the bar (`flight.rise`), hang
+   * face down over the bar (`flight.hang`), then drop onto the mat (`flight.fall`).
+   */
   takeOff(t) {
     const vt = this.vault;
+    const F = this.cfg.flight;
     const h0 = this.hip;
-    const peak = Math.max(vt.height, h0.y);
-    const vy = Math.sqrt(2 * G * Math.max(0, vt.height - h0.y));
-    const yLand = this.cfg.mat.height + 0.2;
-    const T = vy / G + Math.sqrt((2 * (peak - yLand)) / G);
-    this.fly = { t0: t, x0: h0.x, y0: h0.y, vx: (this.cfg.landX - h0.x) / T, vy, T, poleT: t, phiEnd: vt.sw.phi };
+    const xb = this.cfg.uprightX;
+    this.fly = {
+      t0: t, x0: h0.x, y0: h0.y, peak: Math.max(vt.height, h0.y), yLand: this.cfg.mat.height + 0.2,
+      xa: xb - 0.1, xc: xb + 0.35, T: F.rise + F.hang + F.fall, poleT: t, phiEnd: vt.sw.phi,
+      topPose: mirror(vt.sw.pose),
+    };
     this.peak = h0.y;
     this.setState('fly');
+  }
+
+  /** Hips during the flight, `ta` s after leaving the pole. */
+  flyAt(ta) {
+    const f = this.fly;
+    const F = this.cfg.flight;
+    const L = this.cfg.landX;
+    if (ta < F.rise) {
+      const k = easeOut(ta / F.rise);
+      return { x: f.x0 + (f.xa - f.x0) * k, y: f.y0 + (f.peak - f.y0) * k };
+    }
+    if (ta < F.rise + F.hang) {
+      const k = (ta - F.rise) / F.hang;
+      return { x: f.xa + (f.xc - f.xa) * k, y: f.peak - 0.15 * k * k };
+    }
+    const k = clamp((ta - F.rise - F.hang) / F.fall, 0, 1);
+    return { x: f.xc + (L - f.xc) * k, y: f.peak - 0.15 + (f.yLand - f.peak + 0.15) * k * k };
   }
 
   land(t) {
@@ -455,11 +487,20 @@ export class PoleVault {
       case 'vault':
         return (this.vault.sw ?? this.swingAt(this.vault.u)).pose;
       case 'fly': {
-        // Off the top: push, face down over the bar (legs over first), fall back, onto your back.
+        // Off the top (traced from the original): turn to face the bar, face down
+        // over it with the legs dangling, hang there, then drop onto your back.
         const f = this.fly;
-        const k = (now - f.t0) / f.T;
-        const up = Math.max(0.2, f.vy / G / f.T); // share of the flight spent going up
-        return sampleTrack([[0, V.push], [up, V.overBar], [up + 0.55 * (1 - up), V.fallBack], [1, V.landBack]], k);
+        const F = this.cfg.flight;
+        const ta = now - f.t0;
+        const pose = sampleTrack([
+          [0, f.topPose],
+          [F.rise * 0.7, V.turn],
+          [F.rise, V.overBar],
+          [F.rise + F.hang, V.hang],
+          [F.rise + F.hang + F.fall * 0.45, V.drop],
+          [f.T, V.landBack],
+        ], ta);
+        return { ...pose, flip: true };
       }
       case 'balk': {
         const ta = now - this.stateT;
@@ -469,9 +510,11 @@ export class PoleVault {
       default: {
         if (!this.fly) return POSES.stand;
         // On the mat: land on your back, lie there a moment, sit up, stand.
+        // On the mat (from the original): on your back, legs up, legs come down, sit up, stand.
         const age = now - (this.fly.t0 + this.fly.T);
-        const from = { ...wrapNear(this.lastAirPose ?? V.lie, V.lie), hipY: -0.2 / FIG_H };
-        return sampleTrack([[0, from], [0.15, V.lie], [0.8, V.lie], [1.3, V.sitMat], [1.9, { ...POSES.stand, hipX: 0.2 }]], age);
+        const from = { ...wrapNear(this.lastAirPose ?? V.landBack, V.landBack), hipY: V.landBack.hipY };
+        const pose = sampleTrack([[0, from], [0.12, V.landBack], [0.45, V.landBack], [0.85, V.lie], [1.2, V.sitMat], [1.5, V.crouchMat], [1.9, POSES.stand]], age);
+        return { ...pose, flip: true };
       }
     }
   }
@@ -569,11 +612,18 @@ export class PoleVault {
     const ny = dx / d;
     const flip = nx > 0 || ny < 0 ? 1 : -1; // toward the pit / up
     const c = { x: mx + nx * sag * 2 * flip, y: my + ny * sag * 2 * flip };
+    // The end of the pole sticks out behind the hands, as in the original.
+    const tx = a.x - c.x;
+    const ty = a.y - c.y;
+    const tl = Math.hypot(tx, ty) || 1;
+    const over = this.cfg.pole.overhang * pxPerM;
+    const e = { x: a.x + (tx / tl) * over, y: a.y + (ty / tl) * over };
     ctx.lineCap = 'round';
     ctx.strokeStyle = '#2e6b12';
     ctx.lineWidth = Math.max(3, 0.05 * H);
     ctx.beginPath();
-    ctx.moveTo(a.x, a.y);
+    ctx.moveTo(e.x, e.y);
+    ctx.lineTo(a.x, a.y);
     ctx.quadraticCurveTo(c.x, c.y, b.x, b.y);
     ctx.stroke();
     ctx.strokeStyle = '#9be14a';

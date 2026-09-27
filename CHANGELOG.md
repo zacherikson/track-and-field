@@ -4,6 +4,32 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 2.26: kick back into the blocks; speed-driven running animation
+From the original's footage:
+- **Waiting:** athletes stand *in front of* their blocks, just behind the line.
+- **Getting into the blocks** (READY):
+  - bend over;
+  - drop onto the hands at the line (`squat`);
+  - kick the rear leg straight back into the rear block (`kickRear`);
+  - kick the front leg back (`kickFront`);
+  - settle.
+  - Keyframed over `crouchTime` 0.7 → 1.2s; `readyTime` 2.2 → 2.5s so everyone
+    settles before GET SET.
+- **Running animation** was about twice too fast: a fixed 2.2m per leg cycle
+  meant about 11 steps/s at top speed.
+  - The stride now lengthens with speed: `strideBase` 1.4m + `stridePerMps` 0.3m
+    per m/s. That's about 2m per cycle jogging and 5m at 12 m/s, so legs turn over
+    faster *and* reach further as you speed up.
+
+    | Speed | Steps/s |
+    |---|---|
+    | 4 m/s | 3.1 |
+    | 8 m/s | 4.2 |
+    | 12 m/s | 4.8 (real elite sprinters: about 4.5–5) |
+
+  - Knee lift, back-kick and arm swing scale with speed (`v/11`, minimum 0.15), so
+    a jog looks like a jog and a sprint looks like a sprint.
+
 ## Step 2.25: real starting blocks, feet planted on them
 - **Blocks** redrawn side-on at the athletes' scale:
   - a dark rail on the track;

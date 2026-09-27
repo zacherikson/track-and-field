@@ -43,6 +43,14 @@ function legIK(hx, hy, ax, ay) {
   return { thigh, shin: Math.atan2(ax - kx, ay - ky) };
 }
 
+/** Legs for a hip position with feet flat on the track at the given toe x's. */
+function flatLegs(hipX, hipY, frontX, rearX) {
+  return [
+    { ...legIK(hipX, hipY, frontX - FOOT_L, 0), toe: 0 },
+    { ...legIK(hipX, hipY, rearX - FOOT_L, 0), toe: 0 },
+  ];
+}
+
 /** Legs for a hip position with both feet planted on the starting blocks. */
 function blockLegs(hipX, hipY) {
   const toe = BLOCK_FEET.plateAngle; // foot points forward-down along the plate
@@ -67,6 +75,25 @@ export const POSES = {
     legs: [{ thigh: 0.55, shin: -0.25 }, { thigh: 0.05, shin: -0.55 }],
     arms: [{ upper: 0.25, fore: 0.15 }, { upper: 0.12, fore: 0.05 }],
   },
+  // Getting into the blocks (from footage of the original): drop forward onto
+  // the hands at the line with the feet still in front of the blocks...
+  squat: {
+    hipX: -0.1, hipY: -0.24, lean: 1.2,
+    legs: flatLegs(-0.1, -0.24, 0.02, -0.04),
+    arms: [{ upper: 0.05, fore: 0.05 }, { upper: -0.02, fore: -0.02 }],
+  },
+  // ...kick the rear leg straight back into the rear block...
+  kickRear: {
+    hipX: -0.13, hipY: -0.27, lean: 1.3,
+    legs: [flatLegs(-0.13, -0.27, 0.0, 0)[0], { thigh: -1.35, shin: -1.55, toe: 0.3 }],
+    arms: [{ upper: 0.05, fore: 0.05 }, { upper: -0.02, fore: -0.02 }],
+  },
+  // ...then the front leg back into the front block, rear foot already placed.
+  kickFront: {
+    hipX: -0.15, hipY: -0.27, lean: 1.25,
+    legs: [{ thigh: -1.2, shin: -1.45, toe: 0.3 }, blockLegs(-0.15, -0.27)[1]],
+    arms: [{ upper: 0.05, fore: 0.05 }, { upper: -0.02, fore: -0.02 }],
+  },
   // "On your marks / Ready": feet on the blocks, rear knee down near the track, hands on the line.
   blocks: {
     hipX: -0.16, hipY: -0.26, lean: 1.2,
@@ -81,7 +108,11 @@ export const POSES = {
   },
 };
 
-/** Running pose from a stride phase (radians) and intensity amp (0..1, grows with speed). */
+/**
+ * Running pose from a stride phase (radians) and intensity amp (0..1, grows with
+ * speed): a jog has small steps, low knees and short arm swing; a full sprint
+ * has high knees, big back-kick and wide arm drive.
+ */
 export function runPose(phase, amp) {
   const legs = [0, 1].map((i) => {
     const q = phase + i * Math.PI;

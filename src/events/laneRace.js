@@ -10,8 +10,6 @@ import { TrackRenderer } from '../render/track.js';
 import { ORANGE, drawPad } from '../render/pads.js';
 import { flow } from '../flow.js';
 
-// Standing pose shifted back so the athlete waits behind their starting blocks.
-const STAND_BEHIND = { ...POSES.stand, hipX: -0.48 };
 
 /**
  * Base scene for lane races (100m now, 110m hurdles next).
@@ -301,16 +299,29 @@ export class LaneRace {
     const c = this.cfg.countdown;
     const ease = (k) => k * k * (3 - 2 * k);
     if (this.state === 'waiting') {
-      // Standing at the line, shifting weight a little.
-      // Standing behind the blocks, shifting weight a little.
+      // Standing in front of the blocks, just behind the line, shifting weight a little.
       const s = Math.sin(now * 1.7 + a.idlePhase);
-      return { ...STAND_BEHIND, hipY: STAND_BEHIND.hipY + 0.006 * s, lean: STAND_BEHIND.lean + 0.02 * s };
+      return { ...POSES.stand, hipY: POSES.stand.hipY + 0.006 * s, lean: POSES.stand.lean + 0.02 * s };
     }
     if (this.state === 'ready') {
-      // Wait a beat, step forward and bend down, then settle into the blocks.
+      // Wait a beat, drop onto the hands at the line, kick the rear leg back
+      // into its block, then the front leg, and settle (as in the original).
       const k = clamp((now - this.stateT - a.crouchDelay) / c.crouchTime, 0, 1);
-      if (k < 0.5) return lerpPose(STAND_BEHIND, POSES.bend, ease(k / 0.5));
-      return lerpPose(POSES.bend, POSES.blocks, ease((k - 0.5) / 0.5));
+      const keys = [
+        [0, POSES.stand],
+        [0.18, POSES.bend],
+        [0.34, POSES.squat],
+        [0.55, POSES.kickRear],
+        [0.78, POSES.kickFront],
+        [1, POSES.blocks],
+      ];
+      for (let i = 1; i < keys.length; i++) {
+        if (k <= keys[i][0]) {
+          const [k0, p0] = keys[i - 1];
+          return lerpPose(p0, keys[i][1], ease((k - k0) / (keys[i][0] - k0)));
+        }
+      }
+      return POSES.blocks;
     }
     if (this.state === 'set') {
       return lerpPose(POSES.blocks, POSES.set, ease(clamp((now - this.stateT - a.setDelay) / c.riseTime, 0, 1)));
@@ -318,7 +329,7 @@ export class LaneRace {
     // Racing. Until an athlete reacts to the gun they hold the set position.
     const d = r.x - r.startX; // meters out of the blocks
     if (d <= 0 && r.v === 0 && !r.finished) return POSES.set;
-    const amp = clamp(r.v / 9, 0.3, 1);
+    const amp = clamp(r.v / 11, 0.15, 1); // knee lift, back-kick and arm swing grow with speed
     const run = runPose(r.phase, amp);
     if (r.mode === 'lean') return leanPose(run, r.leanAmount);
     // Drive phase: out of the blocks low and pitched forward, rising to upright.

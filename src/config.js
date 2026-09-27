@@ -56,7 +56,11 @@ export const CONFIG = {
     idleGrace: 1.2, // a gap must exceed this x your usual interval before it slows you
     maxIntervalForAvg: 0.6, // s; long pauses count as this, so you recover quickly
     minStrideInterval: 0.01, // s; inputs closer than this to the last stride are ignored (two-thumb chords)
-    strideLength: 2.2, // m per full leg cycle (animation only)
+    // Animation only: meters per full leg cycle (two steps) grows with speed, like
+    // real sprinters (about 2.5 m jogging, about 5 m at full speed). So legs turn
+    // over faster AND reach further as you speed up.
+    strideBase: 1.4, // m per cycle at a standstill
+    stridePerMps: 0.3, // extra m per cycle for each m/s
   },
 
   /**
@@ -92,9 +96,9 @@ export const CONFIG = {
     playerLane: 1, // 1 = nearest the camera: the player always runs in the front lane
     startBlink: { period: 0.5, on: 0.3 }, // s: start button + player's lane flash on/off before READY
     countdown: {
-      readyTime: 2.2, // s of READY: athletes wait a beat, crouch into the blocks, settle
+      readyTime: 2.5, // s of READY: athletes wait a beat, crouch into the blocks, settle
       crouchDelay: [0.25, 0.55], // s after READY before each athlete starts to crouch (staggered)
-      crouchTime: 0.7, // s from standing to settled in the blocks (via a bent-over pose)
+      crouchTime: 1.2, // s from standing to settled: bend, hands down, kick rear leg back, then front
       setDelay: [0, 0.18], // s after GET SET before each athlete's hips start to rise
       riseTime: 0.4, // s to rise from the blocks into the set position
       setMin: 1.1, // "GET SET" lasts a random time in [setMin, setMax]

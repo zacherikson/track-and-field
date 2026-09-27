@@ -276,6 +276,44 @@ export const CONFIG = {
    * AI opponents tap like the player does, through the same runner physics,
    * with per-athlete cadence drawn from a range. Tune difficulty here.
    */
+  /**
+   * POLE VAULT, from footage of the original (see poleVaultRules.js). The box
+   * (where the pole plants) is at world x = 0; the run-up uses the 100m's
+   * targets and runner physics.
+   */
+  poleVault: {
+    rounds: 3, // attempts; your best counts
+    runway: 40, // m from the start to the box
+    // The pole plants when your hips reach plantX: hands overhead at gripY,
+    // pole tip in the box (plantX = -sqrt(length² - gripY²)).
+    pole: { length: 4.6, gripY: 2.0, carryAngle: 0.8 }, // m, m, rad above level while running
+    zoneDistance: 12, // m before the plant: orange pads, strides stop, the pole comes down and the spark runs down it
+    // Runway edge stripes, in m before the box (the plant is about 4.1 m out).
+    runwayZones: [
+      { from: 16, to: 12, color: '#ffd21f' },
+      { from: 12, to: 8, color: '#ff8a1c' },
+      { from: 8, to: 4.2, color: '#e8281e' },
+    ],
+    blink: { period: 0.36, on: 0.24 }, // s: the orange pads blink while the spark runs down
+    chordWindow: 0.12, // s: left + right presses this close together count as both
+    press: { window: 0.18, miss: 0.35 }, // s either side of the plant: plant quality falls to 0 at `window`; no press within `miss` and you run through (no height)
+    spark: { climbTime: 0.6 }, // s for the spark to climb back up the pole while you hold
+    release: { window: 0.18 }, // s either side of the spark reaching your hands
+    // Height cleared = base + perMps * (speed - vRef) + gain * quality, where
+    // quality = pressWeight * plant + (1 - pressWeight) * release (each 0..1).
+    height: { base: 1.4, perMps: 0.4, vRef: 9, gain: 4.0, pressWeight: 0.5 },
+    swing: { time: 1.2, bend: 0.22 }, // s from plant to the top of the pole; how much the pole bends (share of its length)
+    mat: { from: 0.4, to: 5.6, height: 0.8 }, // m past the box
+    uprightX: 0.6, // m past the box
+    landX: 1.8, // m past the box where you come down on the mat
+    markHold: 2.4, // s after landing before the result banner
+    camera: { topFrac: 0.3 }, // the camera rises to keep the vaulter at least this far down the screen
+    ai: {
+      amateur: { cadence: [3.0, 3.8], pressErr: 0.14, releaseErr: 0.16, missChance: 0.07 },
+      pro: { cadence: [3.7, 4.5], pressErr: 0.08, releaseErr: 0.1, missChance: 0.03 },
+    },
+  },
+
   ai: {
     amateur: {
       cadence: [2.6, 3.4], // strides/s range across the field (median time about 10.4s)

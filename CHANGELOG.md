@@ -4,6 +4,33 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 5: Pole Vault
+From footage of the original.
+- **Three vaults**, best height counts, against five rivals. World record
+  6.95m, as in the original.
+- **Run-up** (40m): the 100m's green targets, carrying the pole up in front.
+- **Plant zone** (`poleVault.zoneDistance` 12m before the plant): the pads turn
+  orange and blink, strides stop, the pole comes down and a **spark** runs from
+  your hands to its tip. It reaches the tip as the tip plants in the box.
+- **Press and HOLD both** at the plant: plant quality falls to 0 at
+  `press.window` 0.18s either side. No press within `press.miss` 0.35s: you
+  come off the pole, **NO HEIGHT**.
+- While you hold, the spark **climbs back up** the pole (`spark.climbTime`
+  0.6s). **Let go** as it reaches your hands: release quality falls to 0 at
+  `release.window` 0.18s either side.
+- **Height** = `height.base` 1.4 + `perMps` 0.4 × (plant speed − 9) + `gain` 4.0
+  × (half plant + half release quality).
+- The vault: the pole bends as you swing up it, you go upside down, push off
+  the top, arch over the bar and drop onto the mat. The camera rises with you.
+  The uprights show heights, the world record and your last vault, with the
+  bar at your best.
+- Simulator (best of 3): casual 4.71m, good 5.49m, expert 6.20m, near-perfect
+  6.72m. Amateur winner 5.41m, Pro winner 6.04m.
+- Tuning panel: a Pole Vault group (plant zone, windows, spark climb, height
+  rewards, swing look).
+- Input: scenes can now ask for finger lifts and key releases (holds);
+  the other events are unchanged.
+
 ## Step 4.13: lower arc, bigger hop, longer stretch window (tuning panel)
 Tuned on the phone:
 - `longJump.flight.heightScale` 1.8 → 1.5 (look only).

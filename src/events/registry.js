@@ -1,6 +1,7 @@
 import { Sprint100 } from './sprint100.js';
 import { Hurdles110 } from './hurdles110.js';
 import { LongJump } from './longJump.js';
+import { PoleVault } from './poleVault.js';
 
 // The list of events shown on the menu. Each available event provides
 // `create()` returning its play scene.
@@ -62,7 +63,25 @@ export const EVENTS = [
     },
   },
   { id: 'javelin', name: 'Javelin', record: 98.5, unit: 'm', lowerIsBetter: false, available: false },
-  { id: 'polevault', name: 'Pole Vault', record: 6.2, unit: 'm', lowerIsBetter: false, available: false },
+  {
+    id: 'polevault',
+    name: 'Pole Vault',
+    record: 6.95,
+    unit: 'm',
+    lowerIsBetter: false,
+    available: true,
+    againLabel: 'Vault again',
+    howTo: [
+      'Three vaults; your best height counts. Tap the green targets to run up.',
+      'Near the box the pads turn ORANGE and a spark runs down your pole.',
+      'When it reaches the tip the pole plants: press and HOLD both.',
+      'The spark climbs back up the pole: let go when it reaches your hands.',
+      'Desktop: ← → to run, hold Space to plant, let go to push off.',
+    ],
+    create() {
+      return new PoleVault(this);
+    },
+  },
 ];
 
 export function formatMark(ev, value) {

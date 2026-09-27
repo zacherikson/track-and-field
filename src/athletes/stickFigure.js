@@ -300,6 +300,80 @@ export const JUMP_POSES = {
   },
 };
 
+/**
+ * POLE VAULT (our own keyframes, from the motion of the original).
+ * While on the pole the body is placed by the swing: the hips hang from the
+ * hands at angle `alpha` (0 = straight below the hands, PI = straight above,
+ * upside down). The torso and arms line up with the pole top; the legs are
+ * keyframed relative to that line (vaultSwingPose). Then off the top of the
+ * pole: push (upside down), arched face down over the bar, falling back, and
+ * on the mat: lie on your back, sit up, stand.
+ */
+const SWING_LEGS = [
+  [0, [[1.2, 0.25], [-0.5, -0.8]]], // takeoff: lead knee up, trail leg behind
+  [0.3, [[0.35, -0.2], [-0.25, -0.7]]], // hanging on the bending pole, trail leg back
+  [0.55, [[1.9, 0.9], [1.8, 0.8]]], // rock back: knees to the chest
+  [0.8, [[0.1, 0], [0.05, 0]]], // extension: straight up the pole
+  [1, [[0, 0], [0, 0]]],
+];
+export const VAULT_POSES = {
+  carryArms: [{ upper: 0.35, fore: 1.75 }, { upper: 0.75, fore: 2.05 }], // pole held at the chest
+  plantArms: [{ upper: 3.0, fore: 3.05 }, { upper: 2.85, fore: 2.95 }], // hands up for the plant
+  push: {
+    hipX: 0, hipY: 0, lean: -Math.PI,
+    legs: [{ thigh: Math.PI, shin: Math.PI, toe: 0 }, { thigh: Math.PI - 0.05, shin: Math.PI - 0.05, toe: 0 }],
+    arms: [{ upper: 0, fore: 0 }, { upper: 0.1, fore: 0.1 }],
+  },
+  overBar: {
+    hipX: 0, hipY: 0, lean: -4.14,
+    legs: [{ thigh: 4.34, shin: 4.5, toe: 0 }, { thigh: 4.2, shin: 4.4, toe: 0 }],
+    arms: [{ upper: 1.0, fore: 1.0 }, { upper: 0.9, fore: 0.9 }],
+  },
+  fallBack: {
+    hipX: 0, hipY: 0, lean: -4.78,
+    legs: [{ thigh: 3.9, shin: 4.3, toe: 0 }, { thigh: 3.8, shin: 4.2, toe: 0 }],
+    arms: [{ upper: 2.2, fore: 2.4 }, { upper: 2.0, fore: 2.2 }],
+  },
+  lie: {
+    hipX: 0, hipY: -0.08, lean: 1.52,
+    legs: [{ thigh: 3.6 - 2 * Math.PI, shin: 4.3 - 2 * Math.PI, toe: 0 }, { thigh: 3.45 - 2 * Math.PI, shin: 4.2 - 2 * Math.PI, toe: 0 }],
+    arms: [{ upper: 2.4, fore: 2.6 }, { upper: 2.2, fore: 2.4 }],
+  },
+  sitMat: {
+    hipX: 0.05, hipY: -0.12, lean: 0.3,
+    legs: [{ thigh: 1.45, shin: 1.55, toe: -0.3 }, { thigh: 1.4, shin: 1.5, toe: -0.3 }],
+    arms: [{ upper: 0.6, fore: 0.9 }, { upper: 0.5, fore: 0.8 }],
+  },
+};
+
+/** On the pole: hips at `alpha` from the hands, swing progress u (0 plant .. 1 top of the pole). */
+export function vaultSwingPose(alpha, u) {
+  let i = 1;
+  while (i < SWING_LEGS.length - 1 && u > SWING_LEGS[i][0]) i++;
+  const [u0, a] = SWING_LEGS[i - 1];
+  const [u1, b] = SWING_LEGS[i];
+  let k = clamp01((u - u0) / (u1 - u0));
+  k = k * k * (3 - 2 * k);
+  const leg = (j) => ({ thigh: alpha + lerp(a[j][0], b[j][0], k), shin: alpha + lerp(a[j][1], b[j][1], k), toe: 0 });
+  return {
+    hipX: 0, hipY: 0, lean: -alpha,
+    legs: [leg(0), leg(1)],
+    arms: [{ upper: alpha - Math.PI, fore: alpha - Math.PI }, { upper: alpha - Math.PI + 0.08, fore: alpha - Math.PI + 0.08 }],
+  };
+}
+
+/** Copy of `pose` with every angle shifted by whole turns to lie nearest `ref`'s (so a blend doesn't spin). */
+export function wrapNear(pose, ref) {
+  const w = (a, r) => a + 2 * Math.PI * Math.round((r - a) / (2 * Math.PI));
+  return {
+    ...pose,
+    lean: w(pose.lean, ref.lean),
+    legs: pose.legs.map((l, i) => ({ ...l, thigh: w(l.thigh, ref.legs[i].thigh), shin: w(l.shin, ref.legs[i].shin) })),
+    arms: pose.arms.map((a, i) => ({ upper: w(a.upper, ref.arms[i].upper), fore: w(a.fore, ref.arms[i].fore) })),
+  };
+}
+const clamp01 = (k) => Math.max(0, Math.min(1, k));
+
 /** Sample a keyframe track [[t, pose], ...] at time t: eased between keys, held past the ends. */
 export function sampleTrack(keys, t) {
   if (t <= keys[0][0]) return keys[0][1];

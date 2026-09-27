@@ -112,6 +112,21 @@ export const GROUPS = [
     ],
   },
   {
+    title: 'Pole Vault',
+    blurb: 'The plant (press and hold as the spark reaches the tip) and the release (let go as it climbs back to your hands).',
+    params: [
+      { path: 'poleVault.zoneDistance', label: 'Plant zone', unit: 'm', min: 5, max: 20, step: 1, help: 'Meters before the plant where the pads turn orange and the spark starts down the pole.' },
+      { path: 'poleVault.press.window', label: 'Plant window', unit: 'ms', scale: 1000, min: 0.08, max: 0.5, step: 0.01, help: 'How far from the plant your press can be and still count for something. Tighter = harder.' },
+      { path: 'poleVault.spark.climbTime', label: 'Spark climb time', unit: 'ms', scale: 1000, min: 0.3, max: 1.5, step: 0.05, help: 'How long the spark takes to climb back up the pole while you hold.' },
+      { path: 'poleVault.release.window', label: 'Release window', unit: 'ms', scale: 1000, min: 0.08, max: 0.5, step: 0.01, help: 'How far from the spark reaching your hands you can let go and still get something. Tighter = harder.' },
+      { path: 'poleVault.height.gain', label: 'Timing reward', unit: 'm', min: 1, max: 6, step: 0.1, help: 'Height a perfect plant and release add over a botched one.' },
+      { path: 'poleVault.height.perMps', label: 'Speed reward', unit: 'm per m/s', min: 0, max: 1, step: 0.05, help: 'Extra height for each m/s of run-up speed at the plant.' },
+      { path: 'poleVault.height.base', label: 'Base height', unit: 'm', min: 0, max: 4, step: 0.1, help: 'Shifts every vault up or down.' },
+      { path: 'poleVault.swing.time', label: 'Swing time', unit: 'ms', scale: 1000, min: 0.6, max: 2.5, step: 0.05, help: 'From the plant to the top of the pole. Look only.' },
+      { path: 'poleVault.swing.bend', label: 'Pole bend', unit: '%', scale: 100, min: 0, max: 0.4, step: 0.01, help: 'How far the pole bends as you swing on it. Look only.' },
+    ],
+  },
+  {
     title: 'Troubleshooting',
     blurb: 'Tools for finding out why a tap did or didn’t count.',
     params: [

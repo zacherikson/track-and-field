@@ -18,9 +18,13 @@ export class RunwayRenderer extends TrackRenderer {
     this.footmarks = []; // takeoff footprints on the runway/board: { x, foul }
   }
 
-  drawTrack(ctx, view, camera) {
+  /**
+   * Infield grass and the runway strip up to world x `end`, with the colored
+   * edge stripes (`zones`) before x = 0.
+   */
+  drawRunway(ctx, view, camera, end) {
     const zN = this.zNear;
-    const z = (f) => zN + f; // depth across the single lane, 0 = near edge, 1 = far edge
+    const z = (f) => zN + f;
     ctx.fillStyle = '#4f9c41';
     ctx.fillRect(0, LAYOUT.farY, view.w, LAYOUT.nearY - LAYOUT.farY);
     // Mowed stripes on the infield.
@@ -31,19 +35,25 @@ export class RunwayRenderer extends TrackRenderer {
     // Runway: a strip down the middle of the lane, with white edge lines.
     const r0 = z(0.28), r1 = z(0.72);
     ctx.fillStyle = '#c1502e';
-    this.quad(ctx, camera, view, -this.runway - 20, this.pit.from, r0, r1);
+    this.quad(ctx, camera, view, -this.runway - 20, end, r0, r1);
     ctx.fillStyle = 'rgba(255,255,255,0.85)';
-    this.quad(ctx, camera, view, -this.runway - 20, this.pit.from, r0, r0 + 0.02);
-    this.quad(ctx, camera, view, -this.runway - 20, this.pit.from, r1 - 0.02, r1);
+    this.quad(ctx, camera, view, -this.runway - 20, end, r0, r0 + 0.02);
+    this.quad(ctx, camera, view, -this.runway - 20, end, r1 - 0.02, r1);
 
-    // Colored sections before the board, as in the original: the runway's
-    // edge stripes turn yellow, then orange, then red as you near the line.
+    // Colored sections before x = 0, as in the original: the runway's edge
+    // stripes turn yellow, then orange, then red as you near the line.
     const edge = 0.045;
     for (const zn of this.zones) {
       ctx.fillStyle = zn.color;
       this.quad(ctx, camera, view, -zn.from, -zn.to, r0, r0 + edge);
       this.quad(ctx, camera, view, -zn.from, -zn.to, r1 - edge, r1);
     }
+  }
+
+  drawTrack(ctx, view, camera) {
+    const z = (f) => this.zNear + f; // depth across the single lane, 0 = near edge, 1 = far edge
+    this.drawRunway(ctx, view, camera, this.pit.from);
+    const r0 = z(0.28), r1 = z(0.72);
 
     // Sand pit, wider than the runway, with a concrete rim.
     const p0 = z(0.16), p1 = z(0.84);

@@ -25,7 +25,8 @@ export class Input {
   constructor(canvas, view) {
     this.canvas = canvas;
     this.view = view;
-    this.queue = []; // { type: 'down'|'key', x, y, id, code, wall }
+    this.queue = []; // { type: 'down'|'up'|'key'|'keyup', x, y, id, code, wall }
+    this.wantReleases = false; // set by scenes that need holds ('up' for fingers/mouse, 'keyup' for keys)
     this.wallRef = performance.now();
     this.simRef = 0;
     this.lastConsumed = 0;
@@ -37,7 +38,9 @@ export class Input {
     window.addEventListener('touchend', (e) => this.onTouchEnd(e), opts);
     window.addEventListener('touchcancel', (e) => this.onTouchCancel(e), opts);
     window.addEventListener('pointerdown', (e) => this.onPointerDown(e), opts);
+    window.addEventListener('pointerup', (e) => this.onPointerUp(e), opts);
     window.addEventListener('keydown', (e) => this.onKey(e));
+    window.addEventListener('keyup', (e) => this.onKeyUp(e));
 
     // iOS Safari still fires some gestures despite touch-action: none.
     const block = (e) => e.preventDefault();
@@ -93,11 +96,33 @@ export class Input {
 
   onTouchEnd(e) {
     if (this.onGame(e)) e.preventDefault();
+    this.pushUps(e);
   }
 
   onTouchCancel(e) {
     // The phone took these touches back (a system gesture, usually from a screen edge).
     this.stats.cancels += e.changedTouches.length;
+    this.pushUps(e);
+  }
+
+  /** Finger lifts, for scenes that need holds. Lifts count wherever they happen. */
+  pushUps(e) {
+    if (!this.wantReleases) return;
+    const wall = this.wallTime(e);
+    for (const t of e.changedTouches) {
+      const p = this.toLogical(t.clientX, t.clientY);
+      this.queue.push({ type: 'up', x: p.x, y: p.y, id: 't' + t.identifier, wall });
+    }
+  }
+
+  onPointerUp(e) {
+    if (!this.wantReleases || e.pointerType === 'touch') return;
+    const p = this.toLogical(e.clientX, e.clientY);
+    this.queue.push({ type: 'up', x: p.x, y: p.y, id: e.pointerId, wall: this.wallTime(e) });
+  }
+
+  onKeyUp(e) {
+    if (this.wantReleases) this.queue.push({ type: 'keyup', code: e.code, wall: this.wallTime(e) });
   }
 
   onPointerDown(e) {

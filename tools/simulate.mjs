@@ -10,6 +10,7 @@ import { AIController } from '../src/athletes/ai.js';
 import { StrideTargets } from '../src/events/strideTargets.js';
 import { ButtonSet, HurdleRun, HurdleAI, hurdlePositions } from '../src/events/hurdleRules.js';
 import { jumpMark, rivalJump } from '../src/events/longJumpRules.js';
+import { pressQuality, releaseQuality, vaultHeight, rivalVault } from '../src/events/poleVaultRules.js';
 
 const STEP = CONFIG.loop.fixedStep;
 const D = CONFIG.sprint100.distance;
@@ -330,6 +331,74 @@ for (const level of ['amateur', 'pro']) {
   for (let i = 0; i < 100; i++) {
     const field = Array.from({ length: 5 }, () => {
       const ok = Array.from({ length: LJ.rounds }, () => rivalJump(lv, LJ, runUp)).filter((j) => !j.foul).map((j) => j.mark);
+      return ok.length ? Math.max(...ok) : 0;
+    });
+    bests.push(...field);
+    winners.push(Math.max(...field));
+  }
+  bests.sort((a, b) => a - b);
+  winners.sort((a, b) => a - b);
+  const q = (arr, p) => arr[Math.floor(p * (arr.length - 1))].toFixed(2);
+  console.log(`${level.padEnd(8)} rival best-of-3 median ${q(bests, 0.5)}; winner median ${q(winners, 0.5)}, top 10% ${q(winners, 0.9)}`);
+}
+
+// ---------------------------------------------------------------- pole vault
+
+const PV = CONFIG.poleVault;
+const pvPlantX = -Math.sqrt(PV.pole.length ** 2 - PV.pole.gripY ** 2);
+/** Speed at the plant after a run-up tapping at `rate` (or driven by `ai`). */
+function pvRunUp(rate, level = null) {
+  const r = new Runner(undefined, undefined, -PV.runway);
+  const ai = level && new AIController(r, level);
+  if (ai) ai.go(0);
+  else r.go(0);
+  let t = 0;
+  let next = 0.25;
+  while (r.x < pvPlantX && t < 20) {
+    if (pvPlantX - r.x <= PV.zoneDistance) r.carry();
+    else if (ai) ai.update(t, STEP, 0, Infinity);
+    else if (t >= next) {
+      r.stride(t);
+      next += 1 / rate;
+    }
+    r.update(STEP, t);
+    t += STEP;
+  }
+  return r.v;
+}
+/** A player pressing with timing error sd `psd` and releasing with sd `rsd` (s). */
+function pvPlayer(rate, psd, rsd) {
+  const v = pvRunUp(rate);
+  const vaults = Array.from({ length: PV.rounds }, () => {
+    const pe = gauss(0, psd);
+    if (Math.abs(pe) > PV.press.miss) return null; // missed the plant: no height
+    return vaultHeight({ v, pq: pressQuality(pe, PV.press), rq: releaseQuality(PV.spark.climbTime + gauss(0, rsd), PV) }, PV);
+  });
+  const ok = vaults.filter((h) => h != null);
+  return { v, best: ok.length ? Math.max(...ok) : 0, fails: vaults.length - ok.length };
+}
+console.log(`\nPOLE VAULT (best of 3; plant ±sd = press timing error, release ±sd = let-go error; world record 6.95)`);
+for (const [label, rate, psd, rsd] of [
+  ['casual   3.0/s, plant ±0.12s, release ±0.12s', 3.0, 0.12, 0.12],
+  ['good     3.7/s, plant ±0.07s, release ±0.07s', 3.7, 0.07, 0.07],
+  ['expert   4.7/s, plant ±0.04s, release ±0.04s', 4.7, 0.04, 0.04],
+  ['perfect  5.2/s, plant ±0.01s, release ±0.01s', 5.2, 0.01, 0.01],
+]) {
+  const res = Array.from({ length: 200 }, () => pvPlayer(rate, psd, rsd));
+  const bests = res.filter((r) => r.best > 0).map((r) => r.best);
+  const avg = bests.reduce((a, b) => a + b, 0) / bests.length;
+  const v = res.reduce((a, r) => a + r.v, 0) / res.length;
+  const fails = res.reduce((a, r) => a + r.fails, 0) / (res.length * PV.rounds);
+  console.log(`${label.padEnd(48)} plant speed ${v.toFixed(1)} m/s   best ${avg.toFixed(2)}m   no height ${(fails * 100).toFixed(0)}%`);
+}
+for (const level of ['amateur', 'pro']) {
+  const lv = { ...CONFIG.ai[level], ...PV.ai[level] };
+  const runUp = () => pvRunUp(0, lv);
+  const bests = [];
+  const winners = [];
+  for (let i = 0; i < 100; i++) {
+    const field = Array.from({ length: 5 }, () => {
+      const ok = Array.from({ length: PV.rounds }, () => rivalVault(lv, PV, runUp)).filter((j) => !j.fail).map((j) => j.mark);
       return ok.length ? Math.max(...ok) : 0;
     });
     bests.push(...field);

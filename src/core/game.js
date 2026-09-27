@@ -41,6 +41,7 @@ export class Game {
     this.scene = scene;
     scene.game = this;
     this.input.clear(); // don't let a tap from the old scene leak into the new one
+    this.input.wantReleases = !!scene.wantsReleases; // press-and-hold scenes also get finger lifts / key releases
     scene.enter?.();
   }
 

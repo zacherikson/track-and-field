@@ -4,6 +4,20 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 2.44: input check splits phone delay from game delay
+From a race on the phone, inside the Claude app viewer: 33 touches, 33 judged,
+nothing cancelled, worst frame 36ms, worst tap delay **121ms**. The game's
+queue accounts for at most a frame of that; the rest was the phone holding the
+touch before handing it to the page.
+- **New line: `Phone delay: typical X ms, worst Y ms · N slow (>60 ms), K near
+  edge, J with other thumb down`**. Measured from each touch's timestamp to
+  the page receiving it. "Near edge" means within 60px of the left or right
+  screen edge.
+- **New line: `Game: worst frame … · worst total tap delay …`**.
+- Suspect: the in-app viewer's own gestures (swipe to dismiss, edge swipes)
+  make iOS hold touches back while it decides. To compare, run the same race in
+  Safari.
+
 ## Step 2.43: raw touch input + input check on the results screen
 "Sometimes a tap doesn't register at full speed." In the browser test harness
 every tap was delivered and judged, so this hardens input and collects evidence

@@ -48,7 +48,9 @@ export class Input {
 
   /** Counters for the results screen. `lagMax`: worst ms from a touch to the game handling it. */
   resetStats() {
-    this.stats = { touches: 0, cancels: 0, lagMax: 0 };
+    // delays: per touch, ms from the touch to the page receiving it (the phone's
+    // part), and whether it landed within 60 px of the left/right screen edge.
+    this.stats = { touches: 0, cancels: 0, lagMax: 0, delays: [] };
   }
 
   /** Only touches on the game itself: the tuning panel and other overlays keep normal behavior. */
@@ -80,8 +82,11 @@ export class Input {
     if (!this.onGame(e)) return;
     e.preventDefault(); // no zoom, scroll, callout or synthesized mouse events
     const wall = this.wallTime(e);
+    const deliver = performance.now() - wall;
     for (const t of e.changedTouches) {
       this.stats.touches++;
+      const edge = Math.min(t.clientX, window.innerWidth - t.clientX) < 60;
+      this.stats.delays.push({ ms: deliver, edge, fingers: e.touches.length });
       this.push(t.clientX, t.clientY, 't' + t.identifier, wall);
     }
   }

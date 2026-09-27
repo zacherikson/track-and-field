@@ -204,7 +204,21 @@ export class LaneRace {
     const s = this.game.input.stats;
     const judged = Object.values(this.tapCounts).reduce((a, b) => a + b, 0);
     const ignored = Object.entries(this.tapCounts).filter(([k]) => !['hit', 'miss', 'lean'].includes(k));
-    return { touches: s.touches, cancels: s.cancels, lagMax: s.lagMax, judged, ignored, worstFrameMs: this.game.worstFrameMs ?? 0 };
+    const d = s.delays.map((x) => x.ms).sort((a, b) => a - b);
+    const slow = s.delays.filter((x) => x.ms > 60);
+    return {
+      touches: s.touches,
+      cancels: s.cancels,
+      lagMax: s.lagMax,
+      judged,
+      ignored,
+      worstFrameMs: this.game.worstFrameMs ?? 0,
+      phoneTypical: d.length ? d[Math.floor(d.length / 2)] : 0,
+      phoneMax: d.length ? d[d.length - 1] : 0,
+      slow: slow.length,
+      slowEdge: slow.filter((x) => x.edge).length,
+      slowMulti: slow.filter((x) => x.fingers > 1).length,
+    };
   }
 
   drawTapMarkers(ctx, view) {

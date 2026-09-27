@@ -99,11 +99,15 @@ export class ResultScene {
       const i = this.stats.input;
       const ign = i.ignored.map(([k, v]) => `${v} ${k}`).join(', ');
       const l1 = `Touches ${i.touches} · judged ${i.judged}${ign ? ` (ignored: ${ign})` : ''}${i.cancels ? ` · ${i.cancels} cancelled by phone` : ''}`;
-      const l2 = `Worst frame ${Math.round(i.worstFrameMs)} ms · worst tap delay ${Math.round(i.lagMax)} ms`;
-      const warn = i.cancels > 0 || i.touches !== i.judged || i.worstFrameMs > 100;
+      const ms = (v) => `${Math.round(v)} ms`;
+      const slow = i.slow ? ` · ${i.slow} slow (>60 ms)${i.slowEdge ? `, ${i.slowEdge} near edge` : ''}${i.slowMulti ? `, ${i.slowMulti} with other thumb down` : ''}` : '';
+      const l2 = `Phone delay: typical ${ms(i.phoneTypical)}, worst ${ms(i.phoneMax)}${slow}`;
+      const l3 = `Game: worst frame ${ms(i.worstFrameMs)} · worst total tap delay ${ms(i.lagMax)}`;
+      const warn = i.cancels > 0 || i.touches !== i.judged || i.worstFrameMs > 100 || i.slow > 0;
       const color = warn ? 'rgba(255,190,90,0.9)' : 'rgba(255,255,255,0.45)';
       text(ctx, l1, cx, y + 96, { size: 13, weight: 500, color, maxWidth: colW });
       text(ctx, l2, cx, y + 114, { size: 13, weight: 500, color, maxWidth: colW });
+      text(ctx, l3, cx, y + 132, { size: 13, weight: 500, color, maxWidth: colW });
     }
 
     // Right column: standings.

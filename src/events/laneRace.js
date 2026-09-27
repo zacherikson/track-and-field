@@ -5,10 +5,11 @@ import { text, roundRect } from '../core/ui.js';
 import { Runner } from '../athletes/runner.js';
 import { AIController } from '../athletes/ai.js';
 import { HERO, RIVALS } from '../athletes/roster.js';
-import { drawFigure, runPose, lerpPose, leanPose, POSES } from '../athletes/stickFigure.js';
+import { drawFigure, runPose, lerpPose, leanPose, handReach, POSES } from '../athletes/stickFigure.js';
 import { TrackRenderer } from '../render/track.js';
 import { ORANGE, drawPad } from '../render/pads.js';
 import { flow } from '../flow.js';
+
 
 /**
  * Base scene for lane races (100m now, 110m hurdles next).
@@ -36,7 +37,8 @@ export class LaneRace {
 
   enter() {
     const cfg = this.cfg;
-    this.track = new TrackRenderer(cfg.lanes, cfg.distance);
+    this.track = new TrackRenderer(cfg.lanes, cfg.distance, cfg.startX);
+    this.track.blocksNudge = (lane) => this.laneNudge(lane);
     this.camera = new Camera();
 
     // Build the field: player in their lane, rivals in the others.
@@ -55,6 +57,7 @@ export class LaneRace {
         ai: isPlayer ? null : new AIController(runner, this.difficulty),
         mark: null,
         status: 'ok',
+        idlePhase: rand(0, Math.PI * 2), // so the waiting athletes don't sway in unison
       });
     }
     this.player = this.athletes.find((a) => a.isPlayer);
@@ -84,6 +87,11 @@ export class LaneRace {
   startCountdown(t) {
     const c = this.cfg.countdown;
     this.resetField();
+    // Each athlete moves on their own timing, like real sprinters.
+    for (const a of this.athletes) {
+      a.crouchDelay = rand(...c.crouchDelay);
+      a.setDelay = rand(...c.setDelay);
+    }
     this.state = 'ready';
     this.stateT = t;
     this.setT = t + c.readyTime;
@@ -231,7 +239,7 @@ export class LaneRace {
     const H = CONFIG.figure.height * this.camera.ppm;
     for (let i = this.athletes.length - 1; i >= 0; i--) {
       const a = this.athletes[i];
-      const p = this.track.toScreen(this.camera, view, a.runner.x + a.runner.reach * 0.5, a.lane);
+      const p = this.track.toScreen(this.camera, view, a.runner.x + a.runner.reach * 0.5 + this.startNudge(a), a.lane);
       if (p.x < -80 || p.x > view.w + 80) continue;
       const scale = this.track.figureScale(a.lane);
       drawFigure(ctx, p.x, p.y + 4, H * scale, this.poseFor(a), a.colors);
@@ -241,6 +249,32 @@ export class LaneRace {
     this.drawControls(ctx, view);
     this.drawBanner(ctx, view);
     if (this.game.debug) this.drawDebug(ctx, view);
+  }
+
+  /**
+   * Runners are drawn at nearly the same size in every lane while the track
+   * shrinks with distance, so a crouched athlete's hands would sit a different
+   * distance from the line in each lane. At the start we shift each lane's
+   * drawing so the hands are `handGap` behind the line everywhere, fading the
+   * shift out over the first 2 m (physics positions are untouched: fair race).
+   */
+  startNudge(a) {
+    const r = a.runner;
+    const fade = Math.max(0, 1 - (r.x - r.startX) / 2);
+    return fade === 0 ? 0 : this.laneNudge(a.lane) * fade;
+  }
+
+  /** The start-position drawing shift for a lane (see startNudge), cached. */
+  laneNudge(lane) {
+    this.nudges ??= {};
+    if (this.nudges[lane] == null) {
+      const z = this.track.laneZ(lane);
+      const H0 = CONFIG.figure.height * this.camera.ppm;
+      const handPx = Math.max(handReach(POSES.blocks), handReach(POSES.set)) * H0 * this.track.figureScale(lane);
+      const handM = handPx / (this.camera.ppm * this.track.scaleAt(z));
+      this.nudges[lane] = -this.cfg.handGap - (this.cfg.startX + handM);
+    }
+    return this.nudges[lane];
   }
 
   /** The start button and the player's lane flash together: on, off, on, off... */
@@ -262,14 +296,45 @@ export class LaneRace {
   poseFor(a) {
     const r = a.runner;
     const now = this.game.time;
-    if (this.state === 'waiting') return POSES.stand;
-    if (this.state === 'ready') return POSES.blocks;
-    if (this.state === 'set') return lerpPose(POSES.blocks, POSES.set, clamp((now - this.stateT) / 0.45, 0, 1));
-    // Racing: blend out of the set position over the first ~1.2m, into standing as they stop.
-    const amp = clamp(r.v / 9, 0.3, 1);
-    const run = runPose(r.phase, amp);
+    const c = this.cfg.countdown;
+    const ease = (k) => k * k * (3 - 2 * k);
+    if (this.state === 'waiting') {
+      // Standing in front of the blocks, just behind the line, shifting weight a little.
+      const s = Math.sin(now * 1.7 + a.idlePhase);
+      return { ...POSES.stand, hipY: POSES.stand.hipY + 0.006 * s, lean: POSES.stand.lean + 0.02 * s };
+    }
+    if (this.state === 'ready') {
+      // Wait a beat, drop onto the hands at the line, kick the rear leg back
+      // into its block, then the front leg, and settle (as in the original).
+      const k = clamp((now - this.stateT - a.crouchDelay) / c.crouchTime, 0, 1);
+      const keys = [
+        [0, POSES.stand],
+        [0.18, POSES.bend],
+        [0.34, POSES.squat],
+        [0.55, POSES.kickRear],
+        [0.78, POSES.kickFront],
+        [1, POSES.blocks],
+      ];
+      for (let i = 1; i < keys.length; i++) {
+        if (k <= keys[i][0]) {
+          const [k0, p0] = keys[i - 1];
+          return lerpPose(p0, keys[i][1], ease((k - k0) / (keys[i][0] - k0)));
+        }
+      }
+      return POSES.blocks;
+    }
+    if (this.state === 'set') {
+      return lerpPose(POSES.blocks, POSES.set, ease(clamp((now - this.stateT - a.setDelay) / c.riseTime, 0, 1)));
+    }
+    // Racing. Until an athlete reacts to the gun they hold the set position.
+    const d = r.x - r.startX; // meters out of the blocks
+    if (d <= 0 && r.v === 0 && !r.finished) return POSES.set;
+    const amp = clamp(r.v / 11, 0.15, 1); // knee lift, back-kick and arm swing grow with speed
+    // Drive phase: out of the blocks low and pitched forward, rising to upright.
+    const drive = Math.pow(clamp(1 - d / this.cfg.driveDistance, 0, 1), 1.5);
+    const run = runPose(r.phase, amp, drive);
     if (r.mode === 'lean') return leanPose(run, r.leanAmount);
-    if (r.x < 1.2) return lerpPose(POSES.set, run, clamp(r.x / 1.2, 0, 1));
+    if (d < 0.8) return lerpPose(POSES.set, run, ease(clamp(d / 0.8, 0, 1)));
     if (r.finished && r.v < 2) return lerpPose(POSES.stand, run, r.v / 2);
     return run;
   }

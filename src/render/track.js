@@ -1,4 +1,6 @@
 import { text } from '../core/ui.js';
+import { CONFIG } from '../config.js';
+import { BLOCK_FEET } from '../athletes/stickFigure.js';
 
 /**
  * Side-on stadium with real one-point perspective, framed like the original:
@@ -33,9 +35,11 @@ export const LAYOUT = {
 };
 
 export class TrackRenderer {
-  constructor(lanes, distance) {
+  /** @param blocksX world x (m) of the athletes' start position, for drawing starting blocks */
+  constructor(lanes, distance, blocksX = null) {
     this.lanes = lanes;
     this.distance = distance;
+    this.blocksX = blocksX;
     const L = LAYOUT;
     const ratio = (L.nearY - L.horizonY) / (L.farY - L.horizonY);
     this.zNear = lanes / (ratio - 1);
@@ -224,34 +228,113 @@ export class TrackRenderer {
       if (m > 0 && m < this.distance) line(m, 2, 'rgba(255,255,255,0.35)');
     }
     line(0, 5, '#fff');
-    line(this.distance, 5, '#fff');
-    this.drawFinishChecker(ctx, view, camera);
+    // Finish (as in the original): a single white line, no checkerboard.
+    const D = this.distance;
+    line(D, 5, '#fff');
+    this.drawFinishTicks(ctx, view, camera);
+    if (this.blocksX != null) this.drawStartBlocks(ctx, view, camera);
 
-    // Lane numbers painted just past the start line and past the finish.
+    // Lane numbers: small and upright just past the start line; big and painted
+    // flat on the track, turned sideways, just before the finish line.
     for (let k = 1; k <= this.lanes; k++) {
       const z = this.laneZ(k);
       const size = Math.round(12 + 14 * this.scaleAt(z));
-      for (const xm of [0.9, this.distance + 0.9]) {
-        const p = this.project(camera, view, xm, z);
-        if (p.x < -40 || p.x > view.w + 40) continue;
-        text(ctx, String(this.laneNumber(k)), p.x, p.y + 1, { size, color: 'rgba(255,255,255,0.9)' });
-      }
+      const p = this.project(camera, view, 0.9, z);
+      if (p.x > -40 && p.x < view.w + 40) text(ctx, String(this.laneNumber(k)), p.x, p.y + 1, { size, color: 'rgba(255,255,255,0.9)' });
+      this.drawPaintedNumber(ctx, view, camera, this.laneNumber(k), D - 1.1, z);
     }
     this.drawFinishPost(ctx, view, camera);
   }
 
-  drawFinishChecker(ctx, view, camera) {
-    const D = this.distance;
-    if (this.project(camera, view, D, this.zNear).x < -60 && this.project(camera, view, D, this.zFar).x < -60) return;
-    const sq = 0.25; // lane widths per checker row
-    const w = 0.14; // meters per checker column
-    for (let row = 0; row < this.lanes / sq; row++) {
-      const z0 = this.zNear + row * sq;
-      for (let c = 0; c < 2; c++) {
-        ctx.fillStyle = (row + c) % 2 ? '#111' : '#fff';
-        this.quad(ctx, camera, view, D + 0.08 + c * w, D + 0.08 + (c + 1) * w, z0, z0 + sq);
+  /**
+   * Starting blocks in every lane, drawn side-on at the same scale as the
+   * athletes so their feet sit on the footplates: a dark rail on the track with
+   * two angled red footplates (each propped by a strut), whose bases are where
+   * the toes touch the track (BLOCK_FEET).
+   */
+  drawStartBlocks(ctx, view, camera) {
+    if (this.project(camera, view, this.blocksX, this.zNear).x < -80 && this.project(camera, view, this.blocksX, this.zFar).x < -80) return;
+    const H0 = CONFIG.figure.height * camera.ppm;
+    const ang = BLOCK_FEET.plateAngle;
+    for (let k = this.lanes; k >= 1; k--) {
+      const o = this.project(camera, view, this.blocksX + (this.blocksNudge?.(k) ?? 0), this.laneZ(k));
+      const Hk = H0 * this.figureScale(k);
+      const gy = o.y + 4; // athletes' feet are drawn 4 px below the lane centre
+      const px = (u) => o.x + u * Hk;
+      // Rail: from behind the rear plate to just past the front one.
+      const r0 = px(BLOCK_FEET.rear - 0.14);
+      const r1 = px(BLOCK_FEET.front + 0.05);
+      const th = Math.max(3, 0.028 * Hk);
+      ctx.fillStyle = '#3b4250';
+      ctx.fillRect(r0, gy - th, r1 - r0, th);
+      ctx.fillStyle = '#9aa3b2';
+      ctx.fillRect(r0, gy - th, r1 - r0, Math.max(1, th * 0.35));
+      for (const tx of [BLOCK_FEET.rear, BLOCK_FEET.front]) {
+        const bx = px(tx + 0.02); // + half a limb stroke: the drawn foot's rounded toe reaches past the toe point
+        const len = 0.13 * Hk; // plate length along its slope
+        const topX = bx - len * Math.cos(ang);
+        const topY = gy - len * Math.sin(ang);
+        // Strut behind the plate.
+        ctx.strokeStyle = '#3b4250';
+        ctx.lineWidth = Math.max(2, 0.02 * Hk);
+        ctx.beginPath();
+        ctx.moveTo(topX + 0.2 * (bx - topX), topY + 0.2 * (gy - topY));
+        ctx.lineTo(topX - 0.02 * Hk, gy - th);
+        ctx.stroke();
+        // Footplate: thick red slab with a lighter face where the sole goes.
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = '#b3172b';
+        ctx.lineWidth = Math.max(4, 0.05 * Hk);
+        ctx.beginPath();
+        ctx.moveTo(bx, gy - th * 0.5);
+        ctx.lineTo(topX, topY);
+        ctx.stroke();
+        ctx.strokeStyle = '#ef4f5f';
+        ctx.lineWidth = Math.max(1.5, 0.016 * Hk);
+        ctx.beginPath();
+        ctx.moveTo(bx + 0.008 * Hk, gy - th * 0.8);
+        ctx.lineTo(topX + 0.012 * Hk, topY - 0.01 * Hk);
+        ctx.stroke();
+        ctx.lineCap = 'butt';
       }
     }
+  }
+
+  /** A short dash across the middle of each lane at 5, 4 and 3 m before the line. */
+  drawFinishTicks(ctx, view, camera) {
+    const D = this.distance;
+    if (this.project(camera, view, D - 6, this.zNear).x > view.w + 60) return;
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+    for (const back of [5, 4, 3]) {
+      for (let k = 1; k <= this.lanes; k++) {
+        const zc = this.laneZ(k);
+        ctx.lineWidth = 1 + 1.5 * this.scaleAt(zc);
+        const a = this.project(camera, view, D - back, zc - 0.28);
+        const b = this.project(camera, view, D - back, zc + 0.28);
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.stroke();
+      }
+    }
+  }
+
+  /**
+   * A big lane number painted on the track, turned sideways (its top points in
+   * the running direction) and squashed to the lane's height, like the original.
+   */
+  drawPaintedNumber(ctx, view, camera, n, xm, z) {
+    const p = this.project(camera, view, xm, z);
+    if (p.x < -80 || p.x > view.w + 80) return;
+    const pxPerM = camera.ppm * this.scaleAt(z);
+    const laneH = this.yAt(z - 0.5) - this.yAt(z + 0.5);
+    const size = (0.95 * pxPerM) / 0.72; // digit height covers ~0.95 m of track
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.scale(1, (0.8 * laneH) / (0.62 * size)); // digit width fills ~80% of the lane
+    ctx.rotate(Math.PI / 2);
+    text(ctx, String(n), 0, 0, { size, color: 'rgba(255,255,255,0.92)', weight: 800 });
+    ctx.restore();
   }
 
   drawFinishPost(ctx, view, camera) {

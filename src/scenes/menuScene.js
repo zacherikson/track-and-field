@@ -64,7 +64,7 @@ export class MenuScene {
     // Demo runner loops across the bottom of the screen.
     const speed = 9;
     this.demoX += speed * dt;
-    this.phase += ((speed * dt) / 2.3) * Math.PI * 2;
+    this.phase += ((speed * dt) / (CONFIG.runner.strideBase + CONFIG.runner.stridePerMps * speed)) * Math.PI * 2;
   }
 
   render(ctx, view) {

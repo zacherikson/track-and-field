@@ -129,7 +129,7 @@ export class Runner {
       }
     }
     this.x += this.v * dt;
-    this.phase += ((this.v * dt) / p.strideLength) * Math.PI * 2;
+    this.phase += ((this.v * dt) / (p.strideBase + p.stridePerMps * this.v)) * Math.PI * 2;
   }
 
   /**

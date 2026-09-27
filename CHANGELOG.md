@@ -4,6 +4,149 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 2.29: sprint back-side mechanics (was a high-knees drill)
+The 2.28 foot path only worked in front of the body: the foot left the track
+just behind the hips, then went straight up and forward. Hip extension was
+missing, so it read as a high-knees drill. The foot path now loops behind:
+- **Push-off further back.** The planted foot sweeps from about 0.18m ahead of
+  the hips to about 0.47m behind (at sprint) and rolls up onto the toes. The
+  thigh ends up about 30° behind vertical.
+- **Trailing leg.** After push-off the leg keeps trailing back, nearly straight:
+  the rear leg of the airborne split. Then the heel folds up toward the
+  backside and the leg swings through.
+- **Lower knee drive.** The front thigh peaks at about 69° (was about 80°).
+- **Swing timing.** About 60% of the swing is spent behind the hips; the foot
+  drops quickly out front instead of hovering.
+- **Time on the track** is now the time a planted foot needs to cover its
+  sweep at running speed, so feet don't skate. That's about 15% of the cycle at
+  a sprint (real sprinters: about 20%) and 25% jogging.
+
+## Step 2.28: planted running legs, hip bob, 90° elbows at any speed
+From the original's run cycle:
+- **Legs** are now driven by a foot path, with the knee solved by IK. Before,
+  the angles swung freely and the leg was almost straight at full forward
+  reach, so the foot landed far out in front and looked floppy. Now:
+  - the foot lands just ahead of the hips (about 0.12m at sprint);
+  - it stays on the track while it sweeps back and rolls up onto the toes;
+  - the heel folds up toward the backside;
+  - the knee drives forward and high, then the foot paws down again.
+- **Stance vs flight:** each foot is on the track for about 30% of the cycle at
+  sprint, 40% jogging. Heel kick and knee drive grow with speed.
+- **Vertical bob:** the hips are lowest mid-stance and highest in the airborne
+  split. About ±0.03 body heights at sprint (±5cm), smaller jogging, halved in
+  the drive phase.
+- **Drive phase** (the lower hips and forward pitch out of the blocks) now goes
+  into the leg IK, so feet stay on the track instead of sinking into it.
+- **Elbow** held near 90° at every speed: about 100° jogging (was about 140°)
+  and 94° sprinting, still opening to about 114° at the back of the swing.
+
+## Step 2.27: bigger sprint arm swing, elbow drives back
+- The arm swing is bigger at speed and biased backwards: at full sprint the upper
+  arm swings from about 75° behind the body to the hand at chin height in front.
+  Before, it was about ±50°, mostly in front.
+- The elbow opens slightly at the back of the swing. The swing still scales with
+  speed, so jogging arms stay small.
+
+## Step 2.26: kick back into the blocks; speed-driven running animation
+From the original's footage:
+- **Waiting:** athletes stand *in front of* their blocks, just behind the line.
+- **Getting into the blocks** (READY):
+  - bend over;
+  - drop onto the hands at the line (`squat`);
+  - kick the rear leg straight back into the rear block (`kickRear`);
+  - kick the front leg back (`kickFront`);
+  - settle.
+  - Keyframed over `crouchTime` 0.7 → 1.2s; `readyTime` 2.2 → 2.5s so everyone
+    settles before GET SET.
+- **Running animation** was about twice too fast: a fixed 2.2m per leg cycle
+  meant about 11 steps/s at top speed.
+  - The stride now lengthens with speed: `strideBase` 1.4m + `stridePerMps` 0.3m
+    per m/s. That's about 2m per cycle jogging and 5m at 12 m/s, so legs turn over
+    faster *and* reach further as you speed up.
+
+    | Speed | Steps/s |
+    |---|---|
+    | 4 m/s | 3.1 |
+    | 8 m/s | 4.2 |
+    | 12 m/s | 4.8 (real elite sprinters: about 4.5–5) |
+
+  - Knee lift, back-kick and arm swing scale with speed (`v/11`, minimum 0.15), so
+    a jog looks like a jog and a sprint looks like a sprint.
+
+## Step 2.25: real starting blocks, feet planted on them
+- **Blocks** redrawn side-on at the athletes' scale:
+  - a dark rail on the track;
+  - two red footplates inclined about 49° (`BLOCK_FEET.plateAngle` 0.85 rad), each
+    propped by a strut;
+  - front plate about 0.45m and rear about 0.8m behind the hands, as in real blocks.
+- **Feet on the blocks:** READY and SET legs are now solved with two-bone IK so
+  both feet stay planted on the plates (toes on the track, soles on the plates),
+  including through the READY → SET rise. The READY rear knee rests just above
+  the track.
+- Feet can now be tilted (`toe` angle per leg) instead of always drawn flat.
+- **Waiting:** athletes stand behind their blocks, then step forward into them as
+  they crouch for READY.
+
+## Step 2.24: hands right behind the line
+- Crouched hands were 17–30cm behind the line, varying by lane: runners are drawn
+  at nearly the same size in every lane while the track shrinks with distance.
+- Each lane's runner (and its blocks) is now drawn shifted so the hands are
+  `sprint100.handGap` (5cm) behind the line in every lane.
+- The shift fades out over the first 2m of running. Physics start positions are
+  unchanged, so everyone still runs exactly the same distance.
+
+## Step 2.23: higher hips in the set position
+- `POSES.set` hip height −0.34 → −0.41 H and torso lean 1.45 → 1.68 rad: the hips
+  are now a little above the shoulders, like a real set position.
+- The legs straighten to match. Hands and feet stay on the track, and the hands
+  are still 17–30cm behind the start line in every lane.
+
+## Step 2.22: lifelike start sequence (from footage of the original)
+Frame-by-frame comparison showed the original stages the start where ours snapped:
+- **Starting blocks** in every lane: a grey rail with a red pedal under each foot.
+  They stay on the track after the start.
+- **Waiting:** athletes stand at their blocks, gently shifting their weight (each on
+  their own phase).
+- **READY** (`countdown.readyTime` 1.4 → 2.2s, close to the original's ~2.5s):
+  - Everyone keeps standing for a beat (`crouchDelay` 0.25–0.55s, random per
+    athlete).
+  - Then each one bends over (new `bend` pose) and settles into the blocks over
+    `crouchTime` 0.7s.
+  - Previously everyone snapped into the crouch instantly and in unison.
+- **GET SET:** hips rise over `riseTime` 0.4s, each athlete starting a little apart
+  (`setDelay` 0–0.18s).
+- **GO:** each athlete holds the set position until they react (the player until
+  their first correct tap). They push out low and pitched forward, then rise to
+  upright running over `driveDistance` 12m.
+  - Previously they went from the set position to fully upright within about 1m.
+
+## Step 2.21: single finish line and single dashes
+- The "double" lines in the reference footage were ghosting from filming a screen.
+  Now there's one finish line, and one dash per lane at 5, 4 and 3 m out.
+
+## Step 2.20: original-style finish; longer lean zone
+- Lean zone length (`dip.promptDistance`): 15 → 18 m. Tuned on the phone.
+- The finish now copies the original:
+  - a double white line (the checkerboard is removed);
+  - short double dashes across the middle of every lane at 5, 4 and 3 m before
+    the line;
+  - big lane numbers painted flat on the track just before the line, turned
+    sideways and squashed to each lane's height, so they follow the perspective.
+  - The finish post still stands on the far side.
+
+## Step 2.19: longer, smoother lean
+The 2.13 lean (about 0.4s in total) felt too rapid to be worth it. Now about 0.7s:
+- `riseTime` 0.2 → 0.32, `holdTime` 0.1 → 0.16, `recoverTime` 0.12 → 0.22.
+- The timing window is more forgiving and the reward is unchanged. Simulator, from
+  10.5 m/s:
+
+  | Lean timing | Effect |
+  |---|---|
+  | Perfect, or up to 2m late / 2m early | −0.06 to −0.10s |
+  | 3m early | +0.03s |
+  | 6m early | +0.11s |
+  | 8m early | +0.23s |
+
 ## Step 2.18: no "YOU" marker
 - Removed the "YOU" arrow above the player. The flashing lane before the start
   (and the front-lane position) already shows which runner is yours.

@@ -56,7 +56,11 @@ export const CONFIG = {
     idleGrace: 1.2, // a gap must exceed this x your usual interval before it slows you
     maxIntervalForAvg: 0.6, // s; long pauses count as this, so you recover quickly
     minStrideInterval: 0.01, // s; inputs closer than this to the last stride are ignored (two-thumb chords)
-    strideLength: 2.2, // m per full leg cycle (animation only)
+    // Animation only: meters per full leg cycle (two steps) grows with speed, like
+    // real sprinters (about 2.5 m jogging, about 5 m at full speed). So legs turn
+    // over faster AND reach further as you speed up.
+    strideBase: 1.4, // m per cycle at a standstill
+    stridePerMps: 0.3, // extra m per cycle for each m/s
   },
 
   /**
@@ -67,13 +71,13 @@ export const CONFIG = {
    * the line. Too early and you're upright again and slowing when you get there.
    */
   dip: {
-    promptDistance: 15, // m before the line where strides stop and the LEAN prompt shows
+    promptDistance: 18, // m before the line where strides stop and the LEAN prompt shows
     chordWindow: 0.06, // s; left + right presses this close together count as both thumbs
     armDelay: 0.3, // s after entering the zone before a lean can trigger (stray stride taps)
     reach: 1.0, // m the chest gets ahead of the hips at full lean
-    riseTime: 0.2, // s to reach full lean
-    holdTime: 0.1, // s held at full lean (brief: it pops straight back up)
-    recoverTime: 0.12, // s to straighten back up
+    riseTime: 0.32, // s to reach full lean (smooth, committed dip)
+    holdTime: 0.16, // s held at full lean
+    recoverTime: 0.22, // s to straighten back up
     leanDecel: 1.0, // m/s^2 lost while leaning
     postLeanDecel: 4.5, // m/s^2 lost once you straighten up before the line (leaned too early)
     minLeanSpeed: 4, // m/s; an early lean slows you to no less than this
@@ -87,11 +91,16 @@ export const CONFIG = {
     // Real start rules: no part of the body may touch the ground on or in front
     // of the line before the gun, so athletes line up with their hands just
     // behind it. The clock still runs from the gun to the line at 100m.
+    handGap: 0.05, // m: crouched hands are drawn this far behind the line in every lane
     startX: -0.55, // m: where each athlete's body starts relative to the line (hands clear it in every lane)
     playerLane: 1, // 1 = nearest the camera: the player always runs in the front lane
     startBlink: { period: 0.5, on: 0.3 }, // s: start button + player's lane flash on/off before READY
     countdown: {
-      readyTime: 1.4, // s showing "READY" (athletes settle in blocks)
+      readyTime: 2.5, // s of READY: athletes wait a beat, crouch into the blocks, settle
+      crouchDelay: [0.25, 0.55], // s after READY before each athlete starts to crouch (staggered)
+      crouchTime: 1.2, // s from standing to settled: bend, hands down, kick rear leg back, then front
+      setDelay: [0, 0.18], // s after GET SET before each athlete's hips start to rise
+      riseTime: 0.4, // s to rise from the blocks into the set position
       setMin: 1.1, // "GET SET" lasts a random time in [setMin, setMax]
       setMax: 2.3, // so the GO can't be anticipated
       goBanner: 0.7, // s the "GO!" text stays up
@@ -121,6 +130,7 @@ export const CONFIG = {
         grow: 1.35, // it expands from the pad's rim to this many radii
       },
     },
+    driveDistance: 12, // m out of the blocks over which runners rise from a low, forward drive to upright
     finishHold: 2.4, // s after you cross before the results screen
     maxRaceTime: 25, // s; give up and DNF after this
   },

@@ -330,12 +330,10 @@ export class LaneRace {
     const d = r.x - r.startX; // meters out of the blocks
     if (d <= 0 && r.v === 0 && !r.finished) return POSES.set;
     const amp = clamp(r.v / 11, 0.15, 1); // knee lift, back-kick and arm swing grow with speed
-    const run = runPose(r.phase, amp);
-    if (r.mode === 'lean') return leanPose(run, r.leanAmount);
     // Drive phase: out of the blocks low and pitched forward, rising to upright.
     const drive = Math.pow(clamp(1 - d / this.cfg.driveDistance, 0, 1), 1.5);
-    run.lean += 0.75 * drive;
-    run.hipY += 0.07 * drive;
+    const run = runPose(r.phase, amp, drive);
+    if (r.mode === 'lean') return leanPose(run, r.leanAmount);
     if (d < 0.8) return lerpPose(POSES.set, run, ease(clamp(d / 0.8, 0, 1)));
     if (r.finished && r.v < 2) return lerpPose(POSES.stand, run, r.v / 2);
     return run;

@@ -110,33 +110,88 @@ export const POSES = {
 
 /**
  * Running pose from a stride phase (radians) and intensity amp (0..1, grows with
- * speed): a jog has small steps, low knees and short arm swing; a full sprint
- * has high knees, big back-kick and wide arm drive.
+ * speed). Modelled on the original's run cycle: each foot lands close under the
+ * hips, sweeps back along the track, then the heel folds up toward the backside
+ * and the knee drives forward and high before the foot paws down again. The
+ * legs are solved with IK from that foot path, so the knee bends naturally and
+ * the planted foot never sinks into the track. The hips bob: lowest with a foot
+ * planted, highest in the airborne split between steps.
+ *
+ * `drive` (0..1) is the out-of-the-blocks drive phase: body pitched forward and
+ * low, feet landing further back.
  */
-export function runPose(phase, amp) {
+export function runPose(phase, amp, drive = 0) {
+  const a = amp;
+  const stance = 0.42 - 0.12 * a; // fraction of the cycle each foot is on the track
+  const reach = 0.55 + 0.45 * a; // longer foot travel at speed
+  const lift = 0.35 + 0.65 * a; // higher heel kick and knee drive at speed
+  const touchX = (0.07 - 0.07 * drive) * reach; // ankle lands just ahead of the hips
+  const pushX = -(0.14 + 0.1 * a) * reach; // ...and pushes off behind them
+  const kneeU = stance + (4 / 6) * (1 - stance); // point of the cycle where the knee is furthest forward
+
+  // Hip height: lowest mid-stance, highest mid-flight, twice per cycle.
+  const u0 = frac(phase / (2 * Math.PI) + kneeU - 0.25);
+  const bob = (0.012 + 0.018 * a) * (1 - 0.5 * drive);
+  const hipY = -0.485 + 0.07 * drive + bob * Math.cos(4 * Math.PI * (u0 - stance / 2));
+
   const legs = [0, 1].map((i) => {
-    const q = phase + i * Math.PI;
-    const thigh = 0.12 + 0.78 * amp * Math.sin(q);
-    // Knee folds most while the leg swings forward (cos q > 0), straight-ish in stance.
-    const fold = 0.15 + 1.7 * amp * Math.pow(Math.max(0, Math.cos(q)), 1.3);
-    return { thigh, shin: thigh - fold };
+    const u = frac(u0 + i * 0.5);
+    let ax, h, toe;
+    if (u < stance) {
+      // On the track: foot rolls from flat to up on the toes as it pushes off.
+      const k = u / stance;
+      ax = lerp(touchX, pushX, k);
+      toe = 0.9 * smoothstep(0.45, 1, k);
+      h = FOOT_L * Math.sin(toe); // heel lifts, toes stay on the track
+    } else {
+      const w = (u - stance) / (1 - stance);
+      const x = [pushX + 0.05, pushX, -0.2 * reach, -0.1 * reach, 0.1 * reach, 0.19 * reach, touchX + 0.03, touchX, touchX - 0.05];
+      const y = [0, FOOT_L * Math.sin(0.9), 0.13 * lift, 0.27 * lift, 0.28 * lift, 0.17 * lift, 0.05 * lift, 0, 0];
+      ax = catmull(x, w);
+      h = Math.max(0, catmull(y, w));
+      toe = piecewise([0.9, 0.4, 0.3, 0.1, -0.15, 0], w);
+    }
+    return { ...legIK(0, hipY, ax, -h), toe };
   });
+
   const arms = [0, 1].map((i) => {
-    const q = phase + i * Math.PI;
+    // Arms swing opposite to the legs: this arm is furthest back when this
+    // leg's knee is furthest forward.
+    const q = 2 * Math.PI * (u0 + i * 0.5 - kneeU) + Math.PI / 2;
     const back = Math.max(0, Math.sin(q)); // 1 at the end of the backswing
     // Swing biased backwards: at full speed the elbow drives far behind the body
     // (upper arm about 75° back) and the hand comes up to chin height in front.
-    const upper = 0.05 - amp * (0.25 + 1.05 * Math.sin(q));
-    // Elbow bent ~90°, opening a little at the back of the swing.
-    return { upper, fore: upper + 0.4 + 1.1 * amp - 0.35 * amp * back };
+    const upper = 0.05 - a * (0.25 + 1.05 * Math.sin(q));
+    // Elbow held near 90° at any speed (about 100° jogging, 94° sprinting),
+    // opening a little at the back of the swing.
+    return { upper, fore: upper + 1.3 + 0.2 * a - 0.35 * a * back };
   });
-  return {
-    hipX: 0,
-    hipY: -0.49 + 0.025 * amp * Math.cos(2 * phase),
-    lean: 0.06 + 0.22 * amp,
-    legs,
-    arms,
-  };
+
+  return { hipX: 0, hipY, lean: 0.06 + 0.22 * a + 0.75 * drive, legs, arms };
+}
+
+const frac = (x) => x - Math.floor(x);
+const smoothstep = (e0, e1, x) => {
+  const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0)));
+  return t * t * (3 - 2 * t);
+};
+/** Linear interpolation through evenly spaced values over t in [0, 1]. */
+function piecewise(v, t) {
+  const f = t * (v.length - 1);
+  const i = Math.min(v.length - 2, Math.floor(f));
+  return lerp(v[i], v[i + 1], f - i);
+}
+/**
+ * Catmull-Rom spline through evenly spaced points over t in [0, 1]. The first
+ * and last entries are only tangent guides (the curve runs from v[1] to v[n-2]).
+ */
+function catmull(v, t) {
+  const n = v.length - 3;
+  const f = t * n;
+  const i = Math.min(n - 1, Math.floor(f));
+  const s = f - i;
+  const [p0, p1, p2, p3] = [v[i], v[i + 1], v[i + 2], v[i + 3]];
+  return 0.5 * (2 * p1 + (p2 - p0) * s + (2 * p0 - 5 * p1 + 4 * p2 - p3) * s * s + (3 * p1 - p0 - 3 * p2 + p3) * s * s * s);
 }
 
 const lerp = (a, b, t) => a + (b - a) * t;

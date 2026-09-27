@@ -4,6 +4,25 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 2.28: planted running legs, hip bob, 90° elbows at any speed
+From the original's run cycle:
+- **Legs** are now driven by a foot path, with the knee solved by IK. Before,
+  the angles swung freely and the leg was almost straight at full forward
+  reach, so the foot landed far out in front and looked floppy. Now:
+  - the foot lands just ahead of the hips (about 0.12m at sprint);
+  - it stays on the track while it sweeps back and rolls up onto the toes;
+  - the heel folds up toward the backside;
+  - the knee drives forward and high, then the foot paws down again.
+- **Stance vs flight:** each foot is on the track for about 30% of the cycle at
+  sprint, 40% jogging. Heel kick and knee drive grow with speed.
+- **Vertical bob:** the hips are lowest mid-stance and highest in the airborne
+  split. About ±0.03 body heights at sprint (±5cm), smaller jogging, halved in
+  the drive phase.
+- **Drive phase** (the lower hips and forward pitch out of the blocks) now goes
+  into the leg IK, so feet stay on the track instead of sinking into it.
+- **Elbow** held near 90° at every speed: about 100° jogging (was about 140°)
+  and 94° sprinting, still opening to about 114° at the back of the swing.
+
 ## Step 2.27: bigger sprint arm swing, elbow drives back
 - The arm swing is bigger at speed and biased backwards: at full sprint the upper
   arm swings from about 75° behind the body to the hand at chin height in front.

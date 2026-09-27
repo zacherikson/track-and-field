@@ -4,6 +4,16 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 4.13: lower arc, bigger hop, longer stretch window (tuning panel)
+Tuned on the phone:
+- `longJump.flight.heightScale` 1.8 → 1.5 (look only).
+- `longJump.stretch.kickY` 1.2 → 1.3 m/s: a bigger double-jump hop.
+- `longJump.stretch.window` 0.75 → 0.95s: more time to press, and a given
+  reaction time loses less.
+- Everyone goes about 0.15–0.2m further, rivals included, so the balance
+  between you and them is unchanged: good player 7.97m, expert 9.37m, never
+  stretching 5.69m; Amateur winner 8.15m, Pro winner 9.14m.
+
 ## Step 4.12: faster flight (tuning panel)
 - `longJump.flight.slowMo.rate` 0.7 → 0.9 (tuned on the phone): a flight
   now takes about 1.05–1.2s, top of the jump at about 0.47s.

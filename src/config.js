@@ -234,7 +234,7 @@ export const CONFIG = {
     // distances are the same.
     flight: {
       slowMo: { rate: 0.9, ramp: 0.15 }, // the clock eases down to 0.9x over the first 0.15 s after takeoff
-      heightScale: 1.8, // the arc is drawn this much higher (as high as fits on screen)
+      heightScale: 1.5, // the arc is drawn this much higher
       airStrides: 0, // leg cycles "running in the air" on the way up (0 = the original's arch-back hang)
     },
     // Stretch animation (s after pressing): knees snap up, jackknife, legs out;
@@ -252,8 +252,8 @@ export const CONFIG = {
       // (times the stretch quality) from that moment, landing far out on your heels.
       // A mini double jump: a little hop up, then a long flat glide.
       carryX: 0.8, // forward speed after a perfect stretch, as a share of your takeoff speed
-      kickY: 1.2, // m/s hop upward
-      window: 0.75, // real s the pads stay up after the top of the jump; the later you press, the weaker the kick
+      kickY: 1.3, // m/s hop upward
+      window: 0.95, // real s the pads stay up after the top of the jump; the later you press, the weaker the kick
     },
     // Rivals: run-up pace from CONFIG.ai, plus where they take off relative to
     // the line (negative = over it: foul) and how late they stretch.

@@ -15,6 +15,9 @@
 <h1>Juno: long jump keyframes</h1>
 <p>Serve the repo (python3 -m http.server) and open /tools/sprites.html. Order: flight, stretch, landing; bottom row: the crumple without a stretch.</p>
 <canvas id="sheet"></canvas>
+<h1>Juno: javelin keyframes</h1>
+<p>Carry, withdrawal (held; the javelin angle rises), brace, release, follow-through, lunge.</p>
+<canvas id="javelin"></canvas>
 <script type="module">
 import { drawFigure, JUMP_POSES, POSES } from '../src/athletes/stickFigure.js';
 import { HERO } from '../src/athletes/roster.js';
@@ -51,6 +54,46 @@ rows.forEach((row, ri) => row.forEach((name, ci) => {
   ctx.font = '600 14px system-ui, sans-serif';
   ctx.fillText(name, x0 + 10, y0 + Hc - 12);
 }));
+
+// Javelin keyframes, with the javelin in the throwing hand.
+{
+  const { JAVELIN_POSES: J, runPose, handPos } = await import('../src/athletes/stickFigure.js');
+  const { drawJavelin } = await import('../src/render/javelinField.js');
+  const run = runPose(1.2, 1, 0);
+  const frames = [
+    ['carry', { ...run, arms: [J.carryArms[0], run.arms[1]] }, 0],
+    ['withdraw 20°', { ...run, lean: -0.12, arms: J.withdrawArms }, 20],
+    ['withdraw 36°', { ...runPose(2.6, 1, 0), lean: -0.12, arms: J.withdrawArms }, 36],
+    ['brace', J.brace, 36],
+    ['release', J.release, 36],
+    ['follow', J.follow, null],
+    ['lunge', J.lunge, null],
+  ];
+  const cv2 = document.getElementById('javelin');
+  const Wc = 170;
+  cv2.width = Wc * frames.length * dpr;
+  cv2.height = Hc * dpr;
+  cv2.style.width = `${Wc * frames.length}px`;
+  const c2 = cv2.getContext('2d');
+  c2.scale(dpr, dpr);
+  frames.forEach(([name, pose, deg], i) => {
+    const x0 = i * Wc;
+    c2.fillStyle = i % 2 ? '#dbe9f5' : '#cfe0ee';
+    c2.fillRect(x0, 0, Wc, Hc);
+    const ground = Hc - 34;
+    const x = x0 + Wc / 2 - 10;
+    drawFigure(c2, x, ground, H, pose, HERO.colors, ground);
+    if (deg != null) {
+      const hand = handPos(x, ground, H, pose, 0);
+      const a = (deg * Math.PI) / 180;
+      const len = 2.6 / 1.8 * H;
+      drawJavelin(c2, hand.x + Math.cos(a) * len * 0.1, hand.y - Math.sin(a) * len * 0.1, len, a, 3);
+    }
+    c2.fillStyle = '#1b2433';
+    c2.font = '600 13px system-ui, sans-serif';
+    c2.fillText(name, x0 + 8, Hc - 12);
+  });
+}
 </script>
 </body>
 </html>

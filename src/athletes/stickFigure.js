@@ -407,6 +407,46 @@ export function wrapNear(pose, ref) {
 }
 const clamp01 = (k) => Math.max(0, Math.min(1, k));
 
+/**
+ * JAVELIN KEYFRAMES, traced frame by frame from footage of the original (our
+ * own stick figure, not its art). The near arm (0) holds the javelin.
+ *   carryArms  running: javelin over the shoulder, level at head height,
+ *              throwing hand by the ear, the other arm pumping
+ *   withdraw   holding both: throwing arm drawn straight back at shoulder
+ *              height, free arm reaching forward, torso upright (legs keep
+ *              running: crossover steps)
+ *   brace      the last stride: leaning back, front leg reaching out to block,
+ *              javelin arm long behind, free arm up in front
+ *   release    the arm whips over the top, chest forward, front leg braced
+ *   follow     folding forward over the front leg, throwing arm down across,
+ *              rear leg swinging through
+ *   lunge      dropping down and forward onto the hands to stop at the line
+ */
+export const JAVELIN_POSES = {
+  carryArms: [{ upper: 1.95, fore: -2.25 }, { upper: 0.2, fore: 1.3 }],
+  withdrawArms: [{ upper: -1.72, fore: -1.78 }, { upper: 1.35, fore: 2.25 }],
+  brace: {
+    hipX: 0, hipY: -0.47, lean: -0.38,
+    legs: [{ ...legIK(0, -0.47, 0.3, 0), toe: 0 }, { ...legIK(0, -0.47, -0.3, -0.02), toe: 0.3 }],
+    arms: [{ upper: -1.95, fore: -2.05 }, { upper: 1.9, fore: 2.3 }],
+  },
+  release: {
+    hipX: 0.04, hipY: -0.47, lean: 0.2,
+    legs: [{ ...legIK(0.04, -0.47, 0.34, 0), toe: 0 }, { ...legIK(0.04, -0.47, -0.3, -0.06), toe: 0.5 }],
+    arms: [{ upper: 2.85, fore: 2.35 }, { upper: -0.6, fore: -0.2 }],
+  },
+  follow: {
+    hipX: 0.12, hipY: -0.42, lean: 0.95,
+    legs: [{ ...legIK(0.12, -0.42, 0.4, 0), toe: 0 }, { thigh: -0.9, shin: -1.7, toe: 0.4 }],
+    arms: [{ upper: 1.05, fore: 0.7 }, { upper: -1.0, fore: -0.6 }],
+  },
+  lunge: {
+    hipX: 0.2, hipY: -0.3, lean: 1.3,
+    legs: [{ ...legIK(0.2, -0.3, 0.5, 0), toe: 0 }, { thigh: -1.35, shin: -1.55, toe: 0.3 }],
+    arms: [{ upper: 0.55, fore: 0.35 }, { upper: 0.45, fore: 0.25 }],
+  },
+};
+
 /** Sample a keyframe track [[t, pose], ...] at time t: eased between keys, held past the ends. */
 export function sampleTrack(keys, t) {
   if (t <= keys[0][0]) return keys[0][1];

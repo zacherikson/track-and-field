@@ -277,6 +277,37 @@ export const CONFIG = {
    * with per-athlete cadence drawn from a range. Tune difficulty here.
    */
   /**
+   * JAVELIN, from footage of the original (see javelinRules.js). The foul line
+   * is at world x = 0; the run-up uses the 100m's targets and runner physics.
+   */
+  javelin: {
+    rounds: 3, // throws; your best counts
+    runway: 50, // m from the start to the foul line
+    zoneDistance: 20, // m before the line: orange pads, strides stop, press and hold both to draw the javelin back
+    // Runway edge stripes, in m before the line (as in the original: yellow, then red).
+    runwayZones: [
+      { from: 20, to: 10, color: '#ffd21f' },
+      { from: 10, to: 0.1, color: '#e8281e' },
+    ],
+    blink: { period: 0.36, on: 0.24 }, // s: the orange pads blink until you press
+    chordWindow: 0.12, // s: left + right presses this close together count as both
+    // Held: the javelin's angle climbs from `start` at `rate` deg/s, up to `max`.
+    // The best release angle is `best`; efficiency falls to 0 at `spread` deg off it.
+    angle: { start: 8, rate: 22, max: 78, best: 36, spread: 42 },
+    // Distance before the angle and the gap: base + perMps * (speed - vRef), in m.
+    distance: { base: 89, perMps: 8, vRef: 11 },
+    javelinLength: 2.6, // m
+    throwTime: 0.22, // s from letting go to the javelin leaving the hand
+    flight: { speed: 1, ppm: 62 }, // flight camera: time scale, px per m
+    landHold: 2.2, // s showing where it landed before the banner
+    overrun: 0.3, // m past the line still holding: foul
+    ai: {
+      amateur: { cadence: [3.0, 3.8], gap: [-0.25, 2.2], angleErr: 14 },
+      pro: { cadence: [3.7, 4.5], gap: [-0.1, 1.1], angleErr: 7 },
+    },
+  },
+
+  /**
    * POLE VAULT, from footage of the original (see poleVaultRules.js). The box
    * (where the pole plants) is at world x = 0; the run-up uses the 100m's
    * targets and runner physics.

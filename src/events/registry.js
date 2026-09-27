@@ -2,6 +2,7 @@ import { Sprint100 } from './sprint100.js';
 import { Hurdles110 } from './hurdles110.js';
 import { LongJump } from './longJump.js';
 import { PoleVault } from './poleVault.js';
+import { Javelin } from './javelin.js';
 
 // The list of events shown on the menu. Each available event provides
 // `create()` returning its play scene.
@@ -62,7 +63,25 @@ export const EVENTS = [
       return new LongJump(this);
     },
   },
-  { id: 'javelin', name: 'Javelin', record: 98.5, unit: 'm', lowerIsBetter: false, available: false },
+  {
+    id: 'javelin',
+    name: 'Javelin',
+    record: 104.8,
+    unit: 'm',
+    lowerIsBetter: false,
+    available: true,
+    againLabel: 'Throw again',
+    howTo: [
+      'Three throws; your best counts. Tap the green targets to run up.',
+      'Near the line the pads turn ORANGE: press and HOLD both.',
+      'The javelin is drawn back and its tip rises. Let go to throw.',
+      'Best angle is about 36°. Let go close to the line, but not past it: FOUL.',
+      'Desktop: ← → to run, hold Space and let go to throw.',
+    ],
+    create() {
+      return new Javelin(this);
+    },
+  },
   {
     id: 'polevault',
     name: 'Pole Vault',

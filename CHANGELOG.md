@@ -4,6 +4,32 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 6: Javelin
+From footage of the original, frame by frame.
+- **Three throws**, best counts, against five rivals. World record 104.80m,
+  as on the original's intro screen.
+- **Run-up** (50m): the 100m's green targets, javelin carried level over the
+  shoulder at head height, throwing hand by the ear.
+- **Throw zone** (`javelin.zoneDistance` 20m): the runway's edge stripes turn
+  yellow then red, the pads turn orange and blink, strides stop.
+- **Press and HOLD both:** the pads turn to rings (as in the original), the
+  throwing arm is drawn straight back and the javelin's tip rises
+  (`angle.start` 8° at `angle.rate` 22°/s) while you keep running; sparks
+  stream from its tail.
+- **Let go** to throw: brace, arm over the top, fold forward and drop onto the
+  hands. Best angle `angle.best` 36°. Measured from the foul line: let go past
+  it, or reach it still holding, and it's a FOUL (red flag).
+- **Flight shot:** the camera follows the javelin; the stands sink (hills,
+  sea, sails and clouds behind), distance boards slide past, live distance at
+  the top, fast-forward button to skip.
+- **Landing shot:** looking down the field: sector lines, arcs every 10m,
+  distance boards and the red WR board, the javelin stuck in the grass.
+- Distance = (`distance.base` 89 + `perMps` 8 × (speed − 11)) × angle
+  efficiency − the gap. Simulator: casual 75m, good 83m, expert 94m,
+  near-perfect 99m; Amateur winner 85m, Pro winner 92m.
+- Sprites: javelin keyframes in `JAVELIN_POSES`, drawn in `tools/sprites.html`.
+- Tuning panel: a Javelin group.
+
 ## Step 5.4: pole vault layout and swing from real vaulting references
 Checked against a phase diagram and a sequence photo of a real vault, with a
 new flat side-view tool (`tools/vault.html`).

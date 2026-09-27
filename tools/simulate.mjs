@@ -11,6 +11,7 @@ import { StrideTargets } from '../src/events/strideTargets.js';
 import { ButtonSet, HurdleRun, HurdleAI, hurdlePositions } from '../src/events/hurdleRules.js';
 import { jumpMark, rivalJump } from '../src/events/longJumpRules.js';
 import { pressQuality, releaseQuality, vaultHeight, rivalVault } from '../src/events/poleVaultRules.js';
+import { throwMark, rivalThrow } from '../src/events/javelinRules.js';
 
 const STEP = CONFIG.loop.fixedStep;
 const D = CONFIG.sprint100.distance;
@@ -399,6 +400,73 @@ for (const level of ['amateur', 'pro']) {
   for (let i = 0; i < 100; i++) {
     const field = Array.from({ length: 5 }, () => {
       const ok = Array.from({ length: PV.rounds }, () => rivalVault(lv, PV, runUp)).filter((j) => !j.fail).map((j) => j.mark);
+      return ok.length ? Math.max(...ok) : 0;
+    });
+    bests.push(...field);
+    winners.push(Math.max(...field));
+  }
+  bests.sort((a, b) => a - b);
+  winners.sort((a, b) => a - b);
+  const q = (arr, p) => arr[Math.floor(p * (arr.length - 1))].toFixed(2);
+  console.log(`${level.padEnd(8)} rival best-of-3 median ${q(bests, 0.5)}; winner median ${q(winners, 0.5)}, top 10% ${q(winners, 0.9)}`);
+}
+
+// ---------------------------------------------------------------- javelin
+
+const JV = CONFIG.javelin;
+/** Speed arriving at the line after a run-up tapping at `rate` (or driven by `level`'s AI). */
+function jvRunUp(rate, level = null) {
+  const r = new Runner(undefined, undefined, -JV.runway);
+  const ai = level && new AIController(r, level);
+  if (ai) ai.go(0);
+  else r.go(0);
+  let t = 0;
+  let next = 0.25;
+  while (r.x < -1 && t < 20) {
+    if (-r.x <= JV.zoneDistance) r.carry();
+    else if (ai) ai.update(t, STEP, 0, Infinity);
+    else if (t >= next) {
+      r.stride(t);
+      next += 1 / rate;
+    }
+    r.update(STEP, t);
+    t += STEP;
+  }
+  return r.v;
+}
+/** A player letting go `aim` s before the line (timing error sd `sd`), angle off by sd `asd` deg. */
+function jvPlayer(rate, aim, sd, asd) {
+  const v = jvRunUp(rate);
+  const throws = Array.from({ length: JV.rounds }, () => {
+    const gap = v * gauss(aim, sd);
+    if (gap < 0) return null;
+    return throwMark({ releaseX: -gap, v, deg: JV.angle.best + gauss(0, asd) }, JV);
+  });
+  const ok = throws.filter((j) => j != null);
+  return { v, best: ok.length ? Math.max(...ok) : 0, fouls: throws.length - ok.length };
+}
+console.log('\nJAVELIN (best of 3; aim = how early you let go, ±sd timing; angle ±deg; world record 104.80)');
+for (const [label, rate, aim, sd, asd] of [
+  ['casual   3.0/s, aim 0.12s ±0.08, angle ±12°', 3.0, 0.12, 0.08, 12],
+  ['good     3.7/s, aim 0.07s ±0.05, angle ±7°', 3.7, 0.07, 0.05, 7],
+  ['expert   4.7/s, aim 0.04s ±0.03, angle ±4°', 4.7, 0.04, 0.03, 4],
+  ['perfect  5.2/s, aim 0.02s ±0.01, angle ±1°', 5.2, 0.02, 0.01, 1],
+]) {
+  const res = Array.from({ length: 200 }, () => jvPlayer(rate, aim, sd, asd));
+  const bests = res.filter((r) => r.best > 0).map((r) => r.best);
+  const avg = bests.reduce((a, b) => a + b, 0) / bests.length;
+  const v = res.reduce((a, r) => a + r.v, 0) / res.length;
+  const fouls = res.reduce((a, r) => a + r.fouls, 0) / (res.length * JV.rounds);
+  console.log(`${label.padEnd(48)} speed ${v.toFixed(1)} m/s   best ${avg.toFixed(2)}m   fouls ${(fouls * 100).toFixed(0)}%`);
+}
+for (const level of ['amateur', 'pro']) {
+  const lv = { ...CONFIG.ai[level], ...JV.ai[level] };
+  const runUp = () => jvRunUp(0, lv);
+  const bests = [];
+  const winners = [];
+  for (let i = 0; i < 100; i++) {
+    const field = Array.from({ length: 5 }, () => {
+      const ok = Array.from({ length: JV.rounds }, () => rivalThrow(lv, JV, runUp)).filter((j) => !j.foul).map((j) => j.mark);
       return ok.length ? Math.max(...ok) : 0;
     });
     bests.push(...field);

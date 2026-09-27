@@ -127,6 +127,19 @@ export const GROUPS = [
     ],
   },
   {
+    title: 'Javelin',
+    blurb: 'Hold both to draw the javelin back (its angle rises), let go to throw.',
+    params: [
+      { path: 'javelin.zoneDistance', label: 'Throw zone', unit: 'm', min: 8, max: 30, step: 1, help: 'Meters before the foul line where the pads turn orange and you can start holding.' },
+      { path: 'javelin.angle.rate', label: 'Angle climb', unit: '°/s', min: 8, max: 60, step: 1, help: 'How fast the javelin tips up while you hold. Lower = more time to find the angle.' },
+      { path: 'javelin.angle.best', label: 'Best angle', unit: '°', min: 20, max: 50, step: 1, help: 'The release angle that throws furthest.' },
+      { path: 'javelin.angle.spread', label: 'Angle forgiveness', unit: '°', min: 15, max: 80, step: 1, help: 'How far off the best angle you can be before the throw is worth nothing. Higher = more forgiving.' },
+      { path: 'javelin.distance.base', label: 'Distance at 40 km/h', unit: 'm', min: 50, max: 110, step: 1, help: 'A perfect-angle throw at 11 m/s. Shifts every throw.' },
+      { path: 'javelin.distance.perMps', label: 'Speed reward', unit: 'm per m/s', min: 0, max: 15, step: 0.5, help: 'Extra distance for each m/s of run-up speed.' },
+      { path: 'javelin.flight.speed', label: 'Flight speed', unit: '×', min: 0.5, max: 3, step: 0.1, help: 'How fast the flight shot plays. Look only.' },
+    ],
+  },
+  {
     title: 'Troubleshooting',
     blurb: 'Tools for finding out why a tap did or didn’t count.',
     params: [

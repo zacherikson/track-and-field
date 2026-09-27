@@ -49,12 +49,12 @@ export const CONFIG = {
     topSpeed: 13.4, // m/s at full cadence
     accelMax: 10.0, // m/s^2 from standstill
     accelFalloff: 0.72, // accel shrinks by this fraction as speed approaches topSpeed
-    coastDecel: 3.0, // m/s^2 lost when your cadence is below what your speed needs
+    coastDecel: 4.0, // m/s^2 lost when your cadence is below what your speed needs
     finishDecel: 3.5, // m/s^2 braking after crossing the line
     cadenceSmoothing: 0.4, // 0..1 weight of the newest stride interval (higher = twitchier)
     idleGrace: 1.2, // a gap must exceed this x your usual interval before it slows you
     maxIntervalForAvg: 0.6, // s; long pauses count as this, so you recover quickly
-    minStrideInterval: 0.06, // s; inputs closer than this to the last stride are ignored (two-thumb chords)
+    minStrideInterval: 0.01, // s; inputs closer than this to the last stride are ignored (two-thumb chords)
     strideLength: 2.2, // m per full leg cycle (animation only)
   },
 
@@ -96,8 +96,8 @@ export const CONFIG = {
     targets: {
       maxSameSide: 2,
       switchChance: 0.5, // chance of switching sides when not forced
-      missLockout: 0.17, // s; a wrong-side tap freezes your input this long
-      missSpeedLoss: 1.0, // m/s lost on a wrong-side tap
+      missLockout: 0, // s; a wrong-side tap freezes your input this long (0 = none, like the original)
+      missSpeedLoss: 1.6, // m/s lost on a wrong-side tap
     },
     pads: {
       radius: 56, // target size (visual only; the hit zone is the whole screen half)
@@ -110,6 +110,7 @@ export const CONFIG = {
         startAlpha: 0.7, // slightly see-through at the top, solid when it lands
         trail: 2, // faint rim echoes trailing above it while it falls
       },
+      missX: 0.25, // s the red ✕ stays up after a wrong tap (visual only)
       hitRing: {
         duration: 0.18, // s the outline lasts after a hit
         grow: 1.35, // it expands from the pad's rim to this many radii
@@ -130,8 +131,8 @@ export const CONFIG = {
       jitter: 0.3, // +/- fraction of randomness on each stride interval (reaction variance)
       fatigue: 0.05, // cadence lost by the finish (fades in over the last 40%)
       missChance: 0.03, // chance a stride is a wrong-side tap instead
-      missSpeedLoss: 1.0, // same price the player pays
-      missLockout: 0.17,
+      missSpeedLoss: 1.6, // same price the player pays
+      missLockout: 0,
       dipError: [-1.2, 2.5], // m; AI dips at the ideal spot plus this (negative = late)
     },
     pro: {
@@ -140,8 +141,8 @@ export const CONFIG = {
       jitter: 0.22,
       fatigue: 0.03,
       missChance: 0.015,
-      missSpeedLoss: 1.0, // same price the player pays
-      missLockout: 0.17,
+      missSpeedLoss: 1.6, // same price the player pays
+      missLockout: 0,
       dipError: [-0.6, 1.2],
     },
   },

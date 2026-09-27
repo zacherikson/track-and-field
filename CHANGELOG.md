@@ -4,6 +4,30 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 2.11: tuning, round 2 (no penalty pause, like the original)
+From play-testing with the tuning panel:
+
+| Setting | Old | New |
+|---|---|---|
+| Slow-down rate (`runner.coastDecel`) | 3.0 | 4.0 m/s² |
+| Speed lost on a miss (`sprint100.targets.missSpeedLoss`) | 1.0 | 1.6 m/s |
+| Penalty pause (`sprint100.targets.missLockout`) | 170 | 0 ms |
+| Double-press guard (`runner.minStrideInterval`) | 60 | 10 ms |
+
+- The red ✕ now has its own display time (`pads.missX`, 0.25s), because it used
+  to last only as long as the penalty pause.
+- AI rivals' miss penalty mirrors the player's again (1.6 m/s, no pause).
+- Simulator:
+
+  | Strategy | Time |
+  |---|---|
+  | Casual reader | 10.4s |
+  | Good reader | 9.3s |
+  | Expert | 8.9s |
+  | Blind alternating, best case (8 taps/s) | 10.2s (14 taps/s: 14.0s) |
+  | Drumming both thumbs | 11–23s |
+  | Amateur AI winner (median) | 10.2s |
+
 ## Step 2.10: a miss doesn't re-drop the target
 - Once a green target lands it stays until you hit it. A wrong tap shows the red ✕
   on the side you tapped for the lockout, while the green target stays visible

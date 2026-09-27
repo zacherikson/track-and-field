@@ -36,7 +36,7 @@ export const GROUPS = [
     blurb: 'Tapping the wrong side. A mistake also leaves a gap in your taps, which pulls your pace down too.',
     params: [
       { path: 'sprint100.targets.missSpeedLoss', label: 'Speed lost', unit: 'm/s', min: 0, max: 5, step: 0.1, kmh: true, help: 'Taken away instantly on a wrong tap.' },
-      { path: 'sprint100.targets.missLockout', label: 'Penalty pause', unit: 'ms', scale: 1000, min: 0, max: 0.8, step: 0.01, help: 'How long the red ✕ blocks you before the target comes back.' },
+      { path: 'sprint100.targets.missLockout', label: 'Penalty pause', unit: 'ms', scale: 1000, min: 0, max: 0.8, step: 0.01, help: 'How long a wrong tap blocks your next tap. 0 = no pause, like the original.' },
       { path: 'runner.minStrideInterval', label: 'Double-press guard', unit: 'ms', scale: 1000, min: 0, max: 0.15, step: 0.005, help: 'Taps this soon after a correct one are ignored, so slamming both thumbs can’t count twice.' },
     ],
   },

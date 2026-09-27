@@ -8,7 +8,7 @@ Gameplay and tuning changes, newest first. When you change a number in
 - `POSES.set` hip height −0.34 → −0.41 H and torso lean 1.45 → 1.68 rad: the hips
   are now a little above the shoulders, like a real set position.
 - The legs straighten to match. Hands and feet stay on the track, and the hands
-  are still 17–29cm behind the start line in every lane.
+  are still 17–30cm behind the start line in every lane.
 
 ## Step 2.22: lifelike start sequence (from footage of the original)
 Frame-by-frame comparison showed the original stages the start where ours snapped:

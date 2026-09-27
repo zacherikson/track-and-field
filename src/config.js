@@ -185,7 +185,7 @@ export const CONFIG = {
     buttons: {
       slotsX: [0.16, 0.5, 0.84], // slot centres as a fraction of screen width (hit zones are the thirds)
       y: 0.24, // fraction of screen height
-      radius: 46,
+      radius: 54, // bigger, like the original's
       fadeIn: 0.08, // s for a new set to fade in
     },
     // Rivals read a new set in `setReact` s, then tap `tapGap` s apart (their

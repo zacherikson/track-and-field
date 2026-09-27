@@ -4,6 +4,16 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 3.5: legible number buttons (hurdles)
+- New `drawNumberButton`, styled after the original's buttons:
+  - a thin dark outline and a pale ring;
+  - a nearly flat blue disc (lighter top half, no glossy streak across the
+    number);
+  - a big, heavy white number (about 1.25 × the radius) with no drop shadow.
+  - Before, the glossy candy pad put a highlight right over a smaller,
+    shadowed number.
+- Buttons are bigger: radius 46 → 54.
+
 ## Step 3.4: a trip is a stumble, not a fall
 - When you trip you no longer go down. You go over, catch the hurdle (it falls)
   0.2s after takeoff, and stumble on for 0.4s: legs still running, body

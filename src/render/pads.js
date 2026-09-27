@@ -3,7 +3,6 @@
 // Glossy "candy" button palettes: highlight, body, and rim shade.
 export const GREEN = { hi: '#b6ff8a', mid: '#39e626', lo: '#0f9e1c' };
 export const ORANGE = { hi: '#ffe08a', mid: '#ff9d14', lo: '#d9580a' };
-export const BLUE = { hi: '#a8dcff', mid: '#2f86e8', lo: '#173f96' }; // hurdles' numbered buttons
 export const RIM = '#eaf8ff'; // a pad's white rim; also its echoes and hit outline
 
 /** A glossy candy button: gradient body, darker rim, thick white ring, highlight. */
@@ -40,6 +39,48 @@ export function drawPad(ctx, pal, x, y, r) {
   ctx.beginPath();
   ctx.ellipse(0, -inner * 0.45, inner * 0.72, inner * 0.45, 0, 0, Math.PI * 2);
   ctx.fill();
+  ctx.restore();
+}
+
+/**
+ * A numbered button (hurdles), styled after the original for legibility: a
+ * thin dark outline, a pale ring, a nearly flat blue disc (lighter top half,
+ * no gloss streak across the number) and a big heavy white number with no
+ * shadow.
+ */
+export function drawNumberButton(ctx, x, y, r, n) {
+  ctx.save();
+  ctx.translate(x, y);
+  // Soft shadow under the whole button so it lifts off the stadium.
+  ctx.shadowColor = 'rgba(0,0,0,0.3)';
+  ctx.shadowBlur = 8;
+  ctx.shadowOffsetY = 3;
+  ctx.fillStyle = '#2a3542'; // dark outline
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowColor = 'transparent';
+  ctx.fillStyle = '#e8f7ff'; // pale ring
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 0.93, 0, Math.PI * 2);
+  ctx.fill();
+  // Blue disc: two flat-ish tones, lighter above the middle.
+  const d = r * 0.8;
+  const g = ctx.createLinearGradient(0, -d, 0, d);
+  g.addColorStop(0, '#5aa9ff');
+  g.addColorStop(0.46, '#3f8ef8');
+  g.addColorStop(0.54, '#2c6fe8');
+  g.addColorStop(1, '#2a66e0');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(0, 0, d, 0, Math.PI * 2);
+  ctx.fill();
+  // The number: big and heavy.
+  ctx.fillStyle = '#f7fcff';
+  ctx.font = `900 ${Math.round(r * 1.25)}px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(String(n), 0, r * 0.06);
   ctx.restore();
 }
 

@@ -1,10 +1,9 @@
 import { CONFIG } from '../config.js';
 import { clamp } from '../core/math.js';
-import { text } from '../core/ui.js';
 import { LaneRace } from './laneRace.js';
 import { ButtonSet, HurdleRun, HurdleAI, hurdlePositions } from './hurdleRules.js';
 import { hurdlePose, tripPose } from '../athletes/stickFigure.js';
-import { BLUE, ORANGE, RIM, drawPad, drawX } from '../render/pads.js';
+import { ORANGE, RIM, drawPad, drawX, drawNumberButton } from '../render/pads.js';
 
 const SLOT_KEYS = [['ArrowLeft', 'KeyA'], ['ArrowDown', 'KeyS'], ['ArrowRight', 'KeyD']];
 const NUMBER_KEYS = { Digit1: 1, Numpad1: 1, Digit2: 2, Numpad2: 2, Digit3: 3, Numpad3: 3 };
@@ -153,8 +152,7 @@ export class Hurdles110 extends LaneRace {
         if (set.state[i] !== 'live') return;
         ctx.save();
         ctx.globalAlpha = fade;
-        drawPad(ctx, BLUE, x, y, r);
-        text(ctx, String(n), x, y + 2, { size: Math.round(r * 0.95), weight: 800, color: '#fff', shadow: true });
+        drawNumberButton(ctx, x, y, r, n);
         ctx.restore();
       });
     } else if (mode === 'carry') {

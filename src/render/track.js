@@ -224,34 +224,61 @@ export class TrackRenderer {
       if (m > 0 && m < this.distance) line(m, 2, 'rgba(255,255,255,0.35)');
     }
     line(0, 5, '#fff');
-    line(this.distance, 5, '#fff');
-    this.drawFinishChecker(ctx, view, camera);
+    // Finish (as in the original): a double white line, no checkerboard.
+    const D = this.distance;
+    line(D, 5, '#fff');
+    line(D + 0.22, 3, 'rgba(255,255,255,0.9)');
+    this.drawFinishTicks(ctx, view, camera);
 
-    // Lane numbers painted just past the start line and past the finish.
+    // Lane numbers: small and upright just past the start line; big and painted
+    // flat on the track, turned sideways, just before the finish line.
     for (let k = 1; k <= this.lanes; k++) {
       const z = this.laneZ(k);
       const size = Math.round(12 + 14 * this.scaleAt(z));
-      for (const xm of [0.9, this.distance + 0.9]) {
-        const p = this.project(camera, view, xm, z);
-        if (p.x < -40 || p.x > view.w + 40) continue;
-        text(ctx, String(this.laneNumber(k)), p.x, p.y + 1, { size, color: 'rgba(255,255,255,0.9)' });
-      }
+      const p = this.project(camera, view, 0.9, z);
+      if (p.x > -40 && p.x < view.w + 40) text(ctx, String(this.laneNumber(k)), p.x, p.y + 1, { size, color: 'rgba(255,255,255,0.9)' });
+      this.drawPaintedNumber(ctx, view, camera, this.laneNumber(k), D - 1.1, z);
     }
     this.drawFinishPost(ctx, view, camera);
   }
 
-  drawFinishChecker(ctx, view, camera) {
+  /** Short double dashes across the middle of each lane at 5, 4 and 3 m before the line. */
+  drawFinishTicks(ctx, view, camera) {
     const D = this.distance;
-    if (this.project(camera, view, D, this.zNear).x < -60 && this.project(camera, view, D, this.zFar).x < -60) return;
-    const sq = 0.25; // lane widths per checker row
-    const w = 0.14; // meters per checker column
-    for (let row = 0; row < this.lanes / sq; row++) {
-      const z0 = this.zNear + row * sq;
-      for (let c = 0; c < 2; c++) {
-        ctx.fillStyle = (row + c) % 2 ? '#111' : '#fff';
-        this.quad(ctx, camera, view, D + 0.08 + c * w, D + 0.08 + (c + 1) * w, z0, z0 + sq);
+    if (this.project(camera, view, D - 6, this.zNear).x > view.w + 60) return;
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+    for (const back of [5, 4, 3]) {
+      for (let k = 1; k <= this.lanes; k++) {
+        const zc = this.laneZ(k);
+        ctx.lineWidth = 1 + 1.5 * this.scaleAt(zc);
+        for (const dx of [0, 0.18]) {
+          const a = this.project(camera, view, D - back + dx, zc - 0.28);
+          const b = this.project(camera, view, D - back + dx, zc + 0.28);
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+          ctx.stroke();
+        }
       }
     }
+  }
+
+  /**
+   * A big lane number painted on the track, turned sideways (its top points in
+   * the running direction) and squashed to the lane's height, like the original.
+   */
+  drawPaintedNumber(ctx, view, camera, n, xm, z) {
+    const p = this.project(camera, view, xm, z);
+    if (p.x < -80 || p.x > view.w + 80) return;
+    const pxPerM = camera.ppm * this.scaleAt(z);
+    const laneH = this.yAt(z - 0.5) - this.yAt(z + 0.5);
+    const size = (0.95 * pxPerM) / 0.72; // digit height covers ~0.95 m of track
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.scale(1, (0.8 * laneH) / (0.62 * size)); // digit width fills ~80% of the lane
+    ctx.rotate(Math.PI / 2);
+    text(ctx, String(n), 0, 0, { size, color: 'rgba(255,255,255,0.92)', weight: 800 });
+    ctx.restore();
   }
 
   drawFinishPost(ctx, view, camera) {

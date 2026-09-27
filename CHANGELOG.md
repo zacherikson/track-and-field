@@ -4,6 +4,16 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 2.20: original-style finish; longer lean zone
+- Lean zone length (`dip.promptDistance`): 15 → 18 m. Tuned on the phone.
+- The finish now copies the original:
+  - a double white line (the checkerboard is removed);
+  - short double dashes across the middle of every lane at 5, 4 and 3 m before
+    the line;
+  - big lane numbers painted flat on the track just before the line, turned
+    sideways and squashed to each lane's height, so they follow the perspective.
+  - The finish post still stands on the far side.
+
 ## Step 2.19: longer, smoother lean
 The 2.13 lean (about 0.4s in total) felt too rapid to be worth it. Now about 0.7s:
 - `riseTime` 0.2 → 0.32, `holdTime` 0.1 → 0.16, `recoverTime` 0.12 → 0.22.

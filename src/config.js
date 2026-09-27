@@ -67,7 +67,7 @@ export const CONFIG = {
    * the line. Too early and you're upright again and slowing when you get there.
    */
   dip: {
-    promptDistance: 15, // m before the line where strides stop and the LEAN prompt shows
+    promptDistance: 18, // m before the line where strides stop and the LEAN prompt shows
     chordWindow: 0.06, // s; left + right presses this close together count as both thumbs
     armDelay: 0.3, // s after entering the zone before a lean can trigger (stray stride taps)
     reach: 1.0, // m the chest gets ahead of the hips at full lean

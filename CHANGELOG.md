@@ -4,6 +4,25 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 2.9: target drop-in and hit outline, measured from the original
+Frame-by-frame analysis of gameplay footage (60fps capture of 30fps video; the
+pad radius r is about 54px in an 880×602 frame):
+- **Drop:** a new target falls straight down onto its fixed spot.
+  - Measured offsets at equal steps were 89% → 59% → 4% of the start height,
+    which matches `height × (1 − k²)` exactly: it accelerates like falling.
+  - It starts about 1.65r up and stops dead, with no bounce.
+  - It takes about 0.1s and fades from 70% to fully solid.
+  - Two faint rim echoes trail above it. The "stacked rings" in the footage are
+    partly video frame blending (one appears ahead of the motion), so only a
+    subtle trailing echo is kept.
+- **Hit:** the green body vanishes instantly and the rim remains as a thin white
+  outline.
+  - Measured radius: 1.05r at the tap, 1.2r at 35ms, 1.35r at about 0.14s, gone
+    at 0.18s.
+  - Ours eases out from the rim to 1.35r and fades over 0.18s.
+- A target also drops back in after a miss lockout. Config is in
+  `sprint100.pads.drop` and `sprint100.pads.hitRing` (not in the tuning panel).
+
 ## Step 2.8: tuning from play-testing on the phone
 Set with the in-game tuning panel after real play, then made the defaults:
 

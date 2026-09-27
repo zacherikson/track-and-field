@@ -103,6 +103,17 @@ export const CONFIG = {
       radius: 56, // target size (visual only; the hit zone is the whole screen half)
       homeY: 0.66, // height of each side's target spot, as a fraction of screen height
       edgeInset: 26, // px from the screen edge (plus safe area) to each side's target spot
+      // Measured frame by frame from gameplay footage of the original:
+      drop: {
+        duration: 0.1, // s to fall onto its spot (about 3 frames at 30fps)
+        height: 1.65, // starts this many radii above its spot
+        startAlpha: 0.7, // slightly see-through at the top, solid when it lands
+        trail: 2, // faint rim echoes trailing above it while it falls
+      },
+      hitRing: {
+        duration: 0.18, // s the outline lasts after a hit
+        grow: 1.35, // it expands from the pad's rim to this many radii
+      },
     },
     finishHold: 2.4, // s after you cross before the results screen
     maxRaceTime: 25, // s; give up and DNF after this

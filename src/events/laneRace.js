@@ -233,7 +233,7 @@ export class LaneRace {
       const a = this.athletes[i];
       const p = this.track.toScreen(this.camera, view, a.runner.x + a.runner.reach * 0.5, a.lane);
       if (p.x < -80 || p.x > view.w + 80) continue;
-      const scale = 1 - (a.lane - 1) * 0.035; // slightly smaller further back
+      const scale = this.track.figureScale(a.lane);
       const head = drawFigure(ctx, p.x, p.y + 4, H * scale, this.poseFor(a), a.colors);
       if (a.isPlayer && (this.state !== 'race' || this.raceTime < 2)) this.drawYouMarker(ctx, head.headX, head.headY - 8);
     }
@@ -343,7 +343,7 @@ export class LaneRace {
   drawBanner(ctx, view) {
     const now = this.game.time;
     const cx = view.w / 2;
-    const cy = 140;
+    const cy = 110;
     const big = (str, color) => text(ctx, str, cx, cy, { size: 64, color, shadow: true });
     switch (this.state) {
       case 'ready':

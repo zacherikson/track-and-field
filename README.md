@@ -72,7 +72,7 @@ src/events/
   strideTargets.js    100m random targets (max 2 in a row) + hit/miss judging
   laneRace.js         base for lane races: countdown FSM, finish lean, AI, HUD, results
   sprint100.js        100m: random-side target pads, wrong-tap ✕, lean prompt
-src/render/track.js   stadium, lanes, lines, parallax crowd (original-style low, close camera)
+src/render/track.js   stadium with one-point perspective (camera 1m ahead of the player), parallax crowd
 src/render/pads.js    glossy tap targets and the red ✕
 src/tuning/           in-game tuning panel (params list, saved overrides, live estimates)
 tools/simulate.mjs    headless tuning simulator

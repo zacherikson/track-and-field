@@ -15,14 +15,15 @@ export const CONFIG = {
   },
 
   world: {
-    pixelsPerMeter: 75, // zoom level: low, close camera like the original (~15m of track visible, runners ~1/4 screen tall)
+    pixelsPerMeter: 75, // zoom in the player's lane: runners ~1/4 screen tall, like the original
   },
 
   camera: {
-    screenAnchorX: 0.35, // where the followed runner sits horizontally (0 = left edge)
+    screenAnchorX: 0.5, // where the camera sits on screen (0 = left edge): the centre of the perspective
+    lead: 1.0, // m the camera sits ahead of the player, so you see a bit more ahead than behind
     followSharpness: 5, // how tightly the camera chases (higher = snappier, lower = floatier)
-    lookAheadPerMps: 0.15, // meters of look-ahead per m/s of speed
-    maxLookAhead: 1.5, // meters
+    lookAheadPerMps: 0, // extra meters of look-ahead per m/s of speed
+    maxLookAhead: 0, // meters
   },
 
   figure: {

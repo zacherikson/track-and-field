@@ -4,6 +4,27 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 2.15: real one-point perspective, camera 1m ahead of the player
+The 2.14 "slanted bands" still looked wrong next to the original. The original
+uses true perspective:
+- **Projection:** a ground point (x, depth z) projects to
+  `y = horizonY + K/z` and `x = centre + (x − camera.x) · ppm · zRef/z`.
+  - Lanes get taller toward the viewer (19px far, 51px near, about 2.7×, matching
+    the original's screenshot).
+  - Crossing lines fan out from the camera: nearly vertical right in front of
+    it, leaning more further away.
+  - K and the near depth are solved from the horizon (y 57) and the track's far
+    and near edges (y 280 / 470), fitted to the original's lane spacing.
+- **Camera** sits 1m ahead of the player (`camera.lead`) at screen centre, so the
+  player is just left of centre and you see more of what's coming than of what's
+  behind. Look-ahead removed.
+- **Runners** are nearly the same size in every lane (`figureScale` = (zRef/z)^0.2),
+  as in the original.
+- **Lane numbers** stack just past the start line, as in the original.
+- **Scenery:** grass stripes follow the perspective, the crowd and far ad boards
+  scroll slowly (parallax), and a row of near ad boards along the bottom scrolls
+  fastest.
+
 ## Step 2.14: original-style camera, front lane, flashing start button
 From footage and screenshots of the original:
 - **Camera:** low and close.

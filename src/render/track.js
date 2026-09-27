@@ -1,35 +1,49 @@
 import { text } from '../core/ui.js';
 
 /**
- * Side-on stadium renderer with fake perspective, framed like the original:
- * a low, close camera, big runners, and the track in the bottom third with
- * thin lanes. The player runs in the front lane.
+ * Side-on stadium with real one-point perspective, framed like the original:
+ * the camera sits just ahead of the player (see CONFIG.camera.lead), low and
+ * close, so runners are big and you see a little more of what's coming than of
+ * what's behind.
  *
- * Lanes are horizontal bands. Internally lane 1 is nearest the camera (bottom);
- * the numbers painted on the track count the other way, 1 (far) to 6 (near).
- * Anything that crosses the track (start/finish lines, 10m marks) is drawn
- * slanted: it shifts by SKEW px for every px it goes "into" the screen (negative
- * = far lanes further left, as in the original). Runners get the same shift for
- * their lane, so they line up with the lines. The infield grass behind the
- * track continues the same slant, so it reads as one ground plane.
+ * Ground plane: a point at world x (m, along the track) and depth z (in lane
+ * widths from the camera) projects to
  *
- * PARALLAX: layers further away scroll slower than the track (crowd at 0.5x,
- * ad boards at 0.92x). This sells depth and speed for free.
+ *   screenY = horizonY + K / z
+ *   screenX = centerX + (x - camera.x) * ppm * (zRef / z)
+ *
+ * so lanes get taller toward the viewer and lines crossing the track fan out
+ * from the camera's position: nearly vertical right in front of it, leaning
+ * more the further away they are. zRef is the player's lane, which is drawn at
+ * exactly `ppm` pixels per meter. K and the near depth are solved from three
+ * screen heights: the horizon and the track's near and far edges.
+ *
+ * Lanes: internally lane 1 is nearest the camera (the player's lane); the
+ * numbers painted on the track count the other way, 1 (far) to 6 (near).
+ * Runners are drawn at (almost) the same size in every lane, as in the original.
  */
 export const LAYOUT = {
   standsTop: 26,
-  boardsTop: 150,
-  grassTop: 176,
-  trackTop: 360,
-  laneH: 28,
-  skew: -0.62,
+  boardsTop: 128,
+  grassTop: 152,
+  horizonY: 57, // vanishing line of the ground plane (above the stands, off the ground)
+  farY: 280, // far edge of the track
+  nearY: 470, // near edge of the track
+  nearBoardsTop: 478, // ad boards along the near side, below the track
 };
 
 export class TrackRenderer {
   constructor(lanes, distance) {
     this.lanes = lanes;
     this.distance = distance;
-    this.trackBottom = LAYOUT.trackTop + lanes * LAYOUT.laneH;
+    const L = LAYOUT;
+    const ratio = (L.nearY - L.horizonY) / (L.farY - L.horizonY);
+    this.zNear = lanes / (ratio - 1);
+    this.zFar = this.zNear + lanes;
+    this.K = (L.nearY - L.horizonY) * this.zNear;
+    this.zRef = this.laneZ(1);
+    this.zGrassTop = this.zAtY(L.grassTop);
+    this.trackBottom = L.nearY;
   }
 
   /** Number painted on the track for internal lane `lane` (1 = nearest). */
@@ -37,40 +51,58 @@ export class TrackRenderer {
     return this.lanes + 1 - lane;
   }
 
-  laneY(lane) {
-    return this.trackBottom - (lane - 0.5) * LAYOUT.laneH;
+  laneZ(lane) {
+    return this.zNear + lane - 0.5;
   }
 
-  skewX(y) {
-    return (this.trackBottom - y) * LAYOUT.skew;
+  yAt(z) {
+    return LAYOUT.horizonY + this.K / z;
+  }
+
+  zAtY(y) {
+    return this.K / (y - LAYOUT.horizonY);
+  }
+
+  /** Horizontal scale at depth z relative to the player's lane. */
+  scaleAt(z) {
+    return this.zRef / z;
+  }
+
+  project(camera, view, x, z) {
+    return { x: camera.toScreenX(x, view.w, this.scaleAt(z)), y: this.yAt(z) };
   }
 
   /** Screen position of the ground point at world x (m) in `lane`. */
   toScreen(camera, view, x, lane) {
-    const y = this.laneY(lane);
-    return { x: camera.toScreenX(x, view.w) + this.skewX(y), y };
+    return this.project(camera, view, x, this.laneZ(lane));
   }
 
-  /** World x range (m) whose slanted lines can touch the screen between rows yTop..yBottom. */
-  slantRange(camera, view, yTop) {
-    const [left, right] = camera.visibleRange(view.w);
-    const shift = this.skewX(yTop) / camera.ppm; // negative: far rows shift left
-    return [left + Math.min(0, shift) - 1, right - Math.min(0, shift) + 1];
+  /** Runner size multiplier for a lane: nearly constant, like the original's sprites. */
+  figureScale(lane) {
+    return Math.pow(this.scaleAt(this.laneZ(lane)), 0.2);
+  }
+
+  /** World x range (m) visible at depth z, with a margin. */
+  rangeAt(camera, view, z, margin = 2) {
+    const [l, r] = camera.visibleRange(view.w, this.scaleAt(z));
+    return [l - margin, r + margin];
   }
 
   draw(ctx, view, camera) {
     this.drawSky(ctx, view);
     this.drawStands(ctx, view, camera);
-    this.drawBoards(ctx, view, camera);
+    this.drawBoards(ctx, view, camera, LAYOUT.boardsTop, LAYOUT.grassTop - LAYOUT.boardsTop, 0.24, 13);
     this.drawGrass(ctx, view, camera);
     this.drawTrack(ctx, view, camera);
-    this.drawNearEdge(ctx, view, camera);
+    this.drawNearSide(ctx, view, camera);
   }
 
   /** Brighten one lane (used to flash the player's lane before the start). */
   highlightLane(ctx, view, lane, alpha) {
+    const y0 = this.yAt(this.zNear + lane);
+    const y1 = this.yAt(this.zNear + lane - 1);
     ctx.fillStyle = `rgba(255,255,255,${alpha})`;
-    ctx.fillRect(0, this.laneY(lane) - LAYOUT.laneH / 2, view.w, LAYOUT.laneH);
+    ctx.fillRect(0, y0, view.w, y1 - y0);
   }
 
   drawSky(ctx, view) {
@@ -86,18 +118,18 @@ export class TrackRenderer {
     const bottom = LAYOUT.boardsTop;
     ctx.fillStyle = '#39465e';
     ctx.fillRect(0, top, view.w, bottom - top);
-    // Roof edge.
     ctx.fillStyle = '#2a3346';
     ctx.fillRect(0, top, view.w, 8);
 
-    // Crowd: a grid of "heads" colored by a hash of their seat, scrolling at 0.5x.
-    const par = 0.5;
+    // Crowd: a grid of "heads" colored by a hash of their seat. Far away, so it
+    // scrolls much slower than the track (parallax).
+    const par = 0.2;
     const seatW = 14;
     const offset = camera.x * camera.ppm * par;
     const first = Math.floor(offset / seatW) - 1;
     const count = Math.ceil(view.w / seatW) + 2;
     const palette = ['#f4d35e', '#ee964b', '#f95738', '#faf0ca', '#0d3b66', '#8ecae6', '#e9edc9', '#b5838d'];
-    for (let row = 0; row < 8; row++) {
+    for (let row = 0; row < 6; row++) {
       const y = top + 14 + row * 14;
       const rowShift = (row % 2) * (seatW / 2);
       for (let i = first; i < first + count; i++) {
@@ -112,11 +144,8 @@ export class TrackRenderer {
     }
   }
 
-  drawBoards(ctx, view, camera) {
-    const top = LAYOUT.boardsTop;
-    const h = LAYOUT.grassTop - top;
-    const par = 0.92;
-    const boardW = 180;
+  drawBoards(ctx, view, camera, top, h, par, size) {
+    const boardW = 180 * Math.max(1, par);
     const offset = camera.x * camera.ppm * par;
     const first = Math.floor(offset / boardW) - 1;
     const words = ['THUMBATHLON', 'TAP TAP GO', 'FAST THUMBS', 'RUN JUNO RUN', 'NO FALSE STARTS'];
@@ -126,117 +155,130 @@ export class TrackRenderer {
       const k = ((i % words.length) + words.length) % words.length;
       ctx.fillStyle = colors[k];
       ctx.fillRect(x, top, boardW - 2, h);
-      text(ctx, words[k], x + boardW / 2, top + h / 2 + 1, { size: 13, color: k === 3 ? '#222' : '#fff' });
+      text(ctx, words[k], x + boardW / 2, top + h / 2 + 1, { size, color: k === 3 ? '#222' : '#fff' });
     }
   }
 
-  /** Infield grass between the ad boards and the track, mowed in slanted stripes. */
+  /** A ground-plane quad between world x0..x1 and depths z0..z1. */
+  quad(ctx, camera, view, x0, x1, z0, z1) {
+    const a = this.project(camera, view, x0, z0);
+    const b = this.project(camera, view, x1, z0);
+    const c = this.project(camera, view, x1, z1);
+    const d = this.project(camera, view, x0, z1);
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.lineTo(c.x, c.y);
+    ctx.lineTo(d.x, d.y);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  /** Infield grass beyond the track, mowed in stripes that follow the perspective. */
   drawGrass(ctx, view, camera) {
-    const top = LAYOUT.grassTop;
-    const bottom = LAYOUT.trackTop;
     ctx.fillStyle = '#4c9a3f';
-    ctx.fillRect(0, top, view.w, bottom - top);
+    ctx.fillRect(0, LAYOUT.grassTop, view.w, LAYOUT.farY - LAYOUT.grassTop);
     ctx.fillStyle = '#56a847';
     const stripeM = 4;
-    const [from, to] = this.slantRange(camera, view, top);
+    const [from, to] = this.rangeAt(camera, view, this.zGrassTop);
     for (let m = Math.floor(from / (stripeM * 2)) * stripeM * 2; m < to; m += stripeM * 2) {
-      const x0 = camera.toScreenX(m, view.w);
-      const x1 = x0 + stripeM * camera.ppm;
-      ctx.beginPath();
-      ctx.moveTo(x0 + this.skewX(bottom), bottom);
-      ctx.lineTo(x1 + this.skewX(bottom), bottom);
-      ctx.lineTo(x1 + this.skewX(top), top);
-      ctx.lineTo(x0 + this.skewX(top), top);
-      ctx.closePath();
-      ctx.fill();
+      this.quad(ctx, camera, view, m, m + stripeM, this.zFar, this.zGrassTop);
     }
     // Distance labels on the grass along the far edge of the track.
-    const [left, right] = camera.visibleRange(view.w);
-    for (let m = Math.ceil((left - 6) / 10) * 10; m <= right + 6; m += 10) {
+    const zl = this.zFar + 0.8;
+    const [l, r] = this.rangeAt(camera, view, zl);
+    for (let m = Math.ceil(l / 10) * 10; m <= r; m += 10) {
       if (m <= 0 || m >= this.distance) continue;
-      const y = bottom - 12;
-      text(ctx, `${m}m`, camera.toScreenX(m, view.w) + this.skewX(y), y, { size: 14, color: 'rgba(255,255,255,0.85)' });
+      const p = this.project(camera, view, m, zl);
+      text(ctx, `${m}m`, p.x, p.y, { size: 14, color: 'rgba(255,255,255,0.85)' });
     }
   }
 
   drawTrack(ctx, view, camera) {
-    const top = LAYOUT.trackTop;
-    const bottom = this.trackBottom;
+    const top = LAYOUT.farY;
+    const bottom = LAYOUT.nearY;
     ctx.fillStyle = '#c1502e';
     ctx.fillRect(0, top, view.w, bottom - top);
 
-    // Lane lines.
+    // Lane lines: horizontal, closer together further away.
     ctx.fillStyle = 'rgba(255,255,255,0.85)';
     for (let k = 0; k <= this.lanes; k++) {
-      ctx.fillRect(0, bottom - k * LAYOUT.laneH - 1, view.w, 2);
+      const y = this.yAt(this.zNear + k);
+      const w = 1.5 + 1.5 * this.scaleAt(this.zNear + k);
+      ctx.fillRect(0, y - w / 2, view.w, w);
     }
 
-    // Everything that crosses the track, drawn slanted.
-    const [from, to] = this.slantRange(camera, view, top);
+    // Lines across the track: straight lines between the near and far edges.
     const line = (xm, width, color) => {
-      const sx = camera.toScreenX(xm, view.w);
+      const a = this.project(camera, view, xm, this.zNear);
+      const b = this.project(camera, view, xm, this.zFar);
       ctx.strokeStyle = color;
       ctx.lineWidth = width;
       ctx.beginPath();
-      ctx.moveTo(sx, bottom);
-      ctx.lineTo(sx + this.skewX(top), top);
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
       ctx.stroke();
     };
+    const [from, to] = this.rangeAt(camera, view, this.zFar);
     for (let m = Math.ceil(from / 10) * 10; m <= to; m += 10) {
       if (m > 0 && m < this.distance) line(m, 2, 'rgba(255,255,255,0.35)');
     }
     line(0, 5, '#fff');
-    // Finish: white line with a checkered strip behind it.
     line(this.distance, 5, '#fff');
     this.drawFinishChecker(ctx, view, camera);
 
-    // Lane numbers painted behind the start and past the finish.
+    // Lane numbers painted just past the start line and past the finish.
     for (let k = 1; k <= this.lanes; k++) {
-      for (const xm of [-0.9, this.distance + 0.9]) {
-        const p = this.toScreen(camera, view, xm, k);
+      const z = this.laneZ(k);
+      const size = Math.round(12 + 14 * this.scaleAt(z));
+      for (const xm of [0.9, this.distance + 0.9]) {
+        const p = this.project(camera, view, xm, z);
         if (p.x < -40 || p.x > view.w + 40) continue;
-        text(ctx, String(this.laneNumber(k)), p.x, p.y + 1, { size: 20, color: 'rgba(255,255,255,0.9)' });
+        text(ctx, String(this.laneNumber(k)), p.x, p.y + 1, { size, color: 'rgba(255,255,255,0.9)' });
       }
     }
-    this.drawFinishPosts(ctx, view, camera);
+    this.drawFinishPost(ctx, view, camera);
   }
 
   drawFinishChecker(ctx, view, camera) {
-    const sq = LAYOUT.laneH / 4;
-    for (let row = 0; row < this.lanes * 4; row++) {
-      const y = this.trackBottom - (row + 1) * sq;
-      const sx = camera.toScreenX(this.distance, view.w) + this.skewX(y + sq / 2);
-      if (sx < -20 || sx > view.w + 20) continue;
+    const D = this.distance;
+    if (this.project(camera, view, D, this.zNear).x < -60 && this.project(camera, view, D, this.zFar).x < -60) return;
+    const sq = 0.25; // lane widths per checker row
+    const w = 0.14; // meters per checker column
+    for (let row = 0; row < this.lanes / sq; row++) {
+      const z0 = this.zNear + row * sq;
       for (let c = 0; c < 2; c++) {
         ctx.fillStyle = (row + c) % 2 ? '#111' : '#fff';
-        ctx.fillRect(sx + 3 + c * sq * 0.6, y, sq * 0.6, sq);
+        this.quad(ctx, camera, view, D + 0.08 + c * w, D + 0.08 + (c + 1) * w, z0, z0 + sq);
       }
     }
   }
 
-  drawFinishPosts(ctx, view, camera) {
-    const sx = camera.toScreenX(this.distance, view.w);
-    if (sx < -300 || sx > view.w + 300) return;
-    const farX = sx + this.skewX(LAYOUT.trackTop);
+  drawFinishPost(ctx, view, camera) {
+    const base = this.project(camera, view, this.distance, this.zFar);
+    if (base.x < -200 || base.x > view.w + 200) return;
+    const s = this.scaleAt(this.zFar);
+    const h = 190 * s;
     ctx.fillStyle = '#ddd';
-    ctx.fillRect(farX - 4, LAYOUT.trackTop - 120, 8, 120);
+    ctx.fillRect(base.x - 3, base.y - h, 6, h);
     ctx.fillStyle = '#12203a';
-    ctx.fillRect(farX - 60, LAYOUT.trackTop - 150, 120, 34);
-    text(ctx, 'FINISH', farX, LAYOUT.trackTop - 133, { size: 18, color: '#ffb400' });
+    ctx.fillRect(base.x - 55, base.y - h - 30, 110, 32);
+    text(ctx, 'FINISH', base.x, base.y - h - 14, { size: 17, color: '#ffb400' });
   }
 
-  /** Thin strip in front of the near lane: a curb with 1m ticks (a strong speed cue). */
-  drawNearEdge(ctx, view, camera) {
-    const top = this.trackBottom;
-    ctx.fillStyle = '#4c9a3f';
-    ctx.fillRect(0, top, view.w, view.h - top);
+  /** In front of the near lane: a curb with 1m ticks, then ad boards (nearer = faster). */
+  drawNearSide(ctx, view, camera) {
+    const top = LAYOUT.nearY;
+    ctx.fillStyle = '#3f8f3a';
+    ctx.fillRect(0, top, view.w, LAYOUT.nearBoardsTop - top);
     ctx.fillStyle = '#e8e8e8';
     ctx.fillRect(0, top, view.w, 5);
     ctx.fillStyle = '#9a9a9a';
-    const [left, right] = camera.visibleRange(view.w);
-    for (let m = Math.floor(left); m < right + 1; m++) {
-      ctx.fillRect(camera.toScreenX(m, view.w), top, 3, 5);
+    const [l, r] = this.rangeAt(camera, view, this.zNear);
+    for (let m = Math.floor(l); m < r; m++) {
+      ctx.fillRect(this.project(camera, view, m, this.zNear).x, top, 3, 5);
     }
+    this.drawBoards(ctx, view, camera, LAYOUT.nearBoardsTop, view.h - LAYOUT.nearBoardsTop, 1.3, 20);
   }
 }
 

@@ -286,8 +286,8 @@ export const CONFIG = {
     runway: 55, // m from the start to the box (a long run-up, as in the original)
     // The pole plants when your hips reach plantX: hands overhead at gripY,
     // pole tip in the box (plantX = -sqrt(length² - gripY²)).
-    pole: { length: 4.6, gripY: 2.0, carryAngle: -0.2, overhang: 0.45 }, // m (box to hands), m, rad above level while running (negative: tip down toward the track, as in the original), m sticking out behind the hands
-    zoneDistance: 12, // m before the plant: orange pads, strides stop, the pole comes down and the spark runs down it
+    pole: { length: 4.6, gripY: 2.0, carryAngle: 1.05, overhang: 0.45 }, // m (box to hands), m, rad above level while running (tip high, like a real vaulter; it drops through the plant zone), m sticking out behind the hands
+    zoneDistance: 12, // m before the plant: orange pads, strides stop, the pole tip drops to the box and the spark runs down it
     // Runway edge stripes, in m before the box (the plant is about 4.1 m out).
     runwayZones: [
       { from: 16, to: 12, color: '#ffd21f' },

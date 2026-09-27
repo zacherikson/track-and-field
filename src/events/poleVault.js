@@ -584,6 +584,7 @@ export class PoleVault {
     let a, b, sag = 0; // a = hands end, b = tip end
     if (this.state === 'ready' || this.state === 'run') {
       const p = this.zoneProgress();
+      // Tip high while running, like a real vaulter; the pole drop through the plant zone brings it down to the box.
       const psi = cfg.pole.carryAngle + (-this.phi0 - cfg.pole.carryAngle) * ease(p);
       a = hand;
       b = { x: hand.x + len * Math.cos(psi), y: hand.y - len * Math.sin(psi) };

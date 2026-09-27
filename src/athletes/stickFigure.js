@@ -332,7 +332,7 @@ const SWING_LEGS = [
   [1, [[0, 0], [0.04, 0.04]]], // upside down, legs straight
 ];
 export const VAULT_POSES = {
-  carryArms: [{ upper: 0.6, fore: 2.2 }, { upper: 0.9, fore: 2.4 }], // pole held up at the face, tip down the runway (as in the original)
+  carryArms: [{ upper: 0.2, fore: 1.6 }, { upper: 0.7, fore: 2.1 }], // pole carried at the hip and chest, tip high
   plantArms: [{ upper: 2.9, fore: 2.75 }, { upper: 2.7, fore: 2.55 }], // both hands up to the pole
   // Mirrored from here (flip: true).
   turn: {

@@ -4,6 +4,11 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 5.3: pole tip up on the run-up
+- `poleVault.pole.carryAngle` −0.2 → 1.05 rad: the pole is carried tip high
+  (about 60°), hands at the hip and chest, like a real vaulter. It drops
+  through the plant zone until the tip reaches the box at the plant.
+
 ## Step 5.2: pole vault poses traced from the original, longer run-up
 Traced frame by frame (20 fps, zoomed on the athlete) from footage of the
 original and checked the same way in our game.

@@ -171,6 +171,48 @@ export function hurdlePose(run, amount) {
   return lerpPose(run, over, amount);
 }
 
+/** Sprawled on the track after tripping over a hurdle: chest down, propped on the hands, legs out behind. */
+const TRIP_DOWN = {
+  hipX: 0.04,
+  hipY: -0.19,
+  lean: 1.32,
+  legs: [
+    { thigh: -1.12, shin: -1.4, toe: 0.5 },
+    { thigh: -1.22, shin: -1.5, toe: 0.5 },
+  ],
+  arms: [
+    { upper: 0.45, fore: 0.25 },
+    { upper: 0.3, fore: 0.1 },
+  ],
+};
+
+/**
+ * Tripping over a hurdle (from footage of the original), `age` s after takeoff,
+ * with the phase lengths in `tr` ({ over, down, up }): the body goes over the
+ * hurdle low and pitched forward, hands reaching for the track; slams down and
+ * lies sprawled; then gets back up into the running pose `run`.
+ */
+export function tripPose(run, age, tr) {
+  const ease = (k) => k * k * (3 - 2 * k);
+  const over = {
+    hipX: 0.05,
+    hipY: -0.47,
+    lean: 1.3,
+    legs: [
+      { thigh: 0.9, shin: 0.4, toe: 0 },
+      { thigh: -0.9, shin: -1.7, toe: 0.5 },
+    ],
+    arms: [
+      { upper: 1.25, fore: 1.3 },
+      { upper: 1.0, fore: 1.1 },
+    ],
+  };
+  if (age < tr.over) return lerpPose(run, over, ease(Math.min(1, age / (tr.over * 0.6))));
+  const down = age - tr.over;
+  if (down < tr.down) return lerpPose(over, TRIP_DOWN, ease(Math.min(1, down / 0.12)));
+  return lerpPose(TRIP_DOWN, run, ease(Math.min(1, (down - tr.down) / tr.up)));
+}
+
 /**
  * Running pose from a stride phase (radians) and intensity amp (0..1, grows with
  * speed). Modelled on a real sprinter's (and the original's) run cycle; the foot

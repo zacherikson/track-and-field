@@ -172,10 +172,16 @@ export const CONFIG = {
       takeoff: 2.1, // m before the hurdle where the hop starts (and the next set appears)
       landing: 1.4, // m after it where the hop ends
       cleanLoss: 0.3, // m/s lost clearing a hurdle cleanly
-      clipLoss: 2.6, // m/s lost hitting it (it falls over)
-      minSpeed: 5.0, // m/s: slower than this at takeoff and you hit it
+      minSpeed: 4.0, // m/s: slower than this at takeoff and you trip
+      tripFaults: 2, // a set with this many faults (lost or untapped buttons) at the hurdle trips you
+      trip: {
+        over: 0.3, // s going over the hurdle low before hitting the track
+        down: 0.4, // s sprawled on the track
+        up: 0.25, // s getting up
+        speed: 1.5, // m/s you crawl at while down and getting up
+      },
     },
-    missSpeedLoss: 1.2, // m/s lost tapping a wrong number
+    missSpeedLoss: 0.8, // m/s lost tapping a wrong number (you also lose that button's stride)
     buttons: {
       slotsX: [0.16, 0.5, 0.84], // slot centres as a fraction of screen width (hit zones are the thirds)
       y: 0.24, // fraction of screen height

@@ -3,7 +3,7 @@ import { clamp } from '../core/math.js';
 import { text } from '../core/ui.js';
 import { LaneRace } from './laneRace.js';
 import { ButtonSet, HurdleRun, HurdleAI, hurdlePositions } from './hurdleRules.js';
-import { hurdlePose } from '../athletes/stickFigure.js';
+import { hurdlePose, tripPose } from '../athletes/stickFigure.js';
 import { BLUE, ORANGE, RIM, drawPad, drawX } from '../render/pads.js';
 
 const SLOT_KEYS = [['ArrowLeft', 'KeyA'], ['ArrowDown', 'KeyS'], ['ArrowRight', 'KeyD']];
@@ -15,10 +15,12 @@ const DIP_KEYS = ['Space', 'ArrowUp'];
  * - At GO, and every time you go over a hurdle, three blue numbered buttons
  *   appear along the top in a shuffled order. Tap 1, 2, 3 wherever they are.
  *   Each tapped button vanishes, leaving an expanding ring.
- * - Clear the set and you run on at the pace you set until the next hurdle,
- *   where the next set appears. Reach a hurdle with buttons still showing and
- *   you hit it: it falls over and you lose a lot of speed.
- * - A wrong number stumbles you and flashes a red ✕ on it.
+ * - A wrong number turns into a red ✕ and is lost (no stride for it); carry on
+ *   with the lowest number left.
+ * - With no buttons left you run on at the pace you set until the next hurdle,
+ *   where the next set appears. Two or more faults (lost or untapped buttons)
+ *   when you reach it and you trip: over it low, sprawled on the track, up
+ *   again, with your speed gone. The hurdle stays up.
  * - 7 hurdles. After the last one the two outer spots turn orange: press both
  *   to lean, as in the 100m.
  * Each button's hit zone is its third of the screen. Rules in hurdleRules.js;
@@ -35,8 +37,6 @@ export class Hurdles110 extends LaneRace {
     this.runnerParams = { ...CONFIG.runner, ...this.cfg.runner };
     this.positions = hurdlePositions(this.cfg.hurdles);
     this.slotPos = [0, 1, 2].map(() => ({ x: 0, y: 0 }));
-    this.missSlot = null;
-    this.missT = -Infinity;
     this.rings = []; // { slot, t0 }
     super.enter();
     this.set = new ButtonSet(this.player.runner, this.cfg);
@@ -61,7 +61,6 @@ export class Hurdles110 extends LaneRace {
   }
 
   onCountdown() {
-    this.missSlot = null;
     this.rings = [];
     if (this.set) this.set.slots = null;
   }
@@ -73,26 +72,23 @@ export class Hurdles110 extends LaneRace {
   /** After each physics step: hurdle takeoffs, and the new button set each one brings. */
   afterStep(a, t) {
     const ctrl = a.isPlayer ? this.set : a.ai;
-    const hop = a.hurdles?.update(a.runner, t, ctrl.done);
+    const hop = a.hurdles?.update(a.runner, t, ctrl.faults);
     if (!hop) return;
     if (hop.last) ctrl.stop();
     else ctrl.start(t);
-    if (a.isPlayer) {
-      this.missSlot = null;
-      if (hop.clip) navigator.vibrate?.(60);
-    }
+    if (a.isPlayer && hop.trip) navigator.vibrate?.(80);
   }
 
   /** Player numbers for the results screen. */
   raceStats() {
-    const clips = this.player.hurdles.clips;
+    const trips = this.player.hurdles.trips;
     const st = this.set.setTimes;
     return {
       hits: this.set.hits,
       misses: this.set.misses,
       topSpeed: this.playerTopV ?? 0,
       input: this.inputStats(),
-      extra: `${clips} ${clips === 1 ? 'hurdle' : 'hurdles'} hit`,
+      extra: `${trips} ${trips === 1 ? 'trip' : 'trips'}`,
       paceText: st.length ? `avg set ${(st.reduce((a, b) => a + b, 0) / st.length).toFixed(2)}s` : null,
     };
   }
@@ -117,11 +113,7 @@ export class Hurdles110 extends LaneRace {
     if (typeof slot !== 'number') return 'ignored';
     const result = this.set.press(slot, t);
     if (result === 'hit') this.rings.push({ slot, t0: t });
-    else if (result === 'miss') {
-      this.missSlot = slot;
-      this.missT = t;
-      navigator.vibrate?.(40);
-    }
+    else if (result === 'miss') navigator.vibrate?.(40);
     return result;
   }
 
@@ -132,6 +124,8 @@ export class Hurdles110 extends LaneRace {
 
   poseFor(a) {
     const pose = super.poseFor(a);
+    const trip = a.hurdles?.tripAge(this.game.time);
+    if (trip != null && (this.state === 'race' || this.state === 'finished')) return tripPose(pose, trip, this.cfg.clear.trip);
     const k = a.hurdles?.hopProgress(a.runner.x);
     if (k == null || (this.state !== 'race' && this.state !== 'finished')) return pose;
     return hurdlePose(pose, Math.pow(Math.sin(Math.PI * k), 0.6));
@@ -148,17 +142,19 @@ export class Hurdles110 extends LaneRace {
     if (mode === 'run' && set.slots) {
       const fade = clamp((now - set.shownT) / this.cfg.buttons.fadeIn, 0, 1);
       set.slots.forEach((n, i) => {
-        if (set.cleared[i]) return;
         const { x, y } = this.slotPos[i];
+        if (set.state[i] === 'lost') {
+          // A wrong number turns into a red ✕, then it's gone.
+          if (now - set.lostT[i] < this.cfg.pads.missX + 0.05) drawX(ctx, x, y);
+          return;
+        }
+        if (set.state[i] !== 'live') return;
         ctx.save();
         ctx.globalAlpha = fade;
         drawPad(ctx, BLUE, x, y, r);
         text(ctx, String(n), x, y + 2, { size: Math.round(r * 0.95), weight: 800, color: '#fff', shadow: true });
         ctx.restore();
       });
-      if (this.missSlot != null && now - this.missT < this.cfg.pads.missX && !set.cleared[this.missSlot]) {
-        drawX(ctx, this.slotPos[this.missSlot].x, this.slotPos[this.missSlot].y);
-      }
     } else if (mode === 'carry') {
       drawPad(ctx, ORANGE, this.slotPos[0].x, this.slotPos[0].y, r);
       drawPad(ctx, ORANGE, this.slotPos[2].x, this.slotPos[2].y, r);
@@ -183,27 +179,24 @@ export class Hurdles110 extends LaneRace {
   /**
    * The hurdles in one lane, drawn just before that lane's athlete. Two posts
    * inset from the lane lines (the top bar follows the perspective), little
-   * feet pointing back toward the start, and a striped top bar. A knocked
-   * hurdle tips forward and lies flat.
+   * feet pointing back toward the start, and a striped top bar. Hurdles stay
+   * up even when you trip over them, as in the original.
    */
   drawLaneProps(ctx, view, a) {
     const tr = this.track;
     const cam = this.camera;
-    const now = this.game.time;
     const pxPerM = cam.ppm * tr.figureScale(a.lane); // same scale as the athletes
     const hh = this.cfg.hurdles.height * pxPerM;
     const zN = tr.zNear + a.lane - 1 + 0.3;
     const zF = tr.zNear + a.lane - 0.3;
-    this.positions.forEach((hx, i) => {
+    this.positions.forEach((hx) => {
       const n = tr.project(cam, view, hx, zN);
       const f = tr.project(cam, view, hx, zF);
       if (Math.max(n.x, f.x) < -hh || Math.min(n.x, f.x) > view.w + hh) return;
       n.y += 4;
       f.y += 4;
-      const kt = a.hurdles?.knocked.get(i);
-      const ang = kt == null ? 0 : clamp((now - kt) / 0.22, 0, 1) * 1.45; // tips forward
-      const dx = Math.sin(ang) * hh;
-      const dy = -Math.cos(ang) * hh;
+      const dx = 0;
+      const dy = -hh;
       const lw = Math.max(2, 0.035 * pxPerM);
       ctx.lineCap = 'round';
       for (const p of [f, n]) {

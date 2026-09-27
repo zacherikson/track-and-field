@@ -76,11 +76,12 @@ export const GROUPS = [
   },
   {
     title: '110m Hurdles',
-    blurb: 'A new shuffled 1-2-3 set appears at GO and at every hurdle. How fast you clear it sets your pace to the next hurdle.',
+    blurb: 'A new shuffled 1-2-3 set appears at GO and at every hurdle. How fast you clear it sets your pace; two faults in a set and you trip.',
     params: [
       { path: 'hurdles110.runner.cadenceForTopSpeed', label: 'Pace for top speed', unit: 'taps/s', min: 2, max: 10, step: 0.1, help: 'Taps per second within a set (counting your reaction to it) needed for full speed.' },
       { path: 'hurdles110.runner.topSpeed', label: 'Top speed', unit: 'm/s', min: 7, max: 13, step: 0.1, kmh: true, help: 'Fastest hurdling speed.' },
-      { path: 'hurdles110.clear.clipLoss', label: 'Speed lost hitting a hurdle', unit: 'm/s', min: 0, max: 6, step: 0.1, kmh: true, help: 'When you reach a hurdle before clearing the set.' },
+      { path: 'hurdles110.clear.trip.down', label: 'Time down after a trip', unit: 'ms', scale: 1000, min: 0, max: 1.5, step: 0.05, help: 'How long you sprawl on the track when you trip over a hurdle.' },
+      { path: 'hurdles110.clear.tripFaults', label: 'Faults to trip', unit: '', min: 1, max: 3, step: 1, help: 'Wrong or untapped buttons in a set that make you trip at the next hurdle. 2 = one mistake is forgiven.' },
       { path: 'hurdles110.clear.cleanLoss', label: 'Speed lost per clean hurdle', unit: 'm/s', min: 0, max: 2, step: 0.05, kmh: true, help: 'Every clearance costs a little.' },
       { path: 'hurdles110.missSpeedLoss', label: 'Wrong-number speed loss', unit: 'm/s', min: 0, max: 5, step: 0.1, kmh: true, help: 'Tapping a number out of order.' },
     ],

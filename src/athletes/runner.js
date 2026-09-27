@@ -27,6 +27,8 @@ export class Runner {
     this.taps = 0;
     this.lastStumbleT = -Infinity;
     this.cruise = false; // true: keep the current pace without tapping (see cadence())
+    this.fallFrom = this.fallUntil = -Infinity;
+    this.fallSpeed = 0;
     this.finished = false; // true after crossing the line: brake, ignore taps
     // Finish-lean state. 'run' -> 'carry' (in the lean zone: strides stop counting,
     // momentum carries you) -> 'lean' (torso pitched forward at the line).
@@ -102,6 +104,13 @@ export class Runner {
     return 'ok';
   }
 
+  /** Fall (hurdles trip): from time `from`, for `dur` s, speed is capped at `speed`; then you build up again. */
+  fall(from, dur, speed) {
+    this.fallFrom = from;
+    this.fallUntil = from + dur;
+    this.fallSpeed = speed;
+  }
+
   /** Measure the next stride's interval from time t (e.g. when new buttons appear), not from the last stride. */
   restartInterval(t) {
     this.lastTapT = t;
@@ -138,6 +147,8 @@ export class Runner {
     } else if (this.mode === 'carry') {
       this.v = Math.max(0, this.v - this.dip.carryDecel * dt);
       if (this.v < this.dip.minCarrySpeed) this.mode = 'run';
+    } else if (this.started && t >= this.fallFrom && t < this.fallUntil) {
+      this.v = Math.min(this.v, this.fallSpeed); // down on the track: crawling, no acceleration
     } else if (this.started) {
       const target = this.targetSpeed(this.cadence(t));
       if (this.v < target) {

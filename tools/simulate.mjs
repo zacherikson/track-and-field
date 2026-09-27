@@ -191,12 +191,12 @@ function hurdleRace({ react, gap, err = 0.02, recover = 0.15 }) {
     if (r.mode === 'carry' && HD - r.x <= r.idealDipDistance()) r.lean();
     while (nextT != null && nextT < t + STEP && r.mode === 'run' && !set.done) {
       const slot = set.slots.indexOf(set.next);
-      const wrong = Math.random() < err;
-      const res = set.press(wrong ? set.slots.findIndex((n, i) => !set.cleared[i] && n !== set.next) : slot, nextT);
-      nextT = res === 'miss' ? nextT + recover : queue.length ? nextT + queue.shift() : null;
+      const wrongSlot = set.slots.findIndex((n, i) => set.state[i] === 'live' && n !== set.next);
+      const res = set.press(Math.random() < err && wrongSlot >= 0 ? wrongSlot : slot, nextT);
+      nextT = set.done ? null : res === 'miss' ? nextT + recover : queue.length ? nextT + queue.shift() : nextT + gap;
     }
     r.update(STEP, t);
-    const hop = run.update(r, t + STEP, set.done);
+    const hop = run.update(r, t + STEP, set.faults);
     if (hop) {
       if (hop.last) set.stop();
       else {
@@ -206,10 +206,10 @@ function hurdleRace({ react, gap, err = 0.02, recover = 0.15 }) {
       }
     }
     const cross = r.crossing(HD, t, STEP);
-    if (cross != null) return { time: cross, clips: run.clips, misses: set.misses };
+    if (cross != null) return { time: cross, trips: run.trips, misses: set.misses };
     t += STEP;
   }
-  return { time: Infinity, clips: run.clips, misses: set.misses };
+  return { time: Infinity, trips: run.trips, misses: set.misses };
 }
 
 function hurdleAiRace(level) {
@@ -223,7 +223,7 @@ function hurdleAiRace(level) {
     if (HD - r.x <= HC.dipPromptDistance) r.carry();
     ai.update(t, STEP, r.x / HD, HD - r.x);
     r.update(STEP, t);
-    const hop = run.update(r, t + STEP, ai.done);
+    const hop = run.update(r, t + STEP, ai.faults);
     if (hop) hop.last ? ai.stop() : ai.start(t + STEP);
     const cross = r.crossing(HD, t, STEP);
     if (cross != null) return cross;
@@ -236,7 +236,7 @@ console.log('\n110m HURDLES (react = time to find 1 in a new set, gap = between 
 const hrow = (label, opts) => {
   const res = Array.from({ length: N }, () => hurdleRace(opts));
   const avg = (k) => res.reduce((a, b) => a + b[k], 0) / res.length;
-  console.log(`${label.padEnd(44)} ${avg('time').toFixed(2)}s   ${avg('clips').toFixed(1)} hurdles hit   ${avg('misses').toFixed(1)} misses`);
+  console.log(`${label.padEnd(44)} ${avg('time').toFixed(2)}s   ${avg('trips').toFixed(1)} trips   ${avg('misses').toFixed(1)} misses`);
 };
 hrow('slow     react 0.80 gap 0.35 (set ~1.5s)', { react: 0.8, gap: 0.35, err: 0.04 });
 hrow('casual   react 0.60 gap 0.26 (set ~1.1s)', { react: 0.6, gap: 0.26, err: 0.03 });
@@ -244,6 +244,8 @@ hrow('good     react 0.45 gap 0.18 (set ~0.8s)', { react: 0.45, gap: 0.18, err: 
 hrow('expert   react 0.35 gap 0.13 (set ~0.6s)', { react: 0.35, gap: 0.13, err: 0.015 });
 hrow('machine  react 0.25 gap 0.10 (set ~0.45s)', { react: 0.25, gap: 0.1, err: 0 });
 hrow('good but sloppy (8% wrong)', { react: 0.45, gap: 0.18, err: 0.08 });
+hrow('good but very sloppy (20% wrong)', { react: 0.45, gap: 0.18, err: 0.2 });
+hrow('fast guesser (react 0.2, 40% wrong)', { react: 0.2, gap: 0.1, err: 0.4 });
 for (const level of ['amateur', 'pro']) {
   const winners = [];
   const all = [];

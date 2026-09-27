@@ -4,6 +4,39 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 3.2: hurdles failures like the original (trips, lost buttons)
+From footage of the original going wrong:
+- **Wrong number:** that button turns into a red ✕ and is then gone; you
+  never get that stride. Carry on with the lowest number left. Also a small
+  stumble (`missSpeedLoss` 1.2 → 0.8 m/s). Before, the button stayed and you
+  had to tap it again.
+- **Faults and trips:** a set's faults are its lost buttons plus any still
+  untapped when you reach the hurdle. **One fault is forgiven**; with two or
+  more (`tripFaults` 2) you **trip**. The footage: 2 right + 1 wrong jumped
+  clean; 1 right + 2 wrong tripped; 1 wrong + 2 untapped tripped.
+  - **The trip:** you go over the hurdle low for 0.3s, lie sprawled on the
+    track for 0.4s, and take 0.25s to get up, crawling at 1.5 m/s the whole
+    time (new `Runner.fall`). Then you build speed back up. It costs about
+    1.3s; rivals go past. The next set still appears as you go over, so you
+    can tap while down.
+  - **The hurdle stays up** (it used to fall over). Too slow at takeoff (< 4
+    m/s) also trips you.
+- **Results:** "N trips" replaces "hurdles hit"; the average set time counts
+  clean sets only.
+- **Tuning panel:** "Time down after a trip" and "Faults to trip" replace
+  "Speed lost hitting a hurdle".
+- **Simulator:**
+
+  | Who | Time | Trips per race |
+  |---|---|---|
+  | Good | 12.24s | |
+  | Expert | 11.54s | |
+  | Good, 8% wrong | 12.54s | 0.1 |
+  | Good, 20% wrong | 13.30s | 0.3 |
+  | Fast guesser (40% wrong) | 13.14s | 1.1 |
+  | Amateur rivals (typical) | 13.2s | |
+  | Pro rivals (typical) | 12.5s | |
+
 ## Step 3.1: hurdles redone like the original
 Rebuilt from frame-by-frame gameplay footage. The first version (three fixed
 pads tapped 1-2-3 over and over) was nothing like the original.

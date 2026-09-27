@@ -90,10 +90,11 @@ export const POSES = {
     legs: [flatLegs(-0.13, -0.27, 0.0, 0)[0], { thigh: -1.35, shin: -1.55, toe: 0.3 }],
     arms: [{ upper: 0.05, fore: 0.05 }, { upper: -0.02, fore: -0.02 }],
   },
-  // ...then the front leg back into the front block, rear foot already placed.
-  kickFront: {
-    hipX: -0.15, hipY: -0.27, lean: 1.25,
-    legs: [{ thigh: -1.2, shin: -1.45, toe: 0.3 }, blockLegs(-0.15, -0.27)[1]],
+  // ...then a small step: the front foot lifts just off the track and moves back
+  // onto the front block (no kick), rear foot already placed.
+  stepFront: {
+    hipX: -0.15, hipY: -0.27, lean: 1.22,
+    legs: [{ ...legIK(-0.15, -0.27, -0.09, -0.05), toe: 0.4 }, blockLegs(-0.15, -0.27)[1]],
     arms: [{ upper: 0.05, fore: 0.05 }, { upper: -0.02, fore: -0.02 }],
   },
   // "On your marks / Ready": feet on the blocks, rear knee down near the track, hands on the line.

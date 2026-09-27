@@ -4,6 +4,12 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 2.30: only the rear leg kicks back into the blocks
+- Getting into the blocks, the front leg no longer kicks back. After the rear
+  leg kicks into the rear block, the front foot lifts just off the track and
+  steps back onto the front block. The `kickFront` pose is replaced by
+  `stepFront`, keyed at 0.76 of `crouchTime` (was 0.78).
+
 ## Step 2.29: sprint back-side mechanics (was a high-knees drill)
 The 2.28 foot path only worked in front of the body: the foot left the track
 just behind the hips, then went straight up and forward. Hip extension was

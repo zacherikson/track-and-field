@@ -305,14 +305,15 @@ export class LaneRace {
     }
     if (this.state === 'ready') {
       // Wait a beat, drop onto the hands at the line, kick the rear leg back
-      // into its block, then the front leg, and settle (as in the original).
+      // into its block, then step the front foot back onto its block and settle
+      // (as in the original: only the rear leg kicks).
       const k = clamp((now - this.stateT - a.crouchDelay) / c.crouchTime, 0, 1);
       const keys = [
         [0, POSES.stand],
         [0.18, POSES.bend],
         [0.34, POSES.squat],
         [0.55, POSES.kickRear],
-        [0.78, POSES.kickFront],
+        [0.76, POSES.stepFront],
         [1, POSES.blocks],
       ];
       for (let i = 1; i < keys.length; i++) {

@@ -18,8 +18,8 @@ const DIP_KEYS = ['Space', 'ArrowUp', 'ArrowDown'];
  * pattern, not mashing, is what makes you fast.
  *
  * Look and motion (measured from footage of the original):
- * - Each side's target has one fixed spot. A new target DROPS onto it from
- *   above: it accelerates like it's falling (ease-in), with a faint trailing
+ * - Each side's target has one fixed spot. The first target simply appears at
+ *   GO; every one after that DROPS onto its spot from above: it accelerates like it's falling (ease-in), with a faint trailing
  *   echo of its rim, and stops dead on the spot, with no bounce.
  * - When you hit it, the green body vanishes instantly and its rim is left
  *   behind as a thin white outline that expands and fades.
@@ -74,7 +74,7 @@ export class Sprint100 extends LaneRace {
 
   onGo() {
     this.judge.start(this.goT);
-    this.spawnT = this.goT;
+    this.spawnT = -Infinity; // the first target just appears in place at GO; later ones drop in
   }
 
   mapInput(e) {

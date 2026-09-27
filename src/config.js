@@ -70,9 +70,9 @@ export const CONFIG = {
     chordWindow: 0.06, // s; left + right presses this close together count as both thumbs
     armDelay: 0.3, // s after entering the zone before a lean can trigger (stray stride taps)
     reach: 1.0, // m the chest gets ahead of the hips at full lean
-    riseTime: 0.25, // s to reach full lean
-    holdTime: 0.3, // s held at full lean
-    recoverTime: 0.35, // s to straighten back up
+    riseTime: 0.2, // s to reach full lean
+    holdTime: 0.1, // s held at full lean (brief: it pops straight back up)
+    recoverTime: 0.12, // s to straighten back up
     leanDecel: 1.0, // m/s^2 lost while leaning
     postLeanDecel: 4.5, // m/s^2 lost once you straighten up before the line (leaned too early)
     minLeanSpeed: 4, // m/s; an early lean slows you to no less than this

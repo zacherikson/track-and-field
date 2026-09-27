@@ -4,6 +4,24 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 2.13: quicker lean, first target appears in place
+- **Lean timing** re-measured from the original at its full frame rate (about
+  25fps): about 0.2s down, only about 0.1s at the bottom, then it pops back up
+  in about 0.1s.
+  - `riseTime` 0.25 → 0.2, `holdTime` 0.3 → 0.1, `recoverTime` 0.35 → 0.12.
+  - Timing is tighter now:
+
+    | Lean timing | Effect |
+    |---|---|
+    | Perfect (to 1m early) | −0.10s |
+    | 1m late | −0.07s |
+    | 2m early | +0.02s |
+    | 6m early | +0.12s |
+    | 8m early | +0.25s |
+
+- **The first green target just appears** in place at GO (as in the original);
+  every later one drops in.
+
 ## Step 2.12: finish lean instead of a dive; no false starts
 From footage of the original's finish:
 - **Lean, not dive.** The legs keep running while the torso pitches forward,

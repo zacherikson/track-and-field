@@ -11,62 +11,94 @@
  * 16.7ms at 60Hz, which is ~20% noise at 14 taps/sec. `event.timeStamp` is
  * sub-millisecond accurate, so we convert it to simulation time instead.
  *
- * Pointer Events cover touch, mouse and pen with one API and give each finger
- * its own `pointerId`, which is what makes two-thumb multi-touch work.
+ * Touch: we read raw `touchstart` events (every new finger in `changedTouches`),
+ * registered on the window in the capture phase so nothing on the page can get
+ * in first. On iOS these are the lowest-level events a page gets; pointer events
+ * are derived from them. Mouse and pen still come through Pointer Events (for
+ * desktop testing), and touch-generated pointer events are ignored so a tap is
+ * never counted twice.
+ *
+ * `stats` counts what the browser delivered, for the results screen: if a tap
+ * felt lost but the counts match, the phone never delivered it.
  */
 export class Input {
   constructor(canvas, view) {
     this.canvas = canvas;
     this.view = view;
     this.queue = []; // { type: 'down'|'key', x, y, id, code, wall }
-    this.active = new Map(); // pointerId -> { x, y } for held pointers
     this.wallRef = performance.now();
     this.simRef = 0;
     this.lastConsumed = 0;
+    this.resetStats();
 
-    const opts = { passive: false };
-    canvas.addEventListener('pointerdown', (e) => this.onDown(e), opts);
-    window.addEventListener('pointermove', (e) => this.onMove(e), opts);
-    window.addEventListener('pointerup', (e) => this.onUp(e), opts);
-    window.addEventListener('pointercancel', (e) => this.onUp(e), opts);
+    const opts = { passive: false, capture: true };
+    window.addEventListener('touchstart', (e) => this.onTouchStart(e), opts);
+    window.addEventListener('touchmove', (e) => this.onGame(e) && e.preventDefault(), opts);
+    window.addEventListener('touchend', (e) => this.onTouchEnd(e), opts);
+    window.addEventListener('touchcancel', (e) => this.onTouchCancel(e), opts);
+    window.addEventListener('pointerdown', (e) => this.onPointerDown(e), opts);
     window.addEventListener('keydown', (e) => this.onKey(e));
 
     // iOS Safari still fires some gestures despite touch-action: none.
     const block = (e) => e.preventDefault();
-    canvas.addEventListener('touchstart', block, opts);
-    canvas.addEventListener('touchmove', block, opts);
     document.addEventListener('gesturestart', block, opts);
     document.addEventListener('dblclick', block, opts);
     document.addEventListener('contextmenu', block, opts);
   }
 
+  /** Counters for the results screen. `lagMax`: worst ms from a touch to the game handling it. */
+  resetStats() {
+    this.stats = { touches: 0, cancels: 0, lagMax: 0 };
+  }
+
+  /** Only touches on the game itself: the tuning panel and other overlays keep normal behavior. */
+  onGame(e) {
+    return e.target === this.canvas;
+  }
+
   wallTime(e) {
-    // event.timeStamp shares performance.now()'s clock in modern browsers.
-    // Fall back to now() if a browser reports something odd.
+    // event.timeStamp shares performance.now()'s clock in modern browsers. Fall
+    // back to now() if a browser reports something odd, and never accept a time
+    // in the future (it would hold the tap in the queue until then).
     const now = performance.now();
     const t = e.timeStamp;
-    return Number.isFinite(t) && t > 0 && Math.abs(now - t) < 2000 ? t : now;
+    return Number.isFinite(t) && t > 0 && Math.abs(now - t) < 2000 ? Math.min(t, now) : now;
   }
 
-  toLogical(e) {
+  toLogical(clientX, clientY) {
     const r = this.canvas.getBoundingClientRect();
     const s = this.view.scale || 1;
-    return { x: (e.clientX - r.left) / s, y: (e.clientY - r.top) / s };
+    return { x: (clientX - r.left) / s, y: (clientY - r.top) / s };
   }
 
-  onDown(e) {
+  push(clientX, clientY, id, wall) {
+    const p = this.toLogical(clientX, clientY);
+    this.queue.push({ type: 'down', x: p.x, y: p.y, id, wall });
+  }
+
+  onTouchStart(e) {
+    if (!this.onGame(e)) return;
+    e.preventDefault(); // no zoom, scroll, callout or synthesized mouse events
+    const wall = this.wallTime(e);
+    for (const t of e.changedTouches) {
+      this.stats.touches++;
+      this.push(t.clientX, t.clientY, 't' + t.identifier, wall);
+    }
+  }
+
+  onTouchEnd(e) {
+    if (this.onGame(e)) e.preventDefault();
+  }
+
+  onTouchCancel(e) {
+    // The phone took these touches back (a system gesture, usually from a screen edge).
+    this.stats.cancels += e.changedTouches.length;
+  }
+
+  onPointerDown(e) {
+    if (e.pointerType === 'touch' || !this.onGame(e)) return; // touches arrive via touchstart
     e.preventDefault();
-    const p = this.toLogical(e);
-    this.active.set(e.pointerId, p);
-    this.queue.push({ type: 'down', x: p.x, y: p.y, id: e.pointerId, wall: this.wallTime(e) });
-  }
-
-  onMove(e) {
-    if (this.active.has(e.pointerId)) this.active.set(e.pointerId, this.toLogical(e));
-  }
-
-  onUp(e) {
-    this.active.delete(e.pointerId);
+    this.push(e.clientX, e.clientY, e.pointerId, this.wallTime(e));
   }
 
   onKey(e) {
@@ -94,6 +126,8 @@ export class Input {
     }
     this.queue = keep;
     if (out.length) {
+      const now = performance.now();
+      for (const ev of out) this.stats.lagMax = Math.max(this.stats.lagMax, now - ev.wall);
       out.sort((a, b) => a.t - b.t);
       this.lastConsumed = out[out.length - 1].t;
     }

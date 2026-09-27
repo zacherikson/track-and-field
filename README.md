@@ -59,7 +59,7 @@ src/config.js         ALL tuning numbers
 src/flow.js           scene transitions: menu → intro → event → result
 src/core/
   game.js             game loop (fixed timestep), view scaling, scene switching
-  input.js            multi-touch pointer + keyboard queue with precise timestamps
+  input.js            raw multi-touch + mouse + keyboard queue with precise timestamps
   camera.js           side-scroll camera with smoothing + look-ahead
   ui.js, math.js, storage.js
 src/athletes/
@@ -95,9 +95,11 @@ tools/simulate.mjs    headless tuning simulator
 - **Input handling.** Browser events arrive between frames, so we queue them with
   their exact `event.timeStamp`, converted to simulation time. Tap speed depends on
   the gaps between taps, and rounding them to frame boundaries (16.7ms) would add
-  about 20% noise at race pace. Pointer Events give each finger its own id, which is
-  what makes two-thumb multi-touch work. The tap zones are whole screen halves, so
-  a thumb never "misses".
+  about 20% noise at race pace. Touches are read from raw `touchstart` events (every
+  new finger in `changedTouches`, captured on the window before anything else sees
+  them); mouse and pen use Pointer Events. The tap zones are whole screen halves,
+  so a thumb never "misses". The results screen shows how many touches the phone
+  delivered, how many the game judged, and any the phone cancelled.
 - **Skill over mashing.** In the 100m the lit side is random, but never three in a
   row on one side. Wrong taps cost speed and briefly lock you out, so reading (and
   pre-empting a forced switch) beats hammering. `tools/simulate.mjs` proves it by

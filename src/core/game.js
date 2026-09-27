@@ -82,6 +82,7 @@ export class Game {
     this.lastTs = ts;
     const dt = Math.min(rawDt, CONFIG.loop.maxFrameDt);
     if (rawDt > 0) this.fps += (1 / rawDt - this.fps) * 0.05;
+    this.worstFrameMs = Math.max(this.worstFrameMs ?? 0, rawDt * 1000); // hitch meter (reset by scenes)
 
     if (this.view.portrait) {
       // Paused: freeze the sim clock and drop any taps.

@@ -47,7 +47,7 @@ export class Sprint100 extends LaneRace {
 
   /** Player numbers for the results screen. */
   raceStats() {
-    return { hits: this.judge.hits, misses: this.judge.misses, topSpeed: this.playerTopV ?? 0 };
+    return { hits: this.judge.hits, misses: this.judge.misses, topSpeed: this.playerTopV ?? 0, input: this.inputStats() };
   }
 
   get target() {

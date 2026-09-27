@@ -120,6 +120,8 @@ export class LaneRace {
     if (this.state === 'set' && end >= this.goT) {
       this.setState('race', this.goT);
       for (const a of this.athletes) (a.ai ?? a.runner).go(this.goT);
+      this.game.input.resetStats(); // input diagnostics cover the race itself
+      this.game.worstFrameMs = 0;
       this.onGo?.();
     }
 
@@ -136,7 +138,7 @@ export class LaneRace {
       if (action == null) continue;
       // Taps before GO are ignored (no false starts).
       if (this.state !== 'race' || e.t < this.goT) {
-        this.logTap(e, 'early');
+        this.logTap(e, this.state === 'finished' ? 'after finish' : 'early');
         continue;
       }
       const mode = this.player.runner.mode;
@@ -192,9 +194,17 @@ export class LaneRace {
 
   /** Remember what a tap did, for the optional tap markers (CONFIG.debug.tapMarkers). */
   logTap(e, result) {
-    if (e.type !== 'down' || !CONFIG.debug.tapMarkers) return;
-    this.tapLog.push({ x: e.x, y: e.y, t: e.t, result });
+    if (e.type !== 'down') return;
     this.tapCounts[result] = (this.tapCounts[result] ?? 0) + 1;
+    if (CONFIG.debug.tapMarkers) this.tapLog.push({ x: e.x, y: e.y, t: e.t, result });
+  }
+
+  /** What the browser delivered vs what the game did with it, for the results screen. */
+  inputStats() {
+    const s = this.game.input.stats;
+    const judged = Object.values(this.tapCounts).reduce((a, b) => a + b, 0);
+    const ignored = Object.entries(this.tapCounts).filter(([k]) => !['hit', 'miss', 'lean'].includes(k));
+    return { touches: s.touches, cancels: s.cancels, lagMax: s.lagMax, judged, ignored, worstFrameMs: this.game.worstFrameMs ?? 0 };
   }
 
   drawTapMarkers(ctx, view) {

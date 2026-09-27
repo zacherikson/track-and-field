@@ -4,6 +4,28 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 2.43: raw touch input + input check on the results screen
+"Sometimes a tap doesn't register at full speed." In the browser test harness
+every tap was delivered and judged, so this hardens input and collects evidence
+from the phone:
+- **Touch input reads raw `touchstart` events** (every new finger in
+  `changedTouches`), registered on the window in the capture phase. Before, it
+  used `pointerdown` on the canvas; on iOS, pointer events are derived from
+  touches. Mouse and pen still use Pointer Events, and touch-generated pointer
+  events are ignored so a tap can't count twice.
+- **Event timestamps are capped at "now".** A timestamp in the future would
+  have held the tap in the queue until then.
+- **Results screen, input check** (amber when something's off):
+  - `Touches N · judged M (ignored: …) · K cancelled by phone`
+  - `Worst frame X ms · worst tap delay Y ms`
+  - If a tap felt lost but touches = judged and nothing was cancelled, the phone
+    never delivered it. `cancelled by phone` means iOS took the touch back,
+    usually for an edge swipe.
+- The game's input queue adds about 12ms on average (at most one frame).
+- Note: a wrong-side tap's red ✕ appears under the thumb that tapped, and iOS
+  can't vibrate from a web page. At speed a miss can feel like a tap that didn't
+  register. Check the misses count on the line above.
+
 ## Step 2.42: rival fields retuned to about 10.2s (Amateur) and 9.6s (Pro)
 Since the fast start (2.33), rivals had been running about half a second
 faster than intended.

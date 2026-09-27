@@ -94,6 +94,17 @@ export class ResultScene {
         size: 15, weight: 500, color: 'rgba(255,255,255,0.65)', maxWidth: colW,
       });
     }
+    if (this.stats?.input) {
+      // Input check: every touch the phone delivered should be judged by the game.
+      const i = this.stats.input;
+      const ign = i.ignored.map(([k, v]) => `${v} ${k}`).join(', ');
+      const l1 = `Touches ${i.touches} · judged ${i.judged}${ign ? ` (ignored: ${ign})` : ''}${i.cancels ? ` · ${i.cancels} cancelled by phone` : ''}`;
+      const l2 = `Worst frame ${Math.round(i.worstFrameMs)} ms · worst tap delay ${Math.round(i.lagMax)} ms`;
+      const warn = i.cancels > 0 || i.touches !== i.judged || i.worstFrameMs > 100;
+      const color = warn ? 'rgba(255,190,90,0.9)' : 'rgba(255,255,255,0.45)';
+      text(ctx, l1, cx, y + 96, { size: 13, weight: 500, color, maxWidth: colW });
+      text(ctx, l2, cx, y + 114, { size: 13, weight: 500, color, maxWidth: colW });
+    }
 
     // Right column: standings.
     roundRect(ctx, rx, 30, colW, 400, 16);

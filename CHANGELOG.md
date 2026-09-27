@@ -4,6 +4,18 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 2.37: no mini-map; finish timed on the torso
+- Removed the race progress mini-map from the top of the screen; the field is
+  visible on the track itself.
+- **Finish timing now follows the real rule** (World Athletics: the torso
+  counts, not the head, arms, legs, hands or feet). Before, an upright runner
+  was timed at the hips. Now it's the leading edge of the torso: `torsoLead`
+  0.15m ahead of the hips running upright, or out to `reach` (1m) in a full
+  lean, whichever is further forward.
+  - Everyone's times are about 0.01s faster.
+  - A perfectly timed lean now gains about 0.085s over not leaning (was about
+    0.10s), because an upright chest already counts.
+
 ## Step 2.36: wrong-tap speed loss 1.0 → 1.7 m/s (tuning panel)
 - `sprint100.targets.missSpeedLoss` 1.0 → 1.7 m/s. Also the AI's, which pays
   the same price. The double-press guard stays at 0.

@@ -31,13 +31,18 @@ export class Runner {
     this.mode = 'run';
     this.leanT = 0;
     this.reach = 0; // meters the chest is ahead of the hips (the chest is what crosses the line)
-    this.prevFront = this.x;
+    this.prevFront = this.front;
     this.dipUsed = false;
   }
 
-  /** Front of the torso: finish times are taken when this crosses the line. */
+  /**
+   * Leading edge of the torso. Finish times are taken when this crosses the line,
+   * as in real track: the torso counts, not the head, arms, legs or feet. Running
+   * upright the chest is torsoLead ahead of the hips; a lean pushes it out to
+   * `reach`.
+   */
   get front() {
-    return this.x + this.reach;
+    return this.x + Math.max(this.dip.torsoLead, this.reach);
   }
 
   /** Enter the dip zone: stop reacting to strides, carry your speed. */

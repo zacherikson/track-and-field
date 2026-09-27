@@ -81,6 +81,7 @@ export const CONFIG = {
     chordWindow: 0.06, // s; left + right presses this close together count as both thumbs
     armDelay: 0.3, // s after entering the zone before a lean can trigger (stray stride taps)
     reach: 1.0, // m the chest gets ahead of the hips at full lean
+    torsoLead: 0.15, // m the chest is ahead of the hips running upright (timing uses the torso, like real track)
     riseTime: 0.32, // s to reach full lean (smooth, committed dip)
     holdTime: 0.16, // s held at full lean
     recoverTime: 0.22, // s to straighten back up

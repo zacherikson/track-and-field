@@ -422,29 +422,6 @@ export class LaneRace {
     // Timer (top-right).
     const tStr = (this.player.mark ?? this.raceTime).toFixed(2);
     text(ctx, tStr, view.w - 16 - s.r, 34 + s.t, { size: 40, align: 'right', color: '#fff', shadow: true });
-
-    // Mini-map: everyone's progress along the full race.
-    const mapW = Math.min(260, view.w - 2 * (mx + mw + 20) + 40);
-    const mapX = view.w / 2 - mapW / 2;
-    const mapY = 22 + s.t;
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
-    roundRect(ctx, mapX - 8, mapY - 10, mapW + 16, 20, 10);
-    ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.6)';
-    ctx.fillRect(mapX, mapY - 1, mapW, 2);
-    ctx.fillRect(mapX + mapW - 2, mapY - 7, 3, 14);
-    for (const a of [...this.athletes].sort((p, q) => p.isPlayer - q.isPlayer)) {
-      const px = mapX + clamp(a.runner.x / this.cfg.distance, 0, 1) * mapW;
-      ctx.fillStyle = a.colors.shirt;
-      ctx.beginPath();
-      ctx.arc(px, mapY, a.isPlayer ? 6 : 4, 0, Math.PI * 2);
-      ctx.fill();
-      if (a.isPlayer) {
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-      }
-    }
   }
 
   drawBanner(ctx, view) {

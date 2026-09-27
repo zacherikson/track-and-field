@@ -4,6 +4,15 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 6.1: javelin landing is the end of the flight shot
+- No separate landing shot. The flight shot follows the javelin all the way
+  down until its tip goes into the grass (it sticks at the angle it came down,
+  quivering, with a little spray of turf). Then a line draws across the field
+  at the spot, with the distance on it (red and FOUL for a foul).
+- The ▶▶ button (during the flight) skips straight to that: the javelin stuck
+  where it landed and the line.
+- README: the javelin's landing shot is gone from the renderer notes.
+
 ## Step 6: Javelin
 From footage of the original, frame by frame.
 - **Three throws**, best counts, against five rivals. World record 104.80m,

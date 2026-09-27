@@ -87,13 +87,13 @@ src/events/
   longJump.js         long jump: 3 rounds, run-up, blinking takeoff pads, flight, stretch, sand, marks
   poleVaultRules.js   pole vault: plant and release quality, height, rival vaults (pure)
   javelinRules.js     javelin: angle while held, distance from speed/angle/gap, rival throws (pure)
-  javelin.js          javelin: run-up, hold to draw back, let go to throw, flight shot, landing shot
+  javelin.js          javelin: run-up, hold to draw back, let go to throw, flight shot to the landing and the mark line
   poleVault.js        pole vault: run-up with the pole, spark, hold-and-release, swing, bar, mat, rising camera
 src/render/track.js   stadium with one-point perspective (camera 1m ahead of the player), parallax crowd
 src/render/pads.js    glossy tap targets, numbered buttons and the red ✕
 src/render/targetPads.js  falling target + hit ring animations (100m, long jump run-up)
 src/render/runway.js  long jump runway, board and sand pit (on the stadium renderer)
-src/render/javelinField.js  javelin runway, foul line and sector; the flight shot (sky, hills, sea); the landing shot down the field
+src/render/javelinField.js  javelin runway, foul line and sector; the flight shot (sky, hills, sea) down to where it sticks in the grass
 src/render/vaultArena.js  pole vault runway, plant box, landing mat, uprights with height marks, tall sky
 src/tuning/           in-game tuning panel (params list, saved overrides, live estimates)
 tools/simulate.mjs    headless tuning simulator

@@ -33,8 +33,9 @@ const FIG_H = CONFIG.figure.height;
  *   throw: block, arm over the top, fold forward and drop onto your hands.
  * - Too early and you waste the gap to the line; reach the line still holding,
  *   or let go past it: FOUL.
- * - The camera follows the javelin up over the stands (fast-forward button to
- *   skip), then cuts to a shot down the field where it lands. Tap to go on.
+ * - The camera follows the javelin up over the stands and back down until it
+ *   sticks in the grass; a line marks the spot with the distance. The ▶▶
+ *   button skips straight to the landing. Tap to go on.
  *
  * States: 'ready' → 'run' (zoneT, holdT inside it) → 'throw' → 'flight' →
  * 'landed' → 'mark'; or 'run' → 'overrun' (FOUL) → 'mark'.
@@ -99,6 +100,8 @@ export class Javelin {
     this.down = { L: null, R: null }; // thumbs down: { id, t }
     this.holdT = null; // both thumbs down: drawing the javelin back
     this.shot = null; // after letting go: { t0, x0, v, deg, range, foul, vx, vy, T, outT }
+    this.flightT = null; // when the flight shot started
+    this.landT = null;
     this.mark = null; // { mark } or { foul: true }
     this.sparks = [];
     this.lastPose = null;
@@ -131,7 +134,7 @@ export class Javelin {
         continue;
       }
       if (this.state === 'flight' && (e.code === 'Enter' || (e.type === 'down' && Math.hypot(e.x - this.ffBtn.x, e.y - this.ffBtn.y) < this.ffBtn.r + 10))) {
-        this.land(end); // fast-forward
+        this.land(end); // skip to where it landed
         continue;
       }
       const side = this.side(e);
@@ -272,7 +275,8 @@ export class Javelin {
     const s = this.shot;
     const mark = s.x0 + s.range; // measured from the foul line
     this.mark = s.foul ? { foul: true } : { mark };
-    this.landMark = Math.max(20, mark);
+    this.landT = t;
+    this.landAng = this.javelinAt(s.T).ang; // stuck at the angle it came down at
     navigator.vibrate?.(30);
     this.setState('landed');
   }
@@ -385,8 +389,8 @@ export class Javelin {
   }
 
   render(ctx, view) {
-    if (this.state === 'flight') return this.renderFlight(ctx, view);
-    if (this.state === 'landed' || (this.state === 'mark' && this.shot)) return this.renderLanding(ctx, view);
+    // The flight shot carries on to the landing: the javelin sticks in the grass and the mark line appears.
+    if (this.state === 'flight' || this.state === 'landed' || (this.state === 'mark' && this.flightT != null)) return this.renderFlight(ctx, view);
     const tr = this.track;
     tr.draw(ctx, view, this.camera);
     const pxPerM = this.camera.ppm * tr.figureScale(1);
@@ -450,15 +454,83 @@ export class Javelin {
     }
   }
 
+  /**
+   * The flight shot, followed through to the landing (as in the original): the
+   * camera stays on the javelin until its tip goes into the grass, then a line
+   * draws across the field where it landed, with the distance.
+   */
   renderFlight(ctx, view) {
-    const j = this.javelinAt(this.flightAge(this.now));
+    const s = this.shot;
+    const landed = this.state !== 'flight';
+    const j = this.javelinAt(landed ? s.T : this.flightAge(this.now));
     const cam = { x: j.x, ppm: this.cfg.flight.ppm };
-    this.track.drawFlight(ctx, view, cam, j.x, j.y);
+    const tr = this.track;
+    tr.drawFlight(ctx, view, cam, j.x, j.y);
     const len = this.cfg.javelinLength * this.cfg.flight.ppm;
-    // On screen the javelin climbs from just above the field to the upper third, then comes back down to it.
-    const jy = this.track.flightGround(view, j.y) - 30 - j.y * 16;
-    drawJavelin(ctx, view.w * 0.45, clamp(jy, view.h * 0.2, view.h), len, j.ang, 5);
-    // Fast-forward button.
+    // The javelin's tip is at (tipX, tipY) on screen; it comes down into the field at landY.
+    const landY = tr.flightGround(view, 0) + 55;
+    const tipX = view.w * 0.45;
+    let ang = j.ang;
+    let tipY = landY - j.y * 16;
+    const age = landed ? this.now - this.landT : 0;
+    if (landed) {
+      ang = this.landAng + Math.sin(age * 30) * Math.exp(-age * 5) * 0.06; // quivering in the grass
+      tipY = landY + len * 0.08; // tip sunk in
+    }
+    const cx = tipX - (Math.cos(ang) * len) / 2;
+    const cy = tipY + (Math.sin(ang) * len) / 2;
+    const lift = Math.max(0, view.h * 0.16 - cy); // keep the whole javelin on screen at the top of the climb
+    if (landed) this.drawMarkLine(ctx, view, tipX, landY, age);
+    drawJavelin(ctx, cx, cy + lift, len, ang, 5);
+    if (landed) {
+      // A little spray of turf where it went in.
+      for (let i = 0; i < 6; i++) {
+        const k = clamp(age / 0.4, 0, 1);
+        ctx.fillStyle = `rgba(92,64,34,${0.8 * (1 - k)})`;
+        ctx.beginPath();
+        ctx.arc(tipX + (i - 2.5) * 7 * (0.5 + k), landY - 10 * Math.sin(Math.PI * k) * (1 + (i % 3)), 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    if (!landed) this.drawSkipButton(ctx);
+    this.drawHUD(ctx, view);
+    if (!landed) text(ctx, `${Math.max(0, j.x).toFixed(1)} m`, view.w / 2, 40 + view.safe.t, { size: 30, color: '#fff', shadow: true });
+    if (this.state === 'mark') this.drawMark(ctx, view);
+  }
+
+  /** The line across the field where the javelin landed, drawing out from the spot, with the distance (or FOUL). */
+  drawMarkLine(ctx, view, x, y, age) {
+    const tr = this.track;
+    const top = tr.flightGround(view, 0);
+    const k = clamp((age - 0.15) / 0.35, 0, 1);
+    if (k <= 0) return;
+    const foul = this.shot.foul;
+    const slope = 0.35; // leans with the field's perspective: further away = further right
+    const y0 = y - (y - top) * k;
+    const y1 = y + (view.h - y) * k;
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = foul ? '#e8281e' : '#ffffff';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(x + (y - y0) * slope, y0);
+    ctx.lineTo(x - (y1 - y) * slope, y1);
+    ctx.stroke();
+    ctx.restore();
+    if (k < 1) return;
+    const label = foul ? 'FOUL' : `${this.mark.mark.toFixed(2)} m`;
+    const lx = x - (view.h - y) * slope * 0.55;
+    const ly = y + (view.h - y) * 0.55;
+    ctx.font = '800 26px system-ui, sans-serif';
+    const w = ctx.measureText(label).width + 24;
+    roundRect(ctx, lx + 14, ly - 20, w, 40, 10);
+    ctx.fillStyle = foul ? 'rgba(200,30,30,0.9)' : 'rgba(12,22,44,0.85)';
+    ctx.fill();
+    text(ctx, label, lx + 14 + w / 2, ly, { size: 26, color: '#fff' });
+  }
+
+  /** ▶▶: skip the rest of the flight and go straight to where it landed. */
+  drawSkipButton(ctx) {
     const b = this.ffBtn;
     ctx.fillStyle = 'rgba(20,24,40,0.85)';
     ctx.beginPath();
@@ -476,19 +548,6 @@ export class Javelin {
       ctx.closePath();
       ctx.fill();
     }
-    this.drawHUD(ctx, view);
-    const d = Math.max(0, j.x);
-    text(ctx, `${d.toFixed(1)} m`, view.w / 2, 40 + view.safe.t, { size: 30, color: '#fff', shadow: true });
-  }
-
-  renderLanding(ctx, view) {
-    const age = this.state === 'landed' ? this.now - this.stateT : 5;
-    this.track.drawLanding(ctx, view, { x: this.landMark, ppm: 40 }, this.landMark, age, this.shot.foul);
-    this.drawHUD(ctx, view);
-    if (this.state === 'landed' && !this.shot.foul) {
-      text(ctx, `${this.mark.mark.toFixed(2)} m`, view.w / 2, 40 + view.safe.t, { size: 34, color: '#fff', shadow: true });
-    }
-    if (this.state === 'mark') this.drawMark(ctx, view);
   }
 
   /**

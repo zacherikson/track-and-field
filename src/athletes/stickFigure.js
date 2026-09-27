@@ -27,7 +27,7 @@ const FOOT_L = 0.06;
  * The launch pose is reached when the runner has moved LAUNCH.distance meters
  * (the race scene blends set -> launch over that distance).
  */
-export const LAUNCH = { distance: 0.2, blend: 0.9 }; // m: launch pose reached; fully running
+export const LAUNCH = { distance: 0.35, blend: 1.6 }; // m: launch pose reached; fully running
 const LAUNCH_SHIFT = LAUNCH.distance / 1.8; // that distance in figure heights (1.8 m athlete)
 
 export const BLOCK_FEET = {

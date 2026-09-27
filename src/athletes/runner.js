@@ -65,7 +65,7 @@ export class Runner {
     return this.mode === 'lean' ? this.reach / this.dip.reach : 0;
   }
 
-  /** Start the clock for tap intervals: the first interval is your reaction time. */
+  /** The gun: start the clock for tap intervals. */
   go(t) {
     this.started = true;
     this.lastTapT = t;
@@ -79,12 +79,17 @@ export class Runner {
     if (!this.started || this.finished || this.mode !== 'run') return 'idle';
     const interval = t - this.lastTapT;
     const first = this.taps === 0;
-    // The first "interval" is your reaction time. Never reject it, but don't let
-    // a lucky anticipation of the gun count as superhuman cadence either.
     if (!first && interval < this.p.minStrideInterval) return 'fast';
-    const floor = first ? 1 / this.p.cadenceForTopSpeed : 0;
-    const iv = Math.min(Math.max(interval, floor), this.p.maxIntervalForAvg);
-    this.avgInterval = this.avgInterval == null ? iv : this.avgInterval + this.p.cadenceSmoothing * (iv - this.avgInterval);
+    if (first) {
+      // Explode out of the blocks: start at startSpeed with your pace assumed to
+      // be startPace. From here your real taps pull the pace toward your actual
+      // rhythm, so you start fast and only slow down if you can't keep it up.
+      this.v = Math.max(this.v, this.p.startSpeed);
+      this.avgInterval = 1 / this.p.startPace;
+    } else {
+      const iv = Math.min(interval, this.p.maxIntervalForAvg);
+      this.avgInterval += this.p.cadenceSmoothing * (iv - this.avgInterval);
+    }
     this.lastTapT = t;
     this.taps++;
     return 'ok';

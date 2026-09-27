@@ -48,6 +48,12 @@ export const CONFIG = {
     cadenceForTopSpeed: 5.2, // strides/s needed for top speed
     speedCurve: 0.6, // <1 = forgiving, 1 = linear, >1 = rewards only elite play
     topSpeed: 13.4, // m/s at full cadence
+    // The start: you explode out of the blocks at startSpeed, with your pace
+    // assumed to be startPace. Your real taps then pull the pace toward your
+    // actual rhythm, so a good tapper keeps accelerating and a slow one eases
+    // back. Start fast, slow down if you can't keep up.
+    startSpeed: 6.0, // m/s on the first stride out of the blocks
+    startPace: 4.5, // strides/s your pace is assumed to be on the first stride
     accelMax: 10.0, // m/s^2 from standstill
     accelFalloff: 0.72, // accel shrinks by this fraction as speed approaches topSpeed
     coastDecel: 4.0, // m/s^2 lost when your cadence is below what your speed needs
@@ -111,7 +117,7 @@ export const CONFIG = {
       maxSameSide: 2,
       switchChance: 0.5, // chance of switching sides when not forced
       missLockout: 0, // s; a wrong-side tap freezes your input this long (0 = none, like the original)
-      missSpeedLoss: 1.6, // m/s lost on a wrong-side tap
+      missSpeedLoss: 2.0, // m/s lost on a wrong-side tap
     },
     pads: {
       radius: 56, // target size (visual only; the hit zone is the whole screen half)
@@ -146,7 +152,7 @@ export const CONFIG = {
       jitter: 0.3, // +/- fraction of randomness on each stride interval (reaction variance)
       fatigue: 0.05, // cadence lost by the finish (fades in over the last 40%)
       missChance: 0.03, // chance a stride is a wrong-side tap instead
-      missSpeedLoss: 1.6, // same price the player pays
+      missSpeedLoss: 2.0, // same price the player pays
       missLockout: 0,
       dipError: [-1.2, 2.5], // m; AI leans at the ideal spot plus this (negative = late)
     },
@@ -156,7 +162,7 @@ export const CONFIG = {
       jitter: 0.22,
       fatigue: 0.03,
       missChance: 0.015,
-      missSpeedLoss: 1.6, // same price the player pays
+      missSpeedLoss: 2.0, // same price the player pays
       missLockout: 0,
       dipError: [-0.6, 1.2],
     },

@@ -108,6 +108,9 @@ tools/simulate.mjs    headless tuning simulator
   feel its own knob:
   - responsiveness: `cadenceSmoothing`
   - reward curve: `speedCurve`
+  - the start: `startSpeed` and `startPace` (you leave the blocks fast with a
+    strong assumed pace; your real taps pull it toward your actual rhythm, so
+    you start fast and only slow down if you can't keep it up)
   - explosiveness: `accelMax`
   - punishment for stopping: `coastDecel`
 - **Juice.** Small feedback makes input feel good: a ring burst on each hit, a red ✕

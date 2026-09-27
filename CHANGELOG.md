@@ -4,6 +4,28 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 2.33: start fast, slow down only if you can't keep up
+Before, speed built up from zero, with the first "interval" taken from your
+reaction time: about 4.3 m/s half a second after your first tap, 7.7 m/s after
+1s. Now you start fast and your tapping decides whether you keep it:
+- **New `startSpeed` 6 m/s:** speed you have instantly on your first tap (the
+  push out of the blocks).
+- **New `startPace` 4.5 strides/s:** your pace is assumed to be this on the
+  first tap (was: your reaction time). Real taps pull it toward your actual
+  rhythm within a few steps.
+- **Result:** about 8.9 m/s half a second after the first tap and 11.2 m/s
+  after 1s. A slow tapper (2.5/s) peaks at about 9.6 m/s, then eases back to
+  their natural 8.7 m/s.
+- **`missSpeedLoss` 1.6 → 2.0 m/s** (player and AI). With the fast start alone,
+  a good reader beat the best masher by only about 0.45s (was 0.75s). Readers
+  miss about once a race, so they barely feel the change; mashers miss 12-17
+  times. Good reader 8.95s vs best masher (6/s) 9.70s.
+- `accelMax` unchanged at 10: raising it made mistakes too cheap to recover from.
+- **Times are about 0.5s faster across the board:** good reader 9.42 → 8.95s;
+  amateur winner median 9.75s, pro 8.46s.
+- **Launch animation** stretched to match the faster start: launch pose at
+  0.35m (was 0.2), fully running by 1.6m (was 0.9).
+
 ## Step 2.32: elbow drives back in the drive phase
 - The arm swing was measured from vertical, so when the body leaned forward out
   of the blocks the backswing ended against the torso. It's now measured from

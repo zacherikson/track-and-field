@@ -18,6 +18,8 @@ export const GROUPS = [
     title: 'Speeding up',
     blurb: 'How quickly the runner catches up to the speed your pace asks for.',
     params: [
+      { path: 'runner.startSpeed', label: 'Block exit speed', unit: 'm/s', min: 0, max: 9, step: 0.5, kmh: true, help: 'Speed you have instantly on your first tap. Higher = more explosive start.' },
+      { path: 'runner.startPace', label: 'Starting pace', unit: 'taps/s', min: 2, max: 6, step: 0.1, help: 'The pace you are assumed to have on your first tap. Your real taps pull it toward your actual rhythm within a few steps.' },
       { path: 'runner.accelMax', label: 'Acceleration', unit: 'm/s²', min: 3, max: 25, step: 0.5, help: 'Punchy vs. sluggish. Higher = speed responds to your taps sooner.' },
       { path: 'runner.accelFalloff', label: 'Acceleration fade', unit: '%', scale: 100, min: 0, max: 0.95, step: 0.01, help: 'How much harder it gets to gain speed once you are already fast.' },
     ],

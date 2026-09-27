@@ -19,8 +19,9 @@ const DIP_KEYS = ['Space', 'ArrowUp'];
  *   with the lowest number left.
  * - With no buttons left you run on at the pace you set until the next hurdle,
  *   where the next set appears. ANY error in the set (a wrong number, or a
- *   button not tapped in time) and you trip at that hurdle: you knock it down,
- *   go over low, sprawl on the track and get up again, with your speed gone.
+ *   button not tapped in time) and you trip at that hurdle: you catch it and
+ *   knock it down, and stumble on (arms flailing, speed knocked down) without
+ *   falling.
  * - 7 hurdles. After the last one the two outer spots turn orange: press both
  *   to lean, as in the 100m.
  * Each button's hit zone is its third of the screen. Rules in hurdleRules.js;
@@ -123,12 +124,13 @@ export class Hurdles110 extends LaneRace {
   }
 
   poseFor(a) {
-    const pose = super.poseFor(a);
-    const trip = a.hurdles?.tripAge(this.game.time);
-    if (trip != null && (this.state === 'race' || this.state === 'finished')) return tripPose(pose, trip, this.cfg.clear.trip);
+    let pose = super.poseFor(a);
+    if (this.state !== 'race' && this.state !== 'finished') return pose;
     const k = a.hurdles?.hopProgress(a.runner.x);
-    if (k == null || (this.state !== 'race' && this.state !== 'finished')) return pose;
-    return hurdlePose(pose, Math.pow(Math.sin(Math.PI * k), 0.6));
+    if (k != null) pose = hurdlePose(pose, Math.pow(Math.sin(Math.PI * k), 0.6));
+    // Caught the hurdle: stumble on from the hurdling pose.
+    const trip = a.hurdles?.tripAge(this.game.time);
+    return trip != null ? tripPose(pose, trip, this.cfg.clear.trip) : pose;
   }
 
   // ---------------------------------------------------------------- drawing

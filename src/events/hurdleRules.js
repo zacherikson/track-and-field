@@ -15,10 +15,10 @@
  *
  * HURDLES are jumped automatically. At takeoff, count the set's FAULTS: buttons
  * lost to wrong (out-of-order) taps plus buttons not tapped in time. ANY fault
- * (`tripFaults` 1), or being slower than `minSpeed`, and you TRIP: you knock
- * the hurdle down, go over it low, sprawl on the track (crawling at
- * `trip.speed`), get up and have to build speed again. A clean clearance costs
- * a little speed.
+ * (`tripFaults` 1), or being slower than `minSpeed`, and you TRIP: you catch
+ * the hurdle and knock it down, stumble forward (speed knocked down to
+ * `trip.speed`) without falling, and have to build speed again. A clean
+ * clearance costs a little speed.
  */
 
 export const hurdlePositions = (h) => Array.from({ length: h.count }, (_, i) => h.first + i * h.spacing);
@@ -59,7 +59,7 @@ export class ButtonSet {
     return this.next == null;
   }
 
-  /** Lost buttons plus untapped ones: two or more at a hurdle and you trip. */
+  /** Lost buttons plus untapped ones: any at a hurdle and you trip. */
   get faults() {
     if (!this.slots) return 0;
     return this.state.filter((s) => s !== 'hit').length;
@@ -129,7 +129,7 @@ export class HurdleRun {
   tripAge(t) {
     const age = t - this.tripT;
     const tr = this.clear.trip;
-    return age >= 0 && age < tr.over + tr.down + tr.up ? age : null;
+    return age >= 0 && age < tr.hit + tr.stumble + tr.recover ? age : null;
   }
 
   /**
@@ -137,21 +137,22 @@ export class HurdleRun {
    * null, or { trip, last } at the moment of a takeoff.
    */
   update(r, t, faults) {
-    if (this.hop && (r.x >= this.hop.x1 || this.hop.trip)) this.hop = null; // a trip replaces the hop
+    if (this.hop && r.x >= this.hop.x1) this.hop = null;
     if (this.hop || this.next >= this.positions.length) return null;
     const c = this.clear;
     const hx = this.positions[this.next];
     if (r.x < hx - c.takeoff) return null;
     const trip = faults >= c.tripFaults || r.v < c.minSpeed;
     this.next++;
+    // Catching the hurdle ends the hop at the bar; the stumble takes over from there.
+    this.hop = { i: this.next - 1, x0: hx - c.takeoff, x1: hx + (trip ? 0.2 : c.landing), trip, t0: t };
     if (trip) {
       this.trips++;
       this.tripT = t;
       this.knocked.set(this.next - 1, t);
-      // Over the hurdle low at full speed, then down on the track and up again.
-      r.fall(t + c.trip.over, c.trip.down + c.trip.up, c.trip.speed);
+      // Catch the hurdle, then stagger on at a much lower speed before building up again.
+      r.fall(t + c.trip.hit, c.trip.stumble, c.trip.speed);
     } else {
-      this.hop = { i: this.next - 1, x0: hx - c.takeoff, x1: hx + c.landing, trip, t0: t };
       r.v = Math.max(0, r.v - c.cleanLoss);
     }
     return { trip, last: this.next >= this.positions.length };

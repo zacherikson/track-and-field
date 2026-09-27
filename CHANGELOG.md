@@ -4,6 +4,28 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 3.4: a trip is a stumble, not a fall
+- When you trip you no longer go down. You go over, catch the hurdle (it falls)
+  0.2s after takeoff, and stumble on for 0.4s: legs still running, body
+  pitched forward, arms flailing (one flung up, one back). Then you settle
+  back into your form over 0.25s.
+- Your speed is knocked down to 4 m/s during the stumble (was a 1.5 m/s crawl
+  for 0.65s), then you build back up. A trip now costs about 0.6s (was about
+  1.3s).
+- Config `trip: { hit, stumble, recover, speed }`. Tuning panel: "Stumble time"
+  and "Stumble speed".
+- **Simulator:**
+
+  | Who | Time | Trips per race |
+  |---|---|---|
+  | Good | 12.37s | |
+  | Expert | 11.64s | |
+  | Good, 8% wrong | 12.96s | 0.9 |
+  | Good, 20% wrong | 14.33s | |
+  | Fast guesser | 15.10s | |
+  | Amateur rivals (typical) | 13.4s | |
+  | Pro rivals (typical) | 12.6s | |
+
 ## Step 3.3: any mistake trips you and knocks the hurdle down
 Corrected rule: ANY error in a set trips you at the next hurdle, and the
 hurdle goes down. The errors are a wrong (out-of-order) number, or not

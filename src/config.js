@@ -175,10 +175,10 @@ export const CONFIG = {
       minSpeed: 4.0, // m/s: slower than this at takeoff and you trip
       tripFaults: 1, // any fault (a wrong number, or a button not tapped in time) trips you at the hurdle
       trip: {
-        over: 0.3, // s going over the hurdle low before hitting the track
-        down: 0.4, // s sprawled on the track
-        up: 0.25, // s getting up
-        speed: 1.5, // m/s you crawl at while down and getting up
+        hit: 0.2, // s from takeoff to catching the hurdle
+        stumble: 0.4, // s staggering forward, arms flailing, speed capped
+        recover: 0.25, // s to get back into your running form
+        speed: 4.0, // m/s: your speed is knocked down to this while you stumble
       },
     },
     missSpeedLoss: 0.8, // m/s lost tapping a wrong number (you also lose that button's stride)

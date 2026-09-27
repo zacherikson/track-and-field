@@ -80,7 +80,8 @@ export const GROUPS = [
     params: [
       { path: 'hurdles110.runner.cadenceForTopSpeed', label: 'Pace for top speed', unit: 'taps/s', min: 2, max: 10, step: 0.1, help: 'Taps per second within a set (counting your reaction to it) needed for full speed.' },
       { path: 'hurdles110.runner.topSpeed', label: 'Top speed', unit: 'm/s', min: 7, max: 13, step: 0.1, kmh: true, help: 'Fastest hurdling speed.' },
-      { path: 'hurdles110.clear.trip.down', label: 'Time down after a trip', unit: 'ms', scale: 1000, min: 0, max: 1.5, step: 0.05, help: 'How long you sprawl on the track when you trip over a hurdle.' },
+      { path: 'hurdles110.clear.trip.stumble', label: 'Stumble time', unit: 'ms', scale: 1000, min: 0, max: 1.5, step: 0.05, help: 'How long your speed stays knocked down after catching a hurdle.' },
+      { path: 'hurdles110.clear.trip.speed', label: 'Stumble speed', unit: 'm/s', min: 0, max: 9, step: 0.25, kmh: true, help: 'Your speed is knocked down to this when you catch a hurdle.' },
       { path: 'hurdles110.clear.tripFaults', label: 'Faults to trip', unit: '', min: 1, max: 3, step: 1, help: 'Wrong or untapped buttons in a set that make you trip at the next hurdle. 1 = any mistake, as in the original.' },
       { path: 'hurdles110.clear.cleanLoss', label: 'Speed lost per clean hurdle', unit: 'm/s', min: 0, max: 2, step: 0.05, kmh: true, help: 'Every clearance costs a little.' },
       { path: 'hurdles110.missSpeedLoss', label: 'Wrong-number speed loss', unit: 'm/s', min: 0, max: 5, step: 0.1, kmh: true, help: 'Tapping a number out of order.' },

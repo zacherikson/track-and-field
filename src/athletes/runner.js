@@ -104,7 +104,7 @@ export class Runner {
     return 'ok';
   }
 
-  /** Fall (hurdles trip): from time `from`, for `dur` s, speed is capped at `speed`; then you build up again. */
+  /** Stumble (hurdles trip): from time `from`, for `dur` s, speed is capped at `speed`; then you build up again. */
   fall(from, dur, speed) {
     this.fallFrom = from;
     this.fallUntil = from + dur;
@@ -148,7 +148,7 @@ export class Runner {
       this.v = Math.max(0, this.v - this.dip.carryDecel * dt);
       if (this.v < this.dip.minCarrySpeed) this.mode = 'run';
     } else if (this.started && t >= this.fallFrom && t < this.fallUntil) {
-      this.v = Math.min(this.v, this.fallSpeed); // down on the track: crawling, no acceleration
+      this.v = Math.min(this.v, this.fallSpeed); // stumbling: speed knocked down, no acceleration
     } else if (this.started) {
       const target = this.targetSpeed(this.cadence(t));
       if (this.v < target) {

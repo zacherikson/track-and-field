@@ -17,6 +17,12 @@ export const POSES = {
     legs: [{ thigh: 0.04, shin: 0.02 }, { thigh: -0.04, shin: -0.05 }],
     arms: [{ upper: 0.08, fore: 0.25 }, { upper: -0.06, fore: 0.1 }],
   },
+  // Halfway down into the blocks: bent at the waist, knees bent, hands reaching for the track.
+  bend: {
+    hipX: -0.08, hipY: -0.42, lean: 0.95,
+    legs: [{ thigh: 0.55, shin: -0.25 }, { thigh: 0.05, shin: -0.55 }],
+    arms: [{ upper: 0.25, fore: 0.15 }, { upper: 0.12, fore: 0.05 }],
+  },
   // "On your marks / Ready": back knee on the ground, hands on the line.
   blocks: {
     hipX: -0.14, hipY: -0.27, lean: 1.2,

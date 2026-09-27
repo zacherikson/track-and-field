@@ -91,7 +91,11 @@ export const CONFIG = {
     playerLane: 1, // 1 = nearest the camera: the player always runs in the front lane
     startBlink: { period: 0.5, on: 0.3 }, // s: start button + player's lane flash on/off before READY
     countdown: {
-      readyTime: 1.4, // s showing "READY" (athletes settle in blocks)
+      readyTime: 2.2, // s of READY: athletes wait a beat, crouch into the blocks, settle
+      crouchDelay: [0.25, 0.55], // s after READY before each athlete starts to crouch (staggered)
+      crouchTime: 0.7, // s from standing to settled in the blocks (via a bent-over pose)
+      setDelay: [0, 0.18], // s after GET SET before each athlete's hips start to rise
+      riseTime: 0.4, // s to rise from the blocks into the set position
       setMin: 1.1, // "GET SET" lasts a random time in [setMin, setMax]
       setMax: 2.3, // so the GO can't be anticipated
       goBanner: 0.7, // s the "GO!" text stays up
@@ -121,6 +125,7 @@ export const CONFIG = {
         grow: 1.35, // it expands from the pad's rim to this many radii
       },
     },
+    driveDistance: 12, // m out of the blocks over which runners rise from a low, forward drive to upright
     finishHold: 2.4, // s after you cross before the results screen
     maxRaceTime: 25, // s; give up and DNF after this
   },

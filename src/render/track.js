@@ -33,9 +33,11 @@ export const LAYOUT = {
 };
 
 export class TrackRenderer {
-  constructor(lanes, distance) {
+  /** @param blocksX world x (m) of the athletes' start position, for drawing starting blocks */
+  constructor(lanes, distance, blocksX = null) {
     this.lanes = lanes;
     this.distance = distance;
+    this.blocksX = blocksX;
     const L = LAYOUT;
     const ratio = (L.nearY - L.horizonY) / (L.farY - L.horizonY);
     this.zNear = lanes / (ratio - 1);
@@ -228,6 +230,7 @@ export class TrackRenderer {
     const D = this.distance;
     line(D, 5, '#fff');
     this.drawFinishTicks(ctx, view, camera);
+    if (this.blocksX != null) this.drawStartBlocks(ctx, view, camera);
 
     // Lane numbers: small and upright just past the start line; big and painted
     // flat on the track, turned sideways, just before the finish line.
@@ -239,6 +242,41 @@ export class TrackRenderer {
       this.drawPaintedNumber(ctx, view, camera, this.laneNumber(k), D - 1.1, z);
     }
     this.drawFinishPost(ctx, view, camera);
+  }
+
+  /**
+   * Starting blocks in every lane (as in the original): a grey rail with a red
+   * pedal under each foot of the READY pose (front foot about 0.1 m ahead of the
+   * athlete's start position, back foot about 0.5 m behind it).
+   */
+  drawStartBlocks(ctx, view, camera) {
+    const x0 = this.blocksX;
+    if (this.project(camera, view, x0, this.zNear).x < -80 && this.project(camera, view, x0, this.zFar).x < -80) return;
+    for (let k = this.lanes; k >= 1; k--) {
+      const z = this.laneZ(k);
+      const s = this.scaleAt(z);
+      const a = this.project(camera, view, x0 - 0.62, z);
+      const b = this.project(camera, view, x0 + 0.15, z);
+      ctx.strokeStyle = '#8a8f98';
+      ctx.lineWidth = 3 * s;
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+      for (const [dx, dz] of [[0.08, -0.12], [-0.5, 0.12]]) {
+        const p = this.project(camera, view, x0 + dx, z + dz);
+        const w = 0.09 * camera.ppm * s;
+        const h = 11 * s;
+        ctx.fillStyle = '#d7263d';
+        ctx.beginPath();
+        ctx.moveTo(p.x - w, p.y);
+        ctx.lineTo(p.x, p.y);
+        ctx.lineTo(p.x - w * 0.35, p.y - h);
+        ctx.lineTo(p.x - w * 1.2, p.y - h);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
   }
 
   /** A short dash across the middle of each lane at 5, 4 and 3 m before the line. */

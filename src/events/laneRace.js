@@ -36,7 +36,7 @@ export class LaneRace {
 
   enter() {
     const cfg = this.cfg;
-    this.track = new TrackRenderer(cfg.lanes, cfg.distance);
+    this.track = new TrackRenderer(cfg.lanes, cfg.distance, cfg.startX);
     this.camera = new Camera();
 
     // Build the field: player in their lane, rivals in the others.
@@ -55,6 +55,7 @@ export class LaneRace {
         ai: isPlayer ? null : new AIController(runner, this.difficulty),
         mark: null,
         status: 'ok',
+        idlePhase: rand(0, Math.PI * 2), // so the waiting athletes don't sway in unison
       });
     }
     this.player = this.athletes.find((a) => a.isPlayer);
@@ -84,6 +85,11 @@ export class LaneRace {
   startCountdown(t) {
     const c = this.cfg.countdown;
     this.resetField();
+    // Each athlete moves on their own timing, like real sprinters.
+    for (const a of this.athletes) {
+      a.crouchDelay = rand(...c.crouchDelay);
+      a.setDelay = rand(...c.setDelay);
+    }
     this.state = 'ready';
     this.stateT = t;
     this.setT = t + c.readyTime;
@@ -262,14 +268,33 @@ export class LaneRace {
   poseFor(a) {
     const r = a.runner;
     const now = this.game.time;
-    if (this.state === 'waiting') return POSES.stand;
-    if (this.state === 'ready') return POSES.blocks;
-    if (this.state === 'set') return lerpPose(POSES.blocks, POSES.set, clamp((now - this.stateT) / 0.45, 0, 1));
-    // Racing: blend out of the set position over the first ~1.2m, into standing as they stop.
+    const c = this.cfg.countdown;
+    const ease = (k) => k * k * (3 - 2 * k);
+    if (this.state === 'waiting') {
+      // Standing at the line, shifting weight a little.
+      const s = Math.sin(now * 1.7 + a.idlePhase);
+      return { ...POSES.stand, hipY: POSES.stand.hipY + 0.006 * s, lean: POSES.stand.lean + 0.02 * s };
+    }
+    if (this.state === 'ready') {
+      // Wait a beat, bend down, then settle into the blocks.
+      const k = clamp((now - this.stateT - a.crouchDelay) / c.crouchTime, 0, 1);
+      if (k < 0.5) return lerpPose(POSES.stand, POSES.bend, ease(k / 0.5));
+      return lerpPose(POSES.bend, POSES.blocks, ease((k - 0.5) / 0.5));
+    }
+    if (this.state === 'set') {
+      return lerpPose(POSES.blocks, POSES.set, ease(clamp((now - this.stateT - a.setDelay) / c.riseTime, 0, 1)));
+    }
+    // Racing. Until an athlete reacts to the gun they hold the set position.
+    const d = r.x - r.startX; // meters out of the blocks
+    if (d <= 0 && r.v === 0 && !r.finished) return POSES.set;
     const amp = clamp(r.v / 9, 0.3, 1);
     const run = runPose(r.phase, amp);
     if (r.mode === 'lean') return leanPose(run, r.leanAmount);
-    if (r.x < 1.2) return lerpPose(POSES.set, run, clamp(r.x / 1.2, 0, 1));
+    // Drive phase: out of the blocks low and pitched forward, rising to upright.
+    const drive = Math.pow(clamp(1 - d / this.cfg.driveDistance, 0, 1), 1.5);
+    run.lean += 0.75 * drive;
+    run.hipY += 0.07 * drive;
+    if (d < 0.8) return lerpPose(POSES.set, run, ease(clamp(d / 0.8, 0, 1)));
     if (r.finished && r.v < 2) return lerpPose(POSES.stand, run, r.v / 2);
     return run;
   }

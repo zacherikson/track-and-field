@@ -4,6 +4,25 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 2.22: lifelike start sequence (from footage of the original)
+Frame-by-frame comparison showed the original stages the start where ours snapped:
+- **Starting blocks** in every lane: a grey rail with a red pedal under each foot.
+  They stay on the track after the start.
+- **Waiting:** athletes stand at their blocks, gently shifting their weight (each on
+  their own phase).
+- **READY** (`countdown.readyTime` 1.4 → 2.2s, close to the original's ~2.5s):
+  - Everyone keeps standing for a beat (`crouchDelay` 0.25–0.55s, random per
+    athlete).
+  - Then each one bends over (new `bend` pose) and settles into the blocks over
+    `crouchTime` 0.7s.
+  - Previously everyone snapped into the crouch instantly and in unison.
+- **GET SET:** hips rise over `riseTime` 0.4s, each athlete starting a little apart
+  (`setDelay` 0–0.18s).
+- **GO:** each athlete holds the set position until they react (the player until
+  their first correct tap). They push out low and pitched forward, then rise to
+  upright running over `driveDistance` 12m.
+  - Previously they went from the set position to fully upright within about 1m.
+
 ## Step 2.21: single finish line and single dashes
 - The "double" lines in the reference footage were ghosting from filming a screen.
   Now there's one finish line, and one dash per lane at 5, 4 and 3 m out.

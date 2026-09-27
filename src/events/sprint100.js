@@ -26,8 +26,8 @@ const DIP_KEYS = ['Space', 'ArrowUp', 'ArrowDown'];
  * - The circle is only a cue: the hit zone is that whole half of the screen, so
  *   touching just outside the circle still counts.
  * - Only two states: a green target (tap now) or a red ✕ (wrong side, wait).
- *   A wrong tap costs speed and shows only the ✕ for the short lockout; then
- *   the green target drops back in.
+ *   A wrong tap costs speed and shows the ✕ on the side you tapped for the
+ *   short lockout. The green target stays where it landed; it only drops once.
  * - Nothing is shown during the countdown. The first thing to appear is the
  *   first green target at GO; tapping before it is a false start.
  * - In the dip zone both pads show orange: press both together to dip.
@@ -91,8 +91,7 @@ export class Sprint100 extends LaneRace {
       this.rings.push({ side, t0: t });
       this.spawnT = t; // the next target drops in right away (even on the same side)
     } else if (result === 'miss') {
-      this.missSide = side;
-      this.spawnT = this.judge.lockedUntil; // drops back in once the ✕ is gone
+      this.missSide = side; // the green target stays put: no re-drop
       navigator.vibrate?.(40);
     }
   }
@@ -107,8 +106,8 @@ export class Sprint100 extends LaneRace {
     const mode = this.player.runner.mode;
     const now = this.game.time;
     if (mode === 'run' && this.target) {
+      this.drawDrop(ctx, this.pads[this.target], now - this.spawnT);
       if (now < this.judge.lockedUntil) this.drawX(ctx, this.pads[this.missSide].home);
-      else this.drawDrop(ctx, this.pads[this.target], now - this.spawnT);
     } else if (mode === 'carry') {
       this.drawPad(ctx, ORANGE, this.pads.L);
       this.drawPad(ctx, ORANGE, this.pads.R);

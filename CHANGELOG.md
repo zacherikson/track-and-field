@@ -4,6 +4,11 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 2.10: a miss doesn't re-drop the target
+- Once a green target lands it stays until you hit it. A wrong tap shows the red ✕
+  on the side you tapped for the lockout, while the green target stays visible
+  on its side. No hiding and no second drop.
+
 ## Step 2.9: target drop-in and hit outline, measured from the original
 Frame-by-frame analysis of gameplay footage (60fps capture of 30fps video; the
 pad radius r is about 54px in an 880×602 frame):
@@ -20,7 +25,7 @@ pad radius r is about 54px in an 880×602 frame):
   - Measured radius: 1.05r at the tap, 1.2r at 35ms, 1.35r at about 0.14s, gone
     at 0.18s.
   - Ours eases out from the rim to 1.35r and fades over 0.18s.
-- A target also drops back in after a miss lockout. Config is in
+- Config is in
   `sprint100.pads.drop` and `sprint100.pads.hitRing` (not in the tuning panel).
 
 ## Step 2.8: tuning from play-testing on the phone

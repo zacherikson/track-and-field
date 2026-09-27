@@ -4,6 +4,20 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 4.8: slow-motion flight, higher arc
+The jump felt over too fast. In the original you go higher and the game seems
+to slow down as you leave the board, which exaggerates the flight and gives
+you time to see the top coming.
+- New `longJump.flight.slowMo` { rate 0.55, ramp 0.15 }: just after takeoff
+  the clock eases down to 0.55x, so a flight takes about 1.3–1.4s instead of
+  0.75s and the top of the jump comes at 0.5s instead of 0.3s.
+- New `longJump.flight.heightScale` 2.2: the arc is drawn 2.2x higher (the
+  hips rise about 1 m instead of 0.5 m).
+- Looks only: the physics is unchanged. `stretch.window` stays 0.35 real s,
+  so reacting is no easier; you just see the top coming. `stretch.kickX`
+  0.8 → 0.75 m/s. Marks within about 5 cm of before: good player 7.90m,
+  expert 9.22m, Amateur winner 8.08m, Pro winner 9.01m.
+
 ## Step 4.7: the stretch throws you forward; no stretch, you crumple
 From a replay of the original: the jumper who stretches at the top of the jump
 throws himself forward and lands far out; the one who doesn't crumples into a

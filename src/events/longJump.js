@@ -374,7 +374,8 @@ export class LongJump {
     let y = groundY;
     if (air) {
       // Place the figure so its hips are at the flight height.
-      const hipScreenY = groundY - (0.5 * CONFIG.figure.height + this.jump.hipY) * pxPerM;
+      const hy = this.jump.hipY;
+      const hipScreenY = groundY - (0.5 * CONFIG.figure.height + (hy > 0 ? hy * this.cfg.flight.heightScale : hy)) * pxPerM;
       y = hipScreenY - pose.hipY * H;
       this.lastAirPose = pose;
     }

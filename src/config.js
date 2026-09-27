@@ -227,12 +227,19 @@ export const CONFIG = {
         reach: 0, // m the heels land ahead of the hips (feet right under you)
       },
     },
+    // In the air, as in the original: slow motion and a higher arc, so the
+    // flight looks big and you have time to see the top coming. Looks only:
+    // distances are the same.
+    flight: {
+      slowMo: { rate: 0.55, ramp: 0.15 }, // the clock eases down to 0.55x over the first 0.15 s after takeoff
+      heightScale: 2.2, // the arc is drawn this much higher
+    },
     stretch: {
       // Press both at the top of the jump and you throw yourself forward: a kick
       // (times the stretch quality) from that moment, landing far out on your heels.
-      kickX: 0.8, // m/s extra forward
+      kickX: 0.75, // m/s extra forward
       kickY: 0.5, // m/s extra upward
-      window: 0.35, // s the pads stay up after the top of the jump; the later you press, the weaker the kick
+      window: 0.35, // real s the pads stay up after the top of the jump; the later you press, the weaker the kick
     },
     // Rivals: run-up pace from CONFIG.ai, plus where they take off relative to
     // the line (negative = over it: foul) and how late they stretch.

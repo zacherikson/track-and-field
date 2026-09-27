@@ -4,6 +4,17 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 2.32: elbow drives back in the drive phase
+- The arm swing was measured from vertical, so when the body leaned forward out
+  of the blocks the backswing ended against the torso. It's now measured from
+  the torso line. At full effort: about 60° behind the torso to about 65° in
+  front. Upright at top speed that's almost the same as before (upper arm about
+  76° back, hand at chin height). In the drive phase the elbow now drives back
+  up to about shoulder height.
+- Drive-phase effort is `min(1, 1.4 · drive)` (was `0.9 · drive`), so the first
+  couple of meters use a full arm swing.
+- Launch pose: the back arm is flung up behind (upper -1.6 → -2.15 rad).
+
 ## Step 2.31: explosive start
 From frame-by-frame footage of the original's start (24fps): on the first
 frame after reacting, the athlete launches out flat and low, covers about a

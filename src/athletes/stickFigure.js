@@ -135,7 +135,7 @@ export function launchPose(k) {
   const ax = BLOCK_FEET.front - FOOT_L * Math.cos(toe) - LAUNCH_SHIFT * k;
   const ay = -FOOT_L * Math.sin(toe);
   const rear = { thigh: 0.95, shin: -0.55, toe: -0.1 };
-  const arms = [{ upper: 1.35, fore: 2.45 }, { upper: -1.6, fore: -1.15 }];
+  const arms = [{ upper: 1.35, fore: 2.45 }, { upper: -2.15, fore: -1.95 }]; // back arm flung up behind
   return {
     hipX,
     hipY,
@@ -173,7 +173,8 @@ export function launchPose(k) {
  */
 export function runPose(phase, amp, drive = 0) {
   const a = amp;
-  const e = Math.max(a, 0.9 * drive); // effort: arm swing and knee drive
+  const e = Math.max(a, Math.min(1, 1.4 * drive)); // effort: arm swing and knee drive (full out of the blocks)
+  const lean = 0.06 + 0.22 * a + 0.75 * drive;
   const reach = 0.55 + 0.45 * a; // longer foot travel at speed
   const lift = 0.35 + 0.65 * e; // higher heel kick and knee drive with effort
   const touchX = (0.1 - 0.08 * drive) * reach; // ankle lands just ahead of the hips
@@ -223,15 +224,18 @@ export function runPose(phase, amp, drive = 0) {
     // leg's knee is furthest forward.
     const q = 2 * Math.PI * (u0 + i * 0.5 - kneeU) + Math.PI / 2;
     const back = Math.max(0, Math.sin(q)); // 1 at the end of the backswing
-    // Swing biased backwards: at full speed the elbow drives far behind the body
-    // (upper arm about 75° back) and the hand comes up to chin height in front.
-    const upper = 0.05 - e * (0.25 + 1.05 * Math.sin(q));
+    // The swing is measured from the torso (arm hanging along it = -lean), so
+    // the elbow still drives well behind the body when it's pitched forward in
+    // the drive phase. At full effort it swings from about 60° behind the torso
+    // line to about 65° in front: upper arm about 75° back and hand at chin
+    // height when running upright, elbow up above the shoulder out of the blocks.
+    const upper = -lean + 0.25 - e * (0.2 + 1.1 * Math.sin(q));
     // Elbow held near 90° at any speed (about 100° jogging, 94° sprinting),
     // opening a little at the back of the swing.
     return { upper, fore: upper + 1.3 + 0.2 * e - 0.35 * e * back };
   });
 
-  return { hipX: 0, hipY, lean: 0.06 + 0.22 * a + 0.75 * drive, legs, arms };
+  return { hipX: 0, hipY, lean, legs, arms };
 }
 
 const frac = (x) => x - Math.floor(x);

@@ -5,7 +5,7 @@ import { text, roundRect } from '../core/ui.js';
 import { Runner } from '../athletes/runner.js';
 import { AIController } from '../athletes/ai.js';
 import { HERO, RIVALS } from '../athletes/roster.js';
-import { drawFigure, runPose, lerpPose, leanPose, POSES } from '../athletes/stickFigure.js';
+import { drawFigure, runPose, lerpPose, leanPose, handReach, POSES } from '../athletes/stickFigure.js';
 import { TrackRenderer } from '../render/track.js';
 import { ORANGE, drawPad } from '../render/pads.js';
 import { flow } from '../flow.js';
@@ -37,6 +37,7 @@ export class LaneRace {
   enter() {
     const cfg = this.cfg;
     this.track = new TrackRenderer(cfg.lanes, cfg.distance, cfg.startX);
+    this.track.blocksNudge = (lane) => this.laneNudge(lane);
     this.camera = new Camera();
 
     // Build the field: player in their lane, rivals in the others.
@@ -237,7 +238,7 @@ export class LaneRace {
     const H = CONFIG.figure.height * this.camera.ppm;
     for (let i = this.athletes.length - 1; i >= 0; i--) {
       const a = this.athletes[i];
-      const p = this.track.toScreen(this.camera, view, a.runner.x + a.runner.reach * 0.5, a.lane);
+      const p = this.track.toScreen(this.camera, view, a.runner.x + a.runner.reach * 0.5 + this.startNudge(a), a.lane);
       if (p.x < -80 || p.x > view.w + 80) continue;
       const scale = this.track.figureScale(a.lane);
       drawFigure(ctx, p.x, p.y + 4, H * scale, this.poseFor(a), a.colors);
@@ -247,6 +248,32 @@ export class LaneRace {
     this.drawControls(ctx, view);
     this.drawBanner(ctx, view);
     if (this.game.debug) this.drawDebug(ctx, view);
+  }
+
+  /**
+   * Runners are drawn at nearly the same size in every lane while the track
+   * shrinks with distance, so a crouched athlete's hands would sit a different
+   * distance from the line in each lane. At the start we shift each lane's
+   * drawing so the hands are `handGap` behind the line everywhere, fading the
+   * shift out over the first 2 m (physics positions are untouched: fair race).
+   */
+  startNudge(a) {
+    const r = a.runner;
+    const fade = Math.max(0, 1 - (r.x - r.startX) / 2);
+    return fade === 0 ? 0 : this.laneNudge(a.lane) * fade;
+  }
+
+  /** The start-position drawing shift for a lane (see startNudge), cached. */
+  laneNudge(lane) {
+    this.nudges ??= {};
+    if (this.nudges[lane] == null) {
+      const z = this.track.laneZ(lane);
+      const H0 = CONFIG.figure.height * this.camera.ppm;
+      const handPx = Math.max(handReach(POSES.blocks), handReach(POSES.set)) * H0 * this.track.figureScale(lane);
+      const handM = handPx / (this.camera.ppm * this.track.scaleAt(z));
+      this.nudges[lane] = -this.cfg.handGap - (this.cfg.startX + handM);
+    }
+    return this.nudges[lane];
   }
 
   /** The start button and the player's lane flash together: on, off, on, off... */

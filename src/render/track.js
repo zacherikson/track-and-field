@@ -250,13 +250,15 @@ export class TrackRenderer {
    * athlete's start position, back foot about 0.5 m behind it).
    */
   drawStartBlocks(ctx, view, camera) {
-    const x0 = this.blocksX;
-    if (this.project(camera, view, x0, this.zNear).x < -80 && this.project(camera, view, x0, this.zFar).x < -80) return;
+    if (this.project(camera, view, this.blocksX, this.zNear).x < -80 && this.project(camera, view, this.blocksX, this.zFar).x < -80) return;
     for (let k = this.lanes; k >= 1; k--) {
       const z = this.laneZ(k);
       const s = this.scaleAt(z);
-      const a = this.project(camera, view, x0 - 0.62, z);
-      const b = this.project(camera, view, x0 + 0.15, z);
+      // Match where the (nearly constant-size) athlete's feet are drawn in this lane.
+      const x0 = this.blocksX + (this.blocksNudge?.(k) ?? 0);
+      const f = this.figureScale(k) / s; // figure meters -> track meters in this lane
+      const a = this.project(camera, view, x0 - 0.62 * f, z);
+      const b = this.project(camera, view, x0 + 0.15 * f, z);
       ctx.strokeStyle = '#8a8f98';
       ctx.lineWidth = 3 * s;
       ctx.beginPath();
@@ -264,7 +266,7 @@ export class TrackRenderer {
       ctx.lineTo(b.x, b.y);
       ctx.stroke();
       for (const [dx, dz] of [[0.08, -0.12], [-0.5, 0.12]]) {
-        const p = this.project(camera, view, x0 + dx, z + dz);
+        const p = this.project(camera, view, x0 + dx * f, z + dz);
         const w = 0.09 * camera.ppm * s;
         const h = 11 * s;
         ctx.fillStyle = '#d7263d';

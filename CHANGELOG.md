@@ -4,6 +4,14 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 2.24: hands right behind the line
+- Crouched hands were 17–30cm behind the line, varying by lane: runners are drawn
+  at nearly the same size in every lane while the track shrinks with distance.
+- Each lane's runner (and its blocks) is now drawn shifted so the hands are
+  `sprint100.handGap` (5cm) behind the line in every lane.
+- The shift fades out over the first 2m of running. Physics start positions are
+  unchanged, so everyone still runs exactly the same distance.
+
 ## Step 2.23: higher hips in the set position
 - `POSES.set` hip height −0.34 → −0.41 H and torso lean 1.45 → 1.68 rad: the hips
   are now a little above the shoulders, like a real set position.

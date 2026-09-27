@@ -62,6 +62,12 @@ export function runPose(phase, amp) {
 
 const lerp = (a, b, t) => a + (b - a) * t;
 
+/** How far the furthest-forward hand reaches ahead of the feet origin, in figure heights. */
+export function handReach(pose) {
+  const shoulder = pose.hipX + 0.9 * 0.32 * Math.sin(pose.lean);
+  return Math.max(...pose.arms.map((a) => shoulder + 0.17 * Math.sin(a.upper) + 0.16 * Math.sin(a.fore)));
+}
+
 /**
  * Finish lean on top of a running pose (from footage of the original): the legs
  * keep striding, the torso pitches forward until it's nearly horizontal, and the

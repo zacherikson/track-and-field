@@ -4,6 +4,15 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 4.3: minimum running speed
+- New `runner.minSpeed` 6 m/s (tuning panel: Minimum speed). Once you're off
+  the blocks your pace never asks for less, however slowly you tap. Before,
+  stopping meant slowing to a halt and a DNF.
+  - Tapping once every 2 s: 17.6 → 15.6s. One tap then nothing: DNF → 17.0s.
+  - Stumbles, hurdle trips and the finish lean can still dip below it briefly;
+    you build back up from there.
+  - Normal play is unchanged (simulator within noise for all events).
+
 ## Step 4.2: runway like the original, referee, takeoff footprint
 - The colored sections are now **stripes along both edges** of the runway
   (yellow 12m, orange 8m, red 4m), as in the original, instead of filling it.

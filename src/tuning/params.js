@@ -28,6 +28,7 @@ export const GROUPS = [
     title: 'Slowing down',
     blurb: 'What happens when your pace drops or you stop tapping.',
     params: [
+      { path: 'runner.minSpeed', label: 'Minimum speed', unit: 'm/s', min: 0, max: 9, step: 0.5, kmh: true, help: 'Slowest you run once off the blocks, however slowly you tap. Stumbles can still dip below it briefly.' },
       { path: 'runner.coastDecel', label: 'Slow-down rate', unit: 'm/s²', min: 0.5, max: 15, step: 0.25, help: 'How fast you lose speed when your pace drops or you stop.' },
       { path: 'runner.idleGrace', label: 'Hesitation allowance', unit: '× gap', min: 1, max: 3, step: 0.1, help: 'How much longer than your usual gap you can pause before you start slowing.' },
       { path: 'runner.maxIntervalForAvg', label: 'Longest gap counted', unit: 'ms', scale: 1000, min: 0.3, max: 1.5, step: 0.05, help: 'After a long pause, lower = you get your pace back sooner.' },

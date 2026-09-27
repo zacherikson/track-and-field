@@ -56,6 +56,7 @@ export const CONFIG = {
     startPace: 4.5, // strides/s your pace is assumed to be on the first stride
     accelMax: 10.0, // m/s^2 from standstill
     accelFalloff: 0.72, // accel shrinks by this fraction as speed approaches topSpeed
+    minSpeed: 6.0, // m/s; once you're off the blocks your pace never asks for less than this (stumbles can still dip below it briefly)
     coastDecel: 4.0, // m/s^2 lost when your cadence is below what your speed needs
     finishDecel: 3.5, // m/s^2 braking after crossing the line
     cadenceSmoothing: 0.1, // 0..1 weight of the newest stride interval (higher = twitchier)

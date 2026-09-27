@@ -153,7 +153,8 @@ export class Runner {
     } else if (this.started && t >= this.stumbleFrom && t < this.stumbleUntil) {
       this.v = Math.max(0, this.v - this.stumbleDecel * dt); // stumbling: braking hard, no acceleration
     } else if (this.started) {
-      const target = this.targetSpeed(this.cadence(t));
+      // Off the blocks, your pace never asks for less than minSpeed, however slowly you tap.
+      const target = Math.max(this.targetSpeed(this.cadence(t)), this.taps > 0 ? p.minSpeed : 0);
       if (this.v < target) {
         const a = p.accelMax * Math.max(0.1, 1 - (p.accelFalloff * this.v) / p.topSpeed);
         this.v = Math.min(target, this.v + a * dt);

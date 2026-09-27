@@ -224,10 +224,9 @@ export class TrackRenderer {
       if (m > 0 && m < this.distance) line(m, 2, 'rgba(255,255,255,0.35)');
     }
     line(0, 5, '#fff');
-    // Finish (as in the original): a double white line, no checkerboard.
+    // Finish (as in the original): a single white line, no checkerboard.
     const D = this.distance;
     line(D, 5, '#fff');
-    line(D + 0.22, 3, 'rgba(255,255,255,0.9)');
     this.drawFinishTicks(ctx, view, camera);
 
     // Lane numbers: small and upright just past the start line; big and painted
@@ -242,7 +241,7 @@ export class TrackRenderer {
     this.drawFinishPost(ctx, view, camera);
   }
 
-  /** Short double dashes across the middle of each lane at 5, 4 and 3 m before the line. */
+  /** A short dash across the middle of each lane at 5, 4 and 3 m before the line. */
   drawFinishTicks(ctx, view, camera) {
     const D = this.distance;
     if (this.project(camera, view, D - 6, this.zNear).x > view.w + 60) return;
@@ -251,14 +250,12 @@ export class TrackRenderer {
       for (let k = 1; k <= this.lanes; k++) {
         const zc = this.laneZ(k);
         ctx.lineWidth = 1 + 1.5 * this.scaleAt(zc);
-        for (const dx of [0, 0.18]) {
-          const a = this.project(camera, view, D - back + dx, zc - 0.28);
-          const b = this.project(camera, view, D - back + dx, zc + 0.28);
-          ctx.beginPath();
-          ctx.moveTo(a.x, a.y);
-          ctx.lineTo(b.x, b.y);
-          ctx.stroke();
-        }
+        const a = this.project(camera, view, D - back, zc - 0.28);
+        const b = this.project(camera, view, D - back, zc + 0.28);
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.stroke();
       }
     }
   }

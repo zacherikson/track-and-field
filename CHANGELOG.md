@@ -4,6 +4,10 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 2.21: single finish line and single dashes
+- The "double" lines in the reference footage were ghosting from filming a screen.
+  Now there's one finish line, and one dash per lane at 5, 4 and 3 m out.
+
 ## Step 2.20: original-style finish; longer lean zone
 - Lean zone length (`dip.promptDistance`): 15 → 18 m. Tuned on the phone.
 - The finish now copies the original:

@@ -4,6 +4,16 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 2.42: rival fields retuned to about 10.2s (Amateur) and 9.6s (Pro)
+Since the fast start (2.33), rivals had been running about half a second
+faster than intended.
+- `ai.amateur.cadence` [2.9, 3.8] → [2.8, 3.6]: typical rival 10.22s (was
+  10.04s), range 9.35–12.0s, winner median 9.77s.
+- `ai.pro.cadence` [3.9, 4.9] → [3.15, 3.95]: typical rival 9.63s (was 8.80s),
+  range 8.9–10.5s, winner median 9.28s.
+- For reference: a good reader (about 3.7 hits/s) runs about 8.8s and a casual
+  one (about 2.9 hits/s) about 9.8s.
+
 ## Step 2.41: Pro difficulty on the menu
 - The menu has a **Rivals: Amateur / Pro** toggle, remembered on this device.
   It picks `CONFIG.ai.amateur` or `CONFIG.ai.pro` for the field.

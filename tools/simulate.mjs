@@ -290,7 +290,7 @@ function ljPlayer(rate, aim, sd, delay) {
   const jumps = Array.from({ length: LJ.rounds }, () => {
     const takeoffX = -v * gauss(aim, sd);
     if (takeoffX > 0) return null;
-    return jumpMark({ takeoffX, v, stretchK: Math.max(0, 1 - delay / LJ.stretch.window) }, LJ);
+    return jumpMark({ takeoffX, v, stretchDelay: delay }, LJ);
   });
   const ok = jumps.filter((j) => j != null);
   return { best: ok.length ? Math.max(...ok) : 0, fouls: jumps.length - ok.length };
@@ -301,6 +301,7 @@ for (const [label, rate, aim, sd, delay] of [
   ['good     3.7/s, aim 0.04s ±0.03, stretch 0.12s', 3.7, 0.04, 0.03, 0.12],
   ['expert   4.7/s, aim 0.03s ±0.02, stretch 0.08s', 4.7, 0.03, 0.02, 0.08],
   ['expert, risky  aim 0.015s ±0.02', 4.7, 0.015, 0.02, 0.08],
+  ['good, never stretches', 3.7, 0.04, 0.03, null],
 ]) {
   const res = Array.from({ length: 200 }, () => ljPlayer(rate, aim, sd, delay));
   const bests = res.filter((r) => r.best > 0).map((r) => r.best);

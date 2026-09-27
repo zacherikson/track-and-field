@@ -202,7 +202,9 @@ export function tripPose(run, age, tr) {
  * Long jump poses (from footage of the original): the "hang" in the air after
  * takeoff (arms up, lead knee up, trail leg back), the STRETCH (legs thrust out
  * in front, torso and arms reaching after them), a plain landing (feet down in
- * front) and sitting in the sand.
+ * front) and sitting in the sand. Without the stretch you crumple: tuck up in
+ * the air, hit the sand in a crouch, and flop forward onto your face (prone:
+ * hips 0.45 H ahead of where your feet landed).
  */
 export const JUMP_POSES = {
   hang: {
@@ -224,6 +226,21 @@ export const JUMP_POSES = {
     hipX: 0, hipY: -0.19, lean: 0.45,
     legs: [{ thigh: 1.5, shin: 1.58, toe: -0.25 }, { thigh: 1.42, shin: 1.52, toe: -0.25 }],
     arms: [{ upper: 0.7, fore: 1.1 }, { upper: 0.55, fore: 0.95 }],
+  },
+  tuck: {
+    hipX: 0, hipY: -0.5, lean: 0.3,
+    legs: [{ thigh: 1.9, shin: -0.15, toe: 0.3 }, { thigh: 1.75, shin: -0.3, toe: 0.3 }],
+    arms: [{ upper: 1.0, fore: 1.5 }, { upper: 0.85, fore: 1.35 }],
+  },
+  crouch: {
+    hipX: 0, hipY: -0.28, lean: 0.95,
+    legs: [{ ...legIK(0, -0.28, 0.02, 0), toe: 0 }, { ...legIK(0, -0.28, -0.04, 0), toe: 0 }],
+    arms: [{ upper: 1.4, fore: 1.2 }, { upper: 1.2, fore: 1.0 }],
+  },
+  prone: {
+    hipX: 0.45, hipY: -0.07, lean: 1.52,
+    legs: [{ thigh: -1.5, shin: -1.55, toe: 1.3 }, { thigh: -1.45, shin: -1.6, toe: 1.3 }],
+    arms: [{ upper: 1.65, fore: 1.6 }, { upper: 1.5, fore: 1.45 }],
   },
 };
 

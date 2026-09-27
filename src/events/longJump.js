@@ -7,7 +7,7 @@ import { AIController } from '../athletes/ai.js';
 import { HERO, RIVALS } from '../athletes/roster.js';
 import { drawFigure, runPose, lerpPose, handPos, headCircle, JUMP_POSES, POSES } from '../athletes/stickFigure.js';
 import { StrideTargets } from './strideTargets.js';
-import { launch, flightTime, stretchQuality, jumpMark, rivalJump } from './longJumpRules.js';
+import { flightPath, rivalJump } from './longJumpRules.js';
 import { RunwayRenderer } from '../render/runway.js';
 import { ORANGE, drawPad, drawX } from '../render/pads.js';
 import { drawDrop, drawHitRing } from '../render/targetPads.js';
@@ -18,6 +18,7 @@ const LEFT_KEYS = ['ArrowLeft', 'KeyA', 'KeyZ', 'KeyF'];
 const RIGHT_KEYS = ['ArrowRight', 'KeyD', 'KeyX', 'KeyJ'];
 const BOTH_KEYS = ['Space', 'ArrowUp'];
 const ease = (k) => k * k * (3 - 2 * k);
+const FLOP = { hit: 0.32, getUp: 1.3 }; // s after landing: face hits the sand; start getting up
 
 /**
  * Long jump, from footage of the original (rules and physics in
@@ -88,7 +89,7 @@ export class LongJump {
     this.missT = -Infinity;
     this.zoneT = null; // when the orange takeoff pads appeared
     this.press = { L: -Infinity, R: -Infinity };
-    this.jump = null; // { x0, vx, vy, t0, apexT, stretchT, stretchK, foul, hipX, hipY }
+    this.jump = null; // { x0, v, t0, path, apexT, stretchT, stretchK, foul, hipX, hipY, landT, markX }
     this.mark = null; // this round's result: { mark } or { foul: true }
     this.puff = [];
     this.track.marks = [];
@@ -135,7 +136,7 @@ export class LongJump {
       if ((this.state === 'ready' || this.state === 'run') && this.zoneT == null) this.stride(action, e.t);
       else if (this.state === 'run' && this.zoneT != null) {
         if (this.chord(action, e.t)) this.takeoff(e.t);
-      } else if (this.state === 'air' && this.jump.apexT != null && this.jump.stretchT == null) {
+      } else if (this.state === 'air' && e.t >= this.jump.apexT && this.jump.stretchT == null) {
         if (this.chord(action, e.t)) this.stretch(e.t);
       }
     }
@@ -162,19 +163,22 @@ export class LongJump {
 
   takeoff(t) {
     const r = this.runner;
-    const j = this.cfg.jump;
-    const { vx, vy } = launch(r.v, j);
-    this.jump = { x0: r.x, v: r.v, vx, vy, t0: t, apexT: null, stretchT: null, stretchK: 0, foul: r.x > 0, hipX: r.x, hipY: 0 };
-    this.jump.flight = flightTime(vy, j);
+    // Until you stretch, you're on course to crumple (flightPath with no stretch).
+    const path = flightPath({ takeoffX: r.x, v: r.v }, this.cfg);
+    this.jump = { x0: r.x, v: r.v, t0: t, path, apexT: t + path.apex, stretchT: null, stretchK: 0, foul: r.x > 0, hipX: r.x, hipY: 0 };
     this.track.footmarks.push({ x: r.x, foul: r.x > 0 }); // where you took off, left on the runway
     this.stats.topSpeed = Math.max(this.stats.topSpeed, r.v);
     this.setState('air');
   }
 
+  /** Both thumbs at the top of the jump: throw yourself forward, from here. */
   stretch(t) {
     const j = this.jump;
+    const path = flightPath({ takeoffX: j.x0, v: j.v, stretchDelay: t - j.apexT }, this.cfg);
+    if (path.k <= 0) return; // too late: nothing left to gain
+    j.path = path;
     j.stretchT = t;
-    j.stretchK = stretchQuality(t - j.apexT, this.cfg.stretch);
+    j.stretchK = path.k;
   }
 
   // ---------------------------------------------------------------- simulation
@@ -200,13 +204,19 @@ export class LongJump {
       if (this.state === 'overrun' && t - this.stateT > 1.2) this.showMark();
     } else if (this.state === 'air') {
       const j = this.jump;
-      const g = cfg.jump.gravity;
       const ta = t + dt - j.t0;
-      j.hipX = j.x0 + j.vx * ta;
-      j.hipY = j.vy * ta - 0.5 * g * ta * ta;
-      if (j.apexT == null && j.vy - g * ta <= 0) j.apexT = t + dt; // top of the jump: stretch pads appear
-      if (ta >= j.flight) this.land(t + dt);
+      const p = j.path.at(Math.min(ta, j.path.time));
+      j.hipX = p.x;
+      j.hipY = p.y;
+      if (ta >= j.path.time) this.land(j.t0 + j.path.time);
     } else if (this.state === 'landed') {
+      const j = this.jump;
+      if (j.path.collapse && !j.flopped && t - j.landT >= FLOP.hit) {
+        // Crumpled: face-first into the sand.
+        j.flopped = true;
+        this.kickSand(j.hipX + 0.45 * CONFIG.figure.height + 0.3, 12);
+        navigator.vibrate?.(30);
+      }
       if (t - this.stateT > cfg.markHold) this.showMark();
     }
     for (const p of this.puff) {
@@ -222,22 +232,25 @@ export class LongJump {
       // After landing, pull back to show both the takeoff footprint and the landing mark.
       cx = (j.x0 + j.markX) / 2 - CONFIG.camera.lead;
     }
-    this.camera.follow(cx, this.state === 'air' ? this.jump.vx : r.v, dt);
+    this.camera.follow(cx, this.state === 'air' ? this.jump.v * cfg.jump.keepX : r.v, dt);
   }
 
   land(t) {
     const j = this.jump;
     j.landT = t;
-    const markX = jumpMark({ takeoffX: j.x0, v: j.v, stretchK: j.stretchK }, this.cfg);
+    const markX = j.path.markX;
     j.markX = markX;
     this.mark = j.foul ? { foul: true } : { mark: markX };
     this.track.marks.push({ x: markX });
-    // Sand kicked up where the heels go in.
-    for (let i = 0; i < 16; i++) {
-      this.puff.push({ x: markX + rand(-0.3, 0.2), y: 0, vx: rand(-0.6, 1.4), vy: rand(0.6, 2.2), life: rand(0.4, 0.8), r: rand(2, 5) });
-    }
+    this.kickSand(markX, 16); // where the heels go in
     navigator.vibrate?.(30);
     this.setState('landed');
+  }
+
+  kickSand(x, n) {
+    for (let i = 0; i < n; i++) {
+      this.puff.push({ x: x + rand(-0.3, 0.2), y: 0, vx: rand(-0.6, 1.4), vy: rand(0.6, 2.2), life: rand(0.4, 0.8), r: rand(2, 5) });
+    }
   }
 
   /** Record this round for everyone and show the banner. */
@@ -320,17 +333,28 @@ export class LongJump {
         const ta = now - j.t0;
         let pose = lerpPose(this.takeoffPose ?? run(), P.hang, ease(clamp(ta / 0.16, 0, 1)));
         if (j.stretchT != null) {
+          // Stretch: jackknife forward, legs thrust out in front.
           pose = lerpPose(pose, P.stretch, ease(clamp((now - j.stretchT) / 0.12, 0, 1)) * (0.45 + 0.55 * j.stretchK));
         } else {
-          pose = lerpPose(pose, P.land, ease(clamp((ta - (j.flight - 0.25)) / 0.2, 0, 1)));
+          // No stretch (yet): past the top you start to crumple into a ball.
+          pose = lerpPose(pose, P.tuck, ease(clamp((now - j.apexT - 0.05) / 0.25, 0, 1)));
         }
         return pose;
       }
       default: {
-        // Landed: drop into a sit, then get up. (After a run-through foul: just stand.)
-        if (!this.jump?.landT) return POSES.stand;
-        const age = now - this.jump.landT;
-        const sit = lerpPose(this.lastAirPose ?? P.sit, P.sit, ease(clamp(age / 0.1, 0, 1)));
+        // After a run-through foul: just stand.
+        const j = this.jump;
+        if (!j?.landT) return POSES.stand;
+        const age = now - j.landT;
+        const from = this.lastAirPose ?? P.sit;
+        if (j.path.collapse) {
+          // Crumpled: land in a crouch, flop forward onto your face, then get up where you lie.
+          let pose = lerpPose(from, P.crouch, ease(clamp(age / 0.08, 0, 1)));
+          pose = lerpPose(pose, P.prone, ease(clamp((age - 0.08) / (FLOP.hit - 0.08), 0, 1)));
+          return lerpPose(pose, { ...POSES.stand, hipX: P.prone.hipX }, ease(clamp((age - FLOP.getUp) / 0.5, 0, 1)));
+        }
+        // Stretched: drop into a sit, then get up.
+        const sit = lerpPose(from, P.sit, ease(clamp(age / 0.1, 0, 1)));
         return lerpPose(sit, POSES.stand, ease(clamp((age - 1.0) / 0.45, 0, 1)));
       }
     }
@@ -427,7 +451,7 @@ export class LongJump {
     };
     if (this.state === 'run' && this.zoneT != null && (now - this.zoneT) % blink.period < blink.on) showOrange();
     const j = this.jump;
-    if (this.state === 'air' && j.apexT != null && j.stretchT == null && now - j.apexT < this.cfg.stretch.show) showOrange();
+    if (this.state === 'air' && now >= j.apexT && j.stretchT == null && now - j.apexT < this.cfg.stretch.window) showOrange();
     for (const ring of this.rings) drawHitRing(ctx, this.pads[ring.side], now - ring.t0, padsCfg);
   }
 
@@ -474,7 +498,8 @@ export class LongJump {
     const j = this.jump;
     if (j && !m.foul) {
       const gap = -j.x0;
-      const detail = `took off ${(gap * 100).toFixed(0)} cm before the line · stretch ${Math.round(j.stretchK * 100)}%`;
+      const stretch = j.stretchT == null ? 'no stretch' : `stretch ${Math.round(j.stretchK * 100)}%`;
+      const detail = `took off ${(gap * 100).toFixed(0)} cm before the line · ${stretch}`;
       text(ctx, detail, cx, 192, { size: 14, weight: 500, color: 'rgba(255,255,255,0.75)', maxWidth: w - 30 });
     } else if (j && m.foul) {
       text(ctx, `over the line by ${(j.x0 * 100).toFixed(0)} cm`, cx, 192, { size: 14, weight: 500, color: 'rgba(255,255,255,0.75)' });

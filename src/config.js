@@ -220,18 +220,25 @@ export const CONFIG = {
       liftPerMps: 0.06, // ...plus this per m/s of run-up speed
       gravity: 9.81,
       landDrop: 0.5, // m the hips drop below takeoff height by landing (feet reach out in front)
-      reach: 0.45, // m the heels land ahead of the hips
+      reach: 0.6, // m the heels land ahead of the hips (legs thrust out: full stretch)
+      // No stretch: you crumple, legs tucked under, and flop forward onto your face.
+      collapse: {
+        landDrop: 0.4, // m the hips drop below takeoff height when the feet hit the sand
+        reach: 0, // m the heels land ahead of the hips (feet right under you)
+      },
     },
     stretch: {
-      bonus: 0.5, // m extra for a perfect stretch (legs thrust forward)
-      window: 0.35, // s after the pads appear (at the top of the jump); later = less, after this = none
-      show: 0.45, // s the stretch pads stay up
+      // Press both at the top of the jump and you throw yourself forward: a kick
+      // (times the stretch quality) from that moment, landing far out on your heels.
+      kickX: 0.8, // m/s extra forward
+      kickY: 0.5, // m/s extra upward
+      window: 0.35, // s the pads stay up after the top of the jump; the later you press, the weaker the kick
     },
     // Rivals: run-up pace from CONFIG.ai, plus where they take off relative to
     // the line (negative = over it: foul) and how late they stretch.
     ai: {
       amateur: { cadence: [3.0, 3.8], takeoffGap: [-0.1, 0.45], stretchDelay: [0.06, 0.3] },
-      pro: { cadence: [3.7, 4.5], takeoffGap: [-0.03, 0.22], stretchDelay: [0.03, 0.16] },
+      pro: { cadence: [3.7, 4.5], takeoffGap: [-0.03, 0.22], stretchDelay: [0.06, 0.2] },
     },
     markHold: 2.2, // s after landing before the mark banner
     markPan: { delay: 0.45 }, // s after landing before the camera pulls back to show the takeoff footprint and the landing mark

@@ -4,6 +4,25 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 4.7: the stretch throws you forward; no stretch, you crumple
+From a replay of the original: the jumper who stretches at the top of the jump
+throws himself forward and lands far out; the one who doesn't crumples into a
+ball, lands short and flops face-first into the sand.
+- **Stretch** (press both at the top): a mid-air kick from that moment,
+  `stretch.kickX` 0.8 m/s forward and `kickY` 0.5 m/s up (times the stretch
+  quality: the later you press, the weaker), then legs thrust out in front
+  (`jump.reach` 0.45 → 0.6 m ahead of the hips). The body really flies further;
+  before, only the number changed (`stretch.bonus` 0.5 m, removed).
+- **No stretch:** past the top you tuck up, hit the sand in a crouch sooner
+  (`jump.collapse.landDrop` 0.4 m) with your feet under you (`collapse.reach`
+  0), then flop forward onto your face in a puff of sand, and get up.
+- The pads stay up for `stretch.window` (0.35s) and a press after that is
+  ignored (was `stretch.show` 0.45s, where the last 0.1s did nothing).
+- Marks: a good player still gets about 7.85m, an expert 9.15m (was 8.96).
+  A good player who never stretches: 6.86m. Pro rivals stretch a little later
+  (`stretchDelay` [0.03, 0.16] → [0.06, 0.2]) so their winner stays about
+  8.95m; Amateur winner about 8.04m, unchanged.
+
 ## Step 4.6: slower 100m rivals
 - `ai.amateur.cadence` [2.8, 3.6] → [2.6, 3.4]: median rival 10.13 → 10.39s
   (target 10.4).

@@ -29,10 +29,10 @@ export const POSES = {
     legs: [{ thigh: 1.35, shin: -0.25 }, { thigh: 0.35, shin: -1.4 }],
     arms: [{ upper: 0.05, fore: 0.05 }, { upper: -0.02, fore: -0.02 }],
   },
-  // "Get set": hips up above shoulders, weight forward on the hands.
+  // "Get set": hips raised a little above the shoulders, weight forward on the hands.
   set: {
-    hipX: -0.12, hipY: -0.34, lean: 1.45,
-    legs: [{ thigh: 1.0, shin: -0.5 }, { thigh: 0.5, shin: -1.0 }],
+    hipX: -0.12, hipY: -0.41, lean: 1.68,
+    legs: [{ thigh: 0.9, shin: -0.35 }, { thigh: 0.35, shin: -0.75 }],
     arms: [{ upper: -0.08, fore: -0.08 }, { upper: -0.12, fore: -0.12 }],
   },
 };

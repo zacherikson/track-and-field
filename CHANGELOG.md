@@ -4,6 +4,12 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 2.23: higher hips in the set position
+- `POSES.set` hip height −0.34 → −0.41 H and torso lean 1.45 → 1.68 rad: the hips
+  are now a little above the shoulders, like a real set position.
+- The legs straighten to match. Hands and feet stay on the track, and the hands
+  are still 17–29cm behind the start line in every lane.
+
 ## Step 2.22: lifelike start sequence (from footage of the original)
 Frame-by-frame comparison showed the original stages the start where ours snapped:
 - **Starting blocks** in every lane: a grey rail with a red pedal under each foot.

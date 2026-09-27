@@ -10,6 +10,7 @@ https://claude.ai/artifact/CM3NmVhpa4QoeGVXT4pyCe
 
 | Board | Preview |
 | --- | --- |
+| Round 5: Juno as a painted caricature, full side profile | ![](juno-painted-profile.png) |
 | Round 4: Juno in a polished 3D-toy style (Playman personality, Clash-level polish) | ![](juno-3d-toy.png) |
 | Round 3: Juno in twelve different art styles | ![](juno-styles.png) |
 | Round 2: twelve Juno options (shorter legs, more lifelike) | ![](juno-options.png) |

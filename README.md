@@ -114,7 +114,7 @@ tools/simulate.mjs    headless tuning simulator
   - explosiveness: `accelMax`
   - punishment for stopping: `coastDecel`
 - **Juice.** Small feedback makes input feel good: a ring burst on each hit, a red ✕
-  on a wrong-side tap, a target that pops in where your thumb already is, a pulsing
-  orange LEAN prompt, a parallax crowd and grass, and a speed bar.
+  on a wrong-side tap, a target that pops in where your thumb already is, a
+  pair of orange lean pads, a parallax crowd and grass, and a speed bar.
 - **Frame-rate independent smoothing.** The camera uses `damp()`
   (`lerp` with `1 - e^(-k·dt)`), so it glides the same at any refresh rate.

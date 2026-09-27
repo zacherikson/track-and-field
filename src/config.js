@@ -71,13 +71,13 @@ export const CONFIG = {
 
   /**
    * FINISH LEAN (shared by lane races). Near the line the stride targets turn
-   * into a two-thumb "LEAN!" prompt. Strides stop counting there: you carry your
+   * into two orange lean pads (press both). Strides stop counting there: you carry your
    * speed. Press both thumbs together to lean: the torso pitches forward while
    * the legs keep running. Best timing puts your chest at full stretch right on
    * the line. Too early and you're upright again and slowing when you get there.
    */
   dip: {
-    promptDistance: 20, // m before the line where strides stop and the LEAN prompt shows
+    promptDistance: 20, // m before the line where strides stop and the orange lean pads show
     chordWindow: 0.06, // s; left + right presses this close together count as both thumbs
     armDelay: 0.3, // s after entering the zone before a lean can trigger (stray stride taps)
     reach: 1.0, // m the chest gets ahead of the hips at full lean

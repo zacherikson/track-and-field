@@ -438,10 +438,6 @@ export class LaneRace {
         break;
       case 'race':
         if (now - this.goT < this.cfg.countdown.goBanner) big('GO!', '#59cd90');
-        else if (this.player.runner.mode === 'carry') {
-          const pulse = 0.75 + 0.25 * Math.sin(now * 18);
-          text(ctx, 'LEAN!', cx, cy, { size: 64, color: `rgba(255,140,40,${pulse})`, shadow: true });
-        }
         break;
       case 'finished': {
         const place = this.athletes.filter((a) => a.mark != null && a.mark <= (this.player.mark ?? -1)).length;

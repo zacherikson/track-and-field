@@ -84,6 +84,10 @@ export const CONFIG = {
   sprint100: {
     distance: 100,
     lanes: 6,
+    // Real start rules: no part of the body may touch the ground on or in front
+    // of the line before the gun, so athletes line up with their hands just
+    // behind it. The clock still runs from the gun to the line at 100m.
+    startX: -0.55, // m: where each athlete's body starts relative to the line (hands clear it in every lane)
     playerLane: 1, // 1 = nearest the camera: the player always runs in the front lane
     startBlink: { period: 0.5, on: 0.3 }, // s: start button + player's lane flash on/off before READY
     countdown: {

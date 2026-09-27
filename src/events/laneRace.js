@@ -45,7 +45,7 @@ export class LaneRace {
     for (let lane = 1; lane <= cfg.lanes; lane++) {
       const isPlayer = lane === cfg.playerLane;
       const who = isPlayer ? HERO : rivals.pop();
-      const runner = new Runner();
+      const runner = new Runner(undefined, undefined, cfg.startX);
       this.athletes.push({
         lane,
         isPlayer,

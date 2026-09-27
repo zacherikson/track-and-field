@@ -4,6 +4,20 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 2.16: legal start position
+- Real start rules: nothing may touch the ground on or in front of the line
+  before the gun. Athletes previously started with their body origin on the line,
+  so their hands landed in front of it in READY / GET SET.
+- New `sprint100.startX` −0.55m: every athlete lines up that far behind the line.
+  - Measured from the pose geometry, hands are now 16–30cm behind the line in
+    every lane (far lanes are the tightest, because runners are drawn at nearly
+    the same size while a meter of track shrinks with distance).
+  - The standing feet in the waiting state are behind it too.
+- The clock still runs from the gun to the line at 100m, so everyone covers the
+  same extra 0.55m (about 0.05s), just like real sprinters starting from blocks
+  behind the line.
+- `Runner` takes the start position; the simulator and the tuning estimates use it.
+
 ## Step 2.15: real one-point perspective, camera 1m ahead of the player
 The 2.14 "slanted bands" still looked wrong next to the original. The original
 uses true perspective:

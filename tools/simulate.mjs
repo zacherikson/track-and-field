@@ -52,7 +52,7 @@ const strategies = {
 };
 
 function playerRace(strategy) {
-  const r = new Runner();
+  const r = new Runner(undefined, undefined, CONFIG.sprint100.startX);
   const j = new StrideTargets(r, TGT);
   r.go(0);
   j.start(0);
@@ -86,7 +86,7 @@ function playerRace(strategy) {
 }
 
 function aiRace(level) {
-  const r = new Runner();
+  const r = new Runner(undefined, undefined, CONFIG.sprint100.startX);
   const ai = new AIController(r, level);
   ai.go(0);
   let t = 0;

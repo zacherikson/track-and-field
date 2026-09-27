@@ -8,15 +8,17 @@ import { CONFIG } from '../config.js';
  * Pure logic: no DOM, so tools/simulate.mjs can run it in Node.
  */
 export class Runner {
-  constructor(params = CONFIG.runner, dip = CONFIG.dip) {
+  /** @param startX where the body starts, in m from the start line (negative = behind it) */
+  constructor(params = CONFIG.runner, dip = CONFIG.dip, startX = 0) {
     this.p = params;
     this.dip = dip;
+    this.startX = startX;
     this.reset();
   }
 
   reset() {
-    this.x = 0; // meters from the start line
-    this.prevX = 0;
+    this.x = this.startX; // meters from the start line
+    this.prevX = this.x;
     this.v = 0; // m/s
     this.phase = 0; // stride animation phase (radians)
     this.started = false;
@@ -29,7 +31,7 @@ export class Runner {
     this.mode = 'run';
     this.leanT = 0;
     this.reach = 0; // meters the chest is ahead of the hips (the chest is what crosses the line)
-    this.prevFront = 0;
+    this.prevFront = this.x;
     this.dipUsed = false;
   }
 

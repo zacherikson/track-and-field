@@ -17,7 +17,7 @@ export function estimateTime(rate, { missAt = null, reaction = 0.25 } = {}) {
   const D = CONFIG.sprint100.distance;
   const dip = CONFIG.dip;
   const tg = CONFIG.sprint100.targets;
-  const r = new Runner();
+  const r = new Runner(undefined, undefined, CONFIG.sprint100.startX);
   r.go(0);
   let nextTap = reaction;
   let missed = false;
@@ -49,7 +49,7 @@ export function estimateRivalWin(races = 15) {
   for (let i = 0; i < races; i++) {
     let best = Infinity;
     for (let k = 0; k < CONFIG.sprint100.lanes - 1; k++) {
-      const r = new Runner();
+      const r = new Runner(undefined, undefined, CONFIG.sprint100.startX);
       const ai = new AIController(r, level);
       ai.go(0);
       for (let t = 0; t < 40; t += STEP) {

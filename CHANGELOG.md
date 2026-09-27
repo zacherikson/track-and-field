@@ -4,6 +4,23 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 2.29: sprint back-side mechanics (was a high-knees drill)
+The 2.28 foot path only worked in front of the body: the foot left the track
+just behind the hips, then went straight up and forward. Hip extension was
+missing, so it read as a high-knees drill. The foot path now loops behind:
+- **Push-off further back.** The planted foot sweeps from about 0.18m ahead of
+  the hips to about 0.47m behind (at sprint) and rolls up onto the toes. The
+  thigh ends up about 30° behind vertical.
+- **Trailing leg.** After push-off the leg keeps trailing back, nearly straight:
+  the rear leg of the airborne split. Then the heel folds up toward the
+  backside and the leg swings through.
+- **Lower knee drive.** The front thigh peaks at about 69° (was about 80°).
+- **Swing timing.** About 60% of the swing is spent behind the hips; the foot
+  drops quickly out front instead of hovering.
+- **Time on the track** is now the time a planted foot needs to cover its
+  sweep at running speed, so feet don't skate. That's about 15% of the cycle at
+  a sprint (real sprinters: about 20%) and 25% jogging.
+
 ## Step 2.28: planted running legs, hip bob, 90° elbows at any speed
 From the original's run cycle:
 - **Legs** are now driven by a foot path, with the knee solved by IK. Before,

@@ -11,6 +11,8 @@
  * positive = toward the running direction (+x).
  */
 
+import { CONFIG } from '../config.js';
+
 const THIGH_L = 0.25; // limb lengths in figure heights (must match drawFigure)
 const SHIN_L = 0.25;
 const FOOT_L = 0.06;
@@ -110,46 +112,65 @@ export const POSES = {
 
 /**
  * Running pose from a stride phase (radians) and intensity amp (0..1, grows with
- * speed). Modelled on the original's run cycle: each foot lands close under the
- * hips, sweeps back along the track, then the heel folds up toward the backside
- * and the knee drives forward and high before the foot paws down again. The
- * legs are solved with IK from that foot path, so the knee bends naturally and
- * the planted foot never sinks into the track. The hips bob: lowest with a foot
- * planted, highest in the airborne split between steps.
+ * speed). Modelled on a real sprinter's (and the original's) run cycle; the foot
+ * path relative to the hips is a loop biased BEHIND the body:
+ *   1. land close under the hips and sweep back along the track, rolling up
+ *      onto the toes (the hip extends: the leg ends up angled well behind);
+ *   2. after push-off the leg keeps trailing back, nearly straight: the rear
+ *      leg of the airborne "split";
+ *   3. the heel folds up toward the backside;
+ *   4. the folded leg swings through under the hips and the knee comes up in
+ *      front, shin angled back;
+ *   5. the leg opens out and the foot paws back down onto the track.
+ * The legs are solved with IK from that foot path, so the knees bend naturally
+ * and a planted foot never sinks into the track. The hips bob: lowest with a
+ * foot planted, highest in the split between steps.
  *
  * `drive` (0..1) is the out-of-the-blocks drive phase: body pitched forward and
  * low, feet landing further back.
  */
 export function runPose(phase, amp, drive = 0) {
   const a = amp;
-  const stance = 0.42 - 0.12 * a; // fraction of the cycle each foot is on the track
   const reach = 0.55 + 0.45 * a; // longer foot travel at speed
   const lift = 0.35 + 0.65 * a; // higher heel kick and knee drive at speed
-  const touchX = (0.07 - 0.07 * drive) * reach; // ankle lands just ahead of the hips
-  const pushX = -(0.14 + 0.1 * a) * reach; // ...and pushes off behind them
-  const kneeU = stance + (4 / 6) * (1 - stance); // point of the cycle where the knee is furthest forward
+  const touchX = (0.1 - 0.08 * drive) * reach; // ankle lands just ahead of the hips
+  const pushX = -0.26 * reach; // ...and is well behind them at push-off
+  const pushToe = 1.0; // foot angle at push-off: up on the toes
+  const pushH = FOOT_L * Math.sin(pushToe);
+  // Time on the track: as long as the planted foot takes to slide from touchX to
+  // pushX at running speed (so it doesn't skate), clamped to look right at the
+  // extremes. About 15% of the cycle at a sprint, 25% jogging.
+  const v = 11 * a;
+  const cycle = (CONFIG.runner.strideBase + CONFIG.runner.stridePerMps * v) / CONFIG.figure.height;
+  const stance = clamp((touchX - pushX) / cycle, 0.15, 0.4);
+  // Swing timing (fraction of the swing at each point of the foot path below):
+  // most of it is spent behind the body; the foot drops quickly out front.
+  const T = [0, 0.17, 0.4, 0.6, 0.77, 0.9, 1];
+  const kneeU = stance + T[4] * (1 - stance); // point of the cycle where the knee is furthest forward
 
   // Hip height: lowest mid-stance, highest mid-flight, twice per cycle.
   const u0 = frac(phase / (2 * Math.PI) + kneeU - 0.25);
-  const bob = (0.012 + 0.018 * a) * (1 - 0.5 * drive);
-  const hipY = -0.485 + 0.07 * drive + bob * Math.cos(4 * Math.PI * (u0 - stance / 2));
+  const bob = (0.01 + 0.015 * a) * (1 - 0.5 * drive);
+  const hipY = -0.48 + 0.07 * drive + bob * Math.cos(4 * Math.PI * (u0 - stance / 2));
 
   const legs = [0, 1].map((i) => {
     const u = frac(u0 + i * 0.5);
     let ax, h, toe;
     if (u < stance) {
-      // On the track: foot rolls from flat to up on the toes as it pushes off.
+      // On the track: the foot rolls from flat up onto the toes as it pushes off.
       const k = u / stance;
       ax = lerp(touchX, pushX, k);
-      toe = 0.9 * smoothstep(0.45, 1, k);
+      toe = pushToe * smoothstep(0.35, 1, k);
       h = FOOT_L * Math.sin(toe); // heel lifts, toes stay on the track
     } else {
       const w = (u - stance) / (1 - stance);
-      const x = [pushX + 0.05, pushX, -0.2 * reach, -0.1 * reach, 0.1 * reach, 0.19 * reach, touchX + 0.03, touchX, touchX - 0.05];
-      const y = [0, FOOT_L * Math.sin(0.9), 0.13 * lift, 0.27 * lift, 0.28 * lift, 0.17 * lift, 0.05 * lift, 0, 0];
-      ax = catmull(x, w);
-      h = Math.max(0, catmull(y, w));
-      toe = piecewise([0.9, 0.4, 0.3, 0.1, -0.15, 0], w);
+      // Push-off, trailing back, heel up, through under the hips, knee up, open out, touchdown.
+      // First and last entries only guide the curve's direction at the ends.
+      const x = [pushX + 0.05, pushX, -0.33 * reach, -0.2 * reach, 0.02 * reach, 0.2 * reach, 0.17 * reach, touchX, touchX - 0.05];
+      const y = [0, pushH, 0.16 * lift, 0.33 * lift, 0.22 * lift, 0.13 * lift, 0.05 * lift, 0, 0];
+      ax = catmull(x, T, w);
+      h = Math.max(0, catmull(y, T, w));
+      toe = piecewise([pushToe, 1.1, 0.8, 0.3, -0.1, -0.15, 0], T, w);
     }
     return { ...legIK(0, hipY, ax, -h), toe };
   });
@@ -171,25 +192,29 @@ export function runPose(phase, amp, drive = 0) {
 }
 
 const frac = (x) => x - Math.floor(x);
+const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
 const smoothstep = (e0, e1, x) => {
   const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0)));
   return t * t * (3 - 2 * t);
 };
-/** Linear interpolation through evenly spaced values over t in [0, 1]. */
-function piecewise(v, t) {
-  const f = t * (v.length - 1);
-  const i = Math.min(v.length - 2, Math.floor(f));
-  return lerp(v[i], v[i + 1], f - i);
+/** Segment index and local 0..1 position of t within the ascending times T. */
+function segment(T, t) {
+  let i = 0;
+  while (i < T.length - 2 && t >= T[i + 1]) i++;
+  return [i, (t - T[i]) / (T[i + 1] - T[i])];
+}
+/** Linear interpolation through values v reached at times T. */
+function piecewise(v, T, t) {
+  const [i, s] = segment(T, t);
+  return lerp(v[i], v[i + 1], s);
 }
 /**
- * Catmull-Rom spline through evenly spaced points over t in [0, 1]. The first
- * and last entries are only tangent guides (the curve runs from v[1] to v[n-2]).
+ * Catmull-Rom spline through values reached at times T. v has two extra
+ * entries, first and last, that only guide the curve's direction at the ends
+ * (the curve runs from v[1] at T[0] to v[n-2] at the last time).
  */
-function catmull(v, t) {
-  const n = v.length - 3;
-  const f = t * n;
-  const i = Math.min(n - 1, Math.floor(f));
-  const s = f - i;
+function catmull(v, T, t) {
+  const [i, s] = segment(T, t);
   const [p0, p1, p2, p3] = [v[i], v[i + 1], v[i + 2], v[i + 3]];
   return 0.5 * (2 * p1 + (p2 - p0) * s + (2 * p0 - 5 * p1 + 4 * p2 - p3) * s * s + (3 * p1 - p0 - 3 * p2 + p3) * s * s * s);
 }

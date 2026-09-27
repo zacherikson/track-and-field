@@ -10,6 +10,7 @@ https://claude.ai/artifact/CM3NmVhpa4QoeGVXT4pyCe
 
 | Board | Preview |
 | --- | --- |
+| Round 3: Juno in twelve different art styles | ![](juno-styles.png) |
 | Round 2: twelve Juno options (shorter legs, more lifelike) | ![](juno-options.png) |
 | Meet the squad (title screen) | ![](lineup.png) |
 | In-race, 100m (landscape phone) | ![](race.png) |

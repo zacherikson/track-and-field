@@ -25,6 +25,7 @@ export class Runner {
     this.lastTapT = 0;
     this.avgInterval = null; // smoothed seconds between valid taps
     this.taps = 0;
+    this.lastStumbleT = -Infinity;
     this.finished = false; // true after crossing the line: brake, ignore taps
     // Finish-lean state. 'run' -> 'carry' (in the lean zone: strides stop counting,
     // momentum carries you) -> 'lean' (torso pitched forward at the line).
@@ -100,9 +101,10 @@ export class Runner {
     return 'ok';
   }
 
-  /** A wrong input: lose some speed on the spot. */
-  stumble(speedLoss) {
+  /** A wrong input at time t: lose some speed on the spot. */
+  stumble(speedLoss, t = null) {
     if (this.mode === 'run' && !this.finished) this.v = Math.max(0, this.v - speedLoss);
+    if (t != null) this.lastStumbleT = t; // the hurdles check this: a broken rhythm clips the next hurdle
   }
 
   /** Current effective cadence (taps/s). Decays on its own if you stop tapping. */

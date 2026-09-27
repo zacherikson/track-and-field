@@ -75,6 +75,18 @@ export const GROUPS = [
     ],
   },
   {
+    title: '110m Hurdles',
+    blurb: 'Tap 1-2-3 in order. Hurdles are jumped automatically unless you break rhythm or come in slow.',
+    params: [
+      { path: 'hurdles110.runner.cadenceForTopSpeed', label: 'Pace for top speed', unit: 'taps/s', min: 3, max: 10, step: 0.1, help: 'How fast you must tap 1-2-3 to reach full hurdling speed.' },
+      { path: 'hurdles110.runner.topSpeed', label: 'Top speed', unit: 'm/s', min: 7, max: 12, step: 0.1, kmh: true, help: 'Fastest speed between hurdles.' },
+      { path: 'hurdles110.clear.clipLoss', label: 'Speed lost hitting a hurdle', unit: 'm/s', min: 0, max: 6, step: 0.1, kmh: true, help: 'When you clip a hurdle and knock it over.' },
+      { path: 'hurdles110.clear.minSpeed', label: 'Slowest clean clearance', unit: 'm/s', min: 0, max: 9, step: 0.25, kmh: true, help: 'Slower than this at takeoff and you hit the hurdle.' },
+      { path: 'hurdles110.clear.rhythmWindow', label: 'Rhythm window', unit: 'ms', scale: 1000, min: 0, max: 0.8, step: 0.05, help: 'A wrong tap this soon before takeoff makes you hit the hurdle.' },
+      { path: 'hurdles110.missSpeedLoss', label: 'Wrong-button speed loss', unit: 'm/s', min: 0, max: 5, step: 0.1, kmh: true, help: 'Out-of-order tap away from a hurdle.' },
+    ],
+  },
+  {
     title: 'Troubleshooting',
     blurb: 'Tools for finding out why a tap did or didn’t count.',
     params: [

@@ -49,7 +49,7 @@ export class LaneRace {
     for (let lane = 1; lane <= cfg.lanes; lane++) {
       const isPlayer = lane === cfg.playerLane;
       const who = isPlayer ? HERO : rivals.pop();
-      const runner = new Runner(undefined, undefined, cfg.startX);
+      const runner = new Runner(this.runnerParams, undefined, cfg.startX); // event-specific physics, if any
       this.athletes.push({
         lane,
         isPlayer,
@@ -78,6 +78,7 @@ export class LaneRace {
       if (a.ai) a.ai = new AIController(a.runner, this.difficulty, a.ai.cadence);
       a.mark = null;
     }
+    this.onResetField?.();
     this.camera.snapTo(this.player.runner.x);
     this.dipPress = null;
     this.carryT = Infinity;
@@ -166,12 +167,13 @@ export class LaneRace {
   stepAthlete(a, dt, t) {
     const D = this.cfg.distance;
     const r = a.runner;
-    if (D - r.x <= CONFIG.dip.promptDistance && r.mode === 'run' && !r.dipUsed) {
+    if (D - r.x <= (this.cfg.dipPromptDistance ?? CONFIG.dip.promptDistance) && r.mode === 'run' && !r.dipUsed) {
       r.carry();
       if (a.isPlayer) this.carryT = t;
     }
     a.ai?.update(t, dt, r.x / D, D - r.x);
     r.update(dt, t);
+    this.afterStep?.(a, t + dt);
   }
 
   /**
@@ -315,6 +317,7 @@ export class LaneRace {
     const H = CONFIG.figure.height * this.camera.ppm;
     for (let i = this.athletes.length - 1; i >= 0; i--) {
       const a = this.athletes[i];
+      this.drawLaneProps?.(ctx, view, a); // e.g. hurdles, under the athlete in the same lane
       const p = this.track.toScreen(this.camera, view, a.runner.x + a.runner.reach * 0.5 + this.startNudge(a), a.lane);
       if (p.x < -80 || p.x > view.w + 80) continue;
       const scale = this.track.figureScale(a.lane);

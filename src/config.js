@@ -142,6 +142,44 @@ export const CONFIG = {
     maxRaceTime: 25, // s; give up and DNF after this
   },
 
+  /**
+   * 110m HURDLES. Shares the 100m's start, countdown, pads and lean; only the
+   * differences live here (the event merges this over sprint100).
+   * Controls: three buttons, 1-2-3 in order (see hurdleRules.js).
+   */
+  hurdles110: {
+    distance: 110,
+    dipPromptDistance: 10, // m: the lean zone starts after the last hurdle (at 96 m)
+    maxRaceTime: 30,
+    // Tapping a known 1-2-3 pattern is quicker than reading random targets,
+    // and hurdlers are slower than sprinters, so the pace scale differs.
+    runner: {
+      cadenceForTopSpeed: 6.5, // taps/s for full speed
+      speedCurve: 0.4, // flatter than the 100m: pace matters, but a steady rhythm gets you most of the way
+      topSpeed: 9.3, // m/s between hurdles
+    },
+    hurdles: {
+      count: 10,
+      first: 13.72, // m from the start line (real 110m hurdles spacing)
+      spacing: 9.14,
+      height: 1.067, // m (drawing only)
+    },
+    clear: {
+      takeoff: 2.1, // m before the hurdle where the hop starts
+      landing: 1.4, // m after it where the hop ends
+      cleanLoss: 0.3, // m/s lost clearing a hurdle cleanly
+      clipLoss: 2.6, // m/s lost when you hit it (it falls over)
+      minSpeed: 6.0, // m/s: slower than this at takeoff and you clip it
+      rhythmWindow: 0.3, // s: a wrong tap this close before takeoff clips it
+    },
+    missSpeedLoss: 1.2, // m/s lost on an out-of-order tap away from a hurdle
+    // Rival pace in 1-2-3 taps per second (the rest of their skill comes from CONFIG.ai).
+    ai: {
+      amateur: { cadence: [3.6, 4.6] }, // typical rival about 14.7s
+      pro: { cadence: [4.3, 5.3] }, // typical rival about 13.8s
+    },
+  },
+
   debug: {
     // 1 = draw a marker wherever the game receives each tap during a race, with
     // what it did: green hit, red miss, grey ignored (and why). A press with no

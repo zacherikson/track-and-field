@@ -90,7 +90,7 @@ export class ResultScene {
       // Numbers to talk about when tuning.
       const s = this.stats;
       const pace = s.hits / me.mark;
-      text(ctx, `${s.hits} hits · ${s.misses} ${s.misses === 1 ? 'miss' : 'misses'} · ${pace.toFixed(1)} hits/s · top ${(s.topSpeed * 3.6).toFixed(0)} km/h`, cx, y + 72, {
+      text(ctx, `${s.hits} hits · ${s.misses} ${s.misses === 1 ? 'miss' : 'misses'}${s.extra ? ` · ${s.extra}` : ''} · ${pace.toFixed(1)} hits/s · top ${(s.topSpeed * 3.6).toFixed(0)} km/h`, cx, y + 72, {
         size: 15, weight: 500, color: 'rgba(255,255,255,0.65)', maxWidth: colW,
       });
     }

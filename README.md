@@ -4,7 +4,8 @@ A touch-first, mobile-browser track & field game: five events, two thumbs.
 Starring **Juno**, an original stick-figure athlete (placeholder art until step 6).
 Plain HTML5 Canvas + vanilla ES modules. No framework, no build step.
 
-**Status:** 100m Dash playable. Hurdles, long jump, javelin and pole vault are coming.
+**Status:** 100m Dash and 110m Hurdles playable, against Amateur or Pro rivals.
+Long jump, javelin and pole vault are coming.
 
 ## Play on your phone
 
@@ -47,7 +48,8 @@ without playing, run the headless simulator:
 node tools/simulate.mjs
 ```
 
-It prints 100m times for each tapping speed, and the AI field's times per difficulty.
+It prints 100m and 110m hurdles times for each tapping style (readers, mashers,
+sloppy tappers) and the AI fields' times per difficulty.
 Log changes you keep in [CHANGELOG.md](CHANGELOG.md).
 
 ## Architecture
@@ -65,13 +67,15 @@ src/core/
 src/athletes/
   runner.js           shared runner physics (player and AI)
   ai.js               AI "thumbs": taps at a personal cadence
-  stickFigure.js      placeholder figure: blendable poses (blocks, set, run, stand)
+  stickFigure.js      placeholder figure: blendable poses (blocks, set, run, stand, hurdle)
   roster.js           Juno + rivals
 src/events/
   registry.js         event list for the menu
   strideTargets.js    100m random targets (max 2 in a row) + hit/miss judging
   laneRace.js         base for lane races: countdown FSM, finish lean, AI, HUD, results
   sprint100.js        100m: random-side target pads, wrong-tap ✕, lean prompt
+  hurdleRules.js      hurdles: 1-2-3 sequence judging + clear/clip rules (pure, shared with the simulator)
+  hurdles110.js       110m hurdles: three numbered pads, hurdles in every lane, hurdling pose
 src/render/track.js   stadium with one-point perspective (camera 1m ahead of the player), parallax crowd
 src/render/pads.js    glossy tap targets and the red ✕
 src/tuning/           in-game tuning panel (params list, saved overrides, live estimates)

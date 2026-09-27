@@ -4,6 +4,46 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 3: 110m Hurdles
+New event, built on the shared lane race (start, blocks, rivals, finish lean).
+- **Controls:** three buttons, 1 (left), 2 (centre) and 3 (right), tapped in
+  order: 1-2-3-1-2-3… Each correct tap is a stride.
+  - The button you owe next is lit green; the other two are dimmed.
+  - Hit zones are the screen's thirds.
+  - A wrong or out-of-order tap stumbles you (`missSpeedLoss` 1.2 m/s), and you
+    still owe the same button.
+  - Keys: 1 2 3 (or ← ↓ →); Space to lean.
+- **Hurdles:** real spacing (first at 13.72m, then every 9.14m, 10 in all, last
+  at 96m), cleared automatically.
+  - A hurdle is **hit** if you're under `minSpeed` 6 m/s at takeoff, or your
+    rhythm broke: a wrong tap within `rhythmWindow` 0.3s before takeoff, or
+    during the hop before the bar.
+  - Hitting one costs `clipLoss` 2.6 m/s and knocks it over; it tips forward and
+    stays down. A clean clearance costs `cleanLoss` 0.3 m/s.
+- **Physics:** the pace scale differs from the 100m, because tapping a known
+  1-2-3 pattern is quicker than reading random targets. `cadenceForTopSpeed`
+  6.5 taps/s, `topSpeed` 9.3 m/s, `speedCurve` 0.4.
+- **Finish:** the lean zone starts 10m out (`dipPromptDistance`), after the last
+  hurdle.
+- **Rivals:** hurdles pace Amateur 3.6–4.6 taps/s, Pro 4.3–5.3; the rest of
+  their skill comes from `CONFIG.ai`.
+- **Look:** hurdles in every lane, with posts at the lane's near and far side,
+  little feet, and a striped top bar. Over the bar the athlete's lead leg shoots
+  out straight, the trail leg folds behind, the torso pitches forward and the
+  opposite arm reaches.
+- **Tuning panel:** new "110m Hurdles" group. Results show hurdles hit.
+- **Simulator** (`node tools/simulate.mjs`):
+
+  | Who | Time | Hurdles hit |
+  |---|---|---|
+  | Casual (4 taps/s, 3% wrong) | 14.85s | |
+  | Good (5.5/s, 2% wrong) | 13.32s | |
+  | Expert (7/s) | 12.39s (world record 12.80) | |
+  | Sloppy (5.5/s, 8% wrong) | 14.22s | 2.1 |
+  | Random-button masher | 23–47s | |
+  | Amateur rivals | typical 14.81s, winner 14.35s | |
+  | Pro rivals | typical 13.81s, winner 13.44s | |
+
 ## Step 2.44: input check splits phone delay from game delay
 From a race on the phone, inside the Claude app viewer: 33 touches, 33 judged,
 nothing cancelled, worst frame 36ms, worst tap delay **121ms**. The game's

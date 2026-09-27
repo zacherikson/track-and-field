@@ -33,7 +33,7 @@ export class AIController {
       let interval = (1 / (this.cadence * tired)) * (1 + rand(-lv.jitter, lv.jitter));
       if (Math.random() < lv.missChance) {
         // Rivals misread a target now and then, and pay the same price the player does.
-        r.stumble(lv.missSpeedLoss);
+        r.stumble(lv.missSpeedLoss, this.nextTapT);
         interval += lv.missLockout;
       } else {
         r.stride(this.nextTapT);

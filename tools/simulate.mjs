@@ -8,6 +8,7 @@ import { CONFIG } from '../src/config.js';
 import { Runner } from '../src/athletes/runner.js';
 import { AIController } from '../src/athletes/ai.js';
 import { StrideTargets } from '../src/events/strideTargets.js';
+import { SequenceJudge, HurdleRun, hurdlePositions } from '../src/events/hurdleRules.js';
 
 const STEP = CONFIG.loop.fixedStep;
 const D = CONFIG.sprint100.distance;
@@ -161,4 +162,84 @@ const base = dipRace(null);
 for (const e of [-2, -1, 0, 1, 2, 3, 4, 6, 8, 11]) {
   const d = dipRace(e) - base;
   console.log(`  ${(e >= 0 ? '+' : '') + e}m`.padEnd(8) + ` ${(d >= 0 ? '+' : '') + d.toFixed(3)}s vs no lean`);
+}
+
+// ------------------------------------------------------------------ 110m hurdles
+const HC = { ...CONFIG.sprint100, ...CONFIG.hurdles110 };
+const HD = HC.distance;
+const HPOS = hurdlePositions(HC.hurdles);
+const hurdleParams = () => ({ ...CONFIG.runner, ...HC.runner });
+
+/**
+ * A player tapping 1-2-3 at `rate` taps/s (±15% jitter). Each tap has an `err`
+ * chance of being the wrong button; after a wrong tap they notice and carry on
+ * `recover` s later. `masher` presses random buttons instead.
+ */
+function hurdleRace({ rate, err = 0.02, recover = 0.12, masher = false }) {
+  const r = new Runner(hurdleParams(), undefined, HC.startX);
+  const j = new SequenceJudge(r, HC);
+  const run = new HurdleRun(HPOS, HC.clear);
+  r.go(0);
+  j.start();
+  let next = 0.2;
+  let t = 0;
+  while (t < 60) {
+    if (HD - r.x <= HC.dipPromptDistance) r.carry();
+    if (r.mode === 'carry' && HD - r.x <= r.idealDipDistance()) r.lean();
+    while (next < t + STEP && r.mode === 'run') {
+      let btn = j.expected;
+      if (masher) btn = 1 + Math.floor(Math.random() * 3);
+      else if (Math.random() < err) btn = (btn % 3) + 1;
+      const res = j.press(btn, next);
+      next += (1 / rate) * (0.85 + 0.3 * Math.random()) + (res === 'miss' && !masher ? recover : 0);
+    }
+    r.update(STEP, t);
+    run.update(r, t + STEP);
+    const cross = r.crossing(HD, t, STEP);
+    if (cross != null) return { time: cross, clips: run.clips, misses: j.misses };
+    t += STEP;
+  }
+  return { time: Infinity, clips: run.clips, misses: j.misses };
+}
+
+function hurdleAiRace(level) {
+  const r = new Runner(hurdleParams(), undefined, HC.startX);
+  const lv = { ...CONFIG.ai[level], ...HC.ai[level], missSpeedLoss: HC.missSpeedLoss };
+  const ai = new AIController(r, lv);
+  const run = new HurdleRun(HPOS, HC.clear);
+  ai.go(0);
+  let t = 0;
+  while (t < 60) {
+    if (HD - r.x <= HC.dipPromptDistance) r.carry();
+    ai.update(t, STEP, r.x / HD, HD - r.x);
+    r.update(STEP, t);
+    run.update(r, t + STEP);
+    const cross = r.crossing(HD, t, STEP);
+    if (cross != null) return cross;
+    t += STEP;
+  }
+  return Infinity;
+}
+
+console.log('\n110m HURDLES (1-2-3 taps; err = chance a tap is the wrong button)');
+const hrow = (label, opts) => {
+  const res = Array.from({ length: N }, () => hurdleRace(opts));
+  const avg = (k) => res.reduce((a, b) => a + b[k], 0) / res.length;
+  console.log(`${label.padEnd(40)} ${avg('time').toFixed(2)}s   ${avg('clips').toFixed(1)} hurdles hit   ${avg('misses').toFixed(1)} misses`);
+};
+for (const [label, rate, err] of [['casual   4.0 taps/s, 3% wrong', 4.0, 0.03], ['good     5.5 taps/s, 2% wrong', 5.5, 0.02], ['expert   7.0 taps/s, 1.5% wrong', 7.0, 0.015], ['machine  8.0 taps/s, 0% wrong', 8.0, 0]]) hrow(label, { rate, err });
+hrow('good pace but sloppy (5.5/s, 8% wrong)', { rate: 5.5, err: 0.08 });
+for (const rate of [6, 10]) hrow(`masher (random buttons ${rate}/s)`, { rate, masher: true });
+for (const level of ['amateur', 'pro']) {
+  const winners = [];
+  const all = [];
+  for (let i = 0; i < 150; i++) {
+    const times = Array.from({ length: HC.lanes - 1 }, () => hurdleAiRace(level));
+    winners.push(Math.min(...times));
+    all.push(...times);
+  }
+  winners.sort((a, b) => a - b);
+  all.sort((a, b) => a - b);
+  const q = (arr, p) => arr[Math.floor(p * (arr.length - 1))].toFixed(2);
+  console.log(`${level.padEnd(8)} individual ${q(all, 0)}–${q(all, 1)} (median ${q(all, 0.5)}); winner median ${q(winners, 0.5)}, fastest 10% ${q(winners, 0.1)}`);
 }

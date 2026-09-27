@@ -78,7 +78,7 @@ export class StrideTargets {
     if (side !== this.target) {
       this.misses++;
       this.lockedUntil = t + this.cfg.missLockout;
-      this.runner.stumble(this.cfg.missSpeedLoss);
+      this.runner.stumble(this.cfg.missSpeedLoss, t);
       return 'miss';
     }
     if (this.runner.stride(t) !== 'ok') return 'not running';

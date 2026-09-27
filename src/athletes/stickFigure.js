@@ -149,6 +149,29 @@ export function launchPose(k) {
 }
 
 /**
+ * Going over a hurdle, blended onto the running pose by `amount` (0 = running,
+ * 1 = over the bar). Lead leg (near) shoots out straight in front, the trail leg
+ * folds up behind, the torso pitches forward and the opposite arm reaches for
+ * the lead foot. The hips lift so the lead leg clears the bar.
+ */
+export function hurdlePose(run, amount) {
+  const over = {
+    hipX: 0,
+    hipY: -0.64,
+    lean: 0.8,
+    legs: [
+      { thigh: 1.45, shin: 1.38, toe: -0.35 },
+      { thigh: -0.35, shin: -1.9, toe: 0.6 },
+    ],
+    arms: [
+      { upper: -0.95, fore: -0.35 },
+      { upper: 1.35, fore: 1.5 },
+    ],
+  };
+  return lerpPose(run, over, amount);
+}
+
+/**
  * Running pose from a stride phase (radians) and intensity amp (0..1, grows with
  * speed). Modelled on a real sprinter's (and the original's) run cycle; the foot
  * path relative to the hips is a loop biased BEHIND the body:

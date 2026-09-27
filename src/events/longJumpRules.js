@@ -46,14 +46,18 @@ export function flightClock({ rate: s, ramp: r }) {
 }
 
 /**
- * The whole flight, as in the original: a projectile from your run-up speed.
- * - STRETCH (press both at the top): you throw yourself forward. A kick of
- *   `stretch.kickX` / `kickY` m/s (times the stretch quality) from that
- *   moment, legs thrust out in front: the hips come down lower before the heels
- *   touch (`jump.landDrop`) and the heels land `jump.reach` ahead of the hips.
- * - NO STRETCH: you crumple. Legs tucked under, you hit the sand sooner
- *   (`collapse.landDrop`) with your heels at `collapse.reach` from the hips,
- *   then flop forward onto your face.
+ * The whole flight, as in the original (arcs sketched from it):
+ * - Up to the TOP of the jump: a projectile from your run-up speed.
+ * - NO STRETCH: past the top the arc collapses. You crumple into a ball, your
+ *   forward speed dies (`collapse.keepX` of it is left) and you drop steeply
+ *   into the sand, feet under you (`collapse.landDrop`, `collapse.reach`), then
+ *   flop forward onto your face.
+ * - STRETCH (press both at the top): a mini double jump. A little hop up
+ *   (`stretch.kickY`) and you carry on forward (`stretch.carryX` of your
+ *   takeoff speed) on a long, flat glide, legs thrust out in front: the hips
+ *   come down lower before the heels touch (`jump.landDrop`) and the heels land
+ *   `jump.reach` ahead of them. Both scale with the stretch quality, and the
+ *   later you press the more you've already crumpled.
  * `stretchDelay`: s after the top of the jump that you pressed (null = never).
  * Times in and out are REAL (slow-motion) seconds since takeoff.
  * Returns { k, apex, stretchAt, time, at(t) -> {x, y} hips, markX, collapse }.
@@ -65,9 +69,17 @@ export function flightPath({ takeoffX, v, stretchDelay = null }, cfg) {
   const g = j.gravity;
   const clock = flightClock(cfg.flight.slowMo);
   const { vx, vy } = launch(v, j);
-  const apex = clock.toReal(vy / g);
-  const plain = (t) => ({ x: takeoffX + vx * t, y: vy * t - 0.5 * g * t * t }); // physics s
-  const tCollapse = fallTime(vy, 0, c.landDrop, g);
+  // Physics seconds from here on.
+  const ta = vy / g; // the top of the jump
+  const top = { x: takeoffX + vx * ta, y: (vy * vy) / (2 * g) };
+  const vxc = vx * c.keepX; // crumpling: forward speed dies past the top
+  const plain = (t) => {
+    if (t <= ta) return { x: takeoffX + vx * t, y: vy * t - 0.5 * g * t * t };
+    const u = t - ta;
+    return { x: top.x + vxc * u, y: top.y - 0.5 * g * u * u };
+  };
+  const tCollapse = ta + Math.sqrt((2 * (top.y + c.landDrop)) / g);
+  const apex = clock.toReal(ta);
   let k = stretchQuality(stretchDelay, s);
   const ts = k > 0 ? clock.toPhys(apex + stretchDelay) : Infinity;
   if (ts >= tCollapse) k = 0; // too late: already in the sand
@@ -76,8 +88,8 @@ export function flightPath({ takeoffX, v, stretchDelay = null }, cfg) {
     return { k, apex, stretchAt: null, time: clock.toReal(tCollapse), at, markX: plain(tCollapse).x + c.reach, collapse: true };
   }
   const p1 = plain(ts);
-  const vx2 = vx + s.kickX * k;
-  const vy2 = vy - g * ts + s.kickY * k;
+  const vx2 = lerp(vxc, vx * s.carryX, k);
+  const vy2 = -g * (ts - ta) + s.kickY * k;
   const tau = fallTime(vy2, p1.y, lerp(c.landDrop, j.landDrop, k), g);
   const at = (t) => {
     const p = clock.toPhys(t);

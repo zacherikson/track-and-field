@@ -215,14 +215,16 @@ export const CONFIG = {
     chordWindow: 0.08, // s: left + right presses this close together count as both
     overrun: 0.4, // m past the line without jumping and it's a foul
     jump: {
-      keepX: 0.9, // share of run-up speed kept forward at takeoff
-      liftBase: 2.4, // m/s upward at takeoff...
+      keepX: 0.8, // share of run-up speed kept forward at takeoff
+      liftBase: 3.6, // m/s upward at takeoff (higher than real, as in the original)...
       liftPerMps: 0.06, // ...plus this per m/s of run-up speed
       gravity: 9.81,
       landDrop: 0.5, // m the hips drop below takeoff height by landing (feet reach out in front)
       reach: 0.6, // m the heels land ahead of the hips (legs thrust out: full stretch)
-      // No stretch: you crumple, legs tucked under, and flop forward onto your face.
+      // No stretch: past the top the arc collapses. You crumple, legs tucked
+      // under, drop steeply and flop forward onto your face.
       collapse: {
+        keepX: 0.5, // share of your forward speed left past the top
         landDrop: 0.4, // m the hips drop below takeoff height when the feet hit the sand
         reach: 0, // m the heels land ahead of the hips (feet right under you)
       },
@@ -231,15 +233,16 @@ export const CONFIG = {
     // flight looks big and you have time to see the top coming. Looks only:
     // distances are the same.
     flight: {
-      slowMo: { rate: 0.55, ramp: 0.15 }, // the clock eases down to 0.55x over the first 0.15 s after takeoff
-      heightScale: 2.2, // the arc is drawn this much higher
+      slowMo: { rate: 0.7, ramp: 0.15 }, // the clock eases down to 0.7x over the first 0.15 s after takeoff
+      heightScale: 1.5, // the arc is drawn this much higher
     },
     stretch: {
       // Press both at the top of the jump and you throw yourself forward: a kick
       // (times the stretch quality) from that moment, landing far out on your heels.
-      kickX: 0.75, // m/s extra forward
-      kickY: 0.5, // m/s extra upward
-      window: 0.35, // real s the pads stay up after the top of the jump; the later you press, the weaker the kick
+      // A mini double jump: a little hop up, then a long flat glide.
+      carryX: 0.8, // forward speed after a perfect stretch, as a share of your takeoff speed
+      kickY: 1.2, // m/s hop upward
+      window: 0.65, // real s the pads stay up after the top of the jump; the later you press, the weaker the kick
     },
     // Rivals: run-up pace from CONFIG.ai, plus where they take off relative to
     // the line (negative = over it: foul) and how late they stretch.

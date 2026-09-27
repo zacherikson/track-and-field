@@ -4,6 +4,27 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 4.9: arcs like the original (collapse vs. mini double jump)
+Arcs sketched from the original: all the same up to the top of the jump, then
+- **no stretch:** the arc collapses. Past the top your forward speed dies
+  (`jump.collapse.keepX` 0.5 of it is left) and you drop steeply, landing
+  about half as far past the top as the rise took. That's about 2/3 of a good
+  jump overall.
+- **stretch at the top:** a mini double jump. A little hop up
+  (`stretch.kickY` 0.5 → 1.2 m/s) and a long flat glide at
+  `stretch.carryX` 0.8 of your takeoff speed (replaces `kickX`), landing
+  about 1.4x as far past the top as the rise. The later you press, the more
+  you've already crumpled.
+- Higher, as in the original: `jump.liftBase` 2.4 → 3.6 m/s (hips rise about
+  0.9 m instead of 0.5 m), `jump.keepX` 0.9 → 0.8. `flight.heightScale`
+  2.2 → 1.5 so the top of the jump still stays on screen (at the ad boards).
+- Timing: the higher jump takes longer, so `flight.slowMo.rate` 0.55 → 0.7
+  keeps a flight at about 1.3–1.5s, top at about 0.6s. `stretch.window`
+  0.35 → 0.65 real s: pressing late costs you twice (weaker stretch, more
+  crumpled), so the window is longer.
+- Marks: good player 7.82m, expert 9.22m, casual 6.54m; never stretching
+  5.70m (was 6.87). Amateur winner 8.04m, Pro winner 9.04m.
+
 ## Step 4.8: slow-motion flight, higher arc
 The jump felt over too fast. In the original you go higher and the game seems
 to slow down as you leave the board, which exaggerates the flight and gives

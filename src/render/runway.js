@@ -9,10 +9,11 @@ import { TrackRenderer, LAYOUT } from './track.js';
  * One "lane" deep; the athlete runs down its middle.
  */
 export class RunwayRenderer extends TrackRenderer {
-  constructor(runway, pit) {
+  constructor(runway, pit, zones = []) {
     super(1, 0, null);
     this.runway = runway;
     this.pit = pit; // { from, to } in m from the foul line
+    this.zones = zones; // colored runway sections: { from, to, color } in m before the line
     this.marks = []; // landing marks in the sand: { x, foul }
   }
 
@@ -33,6 +34,19 @@ export class RunwayRenderer extends TrackRenderer {
     ctx.fillStyle = 'rgba(255,255,255,0.85)';
     this.quad(ctx, camera, view, -this.runway - 20, this.pit.from, r0, r0 + 0.02);
     this.quad(ctx, camera, view, -this.runway - 20, this.pit.from, r1 - 0.02, r1);
+
+    // Colored sections before the board, a white tick every meter through them,
+    // and bolder lines at 10 m and 5 m out.
+    for (const zn of this.zones) {
+      ctx.fillStyle = zn.color;
+      this.quad(ctx, camera, view, -zn.from, -zn.to, r0 + 0.02, r1 - 0.02);
+    }
+    const far = Math.max(0, ...this.zones.map((zn) => zn.from));
+    for (let m = 1; m <= far; m++) {
+      const w = m % 5 === 0 ? 0.12 : 0.05;
+      ctx.fillStyle = m % 5 === 0 ? '#fff' : 'rgba(255,255,255,0.7)';
+      this.quad(ctx, camera, view, -m - w / 2, -m + w / 2, r0 + 0.02, r1 - 0.02);
+    }
 
     // Sand pit, wider than the runway, with a concrete rim.
     const p0 = z(0.16), p1 = z(0.84);

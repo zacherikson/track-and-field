@@ -4,6 +4,16 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 4.1: longer run-up, colored runway sections
+- Run-up 40 → 45m. Marks barely change (runners are near top speed by then):
+  good player 7.85m, expert 8.96m; Amateur winner 8.06m, Pro 8.92m.
+- `longJump.runwayZones`: the last 12m before the board are painted in
+  colored sections, so the line doesn't sneak up on you:
+  - yellow from 12m (where the takeoff pads start blinking);
+  - orange from 8m;
+  - red from 4m up to the board.
+  A white tick every meter through them, bolder lines at 10m and 5m.
+
 ## Step 4: Long Jump
 From footage of the original, with real long jump rules.
 - **Three rounds**, best jump counts, against five rivals. World record 9.86m,

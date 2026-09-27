@@ -46,7 +46,7 @@ export class LongJump {
 
   enter() {
     const cfg = this.cfg;
-    this.track = new RunwayRenderer(cfg.runway, { from: 1, to: 10.5 });
+    this.track = new RunwayRenderer(cfg.runway, { from: 1, to: 10.5 }, cfg.runwayZones);
     this.camera = new Camera();
     this.player = { name: HERO.name, colors: HERO.colors, isPlayer: true, jumps: [] };
     // Five rivals, each with a fixed run-up pace for the whole competition.

@@ -202,7 +202,14 @@ export const CONFIG = {
    */
   longJump: {
     rounds: 3, // attempts; your best counts
-    runway: 40, // m from the start to the foul line (front edge of the board)
+    runway: 45, // m from the start to the foul line (front edge of the board)
+    // Colored sections painted on the runway before the board, so the line
+    // doesn't sneak up on you (m before the foul line).
+    runwayZones: [
+      { from: 12, to: 8, color: 'rgba(255,214,0,0.55)' }, // yellow: the takeoff pads start blinking at 12 m
+      { from: 8, to: 4, color: 'rgba(255,140,0,0.6)' }, // orange
+      { from: 4, to: 0.2, color: 'rgba(235,40,40,0.6)' }, // red: jump now
+    ],
     zoneDistance: 12, // m before the line where the pads turn orange: strides stop, press both to take off
     blink: { period: 0.36, on: 0.24 }, // s: the orange takeoff pads blink, as in the original
     chordWindow: 0.08, // s: left + right presses this close together count as both

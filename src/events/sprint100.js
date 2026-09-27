@@ -88,6 +88,8 @@ export class Sprint100 extends LaneRace {
     if (result === 'hit') {
       this.rings.push({ side, t0: t });
       this.spawnT = t; // the next target drops in right away (even on the same side)
+      // Each spot shows one thing at a time: a new target clears a ✕ on its side.
+      if (this.judge.target === this.missSide) this.missT = -Infinity;
     } else if (result === 'miss') {
       this.missSide = side; // the green target stays put: no re-drop
       this.missT = t;

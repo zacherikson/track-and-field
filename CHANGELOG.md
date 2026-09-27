@@ -4,6 +4,12 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 2.38: a new target clears the ✕ on its side
+- The red ✕ stays up for `missX` (0.25s) after a wrong tap. If you then hit the
+  green quickly and the next target landed on the ✕'s side, both were drawn on
+  the same spot. Now the new target clears the ✕ there, so each spot shows one
+  thing at a time. Forced-overlap test: 255/400 overlaps before, 0 after.
+
 ## Step 2.37: no mini-map; finish timed on the torso
 - Removed the race progress mini-map from the top of the screen; the field is
   visible on the track itself.

@@ -4,6 +4,44 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 3.1: hurdles redone like the original
+Rebuilt from frame-by-frame gameplay footage. The first version (three fixed
+pads tapped 1-2-3 over and over) was nothing like the original.
+- **Button sets:** at GO, and every time you go over a hurdle, three blue
+  numbered buttons appear along the top in a **shuffled** order (e.g. 3 1 2).
+  - Tap 1, 2, 3 wherever they are. Each tapped button vanishes with a ring.
+  - A wrong number stumbles you (1.2 m/s) and flashes a ✕; a cleared slot does
+    nothing.
+  - Hit zones are the screen thirds.
+  - Keys: number keys press wherever that number is; ← ↓ → press the slots.
+- **Cruise:** once a set is cleared you keep the pace you set until the next
+  hurdle; no tapping in between. Pace comes from your taps within the set,
+  counting your reaction to it. New `Runner.cruise` and `restartInterval()`.
+- **Hurdles:** 7, as in the original (one every ~1.4s in the footage), first at
+  13.72m then every 12.9m. You **hit** a hurdle if you reach takeoff with the
+  set not cleared, or under 5 m/s: 2.6 m/s lost and it falls over. A clean
+  clearance costs 0.3 m/s.
+- **Finish:** after the last hurdle, orange lean pads in the outer slots (lean
+  zone 17m). GO!/READY banners moved below the button row. World record 11.58s,
+  as in the original.
+- **Rivals** (`HurdleAI`) read each new set in `setReact` s and tap `tapGap` s
+  apart: Amateur 0.45–0.62 / 0.18–0.25, Pro 0.42–0.56 / 0.16–0.22.
+- **Physics:** `cadenceForTopSpeed` 4.6, `topSpeed` 10.2 m/s, `speedCurve` 0.5,
+  `cadenceSmoothing` 0.35 (each set counts).
+- **Results** show hurdles hit and your average set time.
+- **Simulator:** a player clearing sets in ~0.65s runs ~11.9s, like the
+  original's footage (11.96s).
+
+  | Who | Set time | 110m time |
+  |---|---|---|
+  | Slow | ~1.5s | 15.8s |
+  | Casual | ~1.1s | 14.2s |
+  | Good | ~0.8s | 12.25s |
+  | Expert | ~0.6s | 11.53s |
+  | Machine | ~0.45s | 11.35s |
+  | Amateur rivals | | typical 13.2s, winner 12.7s |
+  | Pro rivals | | typical 12.5s, winner 12.0s |
+
 ## Step 3: 110m Hurdles
 New event, built on the shared lane race (start, blocks, rivals, finish lean).
 - **Controls:** three buttons, 1 (left), 2 (centre) and 3 (right), tapped in

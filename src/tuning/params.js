@@ -76,14 +76,13 @@ export const GROUPS = [
   },
   {
     title: '110m Hurdles',
-    blurb: 'Tap 1-2-3 in order. Hurdles are jumped automatically unless you break rhythm or come in slow.',
+    blurb: 'A new shuffled 1-2-3 set appears at GO and at every hurdle. How fast you clear it sets your pace to the next hurdle.',
     params: [
-      { path: 'hurdles110.runner.cadenceForTopSpeed', label: 'Pace for top speed', unit: 'taps/s', min: 3, max: 10, step: 0.1, help: 'How fast you must tap 1-2-3 to reach full hurdling speed.' },
-      { path: 'hurdles110.runner.topSpeed', label: 'Top speed', unit: 'm/s', min: 7, max: 12, step: 0.1, kmh: true, help: 'Fastest speed between hurdles.' },
-      { path: 'hurdles110.clear.clipLoss', label: 'Speed lost hitting a hurdle', unit: 'm/s', min: 0, max: 6, step: 0.1, kmh: true, help: 'When you clip a hurdle and knock it over.' },
-      { path: 'hurdles110.clear.minSpeed', label: 'Slowest clean clearance', unit: 'm/s', min: 0, max: 9, step: 0.25, kmh: true, help: 'Slower than this at takeoff and you hit the hurdle.' },
-      { path: 'hurdles110.clear.rhythmWindow', label: 'Rhythm window', unit: 'ms', scale: 1000, min: 0, max: 0.8, step: 0.05, help: 'A wrong tap this soon before takeoff makes you hit the hurdle.' },
-      { path: 'hurdles110.missSpeedLoss', label: 'Wrong-button speed loss', unit: 'm/s', min: 0, max: 5, step: 0.1, kmh: true, help: 'Out-of-order tap away from a hurdle.' },
+      { path: 'hurdles110.runner.cadenceForTopSpeed', label: 'Pace for top speed', unit: 'taps/s', min: 2, max: 10, step: 0.1, help: 'Taps per second within a set (counting your reaction to it) needed for full speed.' },
+      { path: 'hurdles110.runner.topSpeed', label: 'Top speed', unit: 'm/s', min: 7, max: 13, step: 0.1, kmh: true, help: 'Fastest hurdling speed.' },
+      { path: 'hurdles110.clear.clipLoss', label: 'Speed lost hitting a hurdle', unit: 'm/s', min: 0, max: 6, step: 0.1, kmh: true, help: 'When you reach a hurdle before clearing the set.' },
+      { path: 'hurdles110.clear.cleanLoss', label: 'Speed lost per clean hurdle', unit: 'm/s', min: 0, max: 2, step: 0.05, kmh: true, help: 'Every clearance costs a little.' },
+      { path: 'hurdles110.missSpeedLoss', label: 'Wrong-number speed loss', unit: 'm/s', min: 0, max: 5, step: 0.1, kmh: true, help: 'Tapping a number out of order.' },
     ],
   },
   {

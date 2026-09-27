@@ -26,6 +26,7 @@ export class Runner {
     this.avgInterval = null; // smoothed seconds between valid taps
     this.taps = 0;
     this.lastStumbleT = -Infinity;
+    this.cruise = false; // true: keep the current pace without tapping (see cadence())
     this.finished = false; // true after crossing the line: brake, ignore taps
     // Finish-lean state. 'run' -> 'carry' (in the lean zone: strides stop counting,
     // momentum carries you) -> 'lean' (torso pitched forward at the line).
@@ -101,6 +102,11 @@ export class Runner {
     return 'ok';
   }
 
+  /** Measure the next stride's interval from time t (e.g. when new buttons appear), not from the last stride. */
+  restartInterval(t) {
+    this.lastTapT = t;
+  }
+
   /** A wrong input at time t: lose some speed on the spot. */
   stumble(speedLoss, t = null) {
     if (this.mode === 'run' && !this.finished) this.v = Math.max(0, this.v - speedLoss);
@@ -110,6 +116,7 @@ export class Runner {
   /** Current effective cadence (taps/s). Decays on its own if you stop tapping. */
   cadence(t) {
     if (this.avgInterval == null) return 0;
+    if (this.cruise) return 1 / this.avgInterval; // holding the pace you set (hurdles, between button sets)
     // A gap only starts to cost you once it's clearly longer than your usual
     // rhythm (idleGrace x), so an ordinary hesitation doesn't wobble your speed.
     return 1 / Math.max(this.avgInterval, (t - this.lastTapT) / this.p.idleGrace);

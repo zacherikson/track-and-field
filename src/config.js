@@ -143,40 +143,50 @@ export const CONFIG = {
   },
 
   /**
-   * 110m HURDLES. Shares the 100m's start, countdown, pads and lean; only the
-   * differences live here (the event merges this over sprint100).
-   * Controls: three buttons, 1-2-3 in order (see hurdleRules.js).
+   * 110m HURDLES, from footage of the original. Shares the 100m's start,
+   * countdown and lean; only the differences live here (the event merges this
+   * over sprint100). At GO and at every hurdle a new set of three numbered
+   * buttons appears in shuffled slots: tap 1-2-3. How fast you clear a set sets
+   * your pace until the next hurdle (see hurdleRules.js).
    */
   hurdles110: {
     distance: 110,
-    dipPromptDistance: 10, // m: the lean zone starts after the last hurdle (at 96 m)
+    dipPromptDistance: 17, // m: the lean zone starts just after the last hurdle's landing
+    bannerY: 215, // READY / GET SET / GO! sit below the button row
     maxRaceTime: 30,
-    // Tapping a known 1-2-3 pattern is quicker than reading random targets,
-    // and hurdlers are slower than sprinters, so the pace scale differs.
     runner: {
-      cadenceForTopSpeed: 6.5, // taps/s for full speed
-      speedCurve: 0.4, // flatter than the 100m: pace matters, but a steady rhythm gets you most of the way
-      topSpeed: 9.3, // m/s between hurdles
+      // Pace = your taps within a set (reaction to the new set, then the two
+      // taps after it), smoothed across sets.
+      cadenceForTopSpeed: 4.6, // taps/s for full speed
+      speedCurve: 0.5,
+      topSpeed: 10.2, // m/s
+      cadenceSmoothing: 0.35, // each set counts: a quick set speeds you up right away
     },
     hurdles: {
-      count: 10,
-      first: 13.72, // m from the start line (real 110m hurdles spacing)
-      spacing: 9.14,
+      count: 7, // the original has 7 (one every ~1.4 s), not the real 10
+      first: 13.72, // m from the start line
+      spacing: 12.9, // m
       height: 1.067, // m (drawing only)
     },
     clear: {
-      takeoff: 2.1, // m before the hurdle where the hop starts
+      takeoff: 2.1, // m before the hurdle where the hop starts (and the next set appears)
       landing: 1.4, // m after it where the hop ends
       cleanLoss: 0.3, // m/s lost clearing a hurdle cleanly
-      clipLoss: 2.6, // m/s lost when you hit it (it falls over)
-      minSpeed: 6.0, // m/s: slower than this at takeoff and you clip it
-      rhythmWindow: 0.3, // s: a wrong tap this close before takeoff clips it
+      clipLoss: 2.6, // m/s lost hitting it (it falls over)
+      minSpeed: 5.0, // m/s: slower than this at takeoff and you hit it
     },
-    missSpeedLoss: 1.2, // m/s lost on an out-of-order tap away from a hurdle
-    // Rival pace in 1-2-3 taps per second (the rest of their skill comes from CONFIG.ai).
+    missSpeedLoss: 1.2, // m/s lost tapping a wrong number
+    buttons: {
+      slotsX: [0.16, 0.5, 0.84], // slot centres as a fraction of screen width (hit zones are the thirds)
+      y: 0.24, // fraction of screen height
+      radius: 46,
+      fadeIn: 0.08, // s for a new set to fade in
+    },
+    // Rivals read a new set in `setReact` s, then tap `tapGap` s apart (their
+    // reaction to the gun, miss chance, jitter and lean timing come from CONFIG.ai).
     ai: {
-      amateur: { cadence: [3.6, 4.6] }, // typical rival about 14.7s
-      pro: { cadence: [4.3, 5.3] }, // typical rival about 13.8s
+      amateur: { setReact: [0.45, 0.62], tapGap: [0.18, 0.25] }, // typical rival about 13.2s
+      pro: { setReact: [0.42, 0.56], tapGap: [0.16, 0.22] }, // typical rival about 12.5s
     },
   },
 

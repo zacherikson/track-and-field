@@ -56,7 +56,7 @@ export class LaneRace {
         name: who.name,
         colors: who.colors,
         runner,
-        ai: isPlayer ? null : new AIController(runner, this.difficulty),
+        ai: isPlayer ? null : this.createAI(runner),
         mark: null,
         status: 'ok',
         idlePhase: rand(0, Math.PI * 2), // so the waiting athletes don't sway in unison
@@ -69,13 +69,18 @@ export class LaneRace {
     this.setState('waiting', this.game.time);
   }
 
+  /** A rival's thumbs. `prev` is their controller from the last race (keeps their pace). */
+  createAI(runner, prev = null) {
+    return new AIController(runner, this.difficulty, prev?.cadence);
+  }
+
   /** Everyone back on the line, camera on the player. */
   resetField() {
     this.tapLog = []; // optional tap markers: { x, y, t, result }
     this.tapCounts = {};
     for (const a of this.athletes) {
       a.runner.reset();
-      if (a.ai) a.ai = new AIController(a.runner, this.difficulty, a.ai.cadence);
+      if (a.ai) a.ai = this.createAI(a.runner, a.ai);
       a.mark = null;
     }
     this.onResetField?.();
@@ -456,7 +461,7 @@ export class LaneRace {
   drawBanner(ctx, view) {
     const now = this.game.time;
     const cx = view.w / 2;
-    const cy = 110;
+    const cy = this.cfg.bannerY ?? 110; // hurdles move it down, clear of the buttons
     const big = (str, color) => text(ctx, str, cx, cy, { size: 64, color, shadow: true });
     switch (this.state) {
       case 'ready':

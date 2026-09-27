@@ -2,46 +2,48 @@ import { CONFIG } from '../config.js';
 import { clamp } from '../core/math.js';
 import { text } from '../core/ui.js';
 import { LaneRace } from './laneRace.js';
-import { SequenceJudge, HurdleRun, hurdlePositions } from './hurdleRules.js';
+import { ButtonSet, HurdleRun, HurdleAI, hurdlePositions } from './hurdleRules.js';
 import { hurdlePose } from '../athletes/stickFigure.js';
-import { GREEN, ORANGE, RIM, drawPad, drawX } from '../render/pads.js';
+import { BLUE, ORANGE, RIM, drawPad, drawX } from '../render/pads.js';
 
-const KEYS = {
-  1: ['Digit1', 'Numpad1', 'ArrowLeft', 'KeyA'],
-  2: ['Digit2', 'Numpad2', 'ArrowDown', 'KeyS'],
-  3: ['Digit3', 'Numpad3', 'ArrowRight', 'KeyD'],
-};
+const SLOT_KEYS = [['ArrowLeft', 'KeyA'], ['ArrowDown', 'KeyS'], ['ArrowRight', 'KeyD']];
+const NUMBER_KEYS = { Digit1: 1, Numpad1: 1, Digit2: 2, Numpad2: 2, Digit3: 3, Numpad3: 3 };
 const DIP_KEYS = ['Space', 'ArrowUp'];
 
 /**
- * 110m Hurdles: three buttons, 1-2-3 in order, over and over. Each correct tap
- * is a stride. The hurdles are jumped automatically, but a wrong tap just
- * before one (or coming in too slow) clips it: it falls over and you lose a lot
- * of speed. Rules in hurdleRules.js; the start, rivals and finish lean are the
- * shared lane race.
- *
- * Controls: the three buttons sit left, centre and right; the hit zones are
- * the screen's thirds, so a thumb near a button always counts for it. The
- * button you owe next is lit green, the other two are dimmed. In the lean zone
- * (after the last hurdle) the outer two turn orange, as in the 100m.
+ * 110m Hurdles, as in the original (from gameplay footage):
+ * - At GO, and every time you go over a hurdle, three blue numbered buttons
+ *   appear along the top in a shuffled order. Tap 1, 2, 3 wherever they are.
+ *   Each tapped button vanishes, leaving an expanding ring.
+ * - Clear the set and you run on at the pace you set until the next hurdle,
+ *   where the next set appears. Reach a hurdle with buttons still showing and
+ *   you hit it: it falls over and you lose a lot of speed.
+ * - A wrong number stumbles you and flashes a red ✕ on it.
+ * - 7 hurdles. After the last one the two outer spots turn orange: press both
+ *   to lean, as in the 100m.
+ * Each button's hit zone is its third of the screen. Rules in hurdleRules.js;
+ * start, rivals and finish are the shared lane race.
  */
 export class Hurdles110 extends LaneRace {
   constructor(ev) {
     super(ev, { ...CONFIG.sprint100, ...CONFIG.hurdles110 });
-    // Same rival skill levels, but with a hurdles tapping pace and the same miss price as you.
+    // Same rival skill levels, with set-reading speeds for hurdles and the same miss price as you.
     this.difficulty = { ...CONFIG.ai[this.level], ...this.cfg.ai[this.level], missSpeedLoss: this.cfg.missSpeedLoss };
   }
 
   enter() {
     this.runnerParams = { ...CONFIG.runner, ...this.cfg.runner };
     this.positions = hurdlePositions(this.cfg.hurdles);
-    const r = this.cfg.pads.radius;
-    this.pads = { 1: { home: { x: 0, y: 0 }, r }, 2: { home: { x: 0, y: 0 }, r }, 3: { home: { x: 0, y: 0 }, r } };
-    this.missBtn = null;
+    this.slotPos = [0, 1, 2].map(() => ({ x: 0, y: 0 }));
+    this.missSlot = null;
     this.missT = -Infinity;
-    this.rings = []; // { btn, t0 }
+    this.rings = []; // { slot, t0 }
     super.enter();
-    this.judge = new SequenceJudge(this.player.runner, this.cfg);
+    this.set = new ButtonSet(this.player.runner, this.cfg);
+  }
+
+  createAI(runner, prev = null) {
+    return new HurdleAI(runner, this.difficulty, prev?.skill);
   }
 
   onResetField() {
@@ -50,60 +52,73 @@ export class Hurdles110 extends LaneRace {
 
   onResize(view) {
     super.onResize(view);
-    const p = this.cfg.pads;
-    const y = view.h * p.homeY;
-    this.pads[1].home = { x: view.safe.l + p.edgeInset + p.radius, y };
-    this.pads[2].home = { x: view.w / 2, y };
-    this.pads[3].home = { x: view.w - view.safe.r - p.edgeInset - p.radius, y };
+    const b = this.cfg.buttons;
+    const r = b.radius;
+    this.slotPos = b.slotsX.map((fx) => ({
+      x: clamp(view.w * fx, view.safe.l + r + 12, view.w - view.safe.r - r - 12),
+      y: view.h * b.y,
+    }));
   }
 
   onCountdown() {
-    this.missBtn = null;
+    this.missSlot = null;
     this.rings = [];
-    if (this.judge) this.judge.expected = null;
+    if (this.set) this.set.slots = null;
   }
 
   onGo() {
-    this.judge.start();
+    this.set.start(this.goT);
   }
 
+  /** After each physics step: hurdle takeoffs, and the new button set each one brings. */
   afterStep(a, t) {
-    const ev = a.hurdles?.update(a.runner, t);
-    if (ev === 'clip' && a.isPlayer) navigator.vibrate?.(60);
+    const ctrl = a.isPlayer ? this.set : a.ai;
+    const hop = a.hurdles?.update(a.runner, t, ctrl.done);
+    if (!hop) return;
+    if (hop.last) ctrl.stop();
+    else ctrl.start(t);
+    if (a.isPlayer) {
+      this.missSlot = null;
+      if (hop.clip) navigator.vibrate?.(60);
+    }
   }
 
   /** Player numbers for the results screen. */
   raceStats() {
     const clips = this.player.hurdles.clips;
+    const st = this.set.setTimes;
     return {
-      hits: this.judge.hits,
-      misses: this.judge.misses,
+      hits: this.set.hits,
+      misses: this.set.misses,
       topSpeed: this.playerTopV ?? 0,
       input: this.inputStats(),
       extra: `${clips} ${clips === 1 ? 'hurdle' : 'hurdles'} hit`,
+      paceText: st.length ? `avg set ${(st.reduce((a, b) => a + b, 0) / st.length).toFixed(2)}s` : null,
     };
   }
 
+  /** Taps: the slot (0 left, 1 centre, 2 right) by screen third; halves in the lean zone. */
   mapInput(e) {
     const carry = this.player.runner.mode === 'carry';
     if (e.type === 'down') {
       const w = this.game.view.w;
       if (carry) return e.x < w / 2 ? 'L' : 'R';
-      return e.x < w / 3 ? 1 : e.x < (2 * w) / 3 ? 2 : 3;
+      return e.x < w / 3 ? 0 : e.x < (2 * w) / 3 ? 1 : 2;
     }
     if (DIP_KEYS.includes(e.code)) return 'DIP';
-    for (const b of [1, 2, 3]) {
-      if (KEYS[b].includes(e.code)) return carry ? (b === 1 ? 'L' : b === 3 ? 'R' : null) : b;
-    }
+    const slot = SLOT_KEYS.findIndex((keys) => keys.includes(e.code));
+    if (slot >= 0) return carry ? (slot === 0 ? 'L' : slot === 2 ? 'R' : null) : slot;
+    const n = NUMBER_KEYS[e.code]; // a number key presses wherever that number is
+    if (n && !carry && this.set?.slots) return this.set.slots.indexOf(n);
     return null;
   }
 
-  onPlayerAction(btn, t) {
-    if (typeof btn !== 'number') return 'ignored';
-    const result = this.judge.press(btn, t);
-    if (result === 'hit') this.rings.push({ btn, t0: t });
+  onPlayerAction(slot, t) {
+    if (typeof slot !== 'number') return 'ignored';
+    const result = this.set.press(slot, t);
+    if (result === 'hit') this.rings.push({ slot, t0: t });
     else if (result === 'miss') {
-      this.missBtn = btn;
+      this.missSlot = slot;
       this.missT = t;
       navigator.vibrate?.(40);
     }
@@ -128,44 +143,48 @@ export class Hurdles110 extends LaneRace {
     if (this.state !== 'race') return;
     const mode = this.player.runner.mode;
     const now = this.game.time;
-    const P = this.pads;
-    if (mode === 'run' && this.judge.expected) {
-      for (const b of [1, 2, 3]) {
-        const { x, y } = P[b].home;
-        const next = b === this.judge.expected;
+    const r = this.cfg.buttons.radius;
+    const set = this.set;
+    if (mode === 'run' && set.slots) {
+      const fade = clamp((now - set.shownT) / this.cfg.buttons.fadeIn, 0, 1);
+      set.slots.forEach((n, i) => {
+        if (set.cleared[i]) return;
+        const { x, y } = this.slotPos[i];
         ctx.save();
-        ctx.globalAlpha = next ? 1 : 0.28;
-        drawPad(ctx, GREEN, x, y, P[b].r);
+        ctx.globalAlpha = fade;
+        drawPad(ctx, BLUE, x, y, r);
+        text(ctx, String(n), x, y + 2, { size: Math.round(r * 0.95), weight: 800, color: '#fff', shadow: true });
         ctx.restore();
-        text(ctx, String(b), x, y + 2, { size: 40, weight: 800, color: next ? '#fff' : 'rgba(255,255,255,0.55)', shadow: next });
+      });
+      if (this.missSlot != null && now - this.missT < this.cfg.pads.missX && !set.cleared[this.missSlot]) {
+        drawX(ctx, this.slotPos[this.missSlot].x, this.slotPos[this.missSlot].y);
       }
-      if (now - this.missT < this.cfg.pads.missX) drawX(ctx, P[this.missBtn].home.x, P[this.missBtn].home.y);
     } else if (mode === 'carry') {
-      drawPad(ctx, ORANGE, P[1].home.x, P[1].home.y, P[1].r);
-      drawPad(ctx, ORANGE, P[3].home.x, P[3].home.y, P[3].r);
+      drawPad(ctx, ORANGE, this.slotPos[0].x, this.slotPos[0].y, r);
+      drawPad(ctx, ORANGE, this.slotPos[2].x, this.slotPos[2].y, r);
     }
-    for (const ring of this.rings) this.drawHitRing(ctx, P[ring.btn], now - ring.t0);
+    for (const ring of this.rings) this.drawHitRing(ctx, this.slotPos[ring.slot], r, now - ring.t0);
   }
 
-  drawHitRing(ctx, pad, age) {
+  drawHitRing(ctx, pos, r, age) {
     const cfg = this.cfg.pads.hitRing;
     const k = clamp(age / cfg.duration, 0, 1);
     const grow = 1 - (1 - k) * (1 - k);
     ctx.save();
     ctx.globalAlpha = Math.pow(1 - k, 1.2);
     ctx.strokeStyle = RIM;
-    ctx.lineWidth = pad.r * (0.12 - 0.06 * k);
+    ctx.lineWidth = r * (0.12 - 0.06 * k);
     ctx.beginPath();
-    ctx.arc(pad.home.x, pad.home.y, pad.r * (0.95 + (cfg.grow - 0.95) * grow), 0, Math.PI * 2);
+    ctx.arc(pos.x, pos.y, r * (0.95 + (cfg.grow - 0.95) * grow), 0, Math.PI * 2);
     ctx.stroke();
     ctx.restore();
   }
 
   /**
-   * The hurdles in one lane, drawn just before that lane's athlete. Each has two
-   * posts at the lane's near and far edges (so the top bar follows the
-   * perspective) with little feet pointing back toward the start, and a
-   * striped top bar. A knocked hurdle tips forward and lies flat.
+   * The hurdles in one lane, drawn just before that lane's athlete. Two posts
+   * inset from the lane lines (the top bar follows the perspective), little
+   * feet pointing back toward the start, and a striped top bar. A knocked
+   * hurdle tips forward and lies flat.
    */
   drawLaneProps(ctx, view, a) {
     const tr = this.track;
@@ -173,7 +192,7 @@ export class Hurdles110 extends LaneRace {
     const now = this.game.time;
     const pxPerM = cam.ppm * tr.figureScale(a.lane); // same scale as the athletes
     const hh = this.cfg.hurdles.height * pxPerM;
-    const zN = tr.zNear + a.lane - 1 + 0.3; // posts inset from the lane lines so neighbouring hurdles don't join up
+    const zN = tr.zNear + a.lane - 1 + 0.3;
     const zF = tr.zNear + a.lane - 0.3;
     this.positions.forEach((hx, i) => {
       const n = tr.project(cam, view, hx, zN);
@@ -187,7 +206,6 @@ export class Hurdles110 extends LaneRace {
       const dy = -Math.cos(ang) * hh;
       const lw = Math.max(2, 0.035 * pxPerM);
       ctx.lineCap = 'round';
-      // Feet and posts, far side first.
       for (const p of [f, n]) {
         ctx.strokeStyle = '#2d3340';
         ctx.lineWidth = lw * 1.3;
@@ -202,7 +220,6 @@ export class Hurdles110 extends LaneRace {
         ctx.lineTo(p.x + dx, p.y + dy);
         ctx.stroke();
       }
-      // Top bar: white with black bands.
       const bw = Math.max(4, 0.09 * pxPerM);
       const x0 = f.x + dx, y0 = f.y + dy, x1 = n.x + dx, y1 = n.y + dy;
       ctx.lineCap = 'butt';

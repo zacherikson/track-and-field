@@ -26,16 +26,16 @@ export const EVENTS = [
   {
     id: 'hurdles110',
     name: '110m Hurdles',
-    record: 12.8,
+    record: 11.58,
     unit: 's',
     lowerIsBetter: true,
     available: true,
     howTo: [
-      'Tap the buttons 1, 2, 3, 1, 2, 3... in order to run.',
-      'You jump the hurdles automatically.',
-      'Tap out of order just before a hurdle, or come in slow, and you hit it.',
+      'Three numbered buttons appear in a random order: tap 1, 2, 3.',
+      'Every hurdle you jump brings a new set. Clear it fast to run fast.',
+      'Reach a hurdle with buttons still showing and you hit it.',
       'After the last hurdle the pads turn ORANGE: press BOTH together to lean.',
-      'Desktop: keys 1 2 3 to run, Space to lean.',
+      'Desktop: number keys 1 2 3 (or ← ↓ → for the slots), Space to lean.',
     ],
     create() {
       return new Hurdles110(this);

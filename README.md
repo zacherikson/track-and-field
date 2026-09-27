@@ -48,8 +48,8 @@ without playing, run the headless simulator:
 node tools/simulate.mjs
 ```
 
-It prints 100m and 110m hurdles times for each tapping style (readers, mashers,
-sloppy tappers) and the AI fields' times per difficulty.
+It prints 100m times for each tapping style (readers, mashers), 110m hurdles times
+for each set-clearing speed, and the AI fields' times per difficulty.
 Log changes you keep in [CHANGELOG.md](CHANGELOG.md).
 
 ## Architecture
@@ -74,8 +74,8 @@ src/events/
   strideTargets.js    100m random targets (max 2 in a row) + hit/miss judging
   laneRace.js         base for lane races: countdown FSM, finish lean, AI, HUD, results
   sprint100.js        100m: random-side target pads, wrong-tap ✕, lean prompt
-  hurdleRules.js      hurdles: 1-2-3 sequence judging + clear/clip rules (pure, shared with the simulator)
-  hurdles110.js       110m hurdles: three numbered pads, hurdles in every lane, hurdling pose
+  hurdleRules.js      hurdles: shuffled 1-2-3 button sets, clear/clip rules, rival thumbs (pure, shared with the simulator)
+  hurdles110.js       110m hurdles: button sets along the top, hurdles in every lane, hurdling pose
 src/render/track.js   stadium with one-point perspective (camera 1m ahead of the player), parallax crowd
 src/render/pads.js    glossy tap targets and the red ✕
 src/tuning/           in-game tuning panel (params list, saved overrides, live estimates)

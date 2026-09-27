@@ -3,6 +3,7 @@
 // Glossy "candy" button palettes: highlight, body, and rim shade.
 export const GREEN = { hi: '#b6ff8a', mid: '#39e626', lo: '#0f9e1c' };
 export const ORANGE = { hi: '#ffe08a', mid: '#ff9d14', lo: '#d9580a' };
+export const BLUE = { hi: '#a8dcff', mid: '#2f86e8', lo: '#173f96' }; // hurdles' numbered buttons
 export const RIM = '#eaf8ff'; // a pad's white rim; also its echoes and hit outline
 
 /** A glossy candy button: gradient body, darker rim, thick white ring, highlight. */

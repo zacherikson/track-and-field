@@ -5,7 +5,7 @@ import { text, roundRect } from '../core/ui.js';
 import { Runner } from '../athletes/runner.js';
 import { AIController } from '../athletes/ai.js';
 import { HERO, RIVALS } from '../athletes/roster.js';
-import { drawFigure, runPose, lerpPose, JUMP_POSES, POSES } from '../athletes/stickFigure.js';
+import { drawFigure, runPose, lerpPose, handPos, headCircle, JUMP_POSES, POSES } from '../athletes/stickFigure.js';
 import { StrideTargets } from './strideTargets.js';
 import { launch, flightTime, stretchQuality, jumpMark, rivalJump } from './longJumpRules.js';
 import { RunwayRenderer } from '../render/runway.js';
@@ -92,6 +92,7 @@ export class LongJump {
     this.mark = null; // this round's result: { mark } or { foul: true }
     this.puff = [];
     this.track.marks = [];
+    this.track.footmarks = [];
     this.lastPose = null;
     this.setState('ready');
     this.camera.snapTo(this.runner.x);
@@ -165,6 +166,7 @@ export class LongJump {
     const { vx, vy } = launch(r.v, j);
     this.jump = { x0: r.x, v: r.v, vx, vy, t0: t, apexT: null, stretchT: null, stretchK: 0, foul: r.x > 0, hipX: r.x, hipY: 0 };
     this.jump.flight = flightTime(vy, j);
+    this.track.footmarks.push({ x: r.x, foul: r.x > 0 }); // where you took off, left on the runway
     this.stats.topSpeed = Math.max(this.stats.topSpeed, r.v);
     this.setState('air');
   }
@@ -214,7 +216,12 @@ export class LongJump {
       p.life -= dt;
     }
     this.puff = this.puff.filter((p) => p.life > 0 && p.y > -0.05);
-    const cx = this.state === 'air' || this.state === 'landed' || this.state === 'mark' ? this.jump?.hipX ?? r.x : r.x;
+    let cx = this.state === 'air' || this.state === 'landed' || this.state === 'mark' ? this.jump?.hipX ?? r.x : r.x;
+    const j = this.jump;
+    if (j?.landT != null && t - j.landT > cfg.markPan.delay) {
+      // After landing, pull back to show both the takeoff footprint and the landing mark.
+      cx = (j.x0 + j.markX) / 2 - CONFIG.camera.lead;
+    }
     this.camera.follow(cx, this.state === 'air' ? this.jump.vx : r.v, dt);
   }
 
@@ -222,6 +229,7 @@ export class LongJump {
     const j = this.jump;
     j.landT = t;
     const markX = jumpMark({ takeoffX: j.x0, v: j.v, stretchK: j.stretchK }, this.cfg);
+    j.markX = markX;
     this.mark = j.foul ? { foul: true } : { mark: markX };
     this.track.marks.push({ x: markX });
     // Sand kicked up where the heels go in.
@@ -354,10 +362,54 @@ export class LongJump {
       ctx.arc(s.x, s.y + 4 - p.y * pxPerM, p.r, 0, Math.PI * 2);
       ctx.fill();
     }
+    this.drawReferee(ctx, view, pxPerM);
     drawFigure(ctx, ground.x, y, H, pose, HERO.colors, groundY);
     this.drawControls(ctx, view);
     this.drawHUD(ctx, view);
     if (this.state === 'mark') this.drawMark(ctx, view);
+  }
+
+  /**
+   * The official at the foul line, on the far side of the runway (as in the
+   * original): white uniform, red cap. After a jump they raise a flag, white
+   * for a valid jump and red for a foul, as real officials do.
+   */
+  drawReferee(ctx, view, pxPerM) {
+    const tr = this.track;
+    const z = tr.zNear + 0.9;
+    const p = tr.project(this.camera, view, 0.35, z);
+    if (p.x < -60 || p.x > view.w + 60) return;
+    const H = CONFIG.figure.height * pxPerM * Math.pow(tr.scaleAt(z), 0.2) * 0.95;
+    const y = p.y + 4;
+    const verdict = this.state === 'landed' || this.state === 'mark' || (this.state === 'overrun' && this.now - this.stateT > 0.5) ? this.mark : null;
+    const up = verdict && (this.state !== 'landed' || this.now - this.jump.landT > 0.35);
+    const pose = up
+      ? { ...POSES.stand, arms: [{ upper: 2.9, fore: 3.05 }, { upper: -0.1, fore: 0.05 }] }
+      : { ...POSES.stand, arms: [{ upper: -0.15, fore: 0.35 }, { upper: -0.2, fore: 0.3 }] };
+    drawFigure(ctx, p.x, y, H, pose, { shirt: '#f2f2f2', shorts: '#f2f2f2', skin: '#f1c9a5' });
+    // Red cap.
+    const h = headCircle(p.x, y, H, pose);
+    ctx.fillStyle = '#d32020';
+    ctx.beginPath();
+    ctx.arc(h.x, h.y - h.r * 0.15, h.r * 1.05, Math.PI, 0);
+    ctx.fill();
+    ctx.fillRect(h.x, h.y - h.r * 0.3, h.r * 1.4, h.r * 0.28); // peak
+    if (up) {
+      const hand = handPos(p.x, y, H, pose, 0);
+      ctx.strokeStyle = '#6b5a3a';
+      ctx.lineWidth = Math.max(2, 0.02 * H);
+      ctx.beginPath();
+      ctx.moveTo(hand.x, hand.y + 0.05 * H);
+      ctx.lineTo(hand.x, hand.y - 0.28 * H);
+      ctx.stroke();
+      ctx.fillStyle = verdict.foul ? '#e8281e' : '#ffffff';
+      ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.rect(hand.x, hand.y - 0.28 * H, 0.2 * H, 0.14 * H);
+      ctx.fill();
+      ctx.stroke();
+    }
   }
 
   drawControls(ctx) {

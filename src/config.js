@@ -203,12 +203,12 @@ export const CONFIG = {
   longJump: {
     rounds: 3, // attempts; your best counts
     runway: 45, // m from the start to the foul line (front edge of the board)
-    // Colored sections painted on the runway before the board, so the line
-    // doesn't sneak up on you (m before the foul line).
+    // The runway's edge stripes are colored before the board, as in the
+    // original, so the line doesn't sneak up on you (m before the foul line).
     runwayZones: [
-      { from: 12, to: 8, color: 'rgba(255,214,0,0.55)' }, // yellow: the takeoff pads start blinking at 12 m
-      { from: 8, to: 4, color: 'rgba(255,140,0,0.6)' }, // orange
-      { from: 4, to: 0.2, color: 'rgba(235,40,40,0.6)' }, // red: jump now
+      { from: 12, to: 8, color: '#ffd21f' }, // yellow: the takeoff pads start blinking at 12 m
+      { from: 8, to: 4, color: '#ff8a1c' }, // orange
+      { from: 4, to: 0.2, color: '#e8281e' }, // red: jump now
     ],
     zoneDistance: 12, // m before the line where the pads turn orange: strides stop, press both to take off
     blink: { period: 0.36, on: 0.24 }, // s: the orange takeoff pads blink, as in the original
@@ -233,7 +233,8 @@ export const CONFIG = {
       amateur: { cadence: [3.0, 3.8], takeoffGap: [-0.1, 0.45], stretchDelay: [0.06, 0.3] },
       pro: { cadence: [3.7, 4.5], takeoffGap: [-0.03, 0.22], stretchDelay: [0.03, 0.16] },
     },
-    markHold: 1.6, // s after landing before the mark banner
+    markHold: 2.2, // s after landing before the mark banner
+    markPan: { delay: 0.45 }, // s after landing before the camera pulls back to show the takeoff footprint and the landing mark
   },
 
   debug: {

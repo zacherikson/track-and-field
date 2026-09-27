@@ -393,6 +393,27 @@ function shade(hex, k) {
   return `rgb(${r},${g},${b})`;
 }
 
+/** Screen position of hand `i` (0 near, 1 far) for a figure drawn with drawFigure(ctx, x, y, H, pose). */
+export function handPos(x, y, H, pose, i = 0) {
+  const hipX = x + pose.hipX * H;
+  const hipY = y + pose.hipY * H;
+  const sx = hipX + 0.9 * 0.32 * H * Math.sin(pose.lean);
+  const sy = hipY - 0.9 * 0.32 * H * Math.cos(pose.lean);
+  const a = pose.arms[i];
+  return {
+    x: sx + 0.17 * H * Math.sin(a.upper) + 0.16 * H * Math.sin(a.fore),
+    y: sy + 0.17 * H * Math.cos(a.upper) + 0.16 * H * Math.cos(a.fore),
+  };
+}
+
+/** Head centre and radius (for hats) for a figure drawn with drawFigure(ctx, x, y, H, pose). */
+export function headCircle(x, y, H, pose) {
+  const hipX = x + pose.hipX * H;
+  const hipY = y + pose.hipY * H;
+  const d = 0.32 * H + 0.085 * H * 1.3; // torso, then the head centre just past the neck (as drawFigure)
+  return { x: hipX + d * Math.sin(pose.lean), y: hipY - d * Math.cos(pose.lean), r: 0.085 * H };
+}
+
 /**
  * Draw a figure with feet at (x, y) in logical pixels.
  * @param H figure height in pixels

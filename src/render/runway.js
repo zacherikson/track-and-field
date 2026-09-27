@@ -14,7 +14,8 @@ export class RunwayRenderer extends TrackRenderer {
     this.runway = runway;
     this.pit = pit; // { from, to } in m from the foul line
     this.zones = zones; // colored runway sections: { from, to, color } in m before the line
-    this.marks = []; // landing marks in the sand: { x, foul }
+    this.marks = []; // landing marks in the sand: { x }
+    this.footmarks = []; // takeoff footprints on the runway/board: { x, foul }
   }
 
   drawTrack(ctx, view, camera) {
@@ -35,17 +36,13 @@ export class RunwayRenderer extends TrackRenderer {
     this.quad(ctx, camera, view, -this.runway - 20, this.pit.from, r0, r0 + 0.02);
     this.quad(ctx, camera, view, -this.runway - 20, this.pit.from, r1 - 0.02, r1);
 
-    // Colored sections before the board, a white tick every meter through them,
-    // and bolder lines at 10 m and 5 m out.
+    // Colored sections before the board, as in the original: the runway's
+    // edge stripes turn yellow, then orange, then red as you near the line.
+    const edge = 0.045;
     for (const zn of this.zones) {
       ctx.fillStyle = zn.color;
-      this.quad(ctx, camera, view, -zn.from, -zn.to, r0 + 0.02, r1 - 0.02);
-    }
-    const far = Math.max(0, ...this.zones.map((zn) => zn.from));
-    for (let m = 1; m <= far; m++) {
-      const w = m % 5 === 0 ? 0.12 : 0.05;
-      ctx.fillStyle = m % 5 === 0 ? '#fff' : 'rgba(255,255,255,0.7)';
-      this.quad(ctx, camera, view, -m - w / 2, -m + w / 2, r0 + 0.02, r1 - 0.02);
+      this.quad(ctx, camera, view, -zn.from, -zn.to, r0, r0 + edge);
+      this.quad(ctx, camera, view, -zn.from, -zn.to, r1 - edge, r1);
     }
 
     // Sand pit, wider than the runway, with a concrete rim.
@@ -55,11 +52,32 @@ export class RunwayRenderer extends TrackRenderer {
     ctx.fillStyle = '#e6cf95';
     this.quad(ctx, camera, view, this.pit.from, this.pit.to, p0, p1);
 
-    // Takeoff board (white), ending at the foul line, and the plasticine strip past it.
+    // Takeoff board (white) and the red foul line at its front edge.
     ctx.fillStyle = '#f7f7f2';
     this.quad(ctx, camera, view, -0.2, 0, r0, r1);
-    ctx.fillStyle = '#7a8a55';
-    this.quad(ctx, camera, view, 0, 0.1, r0, r1);
+    ctx.fillStyle = '#e8281e';
+    this.quad(ctx, camera, view, 0, 0.07, r0, r1);
+
+    // Footmark where you took off, so you can see how close to the line you were.
+    for (const f of this.footmarks) {
+      // A shoe print (toe pointing down the runway) with a light rim so it reads on the red track.
+      const a = this.project(camera, view, f.x - 0.2, z(0.47));
+      const b = this.project(camera, view, f.x + 0.12, z(0.47));
+      const len = Math.max(10, b.x - a.x);
+      const cx = (a.x + b.x) / 2;
+      const cy = a.y;
+      ctx.save();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+      ctx.fillStyle = f.foul ? '#b0101a' : '#2a1f1c';
+      for (const [ox, rx, ry] of [[0.18, 0.32, 4.5], [-0.3, 0.2, 3.6]]) {
+        ctx.beginPath();
+        ctx.ellipse(cx + ox * len, cy, rx * len, ry, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fill();
+      }
+      ctx.restore();
+    }
 
     // Landing marks from this round.
     for (const m of this.marks) {

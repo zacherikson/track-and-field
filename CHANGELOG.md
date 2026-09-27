@@ -4,6 +4,19 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 4.2: runway like the original, referee, takeoff footprint
+- The colored sections are now **stripes along both edges** of the runway
+  (yellow 12m, orange 8m, red 4m), as in the original, instead of filling it.
+  Metre ticks removed.
+- **Red foul line** painted right after the white takeoff board.
+- **Referee** in white with a red cap stands at the foul line. After the
+  jump they raise a **white flag** (valid) or a **red flag** (foul).
+- **Takeoff footprint:** your takeoff foot leaves a print on the board or
+  runway (red when it's a foul), so you can see where you jumped from.
+- After you land the camera pulls back (`longJump.markPan.delay` 0.45s) to
+  show the footprint and the landing mark together. `markHold` 1.6 → 2.2s
+  so there's time to look before the banner.
+
 ## Step 4.1: longer run-up, colored runway sections
 - Run-up 40 → 45m. Marks barely change (runners are near top speed by then):
   good player 7.85m, expert 8.96m; Amateur winner 8.06m, Pro 8.92m.

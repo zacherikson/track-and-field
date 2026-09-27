@@ -1,4 +1,6 @@
 import { text } from '../core/ui.js';
+import { CONFIG } from '../config.js';
+import { BLOCK_FEET } from '../athletes/stickFigure.js';
 
 /**
  * Side-on stadium with real one-point perspective, framed like the original:
@@ -245,38 +247,55 @@ export class TrackRenderer {
   }
 
   /**
-   * Starting blocks in every lane (as in the original): a grey rail with a red
-   * pedal under each foot of the READY pose (front foot about 0.1 m ahead of the
-   * athlete's start position, back foot about 0.5 m behind it).
+   * Starting blocks in every lane, drawn side-on at the same scale as the
+   * athletes so their feet sit on the footplates: a dark rail on the track with
+   * two angled red footplates (each propped by a strut), whose bases are where
+   * the toes touch the track (BLOCK_FEET).
    */
   drawStartBlocks(ctx, view, camera) {
     if (this.project(camera, view, this.blocksX, this.zNear).x < -80 && this.project(camera, view, this.blocksX, this.zFar).x < -80) return;
+    const H0 = CONFIG.figure.height * camera.ppm;
+    const ang = BLOCK_FEET.plateAngle;
     for (let k = this.lanes; k >= 1; k--) {
-      const z = this.laneZ(k);
-      const s = this.scaleAt(z);
-      // Match where the (nearly constant-size) athlete's feet are drawn in this lane.
-      const x0 = this.blocksX + (this.blocksNudge?.(k) ?? 0);
-      const f = this.figureScale(k) / s; // figure meters -> track meters in this lane
-      const a = this.project(camera, view, x0 - 0.62 * f, z);
-      const b = this.project(camera, view, x0 + 0.15 * f, z);
-      ctx.strokeStyle = '#8a8f98';
-      ctx.lineWidth = 3 * s;
-      ctx.beginPath();
-      ctx.moveTo(a.x, a.y);
-      ctx.lineTo(b.x, b.y);
-      ctx.stroke();
-      for (const [dx, dz] of [[0.08, -0.12], [-0.5, 0.12]]) {
-        const p = this.project(camera, view, x0 + dx * f, z + dz);
-        const w = 0.09 * camera.ppm * s;
-        const h = 11 * s;
-        ctx.fillStyle = '#d7263d';
+      const o = this.project(camera, view, this.blocksX + (this.blocksNudge?.(k) ?? 0), this.laneZ(k));
+      const Hk = H0 * this.figureScale(k);
+      const gy = o.y + 4; // athletes' feet are drawn 4 px below the lane centre
+      const px = (u) => o.x + u * Hk;
+      // Rail: from behind the rear plate to just past the front one.
+      const r0 = px(BLOCK_FEET.rear - 0.14);
+      const r1 = px(BLOCK_FEET.front + 0.05);
+      const th = Math.max(3, 0.028 * Hk);
+      ctx.fillStyle = '#3b4250';
+      ctx.fillRect(r0, gy - th, r1 - r0, th);
+      ctx.fillStyle = '#9aa3b2';
+      ctx.fillRect(r0, gy - th, r1 - r0, Math.max(1, th * 0.35));
+      for (const tx of [BLOCK_FEET.rear, BLOCK_FEET.front]) {
+        const bx = px(tx + 0.02); // + half a limb stroke: the drawn foot's rounded toe reaches past the toe point
+        const len = 0.13 * Hk; // plate length along its slope
+        const topX = bx - len * Math.cos(ang);
+        const topY = gy - len * Math.sin(ang);
+        // Strut behind the plate.
+        ctx.strokeStyle = '#3b4250';
+        ctx.lineWidth = Math.max(2, 0.02 * Hk);
         ctx.beginPath();
-        ctx.moveTo(p.x - w, p.y);
-        ctx.lineTo(p.x, p.y);
-        ctx.lineTo(p.x - w * 0.35, p.y - h);
-        ctx.lineTo(p.x - w * 1.2, p.y - h);
-        ctx.closePath();
-        ctx.fill();
+        ctx.moveTo(topX + 0.2 * (bx - topX), topY + 0.2 * (gy - topY));
+        ctx.lineTo(topX - 0.02 * Hk, gy - th);
+        ctx.stroke();
+        // Footplate: thick red slab with a lighter face where the sole goes.
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = '#b3172b';
+        ctx.lineWidth = Math.max(4, 0.05 * Hk);
+        ctx.beginPath();
+        ctx.moveTo(bx, gy - th * 0.5);
+        ctx.lineTo(topX, topY);
+        ctx.stroke();
+        ctx.strokeStyle = '#ef4f5f';
+        ctx.lineWidth = Math.max(1.5, 0.016 * Hk);
+        ctx.beginPath();
+        ctx.moveTo(bx + 0.008 * Hk, gy - th * 0.8);
+        ctx.lineTo(topX + 0.012 * Hk, topY - 0.01 * Hk);
+        ctx.stroke();
+        ctx.lineCap = 'butt';
       }
     }
   }

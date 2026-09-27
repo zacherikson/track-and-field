@@ -4,6 +4,20 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 2.25: real starting blocks, feet planted on them
+- **Blocks** redrawn side-on at the athletes' scale:
+  - a dark rail on the track;
+  - two red footplates inclined about 49° (`BLOCK_FEET.plateAngle` 0.85 rad), each
+    propped by a strut;
+  - front plate about 0.45m and rear about 0.8m behind the hands, as in real blocks.
+- **Feet on the blocks:** READY and SET legs are now solved with two-bone IK so
+  both feet stay planted on the plates (toes on the track, soles on the plates),
+  including through the READY → SET rise. The READY rear knee rests just above
+  the track.
+- Feet can now be tilted (`toe` angle per leg) instead of always drawn flat.
+- **Waiting:** athletes stand behind their blocks, then step forward into them as
+  they crouch for READY.
+
 ## Step 2.24: hands right behind the line
 - Crouched hands were 17–30cm behind the line, varying by lane: runners are drawn
   at nearly the same size in every lane while the track shrinks with distance.

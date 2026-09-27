@@ -11,6 +11,50 @@
  * positive = toward the running direction (+x).
  */
 
+const THIGH_L = 0.25; // limb lengths in figure heights (must match drawFigure)
+const SHIN_L = 0.25;
+const FOOT_L = 0.06;
+
+/**
+ * Starting blocks, in figure heights relative to the athlete's feet origin (the
+ * start position). Each foot's toes touch the track at the base of a footplate
+ * inclined `plateAngle` (rad above the ground, rising backwards); the sole lies
+ * on the plate. Front plate about 0.45 m and rear about 0.8 m behind the hands.
+ */
+export const BLOCK_FEET = {
+  front: -0.1, // toe x of the front foot
+  rear: -0.3, // toe x of the rear foot
+  plateAngle: 0.85,
+};
+
+/**
+ * Two-bone leg IK: thigh and shin angles (from straight down, + = forward) that
+ * put the ankle at (ax, ay) from a hip at (hx, hy), knee bending forward.
+ */
+function legIK(hx, hy, ax, ay) {
+  const dx = ax - hx;
+  const dy = ay - hy;
+  const d = Math.min(Math.hypot(dx, dy), THIGH_L + SHIN_L - 1e-4);
+  const base = Math.atan2(dx, dy);
+  const a = Math.acos((THIGH_L * THIGH_L + d * d - SHIN_L * SHIN_L) / (2 * THIGH_L * d));
+  const thigh = base + a;
+  const kx = hx + THIGH_L * Math.sin(thigh);
+  const ky = hy + THIGH_L * Math.cos(thigh);
+  return { thigh, shin: Math.atan2(ax - kx, ay - ky) };
+}
+
+/** Legs for a hip position with both feet planted on the starting blocks. */
+function blockLegs(hipX, hipY) {
+  const toe = BLOCK_FEET.plateAngle; // foot points forward-down along the plate
+  const ankle = (tx) => [tx - FOOT_L * Math.cos(toe), -FOOT_L * Math.sin(toe)];
+  const [fx, fy] = ankle(BLOCK_FEET.front);
+  const [rx, ry] = ankle(BLOCK_FEET.rear);
+  return [
+    { ...legIK(hipX, hipY, fx, fy), toe },
+    { ...legIK(hipX, hipY, rx, ry), toe },
+  ];
+}
+
 export const POSES = {
   stand: {
     hipX: 0, hipY: -0.5, lean: 0.02,
@@ -23,16 +67,16 @@ export const POSES = {
     legs: [{ thigh: 0.55, shin: -0.25 }, { thigh: 0.05, shin: -0.55 }],
     arms: [{ upper: 0.25, fore: 0.15 }, { upper: 0.12, fore: 0.05 }],
   },
-  // "On your marks / Ready": back knee on the ground, hands on the line.
+  // "On your marks / Ready": feet on the blocks, rear knee down near the track, hands on the line.
   blocks: {
-    hipX: -0.14, hipY: -0.27, lean: 1.2,
-    legs: [{ thigh: 1.35, shin: -0.25 }, { thigh: 0.35, shin: -1.4 }],
+    hipX: -0.16, hipY: -0.26, lean: 1.2,
+    legs: blockLegs(-0.16, -0.26),
     arms: [{ upper: 0.05, fore: 0.05 }, { upper: -0.02, fore: -0.02 }],
   },
   // "Get set": hips raised a little above the shoulders, weight forward on the hands.
   set: {
     hipX: -0.12, hipY: -0.41, lean: 1.68,
-    legs: [{ thigh: 0.9, shin: -0.35 }, { thigh: 0.35, shin: -0.75 }],
+    legs: blockLegs(-0.12, -0.41),
     arms: [{ upper: -0.08, fore: -0.08 }, { upper: -0.12, fore: -0.12 }],
   },
 };
@@ -91,7 +135,11 @@ export function lerpPose(a, b, t) {
     hipX: lerp(a.hipX, b.hipX, t),
     hipY: lerp(a.hipY, b.hipY, t),
     lean: lerp(a.lean, b.lean, t),
-    legs: a.legs.map((l, i) => ({ thigh: lerp(l.thigh, b.legs[i].thigh, t), shin: lerp(l.shin, b.legs[i].shin, t) })),
+    legs: a.legs.map((l, i) => ({
+      thigh: lerp(l.thigh, b.legs[i].thigh, t),
+      shin: lerp(l.shin, b.legs[i].shin, t),
+      toe: lerp(l.toe ?? 0, b.legs[i].toe ?? 0, t),
+    })),
     arms: a.arms.map((l, i) => ({ upper: lerp(l.upper, b.arms[i].upper, t), fore: lerp(l.fore, b.arms[i].fore, t) })),
   };
 }
@@ -138,8 +186,9 @@ export function drawFigure(ctx, x, y, H, pose, colors) {
     ctx.moveTo(hip.x, hip.y);
     ctx.lineTo(knee.x, knee.y);
     ctx.lineTo(foot.x, foot.y);
-    // Little forward-pointing foot so direction reads at a glance.
-    ctx.lineTo(foot.x + 0.06 * H, foot.y);
+    // Foot: flat and pointing forward, or tilted toes-down (`toe` rad) on the blocks.
+    const toe = leg.toe ?? 0;
+    ctx.lineTo(foot.x + FOOT_L * H * Math.cos(toe), foot.y + FOOT_L * H * Math.sin(toe));
     ctx.stroke();
   };
   const drawArm = (arm, color) => {

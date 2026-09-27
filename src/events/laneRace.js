@@ -10,6 +10,9 @@ import { TrackRenderer } from '../render/track.js';
 import { ORANGE, drawPad } from '../render/pads.js';
 import { flow } from '../flow.js';
 
+// Standing pose shifted back so the athlete waits behind their starting blocks.
+const STAND_BEHIND = { ...POSES.stand, hipX: -0.48 };
+
 /**
  * Base scene for lane races (100m now, 110m hurdles next).
  *
@@ -299,13 +302,14 @@ export class LaneRace {
     const ease = (k) => k * k * (3 - 2 * k);
     if (this.state === 'waiting') {
       // Standing at the line, shifting weight a little.
+      // Standing behind the blocks, shifting weight a little.
       const s = Math.sin(now * 1.7 + a.idlePhase);
-      return { ...POSES.stand, hipY: POSES.stand.hipY + 0.006 * s, lean: POSES.stand.lean + 0.02 * s };
+      return { ...STAND_BEHIND, hipY: STAND_BEHIND.hipY + 0.006 * s, lean: STAND_BEHIND.lean + 0.02 * s };
     }
     if (this.state === 'ready') {
-      // Wait a beat, bend down, then settle into the blocks.
+      // Wait a beat, step forward and bend down, then settle into the blocks.
       const k = clamp((now - this.stateT - a.crouchDelay) / c.crouchTime, 0, 1);
-      if (k < 0.5) return lerpPose(POSES.stand, POSES.bend, ease(k / 0.5));
+      if (k < 0.5) return lerpPose(STAND_BEHIND, POSES.bend, ease(k / 0.5));
       return lerpPose(POSES.bend, POSES.blocks, ease((k - 0.5) / 0.5));
     }
     if (this.state === 'set') {

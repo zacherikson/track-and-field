@@ -4,6 +4,13 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 4.6: slower 100m rivals
+- `ai.amateur.cadence` [2.8, 3.6] → [2.6, 3.4]: median rival 10.13 → 10.39s
+  (target 10.4).
+- `ai.pro.cadence` [3.15, 3.95] → [2.88, 3.68]: median rival 9.56 → 9.85s
+  (target 9.85).
+- 100m only: hurdles and long jump rivals have their own settings.
+
 ## Step 4.5: first tap launches you at the minimum speed
 - `runner.startSpeed` (6 m/s) removed: the first tap now launches you straight
   to `runner.minSpeed` (7 m/s), so one knob sets both. Tuning panel: "Minimum

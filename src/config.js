@@ -250,7 +250,7 @@ export const CONFIG = {
    */
   ai: {
     amateur: {
-      cadence: [2.8, 3.6], // strides/s range across the field (typical time about 10.2s)
+      cadence: [2.6, 3.4], // strides/s range across the field (median time about 10.4s)
       reaction: [0.2, 0.35], // s from GO to first stride
       jitter: 0.3, // +/- fraction of randomness on each stride interval (reaction variance)
       fatigue: 0.05, // cadence lost by the finish (fades in over the last 40%)
@@ -260,7 +260,7 @@ export const CONFIG = {
       dipError: [-1.2, 2.5], // m; AI leans at the ideal spot plus this (negative = late)
     },
     pro: {
-      cadence: [3.15, 3.95], // typical time about 9.6s
+      cadence: [2.88, 3.68], // median time about 9.85s
       reaction: [0.16, 0.24],
       jitter: 0.22,
       fatigue: 0.03,

@@ -176,12 +176,12 @@ export const CONFIG = {
       tripFaults: 1, // any fault (a wrong number, or a button not tapped in time) trips you at the hurdle
       trip: {
         hit: 0.2, // s from takeoff to catching the hurdle
-        stumble: 0.4, // s staggering forward, arms flailing, speed capped
+        stumble: 0.4, // s staggering forward, arms flailing, braking
         recover: 0.25, // s to get back into your running form
-        speed: 4.0, // m/s: your speed is knocked down to this while you stumble
+        decel: 15, // m/s^2 you lose while stumbling (no sudden speed drop: you brake, then build up again)
       },
     },
-    missSpeedLoss: 0.8, // m/s lost tapping a wrong number (you also lose that button's stride)
+    missSpeedLoss: 0, // m/s lost on the spot for a wrong number: none, the trip at the next hurdle is the penalty (and you lose that stride)
     buttons: {
       slotsX: [0.16, 0.5, 0.84], // slot centres as a fraction of screen width (hit zones are the thirds)
       y: 0.24, // fraction of screen height

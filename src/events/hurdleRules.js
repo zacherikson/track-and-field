@@ -16,8 +16,8 @@
  * HURDLES are jumped automatically. At takeoff, count the set's FAULTS: buttons
  * lost to wrong (out-of-order) taps plus buttons not tapped in time. ANY fault
  * (`tripFaults` 1), or being slower than `minSpeed`, and you TRIP: you catch
- * the hurdle and knock it down, stumble forward (speed knocked down to
- * `trip.speed`) without falling, and have to build speed again. A clean
+ * the hurdle and knock it down, stumble forward without falling while you
+ * brake hard (`trip.decel` for `trip.stumble` s), then build speed again. A clean
  * clearance costs a little speed.
  */
 
@@ -151,7 +151,7 @@ export class HurdleRun {
       this.tripT = t;
       this.knocked.set(this.next - 1, t);
       // Catch the hurdle, then stagger on at a much lower speed before building up again.
-      r.fall(t + c.trip.hit, c.trip.stumble, c.trip.speed);
+      r.stumbleFor(t + c.trip.hit, c.trip.stumble, c.trip.decel);
     } else {
       r.v = Math.max(0, r.v - c.cleanLoss);
     }

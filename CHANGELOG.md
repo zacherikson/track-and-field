@@ -4,6 +4,29 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 3.6: a stumble brakes you instead of snapping your speed
+- Catching a hurdle no longer snaps your speed to a fixed 4 m/s. For the 0.4s
+  stumble you brake at `trip.decel` 15 m/s² and can't accelerate, then build
+  back up as normal (like real hurdlers). New `Runner.stumbleFor()` replaces
+  `fall()`. Example trace: 8.5 → 7.5 → 6.5 → 5.5 → 4.9 m/s over the stumble,
+  then 5.6 → 6.7 → 7.7 m/s…
+- A wrong number no longer costs speed on the spot (`missSpeedLoss` 0.8 → 0):
+  the trip at the next hurdle is the penalty, and you lose that stride.
+- Braking strength chosen to keep guessing from paying. At 10 m/s² a trip cost
+  ~0.5s and a fast 40%-wrong guesser (12.97s) nearly matched a good player
+  (12.3s). At 15 a trip costs ~0.7s:
+
+  | Who | Time | Trips per race |
+  |---|---|---|
+  | Good | 12.42s | |
+  | Expert | 11.72s | |
+  | Good, 8% wrong | 13.15s | 1.2 |
+  | Fast guesser | 14.10s | |
+  | Amateur rivals (typical) | 13.3s | |
+  | Pro rivals (typical) | 12.5s | |
+
+- Tuning panel: "Stumble braking" (m/s²) replaces "Stumble speed".
+
 ## Step 3.5: legible number buttons (hurdles)
 - New `drawNumberButton`, styled after the original's buttons:
   - a thin dark outline and a pale ring;

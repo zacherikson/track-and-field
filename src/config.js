@@ -173,7 +173,7 @@ export const CONFIG = {
       landing: 1.4, // m after it where the hop ends
       cleanLoss: 0.3, // m/s lost clearing a hurdle cleanly
       minSpeed: 4.0, // m/s: slower than this at takeoff and you trip
-      tripFaults: 2, // a set with this many faults (lost or untapped buttons) at the hurdle trips you
+      tripFaults: 1, // any fault (a wrong number, or a button not tapped in time) trips you at the hurdle
       trip: {
         over: 0.3, // s going over the hurdle low before hitting the track
         down: 0.4, // s sprawled on the track

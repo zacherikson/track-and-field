@@ -8,16 +8,17 @@
  * order. Always tap the LOWEST number still showing:
  * - right: a stride; the button vanishes with a ring;
  * - wrong: that button turns into a red ✕ and is lost (you never get that
- *   stride), you stumble a little, and you carry on with what's left.
+ *   stride), you stumble a little, and you carry on with what's left. The
+ *   mistake trips you at the next hurdle.
  * Once no buttons are left you CRUISE: you keep the pace you set until the
  * next hurdle, where the next set appears.
  *
  * HURDLES are jumped automatically. At takeoff, count the set's FAULTS: buttons
- * lost to wrong taps plus buttons still untapped. One fault is forgiven; with
- * `tripFaults` (2) or more, or if you're slower than `minSpeed`, you TRIP: you
- * go over the hurdle low, sprawl on the track (crawling at `trip.speed`), get
- * up and have to build speed again. The hurdle stays up. A clean clearance
- * costs a little speed.
+ * lost to wrong (out-of-order) taps plus buttons not tapped in time. ANY fault
+ * (`tripFaults` 1), or being slower than `minSpeed`, and you TRIP: you knock
+ * the hurdle down, go over it low, sprawl on the track (crawling at
+ * `trip.speed`), get up and have to build speed again. A clean clearance costs
+ * a little speed.
  */
 
 export const hurdlePositions = (h) => Array.from({ length: h.count }, (_, i) => h.first + i * h.spacing);
@@ -115,6 +116,7 @@ export class HurdleRun {
     this.hop = null; // { i, x0, x1, trip, t0 } while going over a hurdle
     this.tripT = -Infinity; // when the last trip started (for the animation)
     this.trips = 0;
+    this.knocked = new Map(); // hurdle index -> time you knocked it down
   }
 
   /** How far through the current hop (0..1), or null when not hurdling. */
@@ -145,6 +147,7 @@ export class HurdleRun {
     if (trip) {
       this.trips++;
       this.tripT = t;
+      this.knocked.set(this.next - 1, t);
       // Over the hurdle low at full speed, then down on the track and up again.
       r.fall(t + c.trip.over, c.trip.down + c.trip.up, c.trip.speed);
     } else {

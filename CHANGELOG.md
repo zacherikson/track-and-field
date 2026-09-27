@@ -4,6 +4,26 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 3.3: any mistake trips you and knocks the hurdle down
+Corrected rule: ANY error in a set trips you at the next hurdle, and the
+hurdle goes down. The errors are a wrong (out-of-order) number, or not
+finishing the set in time.
+- `tripFaults` 2 → 1.
+- Knocked hurdles are back: the hurdle tips forward as your body reaches it
+  and stays down. You still go over low, sprawl and get up.
+- **Simulator:**
+
+  | Who | Time | Trips per race |
+  |---|---|---|
+  | Expert | 11.63s | 0.1 |
+  | Good | 12.42s | 0.2 |
+  | Casual | 14.49s | 0.3 |
+  | Good, 8% wrong | 13.96s | 1.3 |
+  | Good, 20% wrong | 16.23s | 2.8 |
+  | Fast guesser (40% wrong) | 17.23s | 4.3 |
+  | Amateur rivals (typical) | 13.45s | |
+  | Pro rivals (typical) | 12.56s | |
+
 ## Step 3.2: hurdles failures like the original (trips, lost buttons)
 From footage of the original going wrong:
 - **Wrong number:** that button turns into a red ✕ and is then gone; you

@@ -33,7 +33,7 @@ export const EVENTS = [
     howTo: [
       'Three numbered buttons appear in a random order: tap 1, 2, 3.',
       'Every hurdle you jump brings a new set. Clear it fast to run fast.',
-      'A wrong number is lost. Two faults in a set (wrong or untapped) and you trip.',
+      'Any mistake (a wrong number, or not finishing in time) and you trip over the next hurdle.',
       'After the last hurdle the pads turn ORANGE: press BOTH together to lean.',
       'Desktop: number keys 1 2 3 (or ← ↓ → for the slots), Space to lean.',
     ],

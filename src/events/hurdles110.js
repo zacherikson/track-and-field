@@ -18,9 +18,9 @@ const DIP_KEYS = ['Space', 'ArrowUp'];
  * - A wrong number turns into a red ✕ and is lost (no stride for it); carry on
  *   with the lowest number left.
  * - With no buttons left you run on at the pace you set until the next hurdle,
- *   where the next set appears. Two or more faults (lost or untapped buttons)
- *   when you reach it and you trip: over it low, sprawled on the track, up
- *   again, with your speed gone. The hurdle stays up.
+ *   where the next set appears. ANY error in the set (a wrong number, or a
+ *   button not tapped in time) and you trip at that hurdle: you knock it down,
+ *   go over low, sprawl on the track and get up again, with your speed gone.
  * - 7 hurdles. After the last one the two outer spots turn orange: press both
  *   to lean, as in the 100m.
  * Each button's hit zone is its third of the screen. Rules in hurdleRules.js;
@@ -179,24 +179,28 @@ export class Hurdles110 extends LaneRace {
   /**
    * The hurdles in one lane, drawn just before that lane's athlete. Two posts
    * inset from the lane lines (the top bar follows the perspective), little
-   * feet pointing back toward the start, and a striped top bar. Hurdles stay
-   * up even when you trip over them, as in the original.
+   * feet pointing back toward the start, and a striped top bar. A hurdle you
+   * trip over tips forward and lies flat.
    */
   drawLaneProps(ctx, view, a) {
     const tr = this.track;
     const cam = this.camera;
+    const now = this.game.time;
     const pxPerM = cam.ppm * tr.figureScale(a.lane); // same scale as the athletes
     const hh = this.cfg.hurdles.height * pxPerM;
     const zN = tr.zNear + a.lane - 1 + 0.3;
     const zF = tr.zNear + a.lane - 0.3;
-    this.positions.forEach((hx) => {
+    this.positions.forEach((hx, i) => {
       const n = tr.project(cam, view, hx, zN);
       const f = tr.project(cam, view, hx, zF);
       if (Math.max(n.x, f.x) < -hh || Math.min(n.x, f.x) > view.w + hh) return;
       n.y += 4;
       f.y += 4;
-      const dx = 0;
-      const dy = -hh;
+      // Knocked down: starts to tip as the body reaches it (~0.18 s after takeoff).
+      const kt = a.hurdles?.knocked.get(i);
+      const ang = kt == null ? 0 : clamp((now - kt - 0.18) / 0.22, 0, 1) * 1.45;
+      const dx = Math.sin(ang) * hh;
+      const dy = -Math.cos(ang) * hh;
       const lw = Math.max(2, 0.035 * pxPerM);
       ctx.lineCap = 'round';
       for (const p of [f, n]) {

@@ -4,6 +4,14 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 4.12: faster flight (tuning panel)
+- `longJump.flight.slowMo.rate` 0.7 → 0.9 (tuned on the phone): a flight
+  now takes about 1.05–1.2s, top of the jump at about 0.47s.
+- Faster flight means the arc collapses sooner in real time, so a late press
+  cost more (marks down about 0.1m). `stretch.window` 0.65 → 0.75s puts
+  them back: good player 7.79m, expert 9.19m, never stretching 5.71m;
+  Amateur winner 8.02m, Pro winner 9.02m.
+
 ## Step 4.11: long jump sprite sheet traced from the original
 Juno's long jump is now a set of keyframes traced frame by frame from footage
 of the original (our own stick figure, not its art), in `JUMP_POSES`, and

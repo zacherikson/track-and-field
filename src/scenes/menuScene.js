@@ -2,7 +2,7 @@ import { CONFIG } from '../config.js';
 import { Button, text } from '../core/ui.js';
 import { drawFigure, runPose } from '../athletes/stickFigure.js';
 import { EVENTS, formatMark } from '../events/registry.js';
-import { getBest } from '../core/storage.js';
+import { getBest, getDifficulty, setDifficulty } from '../core/storage.js';
 import { HERO } from '../athletes/roster.js';
 import { flow } from '../flow.js';
 
@@ -19,11 +19,34 @@ export class MenuScene {
           onTap: () => flow.intro(this.game, ev),
         }),
     );
+    // Rival difficulty: a two-way toggle, remembered on this device.
+    this.level = getDifficulty();
+    this.levelButtons = ['amateur', 'pro'].map(
+      (level) =>
+        new Button({
+          label: level === 'pro' ? 'Pro' : 'Amateur',
+          w: 130,
+          h: 44,
+          onTap: () => {
+            this.level = level;
+            setDifficulty(level);
+            this.styleLevels();
+          },
+        }),
+    );
+    this.styleLevels();
     this.tuneButton = new Button({ label: '⚙ Tuning', w: 132, h: 44, color: 'rgba(255,255,255,0.15)', onTap: () => flow.tuning(this.game) });
     this.fsButton = document.fullscreenEnabled
       ? new Button({ label: '⛶', w: 48, h: 44, color: 'rgba(255,255,255,0.15)', onTap: () => toggleFullscreen() })
       : null;
     this.layout(this.game.view);
+  }
+
+  styleLevels() {
+    for (const b of this.levelButtons) {
+      const on = (b.label === 'Pro') === (this.level === 'pro');
+      b.color = on ? '#e4572e' : 'rgba(255,255,255,0.15)';
+    }
   }
 
   onResize(view) {
@@ -42,6 +65,11 @@ export class MenuScene {
       b.x = (view.w - total) / 2 + i * (w + gap);
       b.y = 205;
     });
+    const lw = this.levelButtons[0].w;
+    this.levelButtons.forEach((b, i) => {
+      b.x = view.w / 2 - lw - 4 + i * (lw + 8);
+      b.y = 316;
+    });
     this.tuneButton.x = 14 + view.safe.l;
     this.tuneButton.y = 14 + view.safe.t;
     if (this.fsButton) {
@@ -55,11 +83,13 @@ export class MenuScene {
       if (ev.type !== 'down') continue;
       if (this.fsButton?.tap(ev.x, ev.y)) continue;
       if (this.tuneButton.tap(ev.x, ev.y)) continue;
+      if (this.levelButtons.some((b) => b.tap(ev.x, ev.y))) continue;
       for (const b of this.buttons) if (b.tap(ev.x, ev.y)) break;
     }
     this.buttons.forEach((b) => b.update(dt));
     this.fsButton?.update(dt);
     this.tuneButton.update(dt);
+    this.levelButtons.forEach((b) => b.update(dt));
 
     // Demo runner loops across the bottom of the screen.
     const speed = 9;
@@ -79,6 +109,8 @@ export class MenuScene {
     this.buttons.forEach((b) => b.draw(ctx));
     this.fsButton?.draw(ctx);
     this.tuneButton.draw(ctx);
+    text(ctx, 'RIVALS', view.w / 2, 300, { size: 13, weight: 700, color: 'rgba(255,255,255,0.6)' });
+    this.levelButtons.forEach((b) => b.draw(ctx));
 
     // Track strip + demo runner.
     const trackY = 470;

@@ -67,6 +67,14 @@ export const GROUPS = [
     ],
   },
   {
+    title: 'Rivals (Pro)',
+    blurb: 'The field you race when Pro is picked on the menu.',
+    params: [
+      { path: 'ai.pro.cadence.0', label: 'Slowest rival pace', unit: 'taps/s', min: 1.5, max: 7, step: 0.1, help: 'Each rival gets a pace between slowest and fastest.' },
+      { path: 'ai.pro.cadence.1', label: 'Fastest rival pace', unit: 'taps/s', min: 1.5, max: 7, step: 0.1, help: 'Raise to make the Pro field harder to beat.' },
+    ],
+  },
+  {
     title: 'Troubleshooting',
     blurb: 'Tools for finding out why a tap did or didn’t count.',
     params: [

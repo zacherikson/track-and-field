@@ -34,3 +34,15 @@ export function submitBest(eventId, value, lowerIsBetter = true) {
   }
   return better;
 }
+
+/** Rival difficulty chosen on the menu: 'amateur' or 'pro'. */
+export function getDifficulty() {
+  const d = load().difficulty;
+  return d === 'pro' ? 'pro' : 'amateur';
+}
+
+export function setDifficulty(level) {
+  const data = load();
+  data.difficulty = level;
+  save(data);
+}

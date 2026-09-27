@@ -1,7 +1,7 @@
 import { Button, text, roundRect } from '../core/ui.js';
 import { ordinal } from '../core/math.js';
 import { formatMark } from '../events/registry.js';
-import { getBest, submitBest } from '../core/storage.js';
+import { getBest, submitBest, getDifficulty } from '../core/storage.js';
 import { flow } from '../flow.js';
 
 /**
@@ -70,7 +70,7 @@ export class ResultScene {
     if (me.status === 'dnf') headline = 'DID NOT FINISH';
     else headline = formatMark(this.ev, me.mark);
     const cx = lx + colW / 2;
-    text(ctx, this.ev.name.toUpperCase(), cx, 52, { size: 20, color: 'rgba(255,255,255,0.7)' });
+    text(ctx, `${this.ev.name.toUpperCase()} · ${getDifficulty() === 'pro' ? 'PRO' : 'AMATEUR'}`, cx, 52, { size: 20, color: 'rgba(255,255,255,0.7)' });
     text(ctx, headline, cx, 118, { size: me.status === 'ok' ? 72 : 38, color: '#fff', shadow: true });
     if (me.status === 'ok') text(ctx, `${ordinal(this.place)} place`, cx, 178, { size: 32, color: this.place === 1 ? '#ffb400' : '#fff' });
 

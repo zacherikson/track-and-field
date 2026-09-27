@@ -4,6 +4,14 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 2.41: Pro difficulty on the menu
+- The menu has a **Rivals: Amateur / Pro** toggle, remembered on this device.
+  It picks `CONFIG.ai.amateur` or `CONFIG.ai.pro` for the field.
+- The results screen header shows the level ("100M DASH · PRO").
+- The tuning panel has a **Rivals (Pro)** group with the Pro pace range.
+- Simulator, Pro field: rivals 8.2–10.1s, winning median about 8.47s. Amateur:
+  winning median about 9.59s.
+
 ## Step 2.40: no lean text on screen
 - Removed the "Both thumbs together" tip, then the LEAN! banner too. The lean
   zone is signalled only by the two orange pads. The how-to screen still

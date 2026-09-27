@@ -9,6 +9,7 @@ import { drawFigure, runPose, lerpPose, leanPose, launchPose, handReach, POSES, 
 import { TrackRenderer } from '../render/track.js';
 import { ORANGE, drawPad } from '../render/pads.js';
 import { flow } from '../flow.js';
+import { getDifficulty } from '../core/storage.js';
 
 
 /**
@@ -32,7 +33,8 @@ export class LaneRace {
   constructor(ev, cfg) {
     this.ev = ev;
     this.cfg = cfg;
-    this.difficulty = CONFIG.ai.amateur;
+    this.level = getDifficulty(); // 'amateur' | 'pro', chosen on the menu
+    this.difficulty = CONFIG.ai[this.level];
   }
 
   enter() {

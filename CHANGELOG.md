@@ -4,6 +4,11 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 2.17: start button on the centre line
+- The flashing start button sits on the screen's vertical centre line (at the
+  same height as the race targets), over the column of runners, as in the
+  original. It may cover some runners; that's intended.
+
 ## Step 2.16: legal start position
 - Real start rules: nothing may touch the ground on or in front of the line
   before the gun. Athletes previously started with their body origin on the line,

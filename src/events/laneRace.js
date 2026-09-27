@@ -250,10 +250,9 @@ export class LaneRace {
     return (this.game.time - this.stateT) % b.period < b.on;
   }
 
-  /** Where the flashing start button sits: on the grass just ahead of the field. */
+  /** Where the flashing start button sits: on the screen's centre line, like the original (it may cover runners). */
   startButtonPos(view) {
-    const p = this.track.toScreen(this.camera, view, 0, this.player.lane);
-    return { x: p.x + 150, y: view.h * CONFIG.sprint100.pads.homeY };
+    return { x: view.w / 2, y: view.h * CONFIG.sprint100.pads.homeY };
   }
 
   drawStartButton(ctx, view) {

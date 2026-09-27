@@ -62,7 +62,7 @@ function playerRace(strategy) {
   let t = 0;
   while (t < 40) {
     if (D - r.x <= DIP.promptDistance) r.carry();
-    if (r.mode === 'carry' && D - r.x <= r.idealDipDistance()) r.dive();
+    if (r.mode === 'carry' && D - r.x <= r.idealDipDistance()) r.lean();
     while (queue.length && queue[0].t < t + STEP && r.mode === 'run') {
       const p = queue.shift();
       const wasForced = j.seq.forced;
@@ -140,7 +140,7 @@ for (const name of Object.keys(CONFIG.ai)) {
   console.log(`${name.padEnd(8)} individual ${q(all, 0)}–${q(all, 1)} (median ${q(all, 0.5)}); winner median ${q(winners, 0.5)}, fastest 10% ${q(winners, 0.1)}`);
 }
 
-console.log(`\nFINISH DIP from 10.5 m/s (meters early vs. ideal, ideal ≈ ${(10.5 * DIP.riseTime + DIP.reach).toFixed(1)}m out)`);
+console.log(`\nFINISH LEAN from 10.5 m/s (meters early vs. ideal, ideal ≈ ${(10.5 * DIP.riseTime + DIP.reach).toFixed(1)}m out)`);
 function dipRace(errM) {
   const r = new Runner();
   r.started = true;
@@ -149,7 +149,7 @@ function dipRace(errM) {
   r.mode = 'carry';
   let t = 0;
   while (t < 10) {
-    if (errM != null && r.mode === 'carry' && D - r.x <= r.idealDipDistance() + errM) r.dive();
+    if (errM != null && r.mode === 'carry' && D - r.x <= r.idealDipDistance() + errM) r.lean();
     if (r.mode === 'run') r.stride(t); // got up after a crash: keep running
     r.update(STEP, t);
     const c = r.crossing(D, t, STEP);
@@ -158,7 +158,7 @@ function dipRace(errM) {
   }
 }
 const base = dipRace(null);
-for (const e of [-2, -1, 0, 1, 2, 3, 4, 6]) {
+for (const e of [-2, -1, 0, 1, 2, 3, 4, 6, 8, 11]) {
   const d = dipRace(e) - base;
-  console.log(`  ${(e >= 0 ? '+' : '') + e}m`.padEnd(8) + ` ${(d >= 0 ? '+' : '') + d.toFixed(3)}s vs no dip`);
+  console.log(`  ${(e >= 0 ? '+' : '') + e}m`.padEnd(8) + ` ${(d >= 0 ? '+' : '') + d.toFixed(3)}s vs no lean`);
 }

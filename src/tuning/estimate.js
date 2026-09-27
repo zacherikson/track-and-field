@@ -23,7 +23,7 @@ export function estimateTime(rate, { missAt = null, reaction = 0.25 } = {}) {
   let missed = false;
   for (let t = 0; t < 60; t += STEP) {
     if (D - r.x <= dip.promptDistance) r.carry();
-    if (r.mode === 'carry' && D - r.x <= r.idealDipDistance()) r.dive();
+    if (r.mode === 'carry' && D - r.x <= r.idealDipDistance()) r.lean();
     while (nextTap < t + STEP) {
       if (r.mode === 'run' && missAt != null && !missed && r.x >= missAt) {
         missed = true;

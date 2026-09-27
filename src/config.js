@@ -59,23 +59,24 @@ export const CONFIG = {
   },
 
   /**
-   * FINISH DIP (shared by lane races). Near the line the stride targets turn
-   * into a two-thumb "DIP!" prompt. Strides stop counting there: you carry your
-   * speed. Press both thumbs together to lunge. Best timing puts your chest at
-   * full stretch right on the line (about 5m out at top speed). Too early and
-   * you slide to a stop short of it.
+   * FINISH LEAN (shared by lane races). Near the line the stride targets turn
+   * into a two-thumb "LEAN!" prompt. Strides stop counting there: you carry your
+   * speed. Press both thumbs together to lean: the torso pitches forward while
+   * the legs keep running. Best timing puts your chest at full stretch right on
+   * the line. Too early and you're upright again and slowing when you get there.
    */
   dip: {
-    promptDistance: 15, // m before the line where strides stop and the DIP prompt shows
+    promptDistance: 15, // m before the line where strides stop and the LEAN prompt shows
     chordWindow: 0.06, // s; left + right presses this close together count as both thumbs
-    // (must stay below a fast tapper's alternating interval, ~0.07s at 15 taps/s)
-    armDelay: 0.3, // s after entering the zone before a dip can trigger (stray stride taps)
-    reach: 1.0, // m the chest lunges ahead of the hips at full stretch
-    riseTime: 0.25, // s to reach full stretch
-    airTime: 0.08, // s of flight at full stretch before hitting the track
-    airDecel: 1.5, // m/s^2 lost while flying
-    slideDecel: 18, // m/s^2 lost sliding on the track (dived too early)
-    carryDecel: 0.5, // m/s^2 lost while carrying speed through the dip zone
+    armDelay: 0.3, // s after entering the zone before a lean can trigger (stray stride taps)
+    reach: 1.0, // m the chest gets ahead of the hips at full lean
+    riseTime: 0.25, // s to reach full lean
+    holdTime: 0.3, // s held at full lean
+    recoverTime: 0.35, // s to straighten back up
+    leanDecel: 1.0, // m/s^2 lost while leaning
+    postLeanDecel: 4.5, // m/s^2 lost once you straighten up before the line (leaned too early)
+    minLeanSpeed: 4, // m/s; an early lean slows you to no less than this
+    carryDecel: 0.5, // m/s^2 lost while carrying speed through the lean zone
     minCarrySpeed: 5, // m/s; slower than this and you just keep running (no coasting to a halt)
   },
 
@@ -89,8 +90,6 @@ export const CONFIG = {
       setMax: 2.3, // so the GO can't be anticipated
       goBanner: 0.7, // s the "GO!" text stays up
     },
-    falseStartsAllowed: 1, // warnings before disqualification
-    falseStartPause: 1.6, // s on the FALSE START message before restarting
     // Random targets: never more than maxSameSide in a row on one side, so after
     // two on the left the next is guaranteed right: learn it and pre-empt it.
     targets: {
@@ -133,7 +132,7 @@ export const CONFIG = {
       missChance: 0.03, // chance a stride is a wrong-side tap instead
       missSpeedLoss: 1.6, // same price the player pays
       missLockout: 0,
-      dipError: [-1.2, 2.5], // m; AI dips at the ideal spot plus this (negative = late)
+      dipError: [-1.2, 2.5], // m; AI leans at the ideal spot plus this (negative = late)
     },
     pro: {
       cadence: [3.9, 4.9],

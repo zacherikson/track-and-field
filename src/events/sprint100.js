@@ -28,9 +28,9 @@ const DIP_KEYS = ['Space', 'ArrowUp', 'ArrowDown'];
  * - Only two states: a green target (tap now) or a red ✕ (wrong side, wait).
  *   A wrong tap costs speed and flashes the ✕ on the side you tapped. The
  *   green target stays where it landed; it only drops once.
- * - Nothing is shown during the countdown. The first thing to appear is the
- *   first green target at GO; tapping before it is a false start.
- * - In the dip zone both pads show orange: press both together to dip.
+ * - Nothing is shown during the countdown, and taps then are ignored. The first
+ *   thing to appear is the first green target at GO.
+ * - In the lean zone both pads show orange: press both together to lean.
  */
 export class Sprint100 extends LaneRace {
   constructor(ev) {

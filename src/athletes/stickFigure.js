@@ -29,18 +29,6 @@ export const POSES = {
     legs: [{ thigh: 1.0, shin: -0.5 }, { thigh: 0.5, shin: -1.0 }],
     arms: [{ upper: -0.08, fore: -0.08 }, { upper: -0.12, fore: -0.12 }],
   },
-  // Finish dip: flying forward, chest leading, arms back like wings, legs trailing.
-  dive: {
-    hipX: -0.05, hipY: -0.42, lean: 1.3,
-    legs: [{ thigh: -0.7, shin: -1.3 }, { thigh: -1.05, shin: -1.5 }],
-    arms: [{ upper: -0.9, fore: -1.1 }, { upper: -1.1, fore: -1.3 }],
-  },
-  // Landed flat after the dip.
-  sprawl: {
-    hipX: -0.05, hipY: -0.1, lean: 1.52,
-    legs: [{ thigh: -1.45, shin: -1.55 }, { thigh: -1.35, shin: -1.6 }],
-    arms: [{ upper: 1.9, fore: 1.6 }, { upper: 1.7, fore: 1.5 }],
-  },
 };
 
 /** Running pose from a stride phase (radians) and intensity amp (0..1, grows with speed). */
@@ -67,6 +55,24 @@ export function runPose(phase, amp) {
 }
 
 const lerp = (a, b, t) => a + (b - a) * t;
+
+/**
+ * Finish lean on top of a running pose (from footage of the original): the legs
+ * keep striding, the torso pitches forward until it's nearly horizontal, and the
+ * arms sweep back and up behind the body. `amount` 0 = upright run, 1 = full lean.
+ */
+export function leanPose(run, amount) {
+  const k = amount;
+  return {
+    ...run,
+    hipY: run.hipY + 0.04 * k,
+    lean: lerp(run.lean, 1.4, k),
+    arms: run.arms.map((arm, i) => ({
+      upper: lerp(arm.upper, -2.05 - 0.12 * i, k),
+      fore: lerp(arm.fore, -2.3 - 0.12 * i, k),
+    })),
+  };
+}
 
 export function lerpPose(a, b, t) {
   return {

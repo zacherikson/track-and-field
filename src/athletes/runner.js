@@ -24,10 +24,10 @@ export class Runner {
     this.avgInterval = null; // smoothed seconds between valid taps
     this.taps = 0;
     this.finished = false; // true after crossing the line: brake, ignore taps
-    // Finish-dip state. 'run' -> 'carry' (in the dip zone: strides stop counting,
-    // momentum carries you) -> 'dive' (lunging for the line).
+    // Finish-lean state. 'run' -> 'carry' (in the lean zone: strides stop counting,
+    // momentum carries you) -> 'lean' (torso pitched forward at the line).
     this.mode = 'run';
-    this.diveT = 0;
+    this.leanT = 0;
     this.reach = 0; // meters the chest is ahead of the hips (the chest is what crosses the line)
     this.prevFront = 0;
     this.dipUsed = false;
@@ -38,28 +38,29 @@ export class Runner {
     return this.x + this.reach;
   }
 
-  get airborne() {
-    return this.mode === 'dive' && this.diveT < this.dip.riseTime + this.dip.airTime;
-  }
-
   /** Enter the dip zone: stop reacting to strides, carry your speed. */
   carry() {
     // Only a runner with real momentum can coast: a slow one keeps running normally.
     if (this.mode === 'run' && !this.dipUsed && !this.finished && this.v >= this.dip.minCarrySpeed) this.mode = 'carry';
   }
 
-  /** Distance from the line at which a dive puts the chest at full stretch right on it. */
+  /** Distance from the line at which a lean puts the chest at full stretch right on it. */
   idealDipDistance() {
     return this.v * this.dip.riseTime + this.dip.reach;
   }
 
-  /** Throw yourself at the line. Returns false if a dip isn't possible now. */
-  dive() {
+  /** Lean for the line. Returns false if a lean isn't possible now. */
+  lean() {
     if (this.dipUsed || this.finished || !this.started) return false;
-    this.mode = 'dive';
+    this.mode = 'lean';
     this.dipUsed = true;
-    this.diveT = 0;
+    this.leanT = 0;
     return true;
+  }
+
+  /** How far into the lean the body is, 0 (upright) .. 1 (full lean). */
+  get leanAmount() {
+    return this.mode === 'lean' ? this.reach / this.dip.reach : 0;
   }
 
   /** Start the clock for tap intervals: the first interval is your reaction time. */
@@ -109,8 +110,8 @@ export class Runner {
     const p = this.p;
     this.prevX = this.x;
     this.prevFront = this.front;
-    if (this.mode === 'dive') {
-      this.updateDive(dt);
+    if (this.mode === 'lean') {
+      this.updateLean(dt);
     } else if (this.finished) {
       this.v = Math.max(0, this.v - p.finishDecel * dt);
     } else if (this.mode === 'carry') {
@@ -130,24 +131,31 @@ export class Runner {
   }
 
   /**
-   * The dive: the chest lunges forward by up to `reach` meters (smoothstep over
-   * riseTime), hangs for airTime, then the athlete hits the track and slides.
-   * Dive too early and you slide to a stop before the line, then have to get
-   * up and run again: a big penalty. Dive at the right moment and your chest
-   * crosses the line a few hundredths early.
+   * The finish lean (from footage of the original): the legs keep running while
+   * the torso pitches forward, pushing the chest up to `reach` meters ahead
+   * (smoothstep over riseTime). The lean is held for holdTime, then the runner
+   * straightens up over recoverTime. Once the lean starts to come back up, the
+   * runner slows at postLeanDecel. Lean at the right moment and your chest is
+   * at full stretch on the line. Lean too early and you're upright and slowing
+   * by the time you get there, and a rival who timed it well can pass you.
    */
-  updateDive(dt) {
+  updateLean(dt) {
     const d = this.dip;
-    this.diveT += dt;
-    const k = Math.min(1, this.diveT / d.riseTime);
-    this.reach = d.reach * k * k * (3 - 2 * k); // smoothstep: a late dip barely gets going
-    const decel = this.airborne ? d.airDecel : d.slideDecel;
-    this.v = Math.max(0, this.v - decel * dt);
-    if (this.v === 0 && !this.finished) {
-      // Slid to a stop short of the line: get up and run it in.
-      this.mode = 'run';
-      this.reach = 0;
-      this.avgInterval = null;
+    this.leanT += dt;
+    const t = this.leanT;
+    const smooth = (k) => k * k * (3 - 2 * k);
+    let k;
+    if (t < d.riseTime) k = smooth(t / d.riseTime);
+    else if (t < d.riseTime + d.holdTime) k = 1;
+    else k = 1 - smooth(Math.min(1, (t - d.riseTime - d.holdTime) / d.recoverTime));
+    this.reach = d.reach * k;
+    const recovering = t >= d.riseTime + d.holdTime;
+    if (this.finished) {
+      this.v = Math.max(0, this.v - this.p.finishDecel * dt);
+      if (t >= d.riseTime + d.holdTime + d.recoverTime) this.mode = 'run'; // lean over: normal braking
+    } else {
+      const decel = recovering ? d.postLeanDecel : d.leanDecel;
+      this.v = Math.max(Math.min(this.v, d.minLeanSpeed), this.v - decel * dt);
     }
   }
 

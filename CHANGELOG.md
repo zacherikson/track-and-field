@@ -4,6 +4,30 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 2.12: finish lean instead of a dive; no false starts
+From footage of the original's finish:
+- **Lean, not dive.** The legs keep running while the torso pitches forward,
+  almost horizontal, with the arms swept back and up.
+  - Timing: builds over 0.25s, held 0.3s, straightens up over 0.35s.
+  - Nobody leaves the ground: the slide and the "get up" are gone.
+- **Leaning too early** means you're upright again before the line, and the runner
+  then slows at 4.5 m/s² (floor 4 m/s) until the line. Simulator, from 10.5 m/s:
+
+  | Lean timing | Effect |
+  |---|---|
+  | Perfect (up to about 3m early) | −0.10s |
+  | 2m late | −0.04s |
+  | 6m early | +0.07s |
+  | 8m early | +0.15s |
+  | 11m early | +0.39s |
+
+  A mistimed lean can get you passed by a rival who timed theirs well.
+- Config `dip`: `airTime`, `airDecel` and `slideDecel` are replaced by `holdTime`,
+  `recoverTime`, `leanDecel`, `postLeanDecel` and `minLeanSpeed`. The prompt says
+  "LEAN!".
+- **No false starts.** Taps during READY / GET SET are simply ignored. The false
+  start warning, disqualification, and the related config and screens are removed.
+
 ## Step 2.11: tuning, round 2 (no penalty pause, like the original)
 From play-testing with the tuning panel:
 

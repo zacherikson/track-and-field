@@ -31,7 +31,7 @@ python3 -m http.server 8000        # or: npx serve .
 Open http://localhost:8000. To test on a phone on the same Wi-Fi, open `http://<computer-ip>:8000`.
 
 - `?debug` in the URL shows fps, cadence, target speed and speed.
-- Keyboard: ← / → (or Z / X) are the left and right thumbs, Space dips at the finish. Esc quits a race.
+- Keyboard: ← / → (or Z / X) are the left and right thumbs, Space leans at the finish. Esc quits a race.
 
 ## Tuning
 
@@ -70,8 +70,8 @@ src/athletes/
 src/events/
   registry.js         event list for the menu
   strideTargets.js    100m random targets (max 2 in a row) + hit/miss judging
-  laneRace.js         base for lane races: countdown FSM, false starts, AI, HUD, results
-  sprint100.js        100m: random-side target pads, wrong-tap ✕, dip prompt
+  laneRace.js         base for lane races: countdown FSM, finish lean, AI, HUD, results
+  sprint100.js        100m: random-side target pads, wrong-tap ✕, lean prompt
 src/render/track.js   stadium, lanes, lines, parallax crowd
 src/tuning/           in-game tuning panel (params list, saved overrides, live estimates)
 tools/simulate.mjs    headless tuning simulator
@@ -88,9 +88,9 @@ tools/simulate.mjs    headless tuning simulator
   phone, and a lag spike can't break the physics. Delta time is clamped to 0.1s, so
   switching tabs doesn't teleport the runner.
 - **State machines.** Two levels. The top level is *scenes* (menu, intro, event,
-  result), and only one is active. Inside a race: `ready → set → race → finished`,
-  plus `falseStart` and `dq`. Each state decides what a tap means. The same tap is a
-  false start in `set` and a stride in `race`. This avoids tangled boolean flags.
+  result), and only one is active. Inside a race: `ready → set → race → finished`.
+  Each state decides what a tap means. The same tap is ignored in `set` and is a
+  stride in `race`. This avoids tangled boolean flags.
 - **Input handling.** Browser events arrive between frames, so we queue them with
   their exact `event.timeStamp`, converted to simulation time. Tap speed depends on
   the gaps between taps, and rounding them to frame boundaries (16.7ms) would add
@@ -111,6 +111,6 @@ tools/simulate.mjs    headless tuning simulator
   - punishment for stopping: `coastDecel`
 - **Juice.** Small feedback makes input feel good: a ring burst on each hit, a red ✕
   on a wrong-side tap, a target that pops in where your thumb already is, a pulsing
-  orange DIP prompt, a parallax crowd and grass, and a speed bar.
+  orange LEAN prompt, a parallax crowd and grass, and a speed bar.
 - **Frame-rate independent smoothing.** The camera uses `damp()`
   (`lerp` with `1 - e^(-k·dt)`), so it glides the same at any refresh rate.

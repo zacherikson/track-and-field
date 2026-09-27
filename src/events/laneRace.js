@@ -5,7 +5,7 @@ import { text, roundRect } from '../core/ui.js';
 import { Runner } from '../athletes/runner.js';
 import { AIController } from '../athletes/ai.js';
 import { HERO, RIVALS } from '../athletes/roster.js';
-import { drawFigure, runPose, lerpPose, POSES } from '../athletes/stickFigure.js';
+import { drawFigure, runPose, lerpPose, leanPose, POSES } from '../athletes/stickFigure.js';
 import { TrackRenderer } from '../render/track.js';
 import { flow } from '../flow.js';
 
@@ -15,13 +15,11 @@ import { flow } from '../flow.js';
  * STATE MACHINE (inner, per race):
  *
  *   ready --(timer)--> set --(random timer)--> race --(player crosses)--> finished --(timer)--> results
- *     ^                  |                                                   ^
- *     |   tap before GO  v                                                   |
- *     +---------- falseStart --(too many)--> dq ------------------------------+
  *
  * Each state only reacts to what matters in that state (a tap during `set` is
- * a false start, the same tap during `race` is a stride). Keeping this explicit
+ * simply ignored, the same tap during `race` is a stride). Keeping this explicit
  * avoids piles of boolean flags like `isRunning && !hasFinished && ...`.
+ * There are no false starts: nobody should worry about brushing the screen early.
  *
  * Subclasses provide the controls: mapInput(), onPlayerAction(), drawControls().
  */
@@ -36,7 +34,6 @@ export class LaneRace {
     const cfg = this.cfg;
     this.track = new TrackRenderer(cfg.lanes, cfg.distance);
     this.camera = new Camera();
-    this.falseStarts = 0;
 
     // Build the field: player in their lane, rivals in the others.
     const rivals = shuffle([...RIVALS]);
@@ -110,12 +107,8 @@ export class LaneRace {
       if (e.type === 'key' && e.code === 'Escape') return flow.menu(this.game);
       const action = this.mapInput(e);
       if (action == null) continue;
-      const beforeGun = this.state === 'ready' || this.state === 'set' || (this.state === 'race' && e.t < this.goT);
-      if (beforeGun) {
-        this.falseStart(t);
-        break;
-      }
-      if (this.state !== 'race') continue;
+      // Taps before GO are ignored (no false starts).
+      if (this.state !== 'race' || e.t < this.goT) continue;
       const mode = this.player.runner.mode;
       if (mode === 'carry') this.onDipAction(action, e);
       else if (mode === 'run') this.onPlayerAction(action, e.t, e);
@@ -130,11 +123,6 @@ export class LaneRace {
       this.setState('finished', t);
     }
     if (this.state === 'finished' && end - this.stateT >= this.cfg.finishHold) return this.finish();
-    if (this.state === 'falseStart' && end - this.stateT >= this.cfg.falseStartPause) this.startCountdown(end);
-    if (this.state === 'dq' && end - this.stateT >= this.cfg.falseStartPause) {
-      this.player.status = 'dq';
-      return this.finish();
-    }
 
     this.updateControls?.(dt);
     const pr = this.player.runner;
@@ -154,20 +142,20 @@ export class LaneRace {
   }
 
   /**
-   * Finish dip input. Strides don't count in the dip zone: press BOTH thumbs
-   * together (within chordWindow) to lunge. Space / Up arrow on a keyboard.
+   * Finish lean input. Strides don't count in the lean zone: press BOTH thumbs
+   * together (within chordWindow) to lean. Space / Up arrow on a keyboard.
    */
   onDipAction(action, e) {
     const dip = CONFIG.dip;
     if (e.t - this.carryT < dip.armDelay) return; // stray stride taps as the zone begins
     if (action === 'DIP') {
-      this.player.runner.dive();
+      this.player.runner.lean();
       return;
     }
     this.dipPress ??= { L: -Infinity, R: -Infinity };
     this.dipPress[action] = e.t;
     const other = action === 'L' ? 'R' : 'L';
-    if (e.t - this.dipPress[other] <= dip.chordWindow) this.player.runner.dive();
+    if (e.t - this.dipPress[other] <= dip.chordWindow) this.player.runner.lean();
   }
 
   simulate(dt, t) {
@@ -184,26 +172,12 @@ export class LaneRace {
     }
   }
 
-  falseStart(t) {
-    this.falseStarts++;
-    for (const a of this.athletes) a.runner.reset();
-    this.setState(this.falseStarts > this.cfg.falseStartsAllowed ? 'dq' : 'falseStart', t);
-    navigator.vibrate?.(120);
-  }
-
-  /** Fast-forward any rivals still running (or the whole race if you were DQ'd), then show results. */
+  /** Fast-forward any rivals still running, then show results. */
   finish() {
     const D = this.cfg.distance;
     const step = CONFIG.loop.fixedStep;
     let t = this.game.time;
-    let goT = this.goT;
-    if (this.player.status === 'dq') {
-      t = goT = 0;
-      for (const a of this.athletes) {
-        a.runner.reset();
-        a.ai?.go(0);
-      }
-    }
+    const goT = this.goT;
     const pending = () => this.athletes.filter((a) => !a.isPlayer && a.mark == null);
     for (let guard = 0; pending().length && guard < 60 / step; guard++) {
       for (const a of pending()) {
@@ -255,16 +229,12 @@ export class LaneRace {
   poseFor(a) {
     const r = a.runner;
     const now = this.game.time;
-    if (this.state === 'ready' || this.state === 'falseStart' || this.state === 'dq') return POSES.blocks;
+    if (this.state === 'ready') return POSES.blocks;
     if (this.state === 'set') return lerpPose(POSES.blocks, POSES.set, clamp((now - this.stateT) / 0.45, 0, 1));
     // Racing: blend out of the set position over the first ~1.2m, into standing as they stop.
     const amp = clamp(r.v / 9, 0.3, 1);
     const run = runPose(r.phase, amp);
-    if (r.mode === 'dive') {
-      const d = CONFIG.dip;
-      if (r.airborne) return lerpPose(run, POSES.dive, clamp(r.diveT / d.riseTime, 0, 1));
-      return lerpPose(POSES.dive, POSES.sprawl, clamp((r.diveT - d.riseTime - d.airTime) / 0.15, 0, 1));
-    }
+    if (r.mode === 'lean') return leanPose(run, r.leanAmount);
     if (r.x < 1.2) return lerpPose(POSES.set, run, clamp(r.x / 1.2, 0, 1));
     if (r.finished && r.v < 2) return lerpPose(POSES.stand, run, r.v / 2);
     return run;
@@ -350,22 +320,12 @@ export class LaneRace {
         if (now - this.goT < this.cfg.countdown.goBanner) big('GO!', '#59cd90');
         else if (this.player.runner.mode === 'carry') {
           const pulse = 0.75 + 0.25 * Math.sin(now * 18);
-          text(ctx, 'DIP!', cx, cy, { size: 64, color: `rgba(255,140,40,${pulse})`, shadow: true });
+          text(ctx, 'LEAN!', cx, cy, { size: 64, color: `rgba(255,140,40,${pulse})`, shadow: true });
           roundRect(ctx, cx - 130, cy + 32, 260, 32, 16);
           ctx.fillStyle = 'rgba(0,0,0,0.6)';
           ctx.fill();
           text(ctx, 'Both thumbs together', cx, cy + 49, { size: 19 });
         }
-        break;
-      case 'falseStart':
-        big('FALSE START', '#ff5252');
-        roundRect(ctx, cx - 230, cy + 34, 460, 34, 17);
-        ctx.fillStyle = 'rgba(0,0,0,0.6)';
-        ctx.fill();
-        text(ctx, 'Wait for green! One more and you are out.', cx, cy + 52, { size: 19, maxWidth: 440 });
-        break;
-      case 'dq':
-        big('DISQUALIFIED', '#ff5252');
         break;
       case 'finished': {
         const place = this.athletes.filter((a) => a.mark != null && a.mark <= (this.player.mark ?? -1)).length;

@@ -49,11 +49,11 @@ export const GROUPS = [
     ],
   },
   {
-    title: 'Finish dip',
-    blurb: 'Near the line, taps stop counting and you coast into your dip.',
+    title: 'Finish lean',
+    blurb: 'Near the line, taps stop counting and you coast into your lean.',
     params: [
-      { path: 'dip.promptDistance', label: 'Dip zone length', unit: 'm', min: 5, max: 30, step: 1, help: 'How far before the line the orange pads appear.' },
-      { path: 'dip.carryDecel', label: 'Coasting slow-down', unit: 'm/s²', min: 0, max: 3, step: 0.1, help: 'Speed lost per second while coasting through the dip zone.' },
+      { path: 'dip.promptDistance', label: 'Lean zone length', unit: 'm', min: 5, max: 30, step: 1, help: 'How far before the line the orange pads appear.' },
+      { path: 'dip.carryDecel', label: 'Coasting slow-down', unit: 'm/s²', min: 0, max: 3, step: 0.1, help: 'Speed lost per second while coasting through the lean zone.' },
     ],
   },
   {

@@ -26,7 +26,7 @@ export class AIController {
    */
   update(t, dt, progress, toLine = Infinity) {
     const r = this.runner;
-    if (r.mode === 'carry' && toLine <= r.idealDipDistance() + this.dipError) r.dive();
+    if (r.mode === 'carry' && toLine <= r.idealDipDistance() + this.dipError) r.lean();
     const lv = this.level;
     const tired = 1 - lv.fatigue * Math.max(0, (progress - 0.6) / 0.4);
     while (this.nextTapT < t + dt) {

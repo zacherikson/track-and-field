@@ -6,7 +6,7 @@ import { flow } from '../flow.js';
 
 /**
  * Results: your mark, placing, personal best, and full standings.
- * `results` is a sorted array of { name, lane, mark, status: 'ok'|'dnf'|'dq', isPlayer, colors }.
+ * `results` is a sorted array of { name, lane, mark, status: 'ok'|'dnf', isPlayer, colors }.
  */
 export class ResultScene {
   constructor(ev, results, stats = null) {
@@ -67,13 +67,11 @@ export class ResultScene {
 
     // Left column: your result.
     let headline;
-    if (me.status === 'dq') headline = 'DISQUALIFIED';
-    else if (me.status === 'dnf') headline = 'DID NOT FINISH';
+    if (me.status === 'dnf') headline = 'DID NOT FINISH';
     else headline = formatMark(this.ev, me.mark);
     const cx = lx + colW / 2;
     text(ctx, this.ev.name.toUpperCase(), cx, 52, { size: 20, color: 'rgba(255,255,255,0.7)' });
     text(ctx, headline, cx, 118, { size: me.status === 'ok' ? 72 : 38, color: '#fff', shadow: true });
-    if (me.status === 'dq') text(ctx, 'False start', cx, 166, { size: 20, weight: 500, color: '#ff8a80' });
     if (me.status === 'ok') text(ctx, `${ordinal(this.place)} place`, cx, 178, { size: 32, color: this.place === 1 ? '#ffb400' : '#fff' });
 
     const flash = 0.65 + 0.35 * Math.sin(this.age * 8);

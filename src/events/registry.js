@@ -11,11 +11,12 @@ export const EVENTS = [
     lowerIsBetter: true,
     available: true,
     howTo: [
-      'At GO a green target appears. Tapping before it is a false start.',
+      'At GO the first green target appears.',
       'Tap the side the green target is on. It jumps around at random!',
       'Tap the wrong side and you stumble.',
-      'Near the line the pads turn ORANGE: press BOTH together to dip.',
-      'Desktop: ← → to run, Space to dip.',
+      'Near the line the pads turn ORANGE: press BOTH together to lean.',
+      'Lean too early and you slow down before the line.',
+      'Desktop: ← → to run, Space to lean.',
     ],
     create() {
       return new Sprint100(this);

@@ -4,6 +4,18 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 4.10: long jump settings in the tuning panel, livelier flight
+- Tuning panel: two new groups.
+  - **Long Jump: flight:** air speed (slow motion), arc height, running in the
+    air, takeoff lift, forward speed kept.
+  - **Long Jump: stretch:** stretch hop, glide speed, window, no-stretch
+    collapse, landing slide, sand splash, takeoff zone.
+- New `longJump.flight.airStrides` 1.5: the legs keep cycling (hitch kick) on
+  the way up instead of freezing in one pose.
+- New `longJump.landing` { slide 0.6 m, slideTime 0.3 s, splash 24 }: after
+  a stretched landing you slide on through the sand trailing sand, with a
+  bigger splash (was 16 puffs). Look only: the mark is where the heels went in.
+
 ## Step 4.9: arcs like the original (collapse vs. mini double jump)
 Arcs sketched from the original: all the same up to the top of the jump, then
 - **no stretch:** the arc collapses. Past the top your forward speed dies

@@ -211,6 +211,14 @@ export class LongJump {
       if (ta >= j.path.time) this.land(j.t0 + j.path.time);
     } else if (this.state === 'landed') {
       const j = this.jump;
+      if (!j.path.collapse) {
+        // Momentum carries you on through the sand, trailing sand behind.
+        const L = cfg.landing;
+        const k = clamp((t - j.landT) / L.slideTime, 0, 1);
+        const was = j.hipX;
+        j.hipX = j.landHipX + L.slide * (1 - (1 - k) * (1 - k));
+        if (j.hipX - was > 0.02 && Math.random() < 0.5) this.kickSand(j.hipX + 0.2, 1);
+      }
       if (j.path.collapse && !j.flopped && t - j.landT >= FLOP.hit) {
         // Crumpled: face-first into the sand.
         j.flopped = true;
@@ -242,7 +250,8 @@ export class LongJump {
     j.markX = markX;
     this.mark = j.foul ? { foul: true } : { mark: markX };
     this.track.marks.push({ x: markX });
-    this.kickSand(markX, 16); // where the heels go in
+    j.landHipX = j.hipX;
+    this.kickSand(markX, this.cfg.landing.splash); // where the heels go in
     navigator.vibrate?.(30);
     this.setState('landed');
   }
@@ -332,6 +341,13 @@ export class LongJump {
         const j = this.jump;
         const ta = now - j.t0;
         let pose = lerpPose(this.takeoffPose ?? run(), P.hang, ease(clamp(ta / 0.16, 0, 1)));
+        // Running in the air on the way up (hitch kick): the legs keep cycling, arms stay up.
+        const strides = this.cfg.flight.airStrides;
+        if (strides > 0 && now < j.apexT) {
+          const kick = runPose(r.phase + (now - j.t0) / (j.apexT - j.t0) * strides * Math.PI * 2, 1, 0);
+          const k = Math.sin(Math.PI * clamp(ta / (j.apexT - j.t0), 0, 1)) * 0.85;
+          pose = { ...pose, legs: lerpPose(pose, { ...pose, legs: kick.legs }, k).legs };
+        }
         if (j.stretchT != null) {
           // Stretch: jackknife forward, legs thrust out in front.
           pose = lerpPose(pose, P.stretch, ease(clamp((now - j.stretchT) / 0.12, 0, 1)) * (0.45 + 0.55 * j.stretchK));

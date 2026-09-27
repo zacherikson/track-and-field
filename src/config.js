@@ -235,6 +235,14 @@ export const CONFIG = {
     flight: {
       slowMo: { rate: 0.7, ramp: 0.15 }, // the clock eases down to 0.7x over the first 0.15 s after takeoff
       heightScale: 1.5, // the arc is drawn this much higher
+      airStrides: 1.5, // leg cycles "running in the air" on the way up (0 = frozen pose)
+    },
+    // After the heels hit: you slide on through the sand (looks only; the mark
+    // is where the heels went in).
+    landing: {
+      slide: 0.6, // m the body slides forward after a stretched landing
+      slideTime: 0.3, // s the slide takes
+      splash: 24, // sand puffs kicked up
     },
     stretch: {
       // Press both at the top of the jump and you throw yourself forward: a kick

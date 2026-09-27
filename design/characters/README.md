@@ -10,6 +10,7 @@ https://claude.ai/artifact/CM3NmVhpa4QoeGVXT4pyCe
 
 | Board | Preview |
 | --- | --- |
+| Round 4: Juno in a polished 3D-toy style (Playman personality, Clash-level polish) | ![](juno-3d-toy.png) |
 | Round 3: Juno in twelve different art styles | ![](juno-styles.png) |
 | Round 2: twelve Juno options (shorter legs, more lifelike) | ![](juno-options.png) |
 | Meet the squad (title screen) | ![](lineup.png) |

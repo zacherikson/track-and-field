@@ -4,6 +4,19 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 2.19: longer, smoother lean
+The 2.13 lean (about 0.4s in total) felt too rapid to be worth it. Now about 0.7s:
+- `riseTime` 0.2 → 0.32, `holdTime` 0.1 → 0.16, `recoverTime` 0.12 → 0.22.
+- The timing window is more forgiving and the reward is unchanged. Simulator, from
+  10.5 m/s:
+
+  | Lean timing | Effect |
+  |---|---|
+  | Perfect, or up to 2m late / 2m early | −0.06 to −0.10s |
+  | 3m early | +0.03s |
+  | 6m early | +0.11s |
+  | 8m early | +0.23s |
+
 ## Step 2.18: no "YOU" marker
 - Removed the "YOU" arrow above the player. The flashing lane before the start
   (and the front-lane position) already shows which runner is yours.

@@ -199,33 +199,89 @@ export function tripPose(run, age, tr) {
 }
 
 /**
- * Long jump poses (from footage of the original): the "hang" in the air after
- * takeoff (arms up, lead knee up, trail leg back), the STRETCH (legs thrust out
- * in front, torso and arms reaching after them), a plain landing (feet down in
- * front) and sitting in the sand. Without the stretch you crumple: tuck up in
- * the air, hit the sand in a crouch, and flop forward onto your face (prone:
- * hips 0.45 H ahead of where your feet landed).
+ * LONG JUMP KEYFRAMES: our own sprite sheet for Juno, traced from the motion
+ * of the original (frame by frame from gameplay footage). Angles in radians
+ * from straight down, + = forward (the direction of the jump); lean is the
+ * torso from upright, + = forward, - = arched back. In the air only the pose
+ * matters (the flight path places the hips); on the ground hipY is the hip
+ * height (figure heights, negative = up).
+ *
+ * Flight, in order:
+ *   plant    takeoff: lead knee driving up, takeoff leg pushing off behind,
+ *            one arm punching up, the other swinging back
+ *   arch     rising: the body arched back, both arms reaching up and back
+ *            overhead, knees bent with the feet trailing behind
+ *   hang     the top: upright, arms straight up, legs dangling
+ * With the stretch (press both at the top):
+ *   snap     knees snap up to the chest, arms swing forward and down
+ *   dive     jackknife: torso pitched forward over the legs, reaching for the toes
+ *   glide    legs thrust out in front, arms stretched forward past the feet
+ *   contact  heels hit the sand, folding forward
+ *   sitSand  sat in the sand in the splash, folded over the legs
+ *   rollBack momentum rolls you onto your back, legs up, arms flung back
+ *   sitUp    sit back up, knees bent, hands on knees
+ *   squat    rock forward over the feet into a squat
+ *   (then stand)
+ * Without it, you crumple:
+ *   tuck     a ball in the air
+ *   crouch   feet hit the sand in a crouch
+ *   prone    flopped forward onto your face (hips 0.45 H ahead of the feet)
  */
 export const JUMP_POSES = {
+  plant: {
+    hipX: 0, hipY: -0.5, lean: -0.1,
+    legs: [{ thigh: 1.3, shin: 0.25, toe: -0.2 }, { thigh: -0.45, shin: -0.6, toe: 0.6 }],
+    arms: [{ upper: 2.6, fore: 2.9 }, { upper: -0.9, fore: -0.5 }],
+  },
+  arch: {
+    hipX: 0, hipY: -0.5, lean: -0.32,
+    legs: [{ thigh: 0.3, shin: -1.25, toe: 0.6 }, { thigh: -0.3, shin: -1.55, toe: 0.6 }],
+    arms: [{ upper: 3.4, fore: 3.6 }, { upper: 3.25, fore: 3.45 }],
+  },
   hang: {
-    hipX: 0, hipY: -0.5, lean: 0.05,
-    legs: [{ thigh: 1.1, shin: 0.25, toe: -0.1 }, { thigh: -0.45, shin: -1.35, toe: 0.4 }],
-    arms: [{ upper: 2.7, fore: 2.9 }, { upper: 2.4, fore: 2.7 }],
+    hipX: 0, hipY: -0.5, lean: -0.2,
+    legs: [{ thigh: 0.6, shin: -0.15, toe: 0.2 }, { thigh: 0.35, shin: -0.45, toe: 0.2 }],
+    arms: [{ upper: 3.1, fore: 3.2 }, { upper: 2.95, fore: 3.05 }],
   },
-  stretch: {
-    hipX: 0, hipY: -0.5, lean: 0.75,
-    legs: [{ thigh: 1.4, shin: 1.5, toe: -0.35 }, { thigh: 1.32, shin: 1.45, toe: -0.35 }],
-    arms: [{ upper: 1.25, fore: 1.05 }, { upper: 1.1, fore: 0.95 }],
-  },
-  land: {
+  snap: {
     hipX: 0, hipY: -0.5, lean: 0.35,
-    legs: [{ thigh: 0.85, shin: 0.45, toe: -0.2 }, { thigh: 0.7, shin: 0.3, toe: -0.2 }],
-    arms: [{ upper: 1.0, fore: 1.3 }, { upper: 0.8, fore: 1.1 }],
+    legs: [{ thigh: 2.25, shin: 0.45, toe: -0.2 }, { thigh: 2.1, shin: 0.3, toe: -0.2 }],
+    arms: [{ upper: 1.9, fore: 1.2 }, { upper: 1.75, fore: 1.05 }],
   },
-  sit: {
-    hipX: 0, hipY: -0.19, lean: 0.45,
-    legs: [{ thigh: 1.5, shin: 1.58, toe: -0.25 }, { thigh: 1.42, shin: 1.52, toe: -0.25 }],
-    arms: [{ upper: 0.7, fore: 1.1 }, { upper: 0.55, fore: 0.95 }],
+  dive: {
+    hipX: 0, hipY: -0.5, lean: 0.95,
+    legs: [{ thigh: 1.55, shin: 1.62, toe: -0.5 }, { thigh: 1.47, shin: 1.56, toe: -0.5 }],
+    arms: [{ upper: 1.2, fore: 1.62 }, { upper: 1.1, fore: 1.52 }],
+  },
+  glide: {
+    hipX: 0, hipY: -0.5, lean: 0.6,
+    legs: [{ thigh: 1.85, shin: 1.8, toe: -0.5 }, { thigh: 1.75, shin: 1.72, toe: -0.5 }],
+    arms: [{ upper: 1.75, fore: 1.7 }, { upper: 1.6, fore: 1.55 }],
+  },
+  contact: {
+    hipX: 0, hipY: -0.22, lean: 0.95,
+    legs: [{ ...legIK(0, -0.22, 0.42, 0), toe: -0.3 }, { ...legIK(0, -0.22, 0.38, 0), toe: -0.3 }],
+    arms: [{ upper: 1.5, fore: 1.45 }, { upper: 1.4, fore: 1.35 }],
+  },
+  sitSand: {
+    hipX: 0, hipY: -0.1, lean: 0.75,
+    legs: [{ thigh: 1.37, shin: 1.5, toe: -0.4 }, { thigh: 1.33, shin: 1.47, toe: -0.4 }],
+    arms: [{ upper: 1.1, fore: 1.3 }, { upper: 1.0, fore: 1.2 }],
+  },
+  rollBack: {
+    hipX: 0, hipY: -0.07, lean: -1.35,
+    legs: [{ thigh: 2.35, shin: 2.2, toe: -1.0 }, { thigh: 2.15, shin: 2.0, toe: -1.0 }],
+    arms: [{ upper: -2.0, fore: -2.3 }, { upper: -1.75, fore: -2.0 }],
+  },
+  sitUp: {
+    hipX: 0, hipY: -0.1, lean: 0.25,
+    legs: [{ ...legIK(0, -0.1, 0.38, 0), toe: 0 }, { ...legIK(0, -0.1, 0.34, 0), toe: 0 }],
+    arms: [{ upper: 0.9, fore: 1.4 }, { upper: 0.8, fore: 1.3 }],
+  },
+  squat: {
+    hipX: 0.3, hipY: -0.3, lean: 0.7,
+    legs: [{ ...legIK(0.3, -0.3, 0.38, 0), toe: 0 }, { ...legIK(0.3, -0.3, 0.34, 0), toe: 0 }],
+    arms: [{ upper: 0.7, fore: 0.5 }, { upper: 0.6, fore: 0.4 }],
   },
   tuck: {
     hipX: 0, hipY: -0.5, lean: 0.3,
@@ -243,6 +299,20 @@ export const JUMP_POSES = {
     arms: [{ upper: 1.65, fore: 1.6 }, { upper: 1.5, fore: 1.45 }],
   },
 };
+
+/** Sample a keyframe track [[t, pose], ...] at time t: eased between keys, held past the ends. */
+export function sampleTrack(keys, t) {
+  if (t <= keys[0][0]) return keys[0][1];
+  for (let i = 1; i < keys.length; i++) {
+    const [t1, p1] = keys[i];
+    if (t <= t1) {
+      const [t0, p0] = keys[i - 1];
+      const k = (t - t0) / (t1 - t0);
+      return lerpPose(p0, p1, k * k * (3 - 2 * k));
+    }
+  }
+  return keys[keys.length - 1][1];
+}
 
 /**
  * Running pose from a stride phase (radians) and intensity amp (0..1, grows with

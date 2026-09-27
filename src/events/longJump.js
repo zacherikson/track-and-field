@@ -5,7 +5,7 @@ import { text, roundRect } from '../core/ui.js';
 import { Runner } from '../athletes/runner.js';
 import { AIController } from '../athletes/ai.js';
 import { HERO, RIVALS } from '../athletes/roster.js';
-import { drawFigure, runPose, lerpPose, handPos, headCircle, JUMP_POSES, POSES } from '../athletes/stickFigure.js';
+import { drawFigure, runPose, lerpPose, sampleTrack, handPos, headCircle, JUMP_POSES, POSES } from '../athletes/stickFigure.js';
 import { StrideTargets } from './strideTargets.js';
 import { flightPath, rivalJump } from './longJumpRules.js';
 import { RunwayRenderer } from '../render/runway.js';
@@ -258,7 +258,7 @@ export class LongJump {
 
   kickSand(x, n) {
     for (let i = 0; i < n; i++) {
-      this.puff.push({ x: x + rand(-0.3, 0.2), y: 0, vx: rand(-0.6, 1.4), vy: rand(0.6, 2.2), life: rand(0.4, 0.8), r: rand(2, 5) });
+      this.puff.push({ x: x + rand(-0.3, 0.3), y: 0, vx: rand(-0.8, 1.8), vy: rand(0.8, 3.2), life: rand(0.45, 0.9), r: rand(4, 11) });
     }
   }
 
@@ -338,9 +338,12 @@ export class LongJump {
       case 'overrun':
         return r.v > 2 ? run() : lerpPose(run(), POSES.stand, 1 - r.v / 2);
       case 'air': {
+        // Keyframes traced from the original (see JUMP_POSES). Up to the top:
+        // plant, arch back with the arms overhead, hang.
         const j = this.jump;
         const ta = now - j.t0;
-        let pose = lerpPose(this.takeoffPose ?? run(), P.hang, ease(clamp(ta / 0.16, 0, 1)));
+        const rise = ta / (j.apexT - j.t0);
+        let pose = sampleTrack([[0, this.takeoffPose ?? run()], [0.1, P.plant], [0.45, P.arch], [0.9, P.hang]], rise);
         // Running in the air on the way up (hitch kick): the legs keep cycling, arms stay up.
         const strides = this.cfg.flight.airStrides;
         if (strides > 0 && now < j.apexT) {
@@ -349,8 +352,10 @@ export class LongJump {
           pose = { ...pose, legs: lerpPose(pose, { ...pose, legs: kick.legs }, k).legs };
         }
         if (j.stretchT != null) {
-          // Stretch: jackknife forward, legs thrust out in front.
-          pose = lerpPose(pose, P.stretch, ease(clamp((now - j.stretchT) / 0.12, 0, 1)) * (0.45 + 0.55 * j.stretchK));
+          // Stretch: knees snap up, jackknife, legs thrust out, heels in.
+          const A = this.cfg.anim;
+          pose = sampleTrack([[0, pose], [A.snap, P.snap], [A.dive, P.dive], [A.glide, P.glide]], now - j.stretchT);
+          pose = lerpPose(pose, P.contact, ease(clamp(1 - (j.t0 + j.path.time - now) / A.contact, 0, 1)));
         } else {
           // No stretch (yet): past the top you start to crumple into a ball.
           pose = lerpPose(pose, P.tuck, ease(clamp((now - j.apexT - 0.05) / 0.25, 0, 1)));
@@ -362,16 +367,23 @@ export class LongJump {
         const j = this.jump;
         if (!j?.landT) return POSES.stand;
         const age = now - j.landT;
-        const from = this.lastAirPose ?? P.sit;
+        const from = this.lastAirPose ?? P.sitSand;
         if (j.path.collapse) {
           // Crumpled: land in a crouch, flop forward onto your face, then get up where you lie.
           let pose = lerpPose(from, P.crouch, ease(clamp(age / 0.08, 0, 1)));
           pose = lerpPose(pose, P.prone, ease(clamp((age - 0.08) / (FLOP.hit - 0.08), 0, 1)));
           return lerpPose(pose, { ...POSES.stand, hipX: P.prone.hipX }, ease(clamp((age - FLOP.getUp) / 0.5, 0, 1)));
         }
-        // Stretched: drop into a sit, then get up.
-        const sit = lerpPose(from, P.sit, ease(clamp(age / 0.1, 0, 1)));
-        return lerpPose(sit, POSES.stand, ease(clamp((age - 1.0) / 0.45, 0, 1)));
+        // Stretched: sit in the splash, roll back with the legs up, sit up, squat, stand.
+        return sampleTrack([
+          [0, from],
+          [0.1, P.sitSand],
+          [0.38, P.rollBack],
+          [0.6, P.rollBack],
+          [0.9, P.sitUp],
+          [1.25, P.squat],
+          [1.65, { ...POSES.stand, hipX: P.squat.hipX }],
+        ], age);
       }
     }
   }
@@ -398,7 +410,7 @@ export class LongJump {
     // Sand puff behind the figure.
     for (const p of this.puff) {
       const s = tr.toScreen(this.camera, view, p.x, 1);
-      ctx.fillStyle = `rgba(214,190,140,${clamp(p.life / 0.6, 0, 1) * 0.9})`;
+      ctx.fillStyle = `rgba(246,236,210,${clamp(p.life / 0.6, 0, 1) * 0.9})`; // a white burst of sand, as in the original
       ctx.beginPath();
       ctx.arc(s.x, s.y + 4 - p.y * pxPerM, p.r, 0, Math.PI * 2);
       ctx.fill();

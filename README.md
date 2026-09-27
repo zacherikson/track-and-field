@@ -53,6 +53,9 @@ for each set-clearing speed, long jump marks and foul rates for each run-up
 speed and takeoff timing, and the AI fields' results per difficulty.
 Log changes you keep in [CHANGELOG.md](CHANGELOG.md).
 
+`tools/sprites.html` draws Juno's long jump keyframes as a sprite sheet (serve
+the repo and open it) so poses can be checked side by side.
+
 ## Architecture
 
 ```

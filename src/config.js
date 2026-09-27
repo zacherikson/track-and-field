@@ -234,9 +234,12 @@ export const CONFIG = {
     // distances are the same.
     flight: {
       slowMo: { rate: 0.7, ramp: 0.15 }, // the clock eases down to 0.7x over the first 0.15 s after takeoff
-      heightScale: 1.5, // the arc is drawn this much higher
-      airStrides: 1.5, // leg cycles "running in the air" on the way up (0 = frozen pose)
+      heightScale: 1.8, // the arc is drawn this much higher (as high as fits on screen)
+      airStrides: 0, // leg cycles "running in the air" on the way up (0 = the original's arch-back hang)
     },
+    // Stretch animation (s after pressing): knees snap up, jackknife, legs out;
+    // then the heels reach for the sand over the last `contact` s.
+    anim: { snap: 0.08, dive: 0.2, glide: 0.42, contact: 0.14 },
     // After the heels hit: you slide on through the sand (looks only; the mark
     // is where the heels went in).
     landing: {

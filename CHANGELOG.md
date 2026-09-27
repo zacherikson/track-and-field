@@ -4,6 +4,24 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 4.11: long jump sprite sheet traced from the original
+Juno's long jump is now a set of keyframes traced frame by frame from footage
+of the original (our own stick figure, not its art), in `JUMP_POSES`, and
+`tools/sprites.html` draws them as a sprite sheet.
+- Up to the top: **plant** (knee drive, arm punching up), **arch** (body
+  arched back, both arms overhead, feet trailing), **hang** (arms straight up,
+  legs dangling).
+- Stretch: **snap** (knees to chest), **dive** (jackknife, reaching for the
+  toes), **glide** (legs thrust out, arms stretched forward), **contact**
+  (heels in). Timing in `longJump.anim`.
+- Landing: **sitSand** in a white burst of sand, momentum **rolls you back**
+  (legs up, arms flung back), **sit up**, **squat**, stand.
+- No stretch: tuck, crouch, face down (as before).
+- `flight.airStrides` 1.5 → 0: the original hangs arched back rather than
+  running in the air. `flight.heightScale` 1.5 → 1.8: up among the crowd at
+  the top, as in the original, as high as fits on screen. Sand splash is
+  white and bigger.
+
 ## Step 4.10: long jump settings in the tuning panel, livelier flight
 - Tuning panel: two new groups.
   - **Long Jump: flight:** air speed (slow motion), arc height, running in the

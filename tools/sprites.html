@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Juno Sprite Sheet</title>
+<style>
+  body { margin: 0; background: #1b2433; color: #fff; font: 14px system-ui, sans-serif; }
+  h1 { font-size: 18px; margin: 14px 16px 4px; }
+  p { margin: 0 16px 10px; color: #b8c2d4; }
+  canvas { display: block; margin: 0 auto 16px; max-width: 100%; }
+</style>
+</head>
+<body>
+<h1>Juno: long jump keyframes</h1>
+<p>Serve the repo (python3 -m http.server) and open /tools/sprites.html. Order: flight, stretch, landing; bottom row: the crumple without a stretch.</p>
+<canvas id="sheet"></canvas>
+<script type="module">
+import { drawFigure, JUMP_POSES, POSES } from '../src/athletes/stickFigure.js';
+import { HERO } from '../src/athletes/roster.js';
+
+const rows = [
+  ['plant', 'arch', 'hang', 'snap', 'dive', 'glide'],
+  ['contact', 'sitSand', 'rollBack', 'sitUp', 'squat', 'stand'],
+  ['hang', 'tuck', 'crouch', 'prone'],
+];
+const AIR = new Set(['plant', 'arch', 'hang', 'snap', 'dive', 'glide', 'tuck']);
+const W = 190, Hc = 230, H = 120;
+const cv = document.getElementById('sheet');
+const dpr = window.devicePixelRatio || 1;
+cv.width = W * 6 * dpr;
+cv.height = Hc * rows.length * dpr;
+cv.style.width = `${W * 6}px`;
+const ctx = cv.getContext('2d');
+ctx.scale(dpr, dpr);
+rows.forEach((row, ri) => row.forEach((name, ci) => {
+  const x0 = ci * W, y0 = ri * Hc;
+  ctx.fillStyle = (ri + ci) % 2 ? '#e9dcb4' : '#e3d5a8';
+  ctx.fillRect(x0, y0, W, Hc);
+  const pose = name === 'stand' ? { ...POSES.stand, hipX: JUMP_POSES.squat.hipX } : JUMP_POSES[name];
+  const ground = y0 + Hc - 34;
+  // Air poses: hips at a fixed height; ground poses: feet on the ground line.
+  const y = AIR.has(name) ? ground - 0.9 * H - pose.hipY * H : ground;
+  ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+  ctx.beginPath();
+  ctx.moveTo(x0 + 10, ground + 1);
+  ctx.lineTo(x0 + W - 10, ground + 1);
+  ctx.stroke();
+  drawFigure(ctx, x0 + W / 2 - (pose.hipX ?? 0) * H * 0.5, y, H, pose, HERO.colors, ground);
+  ctx.fillStyle = '#1b2433';
+  ctx.font = '600 14px system-ui, sans-serif';
+  ctx.fillText(name, x0 + 10, y0 + Hc - 12);
+}));
+</script>
+</body>
+</html>

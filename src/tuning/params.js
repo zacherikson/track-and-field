@@ -93,7 +93,7 @@ export const GROUPS = [
     params: [
       { path: 'longJump.flight.slowMo.rate', label: 'Air speed (slow motion)', unit: '×', min: 0.3, max: 1, step: 0.05, help: 'How fast the game runs while you’re in the air. Lower = more hang time and more time to see the top coming. Look only.' },
       { path: 'longJump.flight.heightScale', label: 'Arc height (drawn)', unit: '×', min: 1, max: 3, step: 0.1, help: 'Draws the arc this much higher. Look only.' },
-      { path: 'longJump.flight.airStrides', label: 'Running in the air', unit: 'strides', min: 0, max: 4, step: 0.5, help: 'Leg cycles on the way up (hitch kick). 0 = frozen pose. Look only.' },
+      { path: 'longJump.flight.airStrides', label: 'Running in the air', unit: 'strides', min: 0, max: 4, step: 0.5, help: 'Leg cycles on the way up (hitch kick). 0 = the original’s arched-back hang. Look only.' },
       { path: 'longJump.jump.liftBase', label: 'Takeoff lift', unit: 'm/s', min: 1.5, max: 5, step: 0.1, help: 'Upward speed off the board. Higher = a taller, longer jump and more distance.' },
       { path: 'longJump.jump.keepX', label: 'Forward speed kept', unit: '%', scale: 100, min: 0.5, max: 1, step: 0.01, help: 'Share of your run-up speed carried forward off the board. Scales every jump.' },
     ],

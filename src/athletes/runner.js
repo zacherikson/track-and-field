@@ -90,10 +90,10 @@ export class Runner {
     const first = this.taps === 0;
     if (!first && interval < this.p.minStrideInterval) return 'fast';
     if (first) {
-      // Explode out of the blocks: start at startSpeed with your pace assumed to
+      // Explode out of the blocks: start at minSpeed with your pace assumed to
       // be startPace. From here your real taps pull the pace toward your actual
       // rhythm, so you start fast and only slow down if you can't keep it up.
-      this.v = Math.max(this.v, this.p.startSpeed);
+      this.v = Math.max(this.v, this.p.minSpeed);
       this.avgInterval = 1 / this.p.startPace;
     } else {
       const iv = Math.min(interval, this.p.maxIntervalForAvg);

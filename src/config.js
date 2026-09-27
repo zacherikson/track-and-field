@@ -48,15 +48,14 @@ export const CONFIG = {
     cadenceForTopSpeed: 5.2, // strides/s needed for top speed
     speedCurve: 0.6, // <1 = forgiving, 1 = linear, >1 = rewards only elite play
     topSpeed: 13.4, // m/s at full cadence
-    // The start: you explode out of the blocks at startSpeed, with your pace
-    // assumed to be startPace. Your real taps then pull the pace toward your
-    // actual rhythm, so a good tapper keeps accelerating and a slow one eases
-    // back. Start fast, slow down if you can't keep up.
-    startSpeed: 6.0, // m/s on the first stride out of the blocks
+    // The start: your first tap launches you out of the blocks at minSpeed, with
+    // your pace assumed to be startPace. Your real taps then pull the pace toward
+    // your actual rhythm, so a good tapper keeps accelerating and a slow one eases
+    // back, but never below minSpeed. Start fast, slow down if you can't keep up.
+    minSpeed: 7.0, // m/s: your speed on the first tap, and the slowest you run after it (stumbles can dip below it briefly)
     startPace: 4.5, // strides/s your pace is assumed to be on the first stride
     accelMax: 10.0, // m/s^2 from standstill
     accelFalloff: 0.72, // accel shrinks by this fraction as speed approaches topSpeed
-    minSpeed: 7.0, // m/s; once you're off the blocks your pace never asks for less than this (stumbles can still dip below it briefly)
     coastDecel: 4.0, // m/s^2 lost when your cadence is below what your speed needs
     finishDecel: 3.5, // m/s^2 braking after crossing the line
     cadenceSmoothing: 0.1, // 0..1 weight of the newest stride interval (higher = twitchier)

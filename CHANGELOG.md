@@ -4,6 +4,13 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 4.5: first tap launches you at the minimum speed
+- `runner.startSpeed` (6 m/s) removed: the first tap now launches you straight
+  to `runner.minSpeed` (7 m/s), so one knob sets both. Tuning panel: "Minimum
+  speed" moved to Speeding up; "Block exit speed" removed.
+- Everyone is about 0.07s faster over 100m: good player 8.80 → 8.72s,
+  Amateur rivals median 10.21 → 10.13s, Pro 9.62 → 9.56s.
+
 ## Step 4.4: minimum speed 6 → 7 m/s
 - `runner.minSpeed` 6 → 7 m/s. One tap then nothing: 17.0 → 14.7s. Tapping
   once every 2 s (13.3s) now runs about as fast as once a second (13.1s).

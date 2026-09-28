@@ -1,6 +1,6 @@
 // Tiny localStorage wrapper. Storage can throw (private mode, quota, disabled),
 // so every access is guarded and the game still works without persistence.
-const KEY = 'thumbathlon.v1';
+const KEY = 'thumbathlon.v1'; // old name kept so saved progress survives the rename
 
 function load() {
   try {

@@ -152,7 +152,7 @@ function scheduleEstimates(delay = 150) {
 function changesText() {
   const list = changes();
   if (!list.length) return '';
-  return ['Thumbathlon tuning changes:', ...list.map(({ param: p, from, to }) => `- ${p.label}: ${fmt(p, from)} → ${fmt(p, to)} (${p.path})`)].join('\n');
+  return ['Track Royale tuning changes:', ...list.map(({ param: p, from, to }) => `- ${p.label}: ${fmt(p, from)} → ${fmt(p, to)} (${p.path})`)].join('\n');
 }
 
 function copyChanges() {

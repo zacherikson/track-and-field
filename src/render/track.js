@@ -152,7 +152,7 @@ export class TrackRenderer {
     const boardW = 180 * Math.max(1, par);
     const offset = camera.x * camera.ppm * par;
     const first = Math.floor(offset / boardW) - 1;
-    const words = ['THUMBATHLON', 'TAP TAP GO', 'FAST THUMBS', 'RUN JUNO RUN', 'NO FALSE STARTS'];
+    const words = ['TRACK ROYALE', 'TAP TAP GO', 'FAST THUMBS', 'RUN JUNO RUN', 'NO FALSE STARTS'];
     const colors = ['#1b998b', '#e4572e', '#2e294e', '#f1c40f', '#3f88c5'];
     for (let i = first; i < first + Math.ceil(view.w / boardW) + 2; i++) {
       const x = i * boardW - offset;

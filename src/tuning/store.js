@@ -7,7 +7,7 @@ import { PARAMS } from './params.js';
  * physics step. Overrides are saved on this device (localStorage) and
  * re-applied at startup; defaults are whatever config.js says.
  */
-const KEY = 'thumbathlon.tuning.v1';
+const KEY = 'thumbathlon.tuning.v1'; // old name kept so saved tuning survives the rename
 
 const getPath = (path) => path.split('.').reduce((o, k) => o[k], CONFIG);
 function setPath(path, value) {

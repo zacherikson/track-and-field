@@ -104,7 +104,7 @@ export class MenuScene {
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, view.w, view.h);
 
-    text(ctx, 'THUMBATHLON', view.w / 2, 88, { size: 62, color: '#ffb400', shadow: true });
+    text(ctx, 'TRACK ROYALE', view.w / 2, 88, { size: 62, color: '#ffb400', shadow: true });
     text(ctx, `Five events. Two thumbs. Starring ${HERO.name}.`, view.w / 2, 140, { size: 18, weight: 500, color: 'rgba(255,255,255,0.8)' });
     this.buttons.forEach((b) => b.draw(ctx));
     this.fsButton?.draw(ctx);

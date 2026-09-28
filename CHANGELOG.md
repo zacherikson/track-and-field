@@ -4,6 +4,13 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Renamed to Track Royale
+- The game is now called Track Royale: menu title, page title, home-screen
+  name (manifest), the "plays in landscape" notice, the trackside board and the
+  tuning export header.
+- The localStorage keys keep the old name (`thumbathlon.v1`,
+  `thumbathlon.tuning.v1`) so personal bests and tuning survive the rename.
+
 ## Step 6.1: javelin landing is the end of the flight shot
 - No separate landing shot. The flight shot follows the javelin all the way
   down until its tip goes into the grass (it sticks at the angle it came down,

@@ -129,6 +129,6 @@ export class Game {
     ctx.strokeRect(-18, -30, 36, 60);
     ctx.restore();
     text(ctx, 'Rotate your phone', cx, view.h / 2 + 40, { size: 20 });
-    text(ctx, 'Thumbathlon plays in landscape', cx, view.h / 2 + 68, { size: 13, weight: 500, color: 'rgba(255,255,255,0.7)' });
+    text(ctx, 'Track Royale plays in landscape', cx, view.h / 2 + 68, { size: 13, weight: 500, color: 'rgba(255,255,255,0.7)' });
   }
 }

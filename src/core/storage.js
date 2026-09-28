@@ -1,6 +1,18 @@
 // Tiny localStorage wrapper. Storage can throw (private mode, quota, disabled),
 // so every access is guarded and the game still works without persistence.
-const KEY = 'thumbathlon.v1'; // old name kept so saved progress survives the rename
+const KEY = 'trackroyale.v1';
+
+/** Moves data saved under the game's old name (Thumbathlon) to its new key, once. */
+export function migrateKey(oldKey, newKey) {
+  try {
+    const old = localStorage.getItem(oldKey);
+    if (old != null && localStorage.getItem(newKey) == null) localStorage.setItem(newKey, old);
+    localStorage.removeItem(oldKey);
+  } catch {
+    /* ignore */
+  }
+}
+migrateKey('thumbathlon.v1', KEY);
 
 function load() {
   try {

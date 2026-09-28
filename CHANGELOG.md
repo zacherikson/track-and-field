@@ -8,8 +8,9 @@ Gameplay and tuning changes, newest first. When you change a number in
 - The game is now called Track Royale: menu title, page title, home-screen
   name (manifest), the "plays in landscape" notice, the trackside board and the
   tuning export header.
-- The localStorage keys keep the old name (`thumbathlon.v1`,
-  `thumbathlon.tuning.v1`) so personal bests and tuning survive the rename.
+- localStorage keys renamed to `trackroyale.v1` and `trackroyale.tuning.v1`.
+  On first load, anything saved under the old `thumbathlon.*` keys is moved
+  over, so personal bests and tuning survive the rename.
 
 ## Step 6.1: javelin landing is the end of the flight shot
 - No separate landing shot. The flight shot follows the javelin all the way

@@ -1,4 +1,4 @@
-# Thumbathlon
+# Track Royale
 
 A touch-first, mobile-browser track & field game: five events, two thumbs.
 Starring **Juno**, an original stick-figure athlete (placeholder art until step 6).

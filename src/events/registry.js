@@ -120,6 +120,16 @@ export const TOURNAMENT_BOARD = { id: 'tournament', name: 'Tournament', unit: 'p
 /** Every online leaderboard, in menu order. */
 export const BOARDS = [...EVENTS, TOURNAMENT_BOARD];
 
+/**
+ * A mark as it's kept and compared everywhere (results, personal bests, the
+ * online boards): to the hundredth of a second or centimetre, as it's shown,
+ * or whole points. Two marks that look the same are the same.
+ */
+export function roundMark(ev, value) {
+  if (value == null || !Number.isFinite(value)) return value;
+  return ev.unit === 'pts' ? Math.round(value) : Math.round(value * 100) / 100;
+}
+
 export function formatMark(ev, value) {
   if (value == null) return '—';
   if (ev.unit === 'pts') return `${Math.round(value)} pts`;

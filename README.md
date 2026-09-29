@@ -62,8 +62,17 @@ the repo and open it) so poses can be checked side by side.
 standings) has a leaderboard for every event plus one for tournament points.
 Finishing an event, on its own or in a tournament, posts your mark to that
 event's board if it beats your mark there; finishing a tournament posts your
-total. Marks made with changed tuning aren't posted. Set your username with the
-👤 button at the top right of the menu; names are unique.
+total. Marks made with changed tuning aren't posted, and don't count as a
+personal best either. Set your username with the 👤 button at the top right of
+the menu; names are unique.
+
+Your **personal bests** are your entries on the online boards
+(`src/online/bests.js`). The phone keeps a copy so offline play works; each
+time you're back at the menu it's brought in line with the boards in one
+request (your ghosts and best tournament too), so clearing a board in the
+Firebase console resets everyone's bests on it. Marks are kept to the
+hundredth, as they're shown (`roundMark` in `registry.js`), and tournament
+scores in whole points.
 
 Every attempt is also recorded. Turn **GHOST** on in the menu (it starts off)
 and your best one on the phone comes back as a see-through **ghost** ("Your
@@ -142,6 +151,7 @@ src/online/
   ghost.js            records a run's inputs and replays them as a ghost (pure)
   firebase.js         online leaderboards: lazy-loaded Firebase SDK, anonymous sign-in, Firestore
   post.js             posts a finished mark to its board and reports how it went
+  bests.js            personal bests: your board entries, synced to the phone's copy
   trace.js            records an attempt frame by frame and plays it back (every event but the 100m)
   fieldGhost.js       records and draws ghosts in the long jump, pole vault and javelin
   ghosts.js           picks which ghost races: best tournament, a leaderboard pick, or your best

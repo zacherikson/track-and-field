@@ -34,6 +34,15 @@ export function getBest(eventId) {
   return load().best?.[eventId] ?? null;
 }
 
+/** Sets (or with null, clears) a personal best outright: the online board's copy wins (online/bests.js). */
+export function setBest(eventId, value) {
+  const data = load();
+  data.best ??= {};
+  if (value == null) delete data.best[eventId];
+  else data.best[eventId] = value;
+  save(data);
+}
+
 /** Records a result; returns true if it is a new personal best. `lowerIsBetter` for timed events. */
 export function submitBest(eventId, value, lowerIsBetter = true) {
   const data = load();
@@ -108,6 +117,18 @@ export function saveGhostIfBetter(ev, run) {
   }
 }
 
+/** Replaces (or with null, forgets) this event's ghost. */
+export function setGhost(eventId, run) {
+  try {
+    const all = JSON.parse(localStorage.getItem(GHOSTS)) || {};
+    if (run) all[eventId] = run;
+    else delete all[eventId];
+    localStorage.setItem(GHOSTS, JSON.stringify(all));
+  } catch {
+    /* ignore */
+  }
+}
+
 // Your best tournament, for its ghosts: { total, events: { [eventId]: { mark, pts, ghost } } }.
 const BEST_TOURNAMENT = 'trackroyale.besttournament.v1';
 
@@ -121,7 +142,8 @@ export function getBestTournament() {
 
 export function saveBestTournament(best) {
   try {
-    localStorage.setItem(BEST_TOURNAMENT, JSON.stringify(best));
+    if (best) localStorage.setItem(BEST_TOURNAMENT, JSON.stringify(best));
+    else localStorage.removeItem(BEST_TOURNAMENT);
     return true;
   } catch {
     return false;

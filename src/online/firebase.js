@@ -145,7 +145,7 @@ export async function submitMark(board, mark, ghost = null) {
 const REST = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents`;
 
 async function rest(path, body = null) {
-  const res = await fetch(`${REST}/${path}${path.includes('?') ? '&' : '?'}key=${firebaseConfig.apiKey}`, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {});
+  const res = await fetch(`${REST}${path.startsWith(':') ? '' : '/'}${path}${path.includes('?') ? '&' : '?'}key=${firebaseConfig.apiKey}`, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {});
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`firestore ${res.status}`);
   return res.json();
@@ -219,6 +219,24 @@ export async function leaderboard(board, n = 10) {
   const result = { top, mine };
   boards.set(board.id, result);
   return result;
+}
+
+/**
+ * Your entry on each board, in one request: a Map of board id -> { mark, ghost?, traced? },
+ * or null where you have none. Null overall if this phone has no player id yet.
+ */
+export async function myEntries(boardIds) {
+  const uid = knownUid();
+  if (!uid) return null;
+  const base = REST.slice(REST.indexOf('projects/'));
+  const res = await rest(':batchGet', { documents: boardIds.map((id) => `${base}/leaderboards/${id}/runs/${uid}`) });
+  const out = new Map(boardIds.map((id) => [id, null]));
+  for (const r of res ?? []) {
+    if (!r.found) continue;
+    const id = r.found.name.split('/').at(-3);
+    out.set(id, { uid, ...fields(r.found.fields) });
+  }
+  return out;
 }
 
 /** A player's recording for their mark on a board (a leaderboard row with `traced`), or null. */

@@ -4,6 +4,16 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Personal bests come from the online boards
+- Your best at each event is your entry on its online board. The phone keeps a
+  copy for offline play and catches up with the boards whenever you're back at
+  the menu (one request for all six). Clearing a board resets the bests, ghosts
+  and best tournaments that came from it.
+- Marks are kept to the hundredth of a second or metre, exactly as shown, so
+  two marks that look the same are the same (8.89 no longer "beats" 8.89).
+- Runs with changed tuning don't count as a personal best (they already
+  weren't posted).
+
 ## Online marks post again; tidier loading screen
 - A new best in the long jump, hurdles, pole vault or javelin now reaches the
   online board even if its recording can't be uploaded with it. The results

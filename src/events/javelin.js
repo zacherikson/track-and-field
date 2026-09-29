@@ -4,7 +4,7 @@ import { clamp, rand, shuffle } from '../core/math.js';
 import { text, roundRect } from '../core/ui.js';
 import { Runner } from '../athletes/runner.js';
 import { AIController } from '../athletes/ai.js';
-import { player as chosenPlayer, rivals as rivalRoster } from '../athletes/roster.js';
+import { player as chosenPlayer, rivals as rivalRoster, heightOf } from '../athletes/roster.js';
 import { drawFigure, runPose, lerpPose, sampleTrack, handPos, headCircle, JAVELIN_POSES, POSES } from '../athletes/stickFigure.js';
 import { StrideTargets } from './strideTargets.js';
 import { angleAt, flightRange, rivalThrow } from './javelinRules.js';
@@ -395,7 +395,7 @@ export class Javelin {
     const tr = this.track;
     tr.draw(ctx, view, this.camera);
     const pxPerM = this.camera.ppm * tr.figureScale(1);
-    const H = FIG_H * pxPerM;
+    const H = FIG_H * pxPerM * heightOf(this.player.colors);
     const ground = tr.toScreen(this.camera, view, this.runner.x, 1);
     const groundY = ground.y + 4;
     const pose = this.poseFor();

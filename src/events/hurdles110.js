@@ -122,6 +122,15 @@ export class Hurdles110 extends LaneRace {
     this.rings = this.rings.filter((ring) => now - ring.t0 < this.cfg.pads.hitRing.duration);
   }
 
+  /** A short athlete (Joey) bounces up over each hurdle: the shorter, the bigger the hop (m). */
+  liftFor(a) {
+    const tall = a.colors.height ?? 1;
+    if (tall >= 1 || (this.state !== 'race' && this.state !== 'finished')) return 0;
+    const k = a.hurdles?.hopProgress(a.runner.x);
+    if (k == null || a.hurdles.hop?.trip) return 0;
+    return Math.sin(Math.PI * k) * (1 - tall) * 1.3;
+  }
+
   poseFor(a) {
     let pose = super.poseFor(a);
     if (this.state !== 'race' && this.state !== 'finished') return pose;

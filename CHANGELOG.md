@@ -4,6 +4,20 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 7.2: Joey (half height)
+- Brix is replaced by **Joey**: blue shirt, brown hair, fair skin, and half
+  everyone's height (new `colors.height` 0.5; `heightOf()` in roster.js).
+  Looks only: same physics.
+- The height is applied everywhere he's drawn: lane races (with his start
+  position adjusted so his hands still sit at the line), long jump (his hips
+  start lower), javelin (the javelin stays in his hand), pole vault (he grips
+  the pole lower, so the plant, swing and bar clearance scale with him), the
+  menu runner and the picker.
+- Hurdles: he'd have run straight through a bar taller than his hips, so a
+  short athlete now bounces up over each hurdle (`liftFor` in hurdles110.js),
+  shadow on the track.
+- If your saved athlete was Brix you start as Juno; pick again.
+
 ## Pages deploy: no more stale code on phones
 - GitHub Pages lets browsers reuse files for 10 minutes, so after a deploy a
   phone could load the new page with old cached game code (or a mix). The

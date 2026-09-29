@@ -1,6 +1,6 @@
 import { Button, text, roundRect } from '../core/ui.js';
 import { drawFigure, runPose, POSES } from '../athletes/stickFigure.js';
-import { CHARACTERS, player } from '../athletes/roster.js';
+import { CHARACTERS, player, heightOf } from '../athletes/roster.js';
 import { setCharacter } from '../core/storage.js';
 import { flow } from '../flow.js';
 
@@ -105,7 +105,7 @@ export class CharacterScene {
     const pose = on ? runPose(this.phase, 0.8) : POSES.stand;
     ctx.fillStyle = 'rgba(0,0,0,0.2)';
     ctx.fillRect(x + 14, ground + 1, w - 28 - inset * 2, 2);
-    drawFigure(ctx, x + w / 2 - inset, ground, figH, pose, c.colors, ground);
+    drawFigure(ctx, x + w / 2 - inset, ground, figH * heightOf(c.colors), pose, c.colors, ground);
     text(ctx, c.name, x + w / 2 - inset, y + h - 22, { size: 19, weight: on ? 800 : 600, color: on ? '#ffd35c' : '#fff', maxWidth: w - 16 });
   }
 }

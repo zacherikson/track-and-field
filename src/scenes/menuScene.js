@@ -3,7 +3,7 @@ import { Button, text } from '../core/ui.js';
 import { drawFigure, runPose } from '../athletes/stickFigure.js';
 import { EVENTS, formatMark } from '../events/registry.js';
 import { getBest, getDifficulty, setDifficulty } from '../core/storage.js';
-import { player } from '../athletes/roster.js';
+import { player, heightOf } from '../athletes/roster.js';
 import { flow } from '../flow.js';
 
 export class MenuScene {
@@ -142,7 +142,7 @@ export class MenuScene {
     const ppm = 38; // the menu's little demo runner keeps its own small scale
     const span = view.w + 120;
     const sx = ((this.demoX * ppm) % span) - 60;
-    drawFigure(ctx, sx, trackY + 10, CONFIG.figure.height * ppm, runPose(this.phase, 1), this.me.colors);
+    drawFigure(ctx, sx, trackY + 10, CONFIG.figure.height * ppm * heightOf(this.me.colors), runPose(this.phase, 1), this.me.colors);
   }
 }
 

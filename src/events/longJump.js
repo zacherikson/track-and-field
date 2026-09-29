@@ -4,7 +4,7 @@ import { clamp, rand, shuffle } from '../core/math.js';
 import { text, roundRect } from '../core/ui.js';
 import { Runner } from '../athletes/runner.js';
 import { AIController } from '../athletes/ai.js';
-import { player as chosenPlayer, rivals as rivalRoster } from '../athletes/roster.js';
+import { player as chosenPlayer, rivals as rivalRoster, heightOf } from '../athletes/roster.js';
 import { drawFigure, runPose, lerpPose, sampleTrack, handPos, headCircle, JUMP_POSES, POSES } from '../athletes/stickFigure.js';
 import { StrideTargets } from './strideTargets.js';
 import { flightPath, rivalJump } from './longJumpRules.js';
@@ -393,7 +393,8 @@ export class LongJump {
     this.track.draw(ctx, view, this.camera);
     const tr = this.track;
     const pxPerM = this.camera.ppm * tr.figureScale(1);
-    const H = CONFIG.figure.height * pxPerM;
+    const tall = heightOf(this.player.colors);
+    const H = CONFIG.figure.height * pxPerM * tall;
     const air = this.state === 'air';
     const x = air || this.state === 'landed' || this.state === 'mark' ? this.jump?.hipX ?? this.runner.x : this.runner.x;
     const ground = tr.toScreen(this.camera, view, x, 1);
@@ -404,7 +405,7 @@ export class LongJump {
     if (air) {
       // Place the figure so its hips are at the flight height.
       const hy = this.jump.hipY;
-      const hipScreenY = groundY - (0.5 * CONFIG.figure.height + (hy > 0 ? hy * this.cfg.flight.heightScale : hy)) * pxPerM;
+      const hipScreenY = groundY - (0.5 * CONFIG.figure.height * tall + (hy > 0 ? hy * this.cfg.flight.heightScale : hy * tall)) * pxPerM;
       y = hipScreenY - pose.hipY * H;
       this.lastAirPose = pose;
     }

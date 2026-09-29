@@ -15,7 +15,7 @@ export class CharacterScene {
     this.chosen = player().id;
     this.phase = 0;
     this.cards = CHARACTERS.map((c) => ({ c, x: 0, y: 0, w: 0, h: 0, pressT: 0 }));
-    this.done = new Button({ label: 'Ready', w: 220, h: 56, onTap: () => flow.menu(this.game) });
+    this.done = new Button({ label: 'Ready', w: 200, h: 48, onTap: () => flow.menu(this.game) });
     this.layout(this.game.view);
   }
 
@@ -30,8 +30,8 @@ export class CharacterScene {
     const rows = Math.ceil(n / perRow);
     const gap = 12;
     const w = Math.min(180, (view.w - margin * 2 - gap * (perRow - 1)) / perRow);
-    const h = rows === 1 ? 300 : 170;
-    const top = rows === 1 ? 110 : 96;
+    const h = rows === 1 ? 285 : 165;
+    const top = rows === 1 ? 100 : 94;
     this.cards.forEach((card, i) => {
       const r = Math.floor(i / perRow);
       const k = i % perRow;
@@ -40,7 +40,9 @@ export class CharacterScene {
       Object.assign(card, { x: (view.w - total) / 2 + k * (w + gap), y: top + r * (h + gap), w, h });
     });
     this.done.x = view.w / 2 - this.done.w / 2;
-    this.done.y = view.h - 56 - 18 - view.safe.b;
+    this.done.y = view.h - this.done.h - 10 - view.safe.b; // low, leaving room for the tagline above it
+    const cardsBottom = Math.max(...this.cards.map((k) => k.y + k.h));
+    this.taglineY = (cardsBottom + this.done.y) / 2;
   }
 
   update(dt, t) {
@@ -80,7 +82,7 @@ export class CharacterScene {
     text(ctx, 'The other five are your rivals.', view.w / 2, 84, { size: 16, weight: 500, color: 'rgba(255,255,255,0.75)' });
     for (const card of this.cards) this.drawCard(ctx, card);
     const me = CHARACTERS.find((c) => c.id === this.chosen);
-    text(ctx, me.tagline, view.w / 2, this.done.y - 22, { size: 17, weight: 500, color: 'rgba(255,255,255,0.85)', maxWidth: view.w - 40 });
+    text(ctx, me.tagline, view.w / 2, this.taglineY, { size: 19, weight: 600, color: '#fff', maxWidth: view.w - 40 });
     this.done.draw(ctx);
   }
 

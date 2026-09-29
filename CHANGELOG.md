@@ -8,6 +8,14 @@ Gameplay and tuning changes, newest first. When you change a number in
 - `hurdles110.buttons.radius` 54 → 64 (about 20% bigger), `y` 0.24 → 0.25 so
   they still clear the top of the screen.
 
+## Renamed to Track Royale
+- The game is now called Track Royale: menu title, page title, home-screen
+  name (manifest), the "plays in landscape" notice, the trackside board and the
+  tuning export header.
+- localStorage keys renamed to `trackroyale.v1` and `trackroyale.tuning.v1`.
+  On first load, anything saved under the old `thumbathlon.*` keys is moved
+  over, so personal bests and tuning survive the rename.
+
 ## Step 6.1: javelin landing is the end of the flight shot
 - No separate landing shot. The flight shot follows the javelin all the way
   down until its tip goes into the grass (it sticks at the angle it came down,

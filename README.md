@@ -1,4 +1,4 @@
-# Thumbathlon
+# Track Royale
 
 A touch-first, mobile-browser track & field game: five events, two thumbs.
 Starring **Juno**, an original stick-figure athlete (placeholder art until step 6).
@@ -9,17 +9,14 @@ Vault, Javelin), against Amateur or Pro rivals.
 
 ## Play on your phone
 
-**Now:** the latest build is hosted as a private claude.ai page. Open
-https://claude.ai/artifact/QP9s6wP21VMToD9LcBC7dJ in your phone's browser, signed
-in to claude.ai, and turn the phone sideways. The link stays the same when a new
-build is published; reload to get it.
+Open https://zacherikson.github.io/track-and-field/ in your phone's browser and
+turn the phone sideways. Every push to `master` republishes it through
+[`.github/workflows/pages.yml`](.github/workflows/pages.yml); Pages caches files
+for about 10 minutes, so reload after that to get a new build.
 
-**GitHub Pages (optional, permanent public URL):** this repo is private, and on a
-free GitHub plan Pages only publishes public repos. Either make the repo public or
-use GitHub Pro. Then go to **Settings → Pages → Build and deployment → Source:
-Deploy from a branch**, pick the branch and `/ (root)`, and save. The site appears
-at `https://<user>.github.io/track-and-field/` a minute later. `.nojekyll` makes
-Pages serve the files as-is, and Pages caches files for about 10 minutes.
+**One-time setup:** in the repo's **Settings → Pages → Build and deployment**, set
+**Source** to **GitHub Actions**. On a free GitHub plan Pages only publishes
+public repos, so the repo must be public (or the account on GitHub Pro).
 
 ## Run locally
 

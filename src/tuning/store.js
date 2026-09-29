@@ -1,5 +1,6 @@
 import { CONFIG } from '../config.js';
 import { PARAMS } from './params.js';
+import { migrateKey } from '../core/storage.js';
 
 /**
  * Reads and writes tunable values directly on CONFIG. Everything in the game
@@ -7,7 +8,8 @@ import { PARAMS } from './params.js';
  * physics step. Overrides are saved on this device (localStorage) and
  * re-applied at startup; defaults are whatever config.js says.
  */
-const KEY = 'thumbathlon.tuning.v1';
+const KEY = 'trackroyale.tuning.v1';
+migrateKey('thumbathlon.tuning.v1', KEY);
 
 const getPath = (path) => path.split('.').reduce((o, k) => o[k], CONFIG);
 function setPath(path, value) {

@@ -12,7 +12,8 @@ Gameplay and tuning changes, newest first. When you change a number in
   phone gets the same times; they're drawn a step ahead of the last update so
   they look right beside you. Someone who quits shows as "(left)" and DNF.
 - Live marks count for your personal best and the leaderboard like any 100m.
-- `firestore.rules` changed: publish it again in the Firebase console.
+- Live races use the Realtime Database: publish `database.rules.json` in
+  Firebase console > Realtime Database > Rules.
 
 ## "Online" is now "Leaderboard"
 - The 🌐 Online buttons (menu, results, tournament standings) are now 🌐 Leaderboard.

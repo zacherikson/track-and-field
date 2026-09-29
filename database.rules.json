@@ -1,0 +1,41 @@
+{
+  "rules": {
+    "lobby": {
+      "$event": {
+        ".read": "auth != null && $event === 'sprint100'",
+        ".write": "auth != null && $event === 'sprint100'",
+        "room": { ".validate": "newData.isString() && newData.val().length <= 40" },
+        "startAt": { ".validate": "newData.isNumber()" },
+        "setLen": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 5" },
+        "players": {
+          "$uid": {
+            ".validate": "newData.hasChildren(['name', 'at'])",
+            "name": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16" },
+            "athlete": { ".validate": "newData.isString() && newData.val().length <= 32" },
+            "at": { ".validate": "newData.isNumber()" },
+            "$other": { ".validate": false }
+          }
+        },
+        "$other": { ".validate": false }
+      }
+    },
+    "live": {
+      "$room": {
+        ".read": "auth != null",
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid",
+          "name": { ".validate": "newData.isString() && newData.val().length <= 16" },
+          "athlete": { ".validate": "newData.isString() && newData.val().length <= 32" },
+          "run": {
+            "ev": { ".validate": "newData.hasChildren() && !newData.hasChild('4000')" }
+          },
+          "n": { ".validate": "newData.isNumber()" },
+          "done": { ".validate": "newData.isBoolean()" },
+          "left": { ".validate": "newData.isBoolean()" },
+          "v": { ".validate": "newData.isNumber()" },
+          "$other": { ".validate": false }
+        }
+      }
+    }
+  }
+}

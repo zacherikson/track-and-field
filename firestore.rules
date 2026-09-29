@@ -3,9 +3,11 @@ rules_version = '2';
 // Security rules for the online leaderboard and usernames (see src/online/firebase.js).
 // Paste into Firebase console > Firestore Database > Rules, then Publish.
 //
-// Anyone can read. A signed-in player (anonymous sign-in) can only write their
-// own profile, their own name claim, and their own leaderboard entries and
-// recordings (only with a better mark, or to change their name).
+// Anyone can read. Every player is signed in, as a guest (anonymous sign-in)
+// or with Google, and can only write their own profile, their own name claim,
+// and their own leaderboard entries and recordings (only with a better mark,
+// or to change their name). Only players signed in with Google can post a
+// mark: guests stay off the leaderboards.
 service cloud.firestore {
   match /databases/{database}/documents {
     // Your profile. Saved in the same transaction as the name claim below,
@@ -32,9 +34,9 @@ service cloud.firestore {
     // One board per event plus the tournament score (registry.js BOARDS).
     match /leaderboards/{event}/runs/{uid} {
       allow read: if event in ['sprint100', 'longjump', 'hurdles110', 'polevault', 'javelin', 'tournament'];
-      allow create: if isMe(uid) && validRun(event, request.resource.data);
+      allow create: if isMember(uid) && validRun(event, request.resource.data);
       allow update: if isMe(uid) && (
-        (validRun(event, request.resource.data) && beats(event, request.resource.data.mark, resource.data.mark))
+        (isMember(uid) && validRun(event, request.resource.data) && beats(event, request.resource.data.mark, resource.data.mark))
         || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name'])
             && validName(request.resource.data.name)));
       allow delete: if false;
@@ -46,7 +48,7 @@ service cloud.firestore {
     // Written in the same batch as that entry, which must say `traced`.
     match /ghosts/{event}/runs/{uid} {
       allow read: if event in ['longjump', 'hurdles110', 'polevault', 'javelin'];
-      allow create, update: if isMe(uid) && event in ['longjump', 'hurdles110', 'polevault', 'javelin']
+      allow create, update: if isMember(uid) && event in ['longjump', 'hurdles110', 'polevault', 'javelin']
         && validTrace(event, request.resource.data)
         && getAfter(/databases/$(database)/documents/leaderboards/$(event)/runs/$(uid)).data.mark == request.resource.data.mark
         && getAfter(/databases/$(database)/documents/leaderboards/$(event)/runs/$(uid)).data.traced == true;
@@ -55,6 +57,11 @@ service cloud.firestore {
 
     function isMe(uid) {
       return request.auth != null && request.auth.uid == uid;
+    }
+
+    // You, signed in with an account rather than as a guest.
+    function isMember(uid) {
+      return isMe(uid) && request.auth.token.firebase.sign_in_provider != 'anonymous';
     }
 
     // 1-16 characters, no '/', not starting with '_', '.' or a space.

@@ -170,8 +170,10 @@ export function cleanName(typed) {
   return /^[\p{L}\p{N}][\p{L}\p{N} _.'-]*$/u.test(name) ? name : '';
 }
 
+/** Sets your username; null goes back to a new made-up one. */
 export function setPlayerName(name) {
   const data = load();
-  data.name = name;
+  if (name) data.name = name;
+  else delete data.name;
   save(data);
 }

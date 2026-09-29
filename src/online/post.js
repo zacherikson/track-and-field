@@ -1,14 +1,19 @@
 import { formatMark } from '../events/registry.js';
 import { counts, posted } from './bests.js';
-import { submitMark } from './firebase.js';
+import { submitMark, isSignedIn } from './firebase.js';
 
 /**
  * Posts a mark to a board's online leaderboard (registry.js BOARDS), with the
- * recorded run for the 100m. `onStatus` gets a one-line status to show, now
+ * recorded run for the 100m. Only if you're signed in: a guest's bests wait on
+ * the phone (online/bests.js postBests). `onStatus` gets a one-line status to show, now
  * and again when the server answers.
  */
 export function postMark(board, mark, ghost, onStatus) {
   if (!board.online || mark == null || (board.ghosts && !ghost)) return;
+  if (!isSignedIn()) {
+    onStatus('Sign in on your Profile to go on the online leaderboard');
+    return;
+  }
   if (!counts()) {
     // Only marks made with the shipped physics count online.
     onStatus('Not posted online: tuning is changed on this phone');

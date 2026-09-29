@@ -5,7 +5,7 @@ import { toWire, fromWire } from './trace.js';
  * ONLINE LEADERBOARD (Firebase: Firestore + anonymous or Google sign-in).
  *
  * Every player has an id: a guest's is anonymous (this phone only), and
- * signing in with Google keeps it (signInWithGoogle). Only signed-in players
+ * signing in with Google keeps it (startGoogleSignIn). Only signed-in players
  * go on the leaderboards; guests keep their bests on the phone until they sign
  * in (online/bests.js postBests).
  *
@@ -47,12 +47,11 @@ const firebaseConfig = {
 const SDK = 'https://www.gstatic.com/firebasejs/12.19.0';
 
 let connecting = null;
-let connected = null; // what connect() resolved to, once it has
 
 /**
  * Loads the SDK and signs in. Resolves to { app, fs, db, uid, auth, A } (A = the
  * auth module). A new player is signed in anonymously: a player id for this
- * phone only, until they sign in with Google (signInWithGoogle), which keeps
+ * phone only, until they sign in with Google (startGoogleSignIn), which keeps
  * the same id and so everything that hangs off it (username, board entries,
  * ghosts). A returning player is still signed in, either way.
  */
@@ -69,8 +68,7 @@ function connect() {
     const user = a.currentUser ?? (await auth.signInAnonymously(a)).user;
     rememberUid(user.uid);
     rememberSignedIn(!user.isAnonymous);
-    connected = { app: fbApp, fs, db: fs.getFirestore(fbApp), uid: user.uid, auth: a, A: auth };
-    return connected;
+    return { app: fbApp, fs, db: fs.getFirestore(fbApp), uid: user.uid, auth: a, A: auth };
   })();
   connecting.catch(() => {
     connecting = null; // try again next time
@@ -133,9 +131,56 @@ export async function accountInfo() {
   return { guest: false, via: u.providerData?.some((p) => p.providerId === 'google.com') ? 'Google' : 'email', email: u.email ?? null };
 }
 
+// Google's sign-in page for this game: the OAuth client Firebase made for its
+// Google sign-in (Google Cloud console > APIs & Services > Credentials, "Web
+// client (auto created by Google Service)"). Its Authorized redirect URIs must
+// list the game's address (https://zacherikson.github.io/track-and-field/, and
+// http://localhost:8123/ to test locally), or Google refuses to send you back.
+const GOOGLE_CLIENT_ID = '701591973322-kg3qfuvl7jd8ob2jpffram7dglrp76dc.apps.googleusercontent.com';
+const PENDING_KEY = 'trackroyale.signin';
+
+/** Where Google sends you back to: this page, without index.html. */
+const returnUrl = () => location.origin + location.pathname.replace(/index\.html$/, '');
+
+const randomHex = () => Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('');
+
 /**
- * Signs in with Google, in a popup. Call it straight from a tap (browsers only
- * open popups then), after accountInfo() has resolved.
+ * Signs in with Google: goes to Google's sign-in page, which comes back to
+ * this page with the result (finishGoogleSignIn picks it up). The whole page
+ * goes, not a popup: a popup can't hand the result back to the game when it
+ * runs from the home screen (iPhone).
+ */
+export function startGoogleSignIn() {
+  const pending = { state: randomHex(), nonce: randomHex() };
+  localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
+  const q = new URLSearchParams({
+    client_id: GOOGLE_CLIENT_ID,
+    redirect_uri: returnUrl(),
+    response_type: 'id_token',
+    scope: 'openid email profile',
+    prompt: 'select_account',
+    state: pending.state,
+    nonce: pending.nonce,
+  });
+  location.assign(`https://accounts.google.com/o/oauth2/v2/auth?${q}`);
+}
+
+/** A JWT's claims (unchecked: Firebase checks the signature when it signs in with it). */
+function claimsOf(jwt) {
+  try {
+    const part = jwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(atob(part.padEnd(part.length + ((4 - (part.length % 4)) % 4), '=')));
+  } catch {
+    return null;
+  }
+}
+
+const fail = (code) => Promise.reject(Object.assign(new Error(code), { code }));
+
+/**
+ * Call once as the page loads. Null unless we've just come back from Google's
+ * sign-in page (startGoogleSignIn); then a promise of the sign-in, and the
+ * address is tidied up.
  *
  * A Google account that hasn't played yet becomes this phone's player: same
  * id, so your name, bests and board entries all stay. One that has (you signed
@@ -145,28 +190,43 @@ export async function accountInfo() {
  * this phone's bests to that player, if you like), so everything starts again
  * as them.
  */
-export function signInWithGoogle() {
-  if (!connected) return Promise.reject(new Error('not-ready'));
-  const { auth: a, A, fs, db } = connected;
-  const provider = new A.GoogleAuthProvider();
-  return A.linkWithPopup(a.currentUser, provider).then(
-    () => {
-      rememberSignedIn(true);
-      return { switched: false };
-    },
-    async (err) => {
-      if (err?.code !== 'auth/credential-already-in-use') throw err;
-      const cred = A.GoogleAuthProvider.credentialFromError(err);
-      const { user } = await A.signInWithCredential(a, cred);
-      rememberUid(user.uid);
-      rememberSignedIn(true);
-      connected.uid = user.uid;
-      // That player's name, from their profile (a player who never picked one gets a new made-up name).
-      const profile = await fs.getDoc(fs.doc(db, 'users', user.uid)).catch(() => null);
-      setPlayerName(profile?.exists() ? profile.data().name : null);
-      return { switched: true };
-    },
-  );
+export function finishGoogleSignIn() {
+  const back = new URLSearchParams(location.hash.slice(1));
+  if (!back.has('id_token') && !back.has('error')) return null;
+  history.replaceState(null, '', location.pathname + location.search);
+  let pending = null;
+  try {
+    pending = JSON.parse(localStorage.getItem(PENDING_KEY));
+    localStorage.removeItem(PENDING_KEY);
+  } catch {}
+  if (!pending || back.get('state') !== pending.state) return fail('auth/state-mismatch');
+  if (back.has('error')) return fail(back.get('error') === 'access_denied' ? 'auth/user-cancelled' : `auth/${back.get('error')}`);
+  const idToken = back.get('id_token');
+  const claims = claimsOf(idToken);
+  if (claims?.nonce !== pending.nonce || claims?.aud !== GOOGLE_CLIENT_ID) return fail('auth/state-mismatch');
+  return linkGoogle(idToken);
+}
+
+/** Makes this phone's player the Google account's (see finishGoogleSignIn). */
+async function linkGoogle(idToken) {
+  const c = await connect();
+  const { auth: a, A, fs, db } = c;
+  const cred = A.GoogleAuthProvider.credential(idToken);
+  try {
+    await A.linkWithCredential(a.currentUser, cred);
+    rememberSignedIn(true);
+    return { switched: false };
+  } catch (err) {
+    if (err?.code !== 'auth/credential-already-in-use') throw err;
+  }
+  const { user } = await A.signInWithCredential(a, cred);
+  rememberUid(user.uid);
+  rememberSignedIn(true);
+  c.uid = user.uid;
+  // That player's name, from their profile (a player who never picked one gets a new made-up name).
+  const profile = await fs.getDoc(fs.doc(db, 'users', user.uid)).catch(() => null);
+  setPlayerName(profile?.exists() ? profile.data().name : null);
+  return { switched: true };
 }
 
 /**

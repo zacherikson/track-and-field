@@ -1,6 +1,6 @@
 import { Button, text, roundRect } from '../core/ui.js';
 import { getPlayerName, setPlayerName, cleanName } from '../core/storage.js';
-import { setUsername, accountInfo, signInWithGoogle, signOut } from '../online/firebase.js';
+import { setUsername, accountInfo, startGoogleSignIn, signOut } from '../online/firebase.js';
 import { forgetBests, postBests } from '../online/bests.js';
 import { flow } from '../flow.js';
 
@@ -20,6 +20,11 @@ const DIM = 'rgba(255,255,255,0.6)';
  * up on any phone by signing in there too.
  */
 export class ProfileScene {
+  /** `signingIn`: finishGoogleSignIn()'s promise, when the page has just come back from Google's sign-in. */
+  constructor(signingIn = null) {
+    this.signingIn = signingIn;
+  }
+
   enter() {
     const dim = 'rgba(255,255,255,0.18)';
     this.changeBtn = new Button({ label: 'Change name', w: 200, h: 56, onTap: () => this.change() });
@@ -29,7 +34,8 @@ export class ProfileScene {
     this.saving = false;
     this.busy = false; // signing in or out
     this.account = null; // accountInfo() once it answers; 'offline' if it can't
-    this.loadAccount();
+    if (this.signingIn) this.finishSignIn(this.signingIn);
+    else this.loadAccount();
     this.layout(this.game.view);
   }
 
@@ -78,11 +84,28 @@ export class ProfileScene {
     else this.signOut();
   }
 
-  /** Straight from the tap: browsers only open the sign-in popup then. */
+  /** Off to Google's sign-in page; it comes back to this screen (finishSignIn). */
   signIn() {
     this.busy = true;
+    this.status = { text: 'Opening Google…', color: 'rgba(255,255,255,0.7)' };
+    // Back from Google's page without signing in (the browser kept this page as it was).
+    addEventListener('pageshow', (e) => {
+      if (!e.persisted) return;
+      this.busy = false;
+      this.status = null;
+    }, { once: true });
+    try {
+      startGoogleSignIn();
+    } catch {
+      this.busy = false;
+      this.status = { text: 'Couldn’t open Google’s sign-in page.', color: WARN };
+    }
+  }
+
+  finishSignIn(signingIn) {
+    this.busy = true;
     this.status = { text: 'Signing in…', color: 'rgba(255,255,255,0.7)' };
-    signInWithGoogle()
+    signingIn
       .then(async ({ switched }) => {
         // What you did as a guest goes on the leaderboard now (only where it beats your entry).
         this.status = { text: 'Signed in. Putting your bests on the leaderboard…', color: OK };
@@ -95,13 +118,13 @@ export class ProfileScene {
           return;
         }
         this.status = { text: posted ? 'Signed in. Your bests are on the online leaderboard.' : 'Signed in. Your name and bests are saved to your Google account.', color: OK };
-        this.loadAccount();
       })
       .catch((e) => {
         this.status = { text: signInError(e), color: WARN };
       })
       .finally(() => {
         this.busy = false;
+        this.loadAccount();
       });
   }
 
@@ -195,19 +218,14 @@ function accountLines(account) {
 /** What to say when signing in didn't work. */
 function signInError(e) {
   switch (e?.code ?? e?.message) {
-    case 'not-ready':
-      return 'One moment…';
-    case 'auth/popup-closed-by-user':
-    case 'auth/cancelled-popup-request':
     case 'auth/user-cancelled':
       return 'Sign-in cancelled.';
-    case 'auth/popup-blocked':
-      return 'Your browser blocked the sign-in window. Allow popups for this site and try again.';
+    case 'auth/state-mismatch':
+      return 'Sign-in didn’t finish. Try again.';
     case 'auth/operation-not-allowed':
-    case 'auth/unauthorized-domain':
       return 'Google sign-in isn’t switched on for this game yet.';
     case 'auth/network-request-failed':
-      return 'Couldn’t reach Google. Check your connection and try again.';
+      return 'Couldn’t reach the server. Check your connection and try again.';
     default:
       return `Couldn’t sign in${e?.code ? ` (${e.code})` : ''}.`;
   }

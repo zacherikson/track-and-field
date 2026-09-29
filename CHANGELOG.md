@@ -4,6 +4,14 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Sign in with Google from the home screen
+- Sign in with Google now goes to Google's page and comes back, instead of a
+  popup, which hung on "Signing in…" when the game ran from an iPhone's home
+  screen.
+- Add `https://zacherikson.github.io/track-and-field/` to the Authorized
+  redirect URIs of the "Web client (auto created by Google Service)" in Google
+  Cloud console > APIs & Services > Credentials.
+
 ## Sign in with Google
 - Profile has an Account panel. Everyone starts as a guest (an online ID for
   this phone only); Sign in with Google keeps that same ID, so your username,

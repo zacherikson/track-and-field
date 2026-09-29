@@ -329,7 +329,10 @@ export const CONFIG = {
     chordWindow: 0.12, // s: left + right presses this close together count as both
     press: { window: 0.18, miss: 0.35 }, // s either side of the plant: plant quality falls to 0 at `window`; no press within `miss` and you run through (no height)
     spark: { climbTime: 0.6 }, // s for the spark to climb back up the pole while you hold
-    release: { window: 0.18 }, // s either side of the spark reaching your hands
+    // Best release: `lead` s after the spark reaches your hands (covers the ~0.15 s between
+    // seeing it get there and your finger actually leaving the screen); quality falls to 0
+    // `window` s either side of that.
+    release: { window: 0.18, lead: 0.15 },
     // Height cleared = base + perMps * (speed - vRef) + gain * quality, where
     // quality = pressWeight * plant + (1 - pressWeight) * release (each 0..1).
     height: { base: 1.4, perMps: 0.4, vRef: 9, gain: 4.0, pressWeight: 0.5 },

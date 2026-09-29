@@ -7,7 +7,7 @@ import { AIController } from '../athletes/ai.js';
 import { HERO, RIVALS } from '../athletes/roster.js';
 import { drawFigure, runPose, lerpPose, sampleTrack, handPos, vaultSwingPose, wrapNear, VAULT_POSES, POSES } from '../athletes/stickFigure.js';
 import { StrideTargets } from './strideTargets.js';
-import { pressQuality, releaseQuality, vaultHeight, rivalVault } from './poleVaultRules.js';
+import { pressQuality, releaseQuality, releaseTarget, vaultHeight, rivalVault } from './poleVaultRules.js';
 import { VaultRenderer } from '../render/vaultArena.js';
 import { ORANGE, drawPad, drawX } from '../render/pads.js';
 import { drawDrop, drawHitRing } from '../render/targetPads.js';
@@ -296,7 +296,7 @@ export class PoleVault {
       const vt = this.vault;
       if (this.holdT == null && end - this.plantT > cfg.press.miss) return this.balk(end);
       // Held on too long: you get nothing from the release.
-      if (this.holdT != null && this.releaseT == null && end - this.holdT > cfg.spark.climbTime + cfg.release.window) this.release(end);
+      if (this.holdT != null && this.releaseT == null && end - this.holdT > releaseTarget(cfg) + cfg.release.window) this.release(end);
       vt.u = Math.min(1, vt.u + dt / cfg.swing.time);
       vt.phiCur = damp(vt.phiCur, this.predictPhi(), 8, dt);
       const sw = this.swingAt(vt.u);
@@ -655,7 +655,21 @@ export class PoleVault {
         x: (1 - k) * (1 - k) * a.x + 2 * (1 - k) * k * c.x + k * k * b.x,
         y: (1 - k) * (1 - k) * a.y + 2 * (1 - k) * k * c.y + k * k * b.y,
       });
-      this.sparkAt = q(s);
+      // Even speed along the pole: s is a share of the pole's length, not of the curve's parameter
+      // (which runs faster near the ends of a bent pole).
+      const N = 24;
+      const acc = [0];
+      let prev = q(0);
+      for (let i = 1; i <= N; i++) {
+        const p = q(i / N);
+        acc.push(acc[i - 1] + Math.hypot(p.x - prev.x, p.y - prev.y));
+        prev = p;
+      }
+      const want = s * acc[N];
+      let i = 1;
+      while (i < N && acc[i] < want) i++;
+      const k = (i - 1 + (want - acc[i - 1]) / Math.max(1e-6, acc[i] - acc[i - 1])) / N;
+      this.sparkAt = q(clamp(k, 0, 1));
     }
   }
 

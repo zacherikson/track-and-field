@@ -94,7 +94,7 @@ export const EVENTS = [
       'Three vaults; your best height counts. Tap the green targets to run up.',
       'Near the box the pads turn ORANGE and a spark runs down your pole.',
       'When it reaches the tip the pole plants: press and HOLD both.',
-      'The spark climbs back up the pole: let go when it reaches your hands.',
+      'The spark climbs back up the pole: let go as it reaches your hands.',
       'Desktop: ← → to run, hold Space to plant, let go to push off.',
     ],
     create() {

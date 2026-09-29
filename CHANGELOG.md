@@ -4,6 +4,19 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 6.3: pole vault release lines up with the spark reaching your hands
+The best release felt like the spark about 2/3 up the pole, for two reasons:
+~0.15-0.2 s between seeing the spark arrive and your finger actually leaving
+the screen (reaction plus the phone's display delay) is a third of the 0.6 s
+climb, and the spark sped up near the ends of the bent pole.
+- New `poleVault.release.lead` 0.15 s: the sweet spot is now 0.15 s after the
+  spark reaches your hands (0.75 s after the press), so letting go as you see
+  it arrive is right. On the tuning panel as "Release delay allowance".
+  Rivals and the simulator use the same target: heights unchanged (good
+  5.36m, expert 6.22m; Amateur winner 5.31m, Pro 5.95m).
+- The spark now travels at an even speed along the pole (by length, not by
+  the curve's parameter).
+
 ## Step 6.2: bigger hurdle buttons
 - `hurdles110.buttons.radius` 54 → 64 (about 20% bigger), `y` 0.24 → 0.25 so
   they still clear the top of the screen.

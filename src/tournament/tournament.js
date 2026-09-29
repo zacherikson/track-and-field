@@ -1,6 +1,7 @@
 import { EVENTS } from '../events/registry.js';
 import { points } from '../events/scoring.js';
 import { submitBest, getBestTournament, saveBestTournament } from '../core/storage.js';
+import { counts } from '../online/bests.js';
 
 /**
  * Tournament mode: the five events back to back, in this order, scored like a
@@ -53,8 +54,9 @@ export const tournament = {
     }
     this.history.push({ ev, rows, ghost });
     if (this.finished) {
-      const me = [...this.totals.values()].find((t) => t.isPlayer);
-      if (me) this.newBest = submitBest('tournament', me.total, false);
+      // Only with shipped tuning, like every best (online/bests.js).
+      const me = counts() ? [...this.totals.values()].find((t) => t.isPlayer) : null;
+      this.newBest = !!me && submitBest('tournament', me.total, false);
       // Kept for its ghosts: your best recorded tournament (the first one
       // recorded counts even if an older, unrecorded score was higher).
       const saved = getBestTournament();

@@ -6,6 +6,7 @@ import { getBest, getDifficulty, setDifficulty, getGhostOn, setGhostOn, getPlaye
 import { player, heightOf } from '../athletes/roster.js';
 import { flow } from '../flow.js';
 import { chooseGhost } from '../online/ghost.js';
+import { syncBests } from '../online/bests.js';
 
 export class MenuScene {
   enter() {
@@ -67,6 +68,19 @@ export class MenuScene {
       ? new Button({ label: '⛶', w: 48, h: 44, color: 'rgba(255,255,255,0.15)', onTap: () => toggleFullscreen() })
       : null;
     this.layout(this.game.view);
+    // Your bests come from the online boards: catch up with them, then show them.
+    syncBests()
+      .then((changed) => changed && this.game.scene === this && this.showBests())
+      .catch(() => {});
+  }
+
+  /** The Best lines under the buttons, from your saved bests. */
+  showBests() {
+    const best = getBest('tournament');
+    this.tourButton.sub = best == null ? 'All 5 events' : `Best ${best} pts`;
+    EVENTS.forEach((ev, i) => {
+      if (ev.available) this.buttons[i].sub = `Best ${formatMark(ev, getBest(ev.id))}`;
+    });
   }
 
   styleLevels() {

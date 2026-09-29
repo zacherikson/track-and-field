@@ -1,5 +1,5 @@
 import { formatMark } from '../events/registry.js';
-import { changes } from '../tuning/store.js';
+import { counts, posted } from './bests.js';
 import { submitMark } from './firebase.js';
 
 /**
@@ -9,12 +9,13 @@ import { submitMark } from './firebase.js';
  */
 export function postMark(board, mark, ghost, onStatus) {
   if (!board.online || mark == null || (board.ghosts && !ghost)) return;
-  if (changes().length) {
+  if (!counts()) {
     // Only marks made with the shipped physics count online.
     onStatus('Not posted online: tuning is changed on this phone');
     return;
   }
   onStatus('Posting to the online leaderboard…');
+  posted();
   submitMark(board, mark, ghost)
     .then((r) => {
       if (!r.improved) onStatus(`Online: your best ${formatMark(board, r.best)} is #${r.rank}`);

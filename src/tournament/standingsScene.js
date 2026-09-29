@@ -3,6 +3,7 @@ import { ordinal } from '../core/math.js';
 import { formatMark, TOURNAMENT_BOARD } from '../events/registry.js';
 import { submitBest, saveGhostIfBetter } from '../core/storage.js';
 import { postMark } from '../online/post.js';
+import { counts } from '../online/bests.js';
 import { tournament, ORDER } from './tournament.js';
 import { flow } from '../flow.js';
 
@@ -24,8 +25,8 @@ export class StandingsScene {
     // Personal bests, ghosts and online marks still count in a tournament.
     this.online = null; // one line about the online leaderboard
     const run = this.stats?.run ?? null;
-    if (run) saveGhostIfBetter(this.ev, run);
-    if (me?.status === 'ok') submitBest(this.ev.id, me.mark, this.ev.lowerIsBetter);
+    if (run && counts()) saveGhostIfBetter(this.ev, run);
+    if (me?.status === 'ok' && counts()) submitBest(this.ev.id, me.mark, this.ev.lowerIsBetter);
     this.rows = tournament.record(this.ev, this.results, run);
     this.table = tournament.standings();
     this.final = tournament.finished;

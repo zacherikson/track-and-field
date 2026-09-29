@@ -3,6 +3,7 @@ import { ordinal } from '../core/math.js';
 import { formatMark } from '../events/registry.js';
 import { getBest, submitBest, getDifficulty, saveGhostIfBetter } from '../core/storage.js';
 import { postMark } from '../online/post.js';
+import { counts } from '../online/bests.js';
 import { flow } from '../flow.js';
 
 /**
@@ -22,13 +23,14 @@ export class ResultScene {
     this.me = me;
     this.place = this.results.indexOf(me) + 1;
     const prevBest = getBest(this.ev.id);
-    this.newPB = me.status === 'ok' && submitBest(this.ev.id, me.mark, this.ev.lowerIsBetter);
+    // Only runs that could go on the online board count as a best (online/bests.js).
+    this.newPB = me.status === 'ok' && counts() && submitBest(this.ev.id, me.mark, this.ev.lowerIsBetter);
     this.best = getBest(this.ev.id);
     this.hadBest = prevBest != null;
     this.beatWR = me.status === 'ok' && (this.ev.lowerIsBetter ? me.mark < this.ev.record : me.mark > this.ev.record);
     this.online = null; // one line about the online leaderboard
     const run = this.stats?.run ?? null; // the recorded attempt: your ghost
-    if (run) saveGhostIfBetter(this.ev, run);
+    if (run && counts()) saveGhostIfBetter(this.ev, run);
     if (me.status === 'ok') postMark(this.ev, me.mark, run, (s) => (this.online = s));
 
     this.buttons = [

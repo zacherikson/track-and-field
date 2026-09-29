@@ -4,6 +4,15 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Faster online leaderboards
+- Boards are read straight from Firestore's REST API instead of through the
+  Firebase SDK, so opening one no longer waits for the SDK download, sign-in
+  and connection setup first. Your own entry is fetched at the same time as
+  the top 10.
+- Boards you've already opened show instantly when you switch back, then
+  refresh.
+- Race buttons download a recording the same way.
+
 ## Ghosts in every event, and your best tournament
 - GHOST on the menu now works in every event, not just the 100m. Hurdles: your
   best race runs in the lane next to you. Long jump, pole vault, javelin: your

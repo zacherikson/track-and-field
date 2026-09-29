@@ -17,9 +17,13 @@ import { getPlayerName } from '../core/storage.js';
  * { id, lowerIsBetter }.
  * firestore.rules says who may write what.
  *
- * The Firebase SDK is loaded from Google's CDN the first time something online
- * is needed (the game has no build step, and the SDK is big). Everything here is
- * async and may fail (offline, blocked): the game carries on without it.
+ * The Firebase SDK is loaded from Google's CDN the first time something is
+ * written (the game has no build step, and the SDK is big). Reading a board
+ * doesn't wait for it: boards are public, so they're read with plain fetch()
+ * calls to Firestore's REST API (see REST below), which show up in about one
+ * round trip instead of after the SDK download, sign-in and connection setup.
+ * Everything here is async and may fail (offline, blocked): the game carries
+ * on without it.
  *
  * The config below is not a secret: Firebase web config is meant to ship in the
  * page. The security rules are what protect the data.
@@ -49,12 +53,41 @@ function connect() {
     const a = auth.getAuth(fbApp);
     await a.authStateReady(); // a returning player is still signed in from last time
     const user = a.currentUser ?? (await auth.signInAnonymously(a)).user;
+    rememberUid(user.uid);
     return { fs, db: fs.getFirestore(fbApp), uid: user.uid };
   })();
   connecting.catch(() => {
     connecting = null; // try again next time
   });
   return connecting;
+}
+
+// This phone's player id, remembered so a board can mark your row without
+// loading the SDK first.
+const UID_KEY = 'trackroyale.uid';
+
+function rememberUid(uid) {
+  try {
+    localStorage.setItem(UID_KEY, uid);
+  } catch {}
+}
+
+function knownUid() {
+  try {
+    return localStorage.getItem(UID_KEY);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Signs in if this phone's player id isn't remembered yet (a player from
+ * before it was). Resolves true once it is known, false if it already was.
+ */
+export async function learnUid() {
+  if (knownUid()) return false;
+  await connect();
+  return true;
 }
 
 const DOC_VERSION = 1;
@@ -94,30 +127,95 @@ export async function submitMark(board, mark, ghost = null) {
     if (ghost) doc.ghost = ghost;
     await fs.setDoc(ref, doc);
   }
+  boards.delete(board.id); // your row changed
   return { improved: true, best: mark, rank: await rankOf(fs, db, board, mark) };
+}
+
+// ---------------------------------------------------------------- REST reads
+
+const REST = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents`;
+
+async function rest(path, body = null) {
+  const res = await fetch(`${REST}/${path}${path.includes('?') ? '&' : '?'}key=${firebaseConfig.apiKey}`, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {});
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`firestore ${res.status}`);
+  return res.json();
+}
+
+/** A REST value ({ doubleValue: 8.9 }, { mapValue: { fields } }, ...) as plain JS. */
+function plain(v) {
+  if (v == null) return null;
+  if ('mapValue' in v) return fields(v.mapValue.fields);
+  if ('arrayValue' in v) return (v.arrayValue.values ?? []).map(plain);
+  if ('integerValue' in v) return Number(v.integerValue);
+  if ('doubleValue' in v) return v.doubleValue;
+  if ('stringValue' in v) return v.stringValue;
+  if ('booleanValue' in v) return v.booleanValue;
+  if ('timestampValue' in v) return v.timestampValue;
+  return null;
+}
+
+function fields(f = {}) {
+  return Object.fromEntries(Object.entries(f).map(([k, v]) => [k, plain(v)]));
+}
+
+const docId = (doc) => doc.name.slice(doc.name.lastIndexOf('/') + 1);
+
+/** Your place on the board for a mark (1 = best), by counting the better ones. */
+async function restRank(board, mark) {
+  const res = await rest(`leaderboards/${board.id}:runAggregationQuery`, {
+    structuredAggregationQuery: {
+      structuredQuery: {
+        from: [{ collectionId: 'runs' }],
+        where: { fieldFilter: { field: { fieldPath: 'mark' }, op: board.lowerIsBetter ? 'LESS_THAN' : 'GREATER_THAN', value: { doubleValue: mark } } },
+      },
+      aggregations: [{ alias: 'n', count: {} }],
+    },
+  });
+  return Number(res?.[0]?.result?.aggregateFields?.n?.integerValue ?? 0) + 1;
+}
+
+// The last load of each board this session, so switching tabs back is instant.
+const boards = new Map();
+
+/** The board as last loaded this session (see leaderboard), or null. */
+export function cachedLeaderboard(board) {
+  return boards.get(board.id) ?? null;
 }
 
 /**
  * The best `n` marks, plus yours if it isn't among them.
- * Resolves to { top: [{ uid, name, mark, ghost, me, rank }], mine }.
+ * Resolves to { top: [{ uid, name, mark, ghost, traced, me, rank }], mine }.
+ * The top list and your own entry are fetched together; your place is only
+ * counted when you're not in the top list.
  */
 export async function leaderboard(board, n = 10) {
-  const { fs, db, uid } = await connect();
-  const snap = await fs.getDocs(fs.query(runs(fs, db, board.id), fs.orderBy('mark', board.lowerIsBetter ? 'asc' : 'desc'), fs.limit(n)));
-  const top = snap.docs.map((d, i) => ({ uid: d.id, ...d.data(), me: d.id === uid, rank: i + 1 }));
+  const uid = knownUid();
+  const [list, own] = await Promise.all([
+    rest(`leaderboards/${board.id}:runQuery`, {
+      structuredQuery: {
+        from: [{ collectionId: 'runs' }],
+        orderBy: [{ field: { fieldPath: 'mark' }, direction: board.lowerIsBetter ? 'ASCENDING' : 'DESCENDING' }],
+        limit: n,
+      },
+    }),
+    uid ? rest(`leaderboards/${board.id}/runs/${uid}`) : null,
+  ]);
+  const top = (list ?? []).filter((r) => r.document).map((r, i) => ({ uid: docId(r.document), ...fields(r.document.fields), me: docId(r.document) === uid, rank: i + 1 }));
   let mine = top.find((r) => r.me) ?? null;
-  if (!mine) {
-    const own = await fs.getDoc(fs.doc(runs(fs, db, board.id), uid));
-    if (own.exists()) mine = { uid, ...own.data(), me: true, rank: await rankOf(fs, db, board, own.data().mark) };
+  if (!mine && own?.fields) {
+    const d = fields(own.fields);
+    mine = { uid, ...d, me: true, rank: await restRank(board, d.mark) };
   }
-  return { top, mine };
+  const result = { top, mine };
+  boards.set(board.id, result);
+  return result;
 }
 
 /** A player's recording for their mark on a board (a leaderboard row with `traced`), or null. */
 export async function fetchGhost(board, row) {
-  const { fs, db } = await connect();
-  const snap = await fs.getDoc(fs.doc(ghostRuns(fs, db, board.id), row.uid));
-  const d = snap.exists() ? snap.data() : null;
+  const doc = await rest(`ghosts/${board.id}/runs/${row.uid}`);
+  const d = doc?.fields ? fields(doc.fields) : null;
   return d && d.mark === row.mark ? d.ghost : null;
 }
 
@@ -155,4 +253,5 @@ export async function setUsername(name) {
     tx.set(userRef, { name, key, updatedAt: fs.serverTimestamp() });
   });
   for (const eventId of ONLINE_EVENTS) await renameOnBoard(eventId, name);
+  boards.clear(); // your name changed on them
 }

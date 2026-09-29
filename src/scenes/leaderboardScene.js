@@ -2,7 +2,7 @@ import { CONFIG } from '../config.js';
 import { Button, text, roundRect } from '../core/ui.js';
 import { BOARDS, TOURNAMENT_BOARD, formatMark } from '../events/registry.js';
 import { getPlayerName } from '../core/storage.js';
-import { leaderboard, fetchGhost } from '../online/firebase.js';
+import { leaderboard, cachedLeaderboard, fetchGhost, learnUid } from '../online/firebase.js';
 import { chooseGhost, isReplayable } from '../online/ghost.js';
 import { isTrace } from '../online/trace.js';
 import { flow } from '../flow.js';
@@ -33,6 +33,10 @@ export class LeaderboardScene {
     this.tabs = BOARDS.map((b) => new Button({ label: TAB_LABELS[b.id] ?? b.name, h: 38, size: 16, onTap: () => this.show(b) }));
     this.setNameLabel();
     this.show(this.board);
+    // Your row is found by your player id; sign in to learn it if needed, then load again.
+    learnUid()
+      .then((learned) => learned && this.game.scene === this && this.load())
+      .catch(() => {});
   }
 
   setNameLabel() {
@@ -47,20 +51,26 @@ export class LeaderboardScene {
 
   load() {
     const board = this.board;
-    this.state = 'loading';
+    // Seen this session: show it now and refresh it quietly.
+    const cached = cachedLeaderboard(board);
+    this.state = cached ? 'ready' : 'loading';
     this.rows = [];
+    if (cached) this.showRows(cached);
     leaderboard(board)
-      .then(({ top, mine }) => {
-        if (board !== this.board) return; // switched tabs while it loaded
-        const rows = [...top];
-        if (mine && !top.includes(mine)) rows.push({ ...mine, gap: true });
-        this.rows = rows.map((r) => ({ ...r, btn: this.raceButton(r) }));
-        this.state = 'ready';
-        this.layout(this.game.view);
+      .then((b) => {
+        if (board === this.board) this.showRows(b); // unless you switched tabs while it loaded
       })
       .catch(() => {
-        if (board === this.board) this.state = 'error';
+        if (board === this.board && !cached) this.state = 'error';
       });
+  }
+
+  showRows({ top, mine }) {
+    const rows = [...top];
+    if (mine && !top.includes(mine)) rows.push({ ...mine, gap: true });
+    this.rows = rows.map((r) => ({ ...r, btn: this.raceButton(r) }));
+    this.state = 'ready';
+    this.layout(this.game.view);
   }
 
   /**

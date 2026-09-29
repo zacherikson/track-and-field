@@ -4,6 +4,18 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Profile and unique usernames
+- 👤 button at the top right of the menu (showing your name) opens your
+  Profile, where you change your username. The name button on the online
+  leaderboard opens it too.
+- Usernames live in a users database in Firebase (`users/{uid}`), and each
+  name is claimed in `usernames/` so no two players share one (ignoring case).
+  A name that's taken is refused; changing name frees your old one and renames
+  your leaderboard entries.
+- Names: up to 16 characters, letters and numbers plus spaces and _ . ' -
+  inside. You keep the "Runner" name until you pick one.
+- `firestore.rules` changed: publish it again in the Firebase console.
+
 ## Ghost toggle
 - New GHOST On/Off toggle on the menu, next to RIVALS, remembered on this
   device. It starts Off: your best 100m run only races as a ghost when you turn

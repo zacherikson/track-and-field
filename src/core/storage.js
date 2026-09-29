@@ -117,6 +117,16 @@ export function getPlayerName() {
   return data.name;
 }
 
+/**
+ * Tidies a typed username: single spaces, 16 characters at most, letters,
+ * digits, spaces and _ . ' - only, starting with a letter or digit. Returns ''
+ * if nothing usable is left. (firestore.rules checks the same shape.)
+ */
+export function cleanName(typed) {
+  const name = String(typed ?? '').replace(/\s+/g, ' ').trim().slice(0, 16).trim();
+  return /^[\p{L}\p{N}][\p{L}\p{N} _.'-]*$/u.test(name) ? name : '';
+}
+
 export function setPlayerName(name) {
   const data = load();
   data.name = name;

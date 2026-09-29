@@ -1,12 +1,34 @@
 rules_version = '2';
 
-// Security rules for the online leaderboard (see src/online/firebase.js).
+// Security rules for the online leaderboard and usernames (see src/online/firebase.js).
 // Paste into Firebase console > Firestore Database > Rules, then Publish.
 //
-// Anyone can read the boards. A signed-in player (anonymous sign-in) can only
-// write their own entry, only with a faster time, or to change their name.
+// Anyone can read. A signed-in player (anonymous sign-in) can only write their
+// own profile, their own name claim, and their own leaderboard entry (only
+// with a faster time, or to change their name).
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Your profile. Saved in the same transaction as the name claim below,
+    // which must point back at you.
+    match /users/{uid} {
+      allow read: if true;
+      allow write: if isMe(uid)
+        && request.resource.data.keys().hasOnly(['name', 'key', 'updatedAt'])
+        && validName(request.resource.data.name)
+        && request.resource.data.key == request.resource.data.name.lower()
+        && request.resource.data.updatedAt == request.time
+        && getAfter(/databases/$(database)/documents/usernames/$(request.resource.data.key)).data.uid == uid;
+    }
+
+    // One doc per username (lowercased), so no two players share a name.
+    match /usernames/{key} {
+      allow read: if true;
+      allow create: if claimIsMine(key);
+      allow update: if resource.data.uid == request.auth.uid && claimIsMine(key);
+      allow delete: if request.auth != null && resource.data.uid == request.auth.uid
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.key != key;
+    }
+
     match /leaderboards/{event}/runs/{uid} {
       allow read: if event == 'sprint100';
       allow create: if isMe(uid) && validRun(request.resource.data);
@@ -21,8 +43,17 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == uid;
     }
 
+    // 1-16 characters, no '/', not starting with '_', '.' or a space.
     function validName(n) {
-      return n is string && n.size() >= 1 && n.size() <= 16;
+      return n is string && n.size() >= 1 && n.size() <= 16 && n.matches('[^/_. ][^/]*');
+    }
+
+    // Claiming `key` for yourself, with your profile (after this write) using it.
+    function claimIsMine(key) {
+      return request.auth != null
+        && request.resource.data.keys().hasOnly(['uid'])
+        && request.resource.data.uid == request.auth.uid
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.key == key;
     }
 
     // Basic sanity checks only: the server doesn't replay the run to prove the time.

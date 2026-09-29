@@ -13,6 +13,7 @@ export class Runner {
     this.p = params;
     this.dip = dip;
     this.startX = startX;
+    this.onEvent = null; // optional (kind, t, value) listener: records the run for a ghost (see online/ghost.js)
     this.reset();
   }
 
@@ -66,6 +67,7 @@ export class Runner {
     this.mode = 'lean';
     this.dipUsed = true;
     this.leanT = 0;
+    this.onEvent?.('lean', null);
     return true;
   }
 
@@ -101,6 +103,7 @@ export class Runner {
     }
     this.lastTapT = t;
     this.taps++;
+    this.onEvent?.('stride', t);
     return 'ok';
   }
 
@@ -123,6 +126,7 @@ export class Runner {
   stumble(speedLoss, t = null) {
     if (this.mode === 'run' && !this.finished) this.v = Math.max(0, this.v - speedLoss);
     if (t != null) this.lastStumbleT = t; // the hurdles check this: a broken rhythm clips the next hurdle
+    this.onEvent?.('stumble', t, speedLoss);
   }
 
   /** Current effective cadence (taps/s). Decays on its own if you stop tapping. */

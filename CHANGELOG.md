@@ -4,6 +4,19 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Ghosts and an online leaderboard (100m)
+- Every 100m run is recorded (its strides, stumbles and lean, plus the physics
+  numbers). Your fastest run on the phone races in the lane next to you as a
+  see-through ghost called "Your best", replacing one rival.
+- 🌐 Online (menu and results screen): the fastest runs from every player,
+  via Firebase. Finishing a 100m posts your run if it beats your time there,
+  and the results screen shows your rank. Tap Race on a row to race that run
+  as a ghost; going back to the menu returns to racing your own best.
+- Tap your name on the leaderboard screen to change it (up to 16 letters). It
+  starts as "Runner" and four random digits.
+- Runs made with changed tuning are kept as your local ghost but not posted.
+- `tools/ghostcheck.mjs` checks that recorded runs replay to the same time.
+
 ## Step 8: Tournament mode
 - New 🏆 Tournament button on the menu: all five events back to back in the
   order 100m, Long Jump, 110m Hurdles, Pole Vault, Javelin, against the same

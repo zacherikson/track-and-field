@@ -1,0 +1,40 @@
+rules_version = '2';
+
+// Security rules for the online leaderboard (see src/online/firebase.js).
+// Paste into Firebase console > Firestore Database > Rules, then Publish.
+//
+// Anyone can read the boards. A signed-in player (anonymous sign-in) can only
+// write their own entry, only with a faster time, or to change their name.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /leaderboards/{event}/runs/{uid} {
+      allow read: if event == 'sprint100';
+      allow create: if isMe(uid) && validRun(request.resource.data);
+      allow update: if isMe(uid) && (
+        (validRun(request.resource.data) && request.resource.data.mark < resource.data.mark)
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name'])
+            && validName(request.resource.data.name)));
+      allow delete: if false;
+    }
+
+    function isMe(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    function validName(n) {
+      return n is string && n.size() >= 1 && n.size() <= 16;
+    }
+
+    // Basic sanity checks only: the server doesn't replay the run to prove the time.
+    function validRun(d) {
+      return d.keys().hasOnly(['name', 'mark', 'ghost', 'v', 'createdAt'])
+        && d.keys().hasAll(['name', 'mark', 'ghost', 'v', 'createdAt'])
+        && validName(d.name)
+        && d.mark is number && d.mark >= 7 && d.mark <= 60
+        && d.v == 1
+        && d.createdAt == request.time
+        && d.ghost is map && d.ghost.mark == d.mark && d.ghost.v == 1
+        && d.ghost.ev is list && d.ghost.ev.size() <= 4000;
+    }
+  }
+}

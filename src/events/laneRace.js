@@ -4,12 +4,13 @@ import { rand, shuffle, clamp } from '../core/math.js';
 import { text, roundRect } from '../core/ui.js';
 import { Runner } from '../athletes/runner.js';
 import { AIController } from '../athletes/ai.js';
-import { player as chosenPlayer, rivals as rivalRoster, heightOf } from '../athletes/roster.js';
+import { CHARACTERS, player as chosenPlayer, rivals as rivalRoster, heightOf } from '../athletes/roster.js';
 import { drawFigure, runPose, lerpPose, leanPose, launchPose, handReach, POSES, LAUNCH } from '../athletes/stickFigure.js';
 import { TrackRenderer } from '../render/track.js';
 import { ORANGE, drawPad } from '../render/pads.js';
 import { flow } from '../flow.js';
 import { getDifficulty } from '../core/storage.js';
+import { GhostRecorder, GhostRun } from '../online/ghost.js';
 
 
 /**
@@ -28,6 +29,10 @@ import { getDifficulty } from '../core/storage.js';
  * There are no false starts: nobody should worry about brushing the screen early.
  *
  * Subclasses provide the controls: mapInput(), onPlayerAction(), drawControls().
+ *
+ * GHOSTS (online/ghost.js): a subclass can set `recordGhost` to record the
+ * player's run, and `ghostSpec` ({ name, data }) to race a recorded run in the
+ * lane next to the player instead of one rival.
  */
 export class LaneRace {
   constructor(ev, cfg) {
@@ -43,26 +48,39 @@ export class LaneRace {
     this.track.blocksNudge = (lane) => this.laneNudge(lane);
     this.camera = new Camera();
 
-    // Build the field: player in their lane, rivals in the others.
+    // Build the field: player in their lane, rivals in the others (a ghost, if
+    // there is one, takes the lane next to the player, looking like the athlete it recorded).
     const rivals = shuffle(rivalRoster());
+    const ghostLane = this.ghostSpec ? (cfg.playerLane < cfg.lanes ? cfg.playerLane + 1 : cfg.playerLane - 1) : null;
     this.athletes = [];
     for (let lane = 1; lane <= cfg.lanes; lane++) {
       const isPlayer = lane === cfg.playerLane;
-      const who = isPlayer ? chosenPlayer() : rivals.pop();
-      const runner = new Runner(this.runnerParams, undefined, cfg.startX); // event-specific physics, if any
+      const ghost = lane === ghostLane ? new GhostRun(this.ghostSpec.data) : null;
+      const who = isPlayer ? chosenPlayer() : ghost ? (CHARACTERS.find((c) => c.id === this.ghostSpec.data.athlete) ?? chosenPlayer()) : rivals.pop();
+      const runner = ghost ? ghost.runner : new Runner(this.runnerParams, undefined, cfg.startX); // event-specific physics, if any
       this.athletes.push({
         lane,
         isPlayer,
-        name: who.name,
+        name: ghost ? this.ghostSpec.name : who.name,
         colors: who.colors,
         runner,
-        ai: isPlayer ? null : this.createAI(runner),
+        ai: isPlayer || ghost ? null : this.createAI(runner),
+        ghost,
         mark: null,
         status: 'ok',
         idlePhase: rand(0, Math.PI * 2), // so the waiting athletes don't sway in unison
       });
     }
     this.player = this.athletes.find((a) => a.isPlayer);
+    if (this.recordGhost) {
+      this.recorder = new GhostRecorder(this.player.runner, {
+        step: CONFIG.loop.fixedStep,
+        distance: cfg.distance,
+        startX: cfg.startX,
+        prompt: cfg.dipPromptDistance ?? CONFIG.dip.promptDistance,
+        athlete: chosenPlayer().id, // so the ghost looks like the athlete who ran it
+      });
+    }
     this.exitBtn = { x: 0, y: 0, w: 44, h: 40 };
     this.onResize(this.game.view);
     this.resetField();
@@ -80,6 +98,7 @@ export class LaneRace {
     this.tapCounts = {};
     for (const a of this.athletes) {
       a.runner.reset();
+      a.ghost?.reset();
       if (a.ai) a.ai = this.createAI(a.runner, a.ai);
       a.mark = null;
     }
@@ -125,13 +144,22 @@ export class LaneRace {
     if (this.state === 'ready' && end >= this.setT) this.setState('set', this.setT);
     if (this.state === 'set' && end >= this.goT) {
       this.setState('race', this.goT);
-      for (const a of this.athletes) (a.ai ?? a.runner).go(this.goT);
+      for (const a of this.athletes) {
+        if (a.ghost) a.ghost.go();
+        else (a.ai ?? a.runner).go(this.goT);
+      }
+      // Count physics steps from the gun, and note where this step sat relative
+      // to it, so a recorded run can replay on exactly the same step grid.
+      this.stepN = 0;
+      this.recorder?.start(this.goT, t - this.goT);
       this.game.input.resetStats(); // input diagnostics cover the race itself
       this.game.worstFrameMs = 0;
       this.onGo?.();
     }
 
     // 2. Input, each event at its own precise time.
+    const racing = this.state === 'race' || this.state === 'finished';
+    if (racing && this.recorder) this.recorder.n = this.stepN;
     for (const e of this.game.input.consume(end)) {
       if (e.type === 'down' && this.hitExit(e)) return flow.menu(this.game);
       if (e.type === 'key' && e.code === 'Escape') return flow.menu(this.game);
@@ -154,7 +182,10 @@ export class LaneRace {
     }
 
     // 3. Simulation.
-    if (this.state === 'race' || this.state === 'finished') this.simulate(dt, t);
+    if (racing) {
+      this.simulate(dt, t);
+      this.stepN++;
+    }
 
     // 4. State timers.
     if (this.state === 'race' && end - this.goT > this.cfg.maxRaceTime) {
@@ -170,6 +201,7 @@ export class LaneRace {
 
   /** One physics step for one athlete, shared by live play and the fast-forward in finish(). */
   stepAthlete(a, dt, t) {
+    if (a.ghost) return a.ghost.advanceTo(t + dt - this.goT); // replays on its own step grid
     const D = this.cfg.distance;
     const r = a.runner;
     if (D - r.x <= (this.cfg.dipPromptDistance ?? CONFIG.dip.promptDistance) && r.mode === 'run' && !r.dipUsed) {
@@ -264,12 +296,17 @@ export class LaneRace {
     text(ctx, line, view.w / 2, y, { size: 14, weight: 600, color: '#fff', maxWidth: view.w - 40 });
   }
 
+  /** If athlete `a` crossed the line during this step, the exact crossing time, else null. */
+  crossing(a, t, dt) {
+    if (a.ghost) return a.ghost.mark == null ? null : this.goT + a.ghost.mark;
+    return a.runner.crossing(this.cfg.distance, t, dt);
+  }
+
   simulate(dt, t) {
-    const D = this.cfg.distance;
     for (const a of this.athletes) {
       this.stepAthlete(a, dt, t);
       if (a.isPlayer) this.playerTopV = Math.max(this.playerTopV ?? 0, a.runner.v);
-      const cross = a.runner.crossing(D, t, dt);
+      const cross = this.crossing(a, t, dt);
       if (cross != null && a.mark == null && a.status === 'ok') {
         a.mark = cross - this.goT;
         a.runner.finished = true;
@@ -280,7 +317,6 @@ export class LaneRace {
 
   /** Fast-forward any rivals still running, then show results. */
   finish() {
-    const D = this.cfg.distance;
     const step = CONFIG.loop.fixedStep;
     let t = this.game.time;
     const goT = this.goT;
@@ -288,7 +324,7 @@ export class LaneRace {
     for (let guard = 0; pending().length && guard < 60 / step; guard++) {
       for (const a of pending()) {
         this.stepAthlete(a, step, t);
-        const cross = a.runner.crossing(D, t, step);
+        const cross = this.crossing(a, t, step);
         if (cross != null) a.mark = cross - goT;
       }
       t += step;
@@ -299,12 +335,16 @@ export class LaneRace {
       lane: this.track.laneNumber(a.lane),
       colors: a.colors,
       isPlayer: a.isPlayer,
+      ghost: !!a.ghost,
       mark: a.mark,
       status: a.isPlayer ? a.status : a.mark == null ? 'dnf' : 'ok',
     }));
     const rank = (r) => (r.status === 'ok' ? r.mark : r.status === 'dnf' ? 1e6 : 2e6);
     results.sort((a, b) => rank(a) - rank(b));
-    flow.results(this.game, this.ev, results, this.raceStats?.());
+    const stats = this.raceStats?.();
+    // The player's run, for the ghost and the online leaderboard.
+    if (stats && this.recorder && this.player.status === 'ok' && this.player.mark != null) stats.run = this.recorder.data(this.player.mark);
+    flow.results(this.game, this.ev, results, stats);
   }
 
   hitExit(e) {
@@ -329,7 +369,16 @@ export class LaneRace {
       const scale = this.track.figureScale(a.lane);
       // Events can lift an athlete off the track (a short one bouncing over a hurdle); the shadow stays down.
       const lift = (this.liftFor?.(a) ?? 0) * this.camera.ppm * scale;
-      drawFigure(ctx, p.x, p.y + 4 - lift, H * scale * tall, this.poseFor(a), a.colors, p.y + 4);
+      if (a.ghost) {
+        // See-through, with a name tag, so it never reads as a real rival.
+        ctx.save();
+        ctx.globalAlpha = 0.45;
+        drawFigure(ctx, p.x, p.y + 4 - lift, H * scale * tall, this.poseFor(a), a.colors, p.y + 4);
+        ctx.restore();
+        text(ctx, a.name, p.x, p.y - H * scale * tall - 6, { size: 14, color: 'rgba(255,255,255,0.8)', shadow: true });
+      } else {
+        drawFigure(ctx, p.x, p.y + 4 - lift, H * scale * tall, this.poseFor(a), a.colors, p.y + 4);
+      }
     }
     this.drawHUD(ctx, view);
     if (blinkOn) this.drawStartButton(ctx, view);

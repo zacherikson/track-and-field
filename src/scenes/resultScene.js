@@ -1,7 +1,9 @@
 import { Button, text, roundRect } from '../core/ui.js';
 import { ordinal } from '../core/math.js';
 import { formatMark } from '../events/registry.js';
-import { getBest, submitBest, getDifficulty } from '../core/storage.js';
+import { getBest, submitBest, getDifficulty, saveGhostIfFaster } from '../core/storage.js';
+import { changes } from '../tuning/store.js';
+import { submitRun } from '../online/firebase.js';
 import { flow } from '../flow.js';
 
 /**
@@ -12,7 +14,26 @@ export class ResultScene {
   constructor(ev, results, stats = null) {
     this.ev = ev;
     this.results = results;
-    this.stats = stats; // { hits, misses, topSpeed } for the player, when the event tracks them
+    this.stats = stats; // { hits, misses, topSpeed, run } for the player, when the event tracks them
+  }
+
+  /** Keep the run as your ghost if it's your fastest, and post it to the online leaderboard. */
+  keepRun(run) {
+    saveGhostIfFaster(this.ev.id, run);
+    if (!this.ev.online) return;
+    if (changes().length) {
+      // Only runs on the shipped physics count online.
+      this.online = 'Not posted online: tuning is changed on this phone';
+      return;
+    }
+    this.online = 'Posting to the online leaderboard…';
+    submitRun(this.ev.id, run)
+      .then((r) => {
+        this.online = r.improved ? `Online leaderboard: #${r.rank}` : `Online: your best ${formatMark(this.ev, r.best)} is #${r.rank}`;
+      })
+      .catch(() => {
+        this.online = 'Online leaderboard unavailable';
+      });
   }
 
   enter() {
@@ -25,12 +46,15 @@ export class ResultScene {
     this.best = getBest(this.ev.id);
     this.hadBest = prevBest != null;
     this.beatWR = me.status === 'ok' && (this.ev.lowerIsBetter ? me.mark < this.ev.record : me.mark > this.ev.record);
+    this.online = null; // one line about the online leaderboard
+    if (this.stats?.run) this.keepRun(this.stats.run);
 
     this.buttons = [
       new Button({ label: this.ev.againLabel ?? 'Race again', color: '#2bb673', onTap: () => flow.play(this.game, this.ev) }),
       new Button({ label: 'Menu', color: 'rgba(255,255,255,0.18)', onTap: () => flow.menu(this.game) }),
       new Button({ label: '⚙ Tuning', color: 'rgba(255,255,255,0.18)', onTap: () => flow.tuning(this.game) }),
     ];
+    if (this.ev.online) this.buttons.splice(2, 0, new Button({ label: '🌐 Online', color: 'rgba(255,255,255,0.18)', onTap: () => flow.leaderboard(this.game, this.ev) }));
     this.layout(this.game.view);
   }
 
@@ -39,9 +63,9 @@ export class ResultScene {
   }
 
   layout(view) {
-    const w = 180;
     const gap = 14;
     const n = this.buttons.length;
+    const w = Math.min(180, (view.w - 40 - Math.max(view.safe.l, view.safe.r) * 2 - gap * (n - 1)) / n);
     const x0 = view.w / 2 - (n * w + (n - 1) * gap) / 2;
     this.buttons.forEach((b, i) => Object.assign(b, { x: x0 + i * (w + gap), y: 458, w, h: 58 }));
   }
@@ -131,6 +155,8 @@ export class ResultScene {
       if (r.lane != null) text(ctx, `L${r.lane}`, rx + colW - 110, ry, { size: 14, weight: 500, color: 'rgba(255,255,255,0.6)' });
       text(ctx, mark, rx + colW - 22, ry, { size: 20, align: 'right' });
     });
+
+    if (this.online) text(ctx, this.online, rx + colW / 2, 410, { size: 14, weight: 500, color: 'rgba(255,255,255,0.7)', maxWidth: colW - 24 });
 
     this.buttons.forEach((b) => b.draw(ctx));
   }

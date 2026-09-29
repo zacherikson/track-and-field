@@ -124,7 +124,7 @@ numbers its frames keep; changing what they mean needs `TRACE_VERSION` bumped.
 The leaderboard uses Firebase (project `track-royale-f18ad`): Firestore, with
 anonymous sign-in so each phone gets an ID without a login screen. Signing in
 with Google on the Profile screen links that same ID to a Google account
-(`linkWithPopup`), so the username, bests and board entries stay and follow the
+(`linkWithCredential`), so the username, bests and board entries stay and follow the
 player to any phone they sign in on; if that Google account already has a
 player, the phone switches to it and reloads. Only signed-in players go on the
 leaderboards (`firestore.rules` checks the sign-in provider): a guest's bests
@@ -132,7 +132,13 @@ stay on the phone and are posted when they sign in (`postBests` in
 `src/online/bests.js`). It needs Google turned on in
 Firebase console > Authentication > Sign-in method, and the site's domain
 (`zacherikson.github.io`, plus `localhost` for testing) in Authentication >
-Settings > Authorized domains. Profiles are
+Settings > Authorized domains. Sign-in goes to Google's page and back (no
+popup: a popup can't report back to the game when it runs from an iPhone's
+home screen), using the OAuth client Firebase made for Google sign-in
+(`GOOGLE_CLIENT_ID` in `src/online/firebase.js`). Its Authorized redirect URIs,
+in Google Cloud console > APIs & Services > Credentials > "Web client (auto
+created by Google Service)", must list `https://zacherikson.github.io/track-and-field/`
+(and `http://localhost:8123/` to test locally). Profiles are
 in `users/{uid}`, and `usernames/{lowercased name}` records who owns each name.
 Frame-by-frame recordings sit in `ghosts/{event}/runs/{uid}`, apart from the
 boards, with their frames as one comma-separated string (`toWire` in

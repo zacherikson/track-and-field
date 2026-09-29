@@ -63,7 +63,8 @@ your fastest one on the phone races again as a see-through **ghost** in the
 lane next to you ("Your best"). A finished run is
 also posted to the **online leaderboard** (🌐 Online on the menu or results
 screen) if it beats your time there. Tap **Race** on any row to race that
-player's run as a ghost. Runs made with changed tuning aren't posted.
+player's run as a ghost. Runs made with changed tuning aren't posted. Set
+your username with the 👤 button at the top right of the menu; names are unique.
 
 A ghost is the run's stride, stumble and lean inputs plus the physics numbers
 used, replayed through the same `Runner` code on the same step grid, so it
@@ -72,7 +73,8 @@ run it after changing `runner.js` or `laneRace.js`, and if it fails bump
 `GHOST_VERSION` in `src/online/ghost.js`.
 
 The leaderboard uses Firebase (project `track-royale-f18ad`): Firestore, with
-anonymous sign-in so each phone gets an ID without a login screen. The web
+anonymous sign-in so each phone gets an ID without a login screen. Profiles are
+in `users/{uid}`, and `usernames/{lowercased name}` records who owns each name. The web
 config in `src/online/firebase.js` is public by design. The security rules in
 [`firestore.rules`](firestore.rules) protect the data (paste them into Firebase
 console > Firestore Database > Rules after changing them). They only
@@ -122,6 +124,7 @@ src/online/
   ghost.js            records a run's inputs and replays them as a ghost (pure)
   firebase.js         online leaderboard: lazy-loaded Firebase SDK, anonymous sign-in, Firestore
 src/scenes/leaderboardScene.js  online leaderboard with a Race button per run
+src/scenes/profileScene.js      your username (unique, saved in Firebase)
 src/tuning/           in-game tuning panel (params list, saved overrides, live estimates)
 tools/simulate.mjs    headless tuning simulator
 tools/ghostcheck.mjs  checks that recorded runs replay to the exact same time

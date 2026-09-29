@@ -1,8 +1,8 @@
 import { CONFIG } from '../config.js';
 import { Button, text, roundRect } from '../core/ui.js';
 import { formatMark } from '../events/registry.js';
-import { getPlayerName, setPlayerName } from '../core/storage.js';
-import { leaderboard, renameOnBoard } from '../online/firebase.js';
+import { getPlayerName } from '../core/storage.js';
+import { leaderboard } from '../online/firebase.js';
 import { chooseGhost, isReplayable } from '../online/ghost.js';
 import { flow } from '../flow.js';
 
@@ -21,7 +21,7 @@ export class LeaderboardScene {
   enter() {
     const dim = 'rgba(255,255,255,0.18)';
     this.backBtn = new Button({ label: 'Menu', w: 150, h: 50, color: dim, onTap: () => flow.menu(this.game) });
-    this.nameBtn = new Button({ label: '', w: 280, h: 50, color: dim, onTap: () => this.rename() });
+    this.nameBtn = new Button({ label: '', w: 280, h: 50, color: dim, onTap: () => flow.profile(this.game) });
     this.retryBtn = new Button({ label: 'Try again', w: 180, h: 50, onTap: () => this.load() });
     this.setNameLabel();
     this.rows = [];
@@ -29,7 +29,7 @@ export class LeaderboardScene {
   }
 
   setNameLabel() {
-    this.nameBtn.label = `✎ ${getPlayerName()}`;
+    this.nameBtn.label = `👤 ${getPlayerName()}`;
   }
 
   load() {
@@ -60,19 +60,6 @@ export class LeaderboardScene {
         flow.play(this.game, this.ev);
       },
     });
-  }
-
-  rename() {
-    const typed = window.prompt('Your name on the leaderboard (up to 16 letters)', getPlayerName());
-    this.game.input.clear(); // the dialog swallowed the rest of that tap
-    // Printable characters only, single spaces, 16 at most (the database rules check the length too).
-    const name = (typed ?? '').replace(/[\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim().slice(0, 16);
-    if (!name) return;
-    setPlayerName(name);
-    this.setNameLabel();
-    renameOnBoard(this.ev.id, name)
-      .then(() => this.load())
-      .catch(() => {});
   }
 
   onResize(view) {

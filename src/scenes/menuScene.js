@@ -2,7 +2,7 @@ import { CONFIG } from '../config.js';
 import { Button, text } from '../core/ui.js';
 import { drawFigure, runPose } from '../athletes/stickFigure.js';
 import { EVENTS, formatMark } from '../events/registry.js';
-import { getBest, getDifficulty, setDifficulty, getGhostOn, setGhostOn } from '../core/storage.js';
+import { getBest, getDifficulty, setDifficulty, getGhostOn, setGhostOn, getPlayerName } from '../core/storage.js';
 import { player, heightOf } from '../athletes/roster.js';
 import { flow } from '../flow.js';
 import { chooseGhost } from '../online/ghost.js';
@@ -62,6 +62,8 @@ export class MenuScene {
     this.tuneButton = new Button({ label: '⚙ Tuning', w: 132, h: 44, color: 'rgba(255,255,255,0.15)', onTap: () => flow.tuning(this.game) });
     const onlineEv = EVENTS.find((ev) => ev.online);
     this.onlineButton = new Button({ label: '🌐 Online', w: 132, h: 44, color: 'rgba(255,255,255,0.15)', onTap: () => flow.leaderboard(this.game, onlineEv) });
+    // Your profile (username for the online leaderboard), top right.
+    this.profileButton = new Button({ label: `👤 ${getPlayerName()}`, w: 190, h: 44, color: 'rgba(255,255,255,0.15)', onTap: () => flow.profile(this.game) });
     this.fsButton = document.fullscreenEnabled
       ? new Button({ label: '⛶', w: 48, h: 44, color: 'rgba(255,255,255,0.15)', onTap: () => toggleFullscreen() })
       : null;
@@ -120,6 +122,8 @@ export class MenuScene {
       this.fsButton.x = view.w - 48 - 14 - view.safe.r;
       this.fsButton.y = 14 + view.safe.t;
     }
+    this.profileButton.x = (this.fsButton ? this.fsButton.x - 10 : view.w - 14 - view.safe.r) - this.profileButton.w;
+    this.profileButton.y = 14 + view.safe.t;
   }
 
   update(dt, t) {
@@ -128,6 +132,7 @@ export class MenuScene {
       if (this.fsButton?.tap(ev.x, ev.y)) continue;
       if (this.tuneButton.tap(ev.x, ev.y)) continue;
       if (this.onlineButton.tap(ev.x, ev.y)) return;
+      if (this.profileButton.tap(ev.x, ev.y)) return;
       if (this.levelButtons.some((b) => b.tap(ev.x, ev.y))) continue;
       if (this.ghostButton.tap(ev.x, ev.y)) continue;
       if (this.athleteButton.tap(ev.x, ev.y)) return;
@@ -137,6 +142,7 @@ export class MenuScene {
     this.buttons.forEach((b) => b.update(dt));
     this.tourButton.update(dt);
     this.fsButton?.update(dt);
+    this.profileButton.update(dt);
     this.tuneButton.update(dt);
     this.onlineButton.update(dt);
     this.levelButtons.forEach((b) => b.update(dt));
@@ -161,6 +167,7 @@ export class MenuScene {
     this.tourButton.draw(ctx);
     this.buttons.forEach((b) => b.draw(ctx));
     this.fsButton?.draw(ctx);
+    this.profileButton.draw(ctx);
     this.tuneButton.draw(ctx);
     this.onlineButton.draw(ctx);
     const lb = this.levelButtons;

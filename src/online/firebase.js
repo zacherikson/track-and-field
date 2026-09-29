@@ -4,10 +4,13 @@ import { GHOST_VERSION } from './ghost.js';
 /**
  * ONLINE LEADERBOARD (Firebase: Firestore + anonymous sign-in).
  *
- * Firestore layout, one collection per event:
+ * Firestore layout:
+ *   users/{uid}                       = { name, key, updatedAt }  your profile
+ *   usernames/{key}                   = { uid }  claims a name (key = lowercased), so names are unique
  *   leaderboards/{eventId}/runs/{uid} = { name, mark, ghost, v, createdAt }
- * One doc per player per event, holding their best time and its recorded run
- * (the ghost others can race). firestore.rules says who may write what.
+ * One run doc per player per event, holding their best time and its recorded
+ * run (the ghost others can race), with a copy of their name so the board is
+ * one query. firestore.rules says who may write what.
  *
  * The Firebase SDK is loaded from Google's CDN the first time something online
  * is needed (the game has no build step, and the SDK is big). Everything here is
@@ -88,8 +91,36 @@ export async function leaderboard(eventId, n = 10) {
 }
 
 /** Changes your name on your existing board entries. */
-export async function renameOnBoard(eventId, name) {
+async function renameOnBoard(eventId, name) {
   const { fs, db, uid } = await connect();
   const ref = fs.doc(runs(fs, db, eventId), uid);
   if ((await fs.getDoc(ref)).exists()) await fs.updateDoc(ref, { name });
+}
+
+const ONLINE_EVENTS = ['sprint100'];
+
+/** The key a name is claimed under: names are unique regardless of case. */
+export const nameKey = (name) => name.toLowerCase();
+
+/**
+ * Saves `name` as your username: claims it in usernames/ (failing with
+ * Error('taken') if someone else has it), frees your old one, updates your
+ * profile, then renames your leaderboard entries. One transaction, so two
+ * players can't grab the same name at once.
+ */
+export async function setUsername(name) {
+  const { fs, db, uid } = await connect();
+  const key = nameKey(name);
+  const userRef = fs.doc(db, 'users', uid);
+  const claimRef = fs.doc(db, 'usernames', key);
+  await fs.runTransaction(db, async (tx) => {
+    const user = await tx.get(userRef);
+    const claim = await tx.get(claimRef);
+    if (claim.exists() && claim.data().uid !== uid) throw new Error('taken');
+    const oldKey = user.exists() ? user.data().key : null;
+    tx.set(claimRef, { uid });
+    if (oldKey && oldKey !== key) tx.delete(fs.doc(db, 'usernames', oldKey));
+    tx.set(userRef, { name, key, updatedAt: fs.serverTimestamp() });
+  });
+  for (const eventId of ONLINE_EVENTS) await renameOnBoard(eventId, name);
 }

@@ -14,6 +14,7 @@ export const EVENTS = [
     unit: 's',
     lowerIsBetter: true,
     available: true,
+    online: true, // records runs for ghosts and posts them to the online leaderboard
     howTo: [
       'At GO the first green target appears.',
       'Tap the side the green target is on. It jumps around at random!',

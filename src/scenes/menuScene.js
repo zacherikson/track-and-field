@@ -5,9 +5,11 @@ import { EVENTS, formatMark } from '../events/registry.js';
 import { getBest, getDifficulty, setDifficulty } from '../core/storage.js';
 import { HERO } from '../athletes/roster.js';
 import { flow } from '../flow.js';
+import { chooseGhost } from '../online/ghost.js';
 
 export class MenuScene {
   enter() {
+    chooseGhost(null); // back at the menu: the 100m races your own best run again
     this.demoX = 0;
     this.phase = 0;
     this.buttons = EVENTS.map(
@@ -36,6 +38,8 @@ export class MenuScene {
     );
     this.styleLevels();
     this.tuneButton = new Button({ label: '⚙ Tuning', w: 132, h: 44, color: 'rgba(255,255,255,0.15)', onTap: () => flow.tuning(this.game) });
+    const onlineEv = EVENTS.find((ev) => ev.online);
+    this.onlineButton = new Button({ label: '🏆 Online', w: 132, h: 44, color: 'rgba(255,255,255,0.15)', onTap: () => flow.leaderboard(this.game, onlineEv) });
     this.fsButton = document.fullscreenEnabled
       ? new Button({ label: '⛶', w: 48, h: 44, color: 'rgba(255,255,255,0.15)', onTap: () => toggleFullscreen() })
       : null;
@@ -72,6 +76,8 @@ export class MenuScene {
     });
     this.tuneButton.x = 14 + view.safe.l;
     this.tuneButton.y = 14 + view.safe.t;
+    this.onlineButton.x = this.tuneButton.x + this.tuneButton.w + 10;
+    this.onlineButton.y = this.tuneButton.y;
     if (this.fsButton) {
       this.fsButton.x = view.w - 48 - 14 - view.safe.r;
       this.fsButton.y = 14 + view.safe.t;
@@ -83,12 +89,14 @@ export class MenuScene {
       if (ev.type !== 'down') continue;
       if (this.fsButton?.tap(ev.x, ev.y)) continue;
       if (this.tuneButton.tap(ev.x, ev.y)) continue;
+      if (this.onlineButton.tap(ev.x, ev.y)) continue;
       if (this.levelButtons.some((b) => b.tap(ev.x, ev.y))) continue;
       for (const b of this.buttons) if (b.tap(ev.x, ev.y)) break;
     }
     this.buttons.forEach((b) => b.update(dt));
     this.fsButton?.update(dt);
     this.tuneButton.update(dt);
+    this.onlineButton.update(dt);
     this.levelButtons.forEach((b) => b.update(dt));
 
     // Demo runner loops across the bottom of the screen.
@@ -109,6 +117,7 @@ export class MenuScene {
     this.buttons.forEach((b) => b.draw(ctx));
     this.fsButton?.draw(ctx);
     this.tuneButton.draw(ctx);
+    this.onlineButton.draw(ctx);
     text(ctx, 'RIVALS', view.w / 2, 300, { size: 13, weight: 700, color: 'rgba(255,255,255,0.6)' });
     this.levelButtons.forEach((b) => b.draw(ctx));
 

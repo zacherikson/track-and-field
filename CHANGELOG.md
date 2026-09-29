@@ -4,8 +4,16 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 7.1: Chan and Chonk, Juno's hair
+- Tanabe is now **Chan** (straight black fringe, new `fringe` hairstyle).
+- Moreau is now **Chonk**: a big, round build (new `colors.girth` 2.3 in
+  drawFigure: thicker limbs, wide torso, round belly and cheeks). Looks only.
+- Juno's hair was reading as yellow (the headband arc covered the crown). Now:
+  dark hair with a topknot and a thin yellow headband across the forehead.
+- If your saved athlete was Tanabe or Moreau you start as Juno; pick again.
+
 ## Step 7: character selection
-- Six athletes: Juno, Brix, Okoro, Lindqvist, Tanabe, Moreau. Pick yours from
+- Six athletes: Juno, Brix, Okoro, Lindqvist, Tanabe, Moreau (now Chan and Chonk, 7.1). Pick yours from
   the ATHLETE button on the menu (next to RIVALS); the other five are your
   rivals in every event. Remembered on this device (`character` in the save).
 - Each has a kit, skin tone and hairstyle so they read apart at a glance:

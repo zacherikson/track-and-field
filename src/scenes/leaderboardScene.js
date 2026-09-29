@@ -13,7 +13,7 @@ const BOX_Y = 100;
 
 const TAB_LABELS = { sprint100: '100m', longjump: 'Long jump', hurdles110: 'Hurdles', polevault: 'Pole vault', javelin: 'Javelin', tournament: 'Tournament' };
 
-let lastBoard = null; // the tab you looked at last, for the menu's Online button
+let lastBoard = null; // the tab you looked at last, for the menu's Leaderboard button
 
 /**
  * The online leaderboards: a tab per event plus the tournament score, each

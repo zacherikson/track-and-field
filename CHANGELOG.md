@@ -4,6 +4,9 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## "Online" is now "Leaderboard"
+- The 🌐 Online buttons (menu, results, tournament standings) are now 🌐 Leaderboard.
+
 ## Personal bests come from the online boards
 - Your best at each event is your entry on its online board. The phone keeps a
   copy for offline play and catches up with the boards whenever you're back at

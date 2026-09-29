@@ -61,7 +61,7 @@ export class MenuScene {
     this.me = player();
     this.athleteButton = new Button({ label: `${this.me.name}  ›`, w: 200, h: 44, color: 'rgba(255,255,255,0.15)', onTap: () => flow.characters(this.game) });
     this.tuneButton = new Button({ label: '⚙ Tuning', w: 132, h: 44, color: 'rgba(255,255,255,0.15)', onTap: () => flow.tuning(this.game) });
-    this.onlineButton = new Button({ label: '🌐 Online', w: 132, h: 44, color: 'rgba(255,255,255,0.15)', onTap: () => flow.leaderboard(this.game) });
+    this.onlineButton = new Button({ label: '🌐 Leaderboard', w: 196, h: 44, color: 'rgba(255,255,255,0.15)', onTap: () => flow.leaderboard(this.game) });
     // Your profile (username for the online leaderboard), top right.
     this.profileButton = new Button({ label: `👤 ${getPlayerName()}`, w: 190, h: 44, color: 'rgba(255,255,255,0.15)', onTap: () => flow.profile(this.game) });
     this.fsButton = document.fullscreenEnabled

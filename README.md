@@ -58,7 +58,7 @@ the repo and open it) so poses can be checked side by side.
 
 ## Online leaderboards and ghosts
 
-🌐 **Online** (on the menu, the results screen and the tournament's final
+🌐 **Leaderboard** (on the menu, the results screen and the tournament's final
 standings) has a leaderboard for every event plus one for tournament points.
 Finishing an event, on its own or in a tournament, posts your mark to that
 event's board if it beats your mark there; finishing a tournament posts your

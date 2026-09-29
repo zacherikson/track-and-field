@@ -4,7 +4,7 @@ import { clamp, rand, shuffle } from '../core/math.js';
 import { text, roundRect } from '../core/ui.js';
 import { Runner } from '../athletes/runner.js';
 import { AIController } from '../athletes/ai.js';
-import { HERO, RIVALS } from '../athletes/roster.js';
+import { player as chosenPlayer, rivals as rivalRoster, heightOf } from '../athletes/roster.js';
 import { drawFigure, runPose, lerpPose, sampleTrack, handPos, headCircle, JAVELIN_POSES, POSES } from '../athletes/stickFigure.js';
 import { StrideTargets } from './strideTargets.js';
 import { angleAt, flightRange, rivalThrow } from './javelinRules.js';
@@ -52,8 +52,9 @@ export class Javelin {
   enter() {
     this.track = new JavelinRenderer(this.cfg, this.ev.record);
     this.camera = new Camera();
-    this.player = { name: HERO.name, colors: HERO.colors, isPlayer: true, jumps: [] };
-    this.rivals = shuffle([...RIVALS])
+    const me = chosenPlayer();
+    this.player = { name: me.name, colors: me.colors, isPlayer: true, jumps: [] };
+    this.rivals = shuffle(rivalRoster())
       .slice(0, 5)
       .map((r) => ({ name: r.name, colors: r.colors, isPlayer: false, jumps: [], cadence: rand(...this.lv.cadence) }));
     const r = CONFIG.sprint100.pads.radius;
@@ -394,7 +395,7 @@ export class Javelin {
     const tr = this.track;
     tr.draw(ctx, view, this.camera);
     const pxPerM = this.camera.ppm * tr.figureScale(1);
-    const H = FIG_H * pxPerM;
+    const H = FIG_H * pxPerM * heightOf(this.player.colors);
     const ground = tr.toScreen(this.camera, view, this.runner.x, 1);
     const groundY = ground.y + 4;
     const pose = this.poseFor();
@@ -408,13 +409,13 @@ export class Javelin {
       const ang = this.javelinHandAngle(pose);
       // Gripped a little behind its middle: more of it ahead of the hand.
       const c = { x: hand.x + Math.cos(ang) * len * 0.1, y: hand.y - Math.sin(ang) * len * 0.1 };
-      drawFigure(ctx, ground.x, groundY, H, pose, HERO.colors);
+      drawFigure(ctx, ground.x, groundY, H, pose, this.player.colors);
       drawJavelin(ctx, c.x, c.y, len, ang, Math.max(3, 0.03 * H));
       this.drawSparks(ctx, { x: c.x - Math.cos(ang) * len * 0.5, y: c.y + Math.sin(ang) * len * 0.5 });
     } else {
       const j = this.javelinAt(this.now - s.outT);
       const p = tr.toScreen(this.camera, view, j.x, 1);
-      drawFigure(ctx, ground.x, groundY, H, pose, HERO.colors);
+      drawFigure(ctx, ground.x, groundY, H, pose, this.player.colors);
       drawJavelin(ctx, p.x, p.y + 4 - j.y * pxPerM, len, j.ang, Math.max(3, 0.03 * H));
       this.drawSparks(ctx, hand);
     }

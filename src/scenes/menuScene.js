@@ -3,7 +3,7 @@ import { Button, text } from '../core/ui.js';
 import { drawFigure, runPose } from '../athletes/stickFigure.js';
 import { EVENTS, formatMark } from '../events/registry.js';
 import { getBest, getDifficulty, setDifficulty } from '../core/storage.js';
-import { HERO } from '../athletes/roster.js';
+import { player, heightOf } from '../athletes/roster.js';
 import { flow } from '../flow.js';
 import { chooseGhost } from '../online/ghost.js';
 
@@ -12,6 +12,14 @@ export class MenuScene {
     chooseGhost(null); // back at the menu: the 100m races your own best run again
     this.demoX = 0;
     this.phase = 0;
+    // Tournament: all five events in a row, decathlon scoring.
+    const best = getBest('tournament');
+    this.tourButton = new Button({
+      label: '🏆 Tournament',
+      sub: best == null ? 'All 5 events' : `Best ${best} pts`,
+      color: '#c98a00',
+      onTap: () => flow.tournament(this.game),
+    });
     this.buttons = EVENTS.map(
       (ev) =>
         new Button({
@@ -37,9 +45,12 @@ export class MenuScene {
         }),
     );
     this.styleLevels();
+    // Your athlete: opens the character picker.
+    this.me = player();
+    this.athleteButton = new Button({ label: `${this.me.name}  ›`, w: 200, h: 44, color: 'rgba(255,255,255,0.15)', onTap: () => flow.characters(this.game) });
     this.tuneButton = new Button({ label: '⚙ Tuning', w: 132, h: 44, color: 'rgba(255,255,255,0.15)', onTap: () => flow.tuning(this.game) });
     const onlineEv = EVENTS.find((ev) => ev.online);
-    this.onlineButton = new Button({ label: '🏆 Online', w: 132, h: 44, color: 'rgba(255,255,255,0.15)', onTap: () => flow.leaderboard(this.game, onlineEv) });
+    this.onlineButton = new Button({ label: '🌐 Online', w: 132, h: 44, color: 'rgba(255,255,255,0.15)', onTap: () => flow.leaderboard(this.game, onlineEv) });
     this.fsButton = document.fullscreenEnabled
       ? new Button({ label: '⛶', w: 48, h: 44, color: 'rgba(255,255,255,0.15)', onTap: () => toggleFullscreen() })
       : null;
@@ -58,20 +69,27 @@ export class MenuScene {
   }
 
   layout(view) {
-    const n = this.buttons.length;
+    const all = [this.tourButton, ...this.buttons];
+    const n = all.length;
     const margin = 24 + Math.max(view.safe.l, view.safe.r);
     const gap = 12;
     const w = Math.min(180, (view.w - margin * 2 - gap * (n - 1)) / n);
     const total = w * n + gap * (n - 1);
-    this.buttons.forEach((b, i) => {
+    all.forEach((b, i) => {
       b.w = w;
       b.h = 72;
       b.x = (view.w - total) / 2 + i * (w + gap);
       b.y = 205;
     });
+    // Bottom row: ATHLETE on the left, RIVALS on the right.
     const lw = this.levelButtons[0].w;
+    const aw = this.athleteButton.w;
+    const row = aw + 40 + lw * 2 + 8;
+    const x0 = view.w / 2 - row / 2;
+    this.athleteButton.x = x0;
+    this.athleteButton.y = 316;
     this.levelButtons.forEach((b, i) => {
-      b.x = view.w / 2 - lw - 4 + i * (lw + 8);
+      b.x = x0 + aw + 40 + i * (lw + 8);
       b.y = 316;
     });
     this.tuneButton.x = 14 + view.safe.l;
@@ -89,15 +107,19 @@ export class MenuScene {
       if (ev.type !== 'down') continue;
       if (this.fsButton?.tap(ev.x, ev.y)) continue;
       if (this.tuneButton.tap(ev.x, ev.y)) continue;
-      if (this.onlineButton.tap(ev.x, ev.y)) continue;
+      if (this.onlineButton.tap(ev.x, ev.y)) return;
       if (this.levelButtons.some((b) => b.tap(ev.x, ev.y))) continue;
+      if (this.athleteButton.tap(ev.x, ev.y)) return;
+      if (this.tourButton.tap(ev.x, ev.y)) return;
       for (const b of this.buttons) if (b.tap(ev.x, ev.y)) break;
     }
     this.buttons.forEach((b) => b.update(dt));
+    this.tourButton.update(dt);
     this.fsButton?.update(dt);
     this.tuneButton.update(dt);
     this.onlineButton.update(dt);
     this.levelButtons.forEach((b) => b.update(dt));
+    this.athleteButton.update(dt);
 
     // Demo runner loops across the bottom of the screen.
     const speed = 9;
@@ -113,13 +135,23 @@ export class MenuScene {
     ctx.fillRect(0, 0, view.w, view.h);
 
     text(ctx, 'TRACK ROYALE', view.w / 2, 88, { size: 62, color: '#ffb400', shadow: true });
-    text(ctx, `Five events. Two thumbs. Starring ${HERO.name}.`, view.w / 2, 140, { size: 18, weight: 500, color: 'rgba(255,255,255,0.8)' });
+    text(ctx, `Five events. Two thumbs. Starring ${this.me.name}.`, view.w / 2, 140, { size: 18, weight: 500, color: 'rgba(255,255,255,0.8)' });
+    this.tourButton.draw(ctx);
     this.buttons.forEach((b) => b.draw(ctx));
     this.fsButton?.draw(ctx);
     this.tuneButton.draw(ctx);
     this.onlineButton.draw(ctx);
-    text(ctx, 'RIVALS', view.w / 2, 300, { size: 13, weight: 700, color: 'rgba(255,255,255,0.6)' });
-    this.levelButtons.forEach((b) => b.draw(ctx));
+    const lb = this.levelButtons;
+    text(ctx, 'RIVALS', (lb[0].x + lb[1].x + lb[1].w) / 2, 300, { size: 13, weight: 700, color: 'rgba(255,255,255,0.6)' });
+    lb.forEach((b) => b.draw(ctx));
+    const ab = this.athleteButton;
+    text(ctx, 'ATHLETE', ab.x + ab.w / 2, 300, { size: 13, weight: 700, color: 'rgba(255,255,255,0.6)' });
+    ab.draw(ctx);
+    // Kit color chip on the athlete button.
+    ctx.fillStyle = this.me.colors.shirt;
+    ctx.beginPath();
+    ctx.arc(ab.x + 22, ab.y + ab.h / 2, 8, 0, Math.PI * 2);
+    ctx.fill();
 
     // Track strip + demo runner.
     const trackY = 470;
@@ -131,7 +163,7 @@ export class MenuScene {
     const ppm = 38; // the menu's little demo runner keeps its own small scale
     const span = view.w + 120;
     const sx = ((this.demoX * ppm) % span) - 60;
-    drawFigure(ctx, sx, trackY + 10, CONFIG.figure.height * ppm, runPose(this.phase, 1), HERO.colors);
+    drawFigure(ctx, sx, trackY + 10, CONFIG.figure.height * ppm * heightOf(this.me.colors), runPose(this.phase, 1), this.me.colors);
   }
 }
 

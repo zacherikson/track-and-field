@@ -60,7 +60,7 @@ the repo and open it) so poses can be checked side by side.
 
 Every 100m run is recorded. Your fastest one on the phone races again as a
 see-through **ghost** in the lane next to you ("Your best"). A finished run is
-also posted to the **online leaderboard** (🏆 Online on the menu or results
+also posted to the **online leaderboard** (🌐 Online on the menu or results
 screen) if it beats your time there. Tap **Race** on any row to race that
 player's run as a ghost. Runs made with changed tuning aren't posted.
 
@@ -94,7 +94,7 @@ src/athletes/
   runner.js           shared runner physics (player and AI)
   ai.js               AI "thumbs": taps at a personal cadence
   stickFigure.js      placeholder figure: blendable poses (blocks, set, run, stand, hurdle)
-  roster.js           Juno + rivals
+  roster.js           the six athletes (kit, skin, hairstyle); your pick and your rivals
 src/events/
   registry.js         event list for the menu
   strideTargets.js    100m random targets (max 2 in a row) + hit/miss judging
@@ -108,6 +108,9 @@ src/events/
   javelinRules.js     javelin: angle while held, distance from speed/angle/gap, rival throws (pure)
   javelin.js          javelin: run-up, hold to draw back, let go to throw, flight shot to the landing and the mark line
   poleVault.js        pole vault: run-up with the pole, spark, hold-and-release, swing, bar, mat, rising camera
+src/tournament/       tournament mode: event order and running totals, standings/champion screen
+src/events/scoring.js decathlon points (official World Athletics tables)
+src/scenes/characterScene.js  choose your athlete (the rest are your rivals)
 src/render/track.js   stadium with one-point perspective (camera 1m ahead of the player), parallax crowd
 src/render/pads.js    glossy tap targets, numbered buttons and the red ✕
 src/render/targetPads.js  falling target + hit ring animations (100m, long jump run-up)

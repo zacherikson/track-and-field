@@ -627,6 +627,90 @@ function shade(hex, k) {
   return `rgb(${r},${g},${b})`;
 }
 
+/**
+ * Hair on a head at (hx, hy), radius r, tilted with the torso (`lean`). The
+ * figure faces +x, so "back" is -x. `colors.style`: band (headband in the
+ * shirt color, the default), spiky, afro, ponytail, bun, short, fringe.
+ */
+function drawHair(ctx, hx, hy, r, lean, colors) {
+  const style = colors.style ?? 'band';
+  const hair = colors.hair ?? '#2b1d14';
+  ctx.save();
+  ctx.translate(hx, hy);
+  ctx.rotate(lean);
+  ctx.fillStyle = hair;
+  // Local frame: +x forward (face), -y up (crown).
+  const cap = () => {
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 1.02, Math.PI * 1.02, Math.PI * 1.98);
+    ctx.lineTo(r * 0.2, -r * 0.35);
+    ctx.lineTo(-r * 0.95, r * 0.15);
+    ctx.closePath();
+    ctx.fill();
+  };
+  if (style === 'afro') {
+    // Behind and above the face, so the face stays clear.
+    ctx.beginPath();
+    ctx.arc(-r * 0.55, -r * 0.55, r * 1.05, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (style === 'spiky') {
+    cap();
+    ctx.beginPath();
+    for (let i = 0; i < 4; i++) {
+      const a = Math.PI * (1.15 + i * 0.22);
+      const b = a + 0.2;
+      ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+      ctx.lineTo(Math.cos(a + 0.1) * r * 1.6, Math.sin(a + 0.1) * r * 1.6);
+      ctx.lineTo(Math.cos(b) * r, Math.sin(b) * r);
+    }
+    ctx.fill();
+  } else if (style === 'ponytail') {
+    cap();
+    ctx.beginPath();
+    ctx.ellipse(-r * 1.35, r * 0.05, r * 0.7, r * 0.3, 0.5, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (style === 'bun') {
+    cap();
+    ctx.beginPath();
+    ctx.arc(-r * 0.75, -r * 0.8, r * 0.42, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (style === 'short') {
+    cap();
+  } else if (style === 'fringe') {
+    // Straight black fringe down over the forehead.
+    cap();
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.9, -r * 0.55);
+    ctx.lineTo(r * 1.02, -r * 0.55);
+    ctx.lineTo(r * 1.02, -r * 0.15);
+    ctx.lineTo(r * 0.35, -r * 0.2);
+    ctx.lineTo(-r * 1.02, r * 0.1);
+    ctx.closePath();
+    ctx.fill();
+  } else {
+    // Dark hair with a headband in the shirt color across the forehead, and a
+    // little topknot: Juno's signature. (Without a hair color: just the band.)
+    if (colors.hair) {
+      cap();
+      ctx.beginPath();
+      ctx.arc(-r * 0.35, -r * 1.05, r * 0.32, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 1.05, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.strokeStyle = colors.shirt;
+    ctx.lineWidth = Math.max(1.5, r * 0.3);
+    ctx.beginPath();
+    ctx.moveTo(-r * 1.1, -r * 0.2);
+    ctx.lineTo(r * 1.1, -r * 0.42);
+    ctx.stroke();
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
 /** Screen position of hand `i` (0 near, 1 far) for a figure drawn with drawFigure(ctx, x, y, H, pose). */
 export function handPos(x, y, H, pose, i = 0) {
   if (pose.flip) {
@@ -670,7 +754,9 @@ export function drawFigure(ctx, x, y, H, pose, colors, groundY = y) {
   }
   const THIGH = 0.25 * H, SHIN = 0.25 * H, TORSO = 0.32 * H;
   const UPPER = 0.17 * H, FORE = 0.16 * H, HEAD = 0.085 * H;
-  const lw = Math.max(2, 0.065 * H);
+  // `colors.girth` (default 1): a heavier build. Thicker limbs, a wide torso and a round belly.
+  const girth = colors.girth ?? 1;
+  const lw = Math.max(2, 0.065 * H) * (1 + (girth - 1) * 0.55);
 
   const hip = { x: x + pose.hipX * H, y: y + pose.hipY * H };
   const neck = { x: hip.x + Math.sin(pose.lean) * TORSO, y: hip.y - Math.cos(pose.lean) * TORSO };
@@ -718,8 +804,9 @@ export function drawFigure(ctx, x, y, H, pose, colors, groundY = y) {
   drawArm(pose.arms[1], shade(colors.skin, 0.7));
   drawLeg(pose.legs[1], shade(colors.skin, 0.7));
 
+  const torsoW = Math.max(2, 0.065 * H) * 1.9 * girth;
   ctx.strokeStyle = colors.shorts;
-  ctx.lineWidth = lw * 1.9;
+  ctx.lineWidth = torsoW;
   ctx.beginPath();
   ctx.moveTo(hip.x, hip.y);
   ctx.lineTo(lerp(hip.x, neck.x, 0.25), lerp(hip.y, neck.y, 0.25));
@@ -727,8 +814,17 @@ export function drawFigure(ctx, x, y, H, pose, colors, groundY = y) {
   ctx.strokeStyle = colors.shirt;
   ctx.beginPath();
   ctx.moveTo(lerp(hip.x, neck.x, 0.22), lerp(hip.y, neck.y, 0.22));
-  ctx.lineTo(neck.x, neck.y);
+  ctx.lineTo(lerp(hip.x, neck.x, girth > 1 ? 0.85 : 1), lerp(hip.y, neck.y, girth > 1 ? 0.85 : 1));
   ctx.stroke();
+  if (girth > 1) {
+    // Round belly out the front, turning with the torso.
+    const b = { x: lerp(hip.x, neck.x, 0.38), y: lerp(hip.y, neck.y, 0.38) };
+    const r = 0.06 * H * girth;
+    ctx.fillStyle = colors.shirt;
+    ctx.beginPath();
+    ctx.ellipse(b.x + Math.cos(pose.lean) * r * 0.45, b.y + Math.sin(pose.lean) * r * 0.45, r, r * 1.15, pose.lean, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
   drawLeg(pose.legs[0], colors.skin);
   drawArm(pose.arms[0], colors.skin);
@@ -740,12 +836,13 @@ export function drawFigure(ctx, x, y, H, pose, colors, groundY = y) {
   ctx.beginPath();
   ctx.arc(hx, hy, HEAD, 0, Math.PI * 2);
   ctx.fill();
-  // Headband in shirt color: the character's signature detail.
-  ctx.strokeStyle = colors.shirt;
-  ctx.lineWidth = Math.max(1.5, HEAD * 0.45);
-  ctx.beginPath();
-  ctx.arc(hx, hy, HEAD * 0.92, Math.PI * 1.05 + pose.lean, Math.PI * 1.95 + pose.lean);
-  ctx.stroke();
+  if (girth > 1) {
+    // Round cheeks.
+    ctx.beginPath();
+    ctx.ellipse(hx + Math.cos(pose.lean) * HEAD * 0.2, hy + Math.sin(pose.lean) * HEAD * 0.2 + HEAD * 0.25, HEAD * 0.95, HEAD * 0.8, pose.lean, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  drawHair(ctx, hx, hy, HEAD, pose.lean, colors);
 
   ctx.restore();
   return { headX: hx, headY: hy - HEAD };

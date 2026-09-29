@@ -4,7 +4,7 @@ import { rand, shuffle, clamp } from '../core/math.js';
 import { text, roundRect } from '../core/ui.js';
 import { Runner } from '../athletes/runner.js';
 import { AIController } from '../athletes/ai.js';
-import { HERO, RIVALS } from '../athletes/roster.js';
+import { CHARACTERS, player as chosenPlayer, rivals as rivalRoster, heightOf } from '../athletes/roster.js';
 import { drawFigure, runPose, lerpPose, leanPose, launchPose, handReach, POSES, LAUNCH } from '../athletes/stickFigure.js';
 import { TrackRenderer } from '../render/track.js';
 import { ORANGE, drawPad } from '../render/pads.js';
@@ -49,14 +49,14 @@ export class LaneRace {
     this.camera = new Camera();
 
     // Build the field: player in their lane, rivals in the others (a ghost, if
-    // there is one, takes the lane next to the player).
-    const rivals = shuffle([...RIVALS]);
+    // there is one, takes the lane next to the player, looking like the athlete it recorded).
+    const rivals = shuffle(rivalRoster());
     const ghostLane = this.ghostSpec ? (cfg.playerLane < cfg.lanes ? cfg.playerLane + 1 : cfg.playerLane - 1) : null;
     this.athletes = [];
     for (let lane = 1; lane <= cfg.lanes; lane++) {
       const isPlayer = lane === cfg.playerLane;
       const ghost = lane === ghostLane ? new GhostRun(this.ghostSpec.data) : null;
-      const who = isPlayer || ghost ? HERO : rivals.pop();
+      const who = isPlayer ? chosenPlayer() : ghost ? (CHARACTERS.find((c) => c.id === this.ghostSpec.data.athlete) ?? chosenPlayer()) : rivals.pop();
       const runner = ghost ? ghost.runner : new Runner(this.runnerParams, undefined, cfg.startX); // event-specific physics, if any
       this.athletes.push({
         lane,
@@ -78,6 +78,7 @@ export class LaneRace {
         distance: cfg.distance,
         startX: cfg.startX,
         prompt: cfg.dipPromptDistance ?? CONFIG.dip.promptDistance,
+        athlete: chosenPlayer().id, // so the ghost looks like the athlete who ran it
       });
     }
     this.exitBtn = { x: 0, y: 0, w: 44, h: 40 };
@@ -363,17 +364,20 @@ export class LaneRace {
       const a = this.athletes[i];
       this.drawLaneProps?.(ctx, view, a); // e.g. hurdles, under the athlete in the same lane
       const p = this.track.toScreen(this.camera, view, a.runner.x + a.runner.reach * 0.5 + this.startNudge(a), a.lane);
+      const tall = heightOf(a.colors);
       if (p.x < -80 || p.x > view.w + 80) continue;
       const scale = this.track.figureScale(a.lane);
+      // Events can lift an athlete off the track (a short one bouncing over a hurdle); the shadow stays down.
+      const lift = (this.liftFor?.(a) ?? 0) * this.camera.ppm * scale;
       if (a.ghost) {
         // See-through, with a name tag, so it never reads as a real rival.
         ctx.save();
         ctx.globalAlpha = 0.45;
-        drawFigure(ctx, p.x, p.y + 4, H * scale, this.poseFor(a), a.colors);
+        drawFigure(ctx, p.x, p.y + 4 - lift, H * scale * tall, this.poseFor(a), a.colors, p.y + 4);
         ctx.restore();
-        text(ctx, a.name, p.x, p.y - H * scale - 6, { size: 14, color: 'rgba(255,255,255,0.8)', shadow: true });
+        text(ctx, a.name, p.x, p.y - H * scale * tall - 6, { size: 14, color: 'rgba(255,255,255,0.8)', shadow: true });
       } else {
-        drawFigure(ctx, p.x, p.y + 4, H * scale, this.poseFor(a), a.colors);
+        drawFigure(ctx, p.x, p.y + 4 - lift, H * scale * tall, this.poseFor(a), a.colors, p.y + 4);
       }
     }
     this.drawHUD(ctx, view);
@@ -394,20 +398,21 @@ export class LaneRace {
   startNudge(a) {
     const r = a.runner;
     const fade = Math.max(0, 1 - (r.x - r.startX) / 2);
-    return fade === 0 ? 0 : this.laneNudge(a.lane) * fade;
+    return fade === 0 ? 0 : this.laneNudge(a.lane, heightOf(a.colors)) * fade;
   }
 
   /** The start-position drawing shift for a lane (see startNudge), cached. */
-  laneNudge(lane) {
+  laneNudge(lane, tall = 1) {
     this.nudges ??= {};
-    if (this.nudges[lane] == null) {
+    const key = `${lane}:${tall}`;
+    if (this.nudges[key] == null) {
       const z = this.track.laneZ(lane);
-      const H0 = CONFIG.figure.height * this.camera.ppm;
+      const H0 = CONFIG.figure.height * this.camera.ppm * tall;
       const handPx = Math.max(handReach(POSES.blocks), handReach(POSES.set)) * H0 * this.track.figureScale(lane);
       const handM = handPx / (this.camera.ppm * this.track.scaleAt(z));
-      this.nudges[lane] = -this.cfg.handGap - (this.cfg.startX + handM);
+      this.nudges[key] = -this.cfg.handGap - (this.cfg.startX + handM);
     }
-    return this.nudges[lane];
+    return this.nudges[key];
   }
 
   /** The start button and the player's lane flash together: on, off, on, off... */

@@ -4,10 +4,10 @@ import { clamp, damp, rand, shuffle } from '../core/math.js';
 import { text, roundRect } from '../core/ui.js';
 import { Runner } from '../athletes/runner.js';
 import { AIController } from '../athletes/ai.js';
-import { HERO, RIVALS } from '../athletes/roster.js';
+import { player as chosenPlayer, rivals as rivalRoster, heightOf } from '../athletes/roster.js';
 import { drawFigure, runPose, lerpPose, sampleTrack, handPos, vaultSwingPose, wrapNear, VAULT_POSES, POSES } from '../athletes/stickFigure.js';
 import { StrideTargets } from './strideTargets.js';
-import { pressQuality, releaseQuality, vaultHeight, rivalVault } from './poleVaultRules.js';
+import { pressQuality, releaseQuality, releaseTarget, vaultHeight, rivalVault } from './poleVaultRules.js';
 import { VaultRenderer } from '../render/vaultArena.js';
 import { ORANGE, drawPad, drawX } from '../render/pads.js';
 import { drawDrop, drawHitRing } from '../render/targetPads.js';
@@ -82,15 +82,20 @@ export class PoleVault {
     const cfg = this.cfg;
     const P = cfg.pole;
     this.L = P.length;
-    this.plantX = -Math.sqrt(P.length ** 2 - P.gripY ** 2);
-    this.phi0 = Math.asin(P.gripY / P.length);
+    // A shorter athlete (Joey) is smaller all over and plants with the hands lower.
+    this.tall = heightOf(chosenPlayer().colors);
+    this.figH = FIG_H * this.tall;
+    const gripY = P.gripY * this.tall;
+    this.plantX = -Math.sqrt(P.length ** 2 - gripY ** 2);
+    this.phi0 = Math.asin(gripY / P.length);
     // Hips to hands upside down at the top of the pole (arms straight along the body).
-    const top = handPos(0, 0, FIG_H, vaultSwingPose(Math.PI, 1), 0);
+    const top = handPos(0, 0, this.figH, vaultSwingPose(Math.PI, 1), 0);
     this.reach = Math.hypot(top.x, top.y);
     this.track = new VaultRenderer(cfg);
     this.camera = new Camera();
-    this.player = { name: HERO.name, colors: HERO.colors, isPlayer: true, jumps: [] };
-    this.rivals = shuffle([...RIVALS])
+    const me = chosenPlayer();
+    this.player = { name: me.name, colors: me.colors, isPlayer: true, jumps: [] };
+    this.rivals = shuffle(rivalRoster())
       .slice(0, 5)
       .map((r) => ({ name: r.name, colors: r.colors, isPlayer: false, jumps: [], cadence: rand(...this.lv.cadence) }));
     const r = CONFIG.sprint100.pads.radius;
@@ -138,7 +143,7 @@ export class PoleVault {
     this.vault = null; // { v, u, pq, rq, height, phiEnd, released, ... }
     this.fly = null; // { t0, x0, y0, vx, vy, T }
     this.mark = null; // { mark } or { fail: true }
-    this.hip = { x: this.runner.x, y: 0.9 };
+    this.hip = { x: this.runner.x, y: 0.5 * (this.figH ?? FIG_H) };
     this.camY = 0;
     this.puff = [];
     this.setState('ready');
@@ -274,7 +279,7 @@ export class PoleVault {
     const k = clamp((vt.phiCur - this.phi0) / (Math.PI / 2 - this.phi0), 0.45, 1);
     const alpha = swingKey(u, 3) * k;
     const pose = vaultSwingPose(alpha, u);
-    const off = handPos(0, 0, FIG_H, pose, 0); // hand relative to the hips (m, y down)
+    const off = handPos(0, 0, this.figH, pose, 0); // hand relative to the hips (m, y down)
     return { phi, c, hands, alpha, pose, hip: { x: hands.x - off.x, y: hands.y + off.y } };
   }
 
@@ -284,7 +289,7 @@ export class PoleVault {
     const end = t + dt;
     if (this.state === 'ready' || this.state === 'run') {
       r.update(dt, t);
-      this.hip = { x: r.x, y: 0.9 };
+      this.hip = { x: r.x, y: 0.5 * this.figH };
       if (this.state === 'run' && this.zoneT == null && this.plantX - r.x <= cfg.zoneDistance) {
         // Plant zone: strides stop, the pads turn orange, the pole comes down.
         this.zoneT = t;
@@ -296,7 +301,7 @@ export class PoleVault {
       const vt = this.vault;
       if (this.holdT == null && end - this.plantT > cfg.press.miss) return this.balk(end);
       // Held on too long: you get nothing from the release.
-      if (this.holdT != null && this.releaseT == null && end - this.holdT > cfg.spark.climbTime + cfg.release.window) this.release(end);
+      if (this.holdT != null && this.releaseT == null && end - this.holdT > releaseTarget(cfg) + cfg.release.window) this.release(end);
       vt.u = Math.min(1, vt.u + dt / cfg.swing.time);
       vt.phiCur = damp(vt.phiCur, this.predictPhi(), 8, dt);
       const sw = this.swingAt(vt.u);
@@ -315,7 +320,7 @@ export class PoleVault {
       // Came off the pole: drop back to the runway.
       const b = this.balkFall;
       const ta = end - b.t0;
-      this.hip = { x: b.x + b.vx * Math.min(ta, b.T), y: Math.max(0.9, b.y + b.vy * ta - 0.5 * G * ta * ta) };
+      this.hip = { x: b.x + b.vx * Math.min(ta, b.T), y: Math.max(0.5 * this.figH, b.y + b.vy * ta - 0.5 * G * ta * ta) };
       if (ta > 1.6) this.showMark();
     } else if (this.state === 'landed') {
       if (t - this.stateT > cfg.markHold) this.showMark();
@@ -406,7 +411,7 @@ export class PoleVault {
     this.camera.follow(cx, this.state === 'run' ? r.v : 0, dt);
     // Rise with the vaulter: keep the head at least topFrac down the screen.
     const ground = this.track.toScreen(this.camera, view, this.hip.x, 1).y + 4;
-    const headY = ground - (this.hip.y + 0.9) * this.camera.ppm;
+    const headY = ground - (this.hip.y + 0.5 * this.figH) * this.camera.ppm;
     const want = Math.max(0, view.h * this.cfg.camera.topFrac - headY);
     this.camY = damp(this.camY, want, 6, dt);
   }
@@ -534,7 +539,7 @@ export class PoleVault {
     const tr = this.track;
     const cam = this.camera;
     const pxPerM = cam.ppm * tr.figureScale(1);
-    const H = CONFIG.figure.height * pxPerM;
+    const H = this.figH * pxPerM;
     ctx.save();
     ctx.translate(0, this.camY);
     tr.draw(ctx, view, cam);
@@ -557,12 +562,12 @@ export class PoleVault {
       y = groundY - this.hip.y * pxPerM - pose.hipY * H;
       if (this.state === 'fly') this.lastAirPose = pose;
     }
-    if (this.state === 'balk' && this.hip.y <= 0.91) y = groundY;
+    if (this.state === 'balk' && this.hip.y <= 0.5 * this.figH + 0.01) y = groundY;
 
     const sx = ground.x;
     // Pole behind the athlete's near arm: draw it first, then the athlete.
     this.drawPole(ctx, view, sx, y, H, pose, pxPerM);
-    drawFigure(ctx, sx, y, H, pose, HERO.colors, onMat ? floorY : groundY);
+    drawFigure(ctx, sx, y, H, pose, this.player.colors, onMat ? floorY : groundY);
     this.drawSpark(ctx);
     for (const p of this.puff) {
       const s = tr.toScreen(cam, view, p.x, 1);
@@ -655,7 +660,21 @@ export class PoleVault {
         x: (1 - k) * (1 - k) * a.x + 2 * (1 - k) * k * c.x + k * k * b.x,
         y: (1 - k) * (1 - k) * a.y + 2 * (1 - k) * k * c.y + k * k * b.y,
       });
-      this.sparkAt = q(s);
+      // Even speed along the pole: s is a share of the pole's length, not of the curve's parameter
+      // (which runs faster near the ends of a bent pole).
+      const N = 24;
+      const acc = [0];
+      let prev = q(0);
+      for (let i = 1; i <= N; i++) {
+        const p = q(i / N);
+        acc.push(acc[i - 1] + Math.hypot(p.x - prev.x, p.y - prev.y));
+        prev = p;
+      }
+      const want = s * acc[N];
+      let i = 1;
+      while (i < N && acc[i] < want) i++;
+      const k = (i - 1 + (want - acc[i - 1]) / Math.max(1e-6, acc[i] - acc[i - 1])) / N;
+      this.sparkAt = q(clamp(k, 0, 1));
     }
   }
 

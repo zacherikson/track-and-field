@@ -10,7 +10,7 @@ import { AIController } from '../src/athletes/ai.js';
 import { StrideTargets } from '../src/events/strideTargets.js';
 import { ButtonSet, HurdleRun, HurdleAI, hurdlePositions } from '../src/events/hurdleRules.js';
 import { jumpMark, rivalJump } from '../src/events/longJumpRules.js';
-import { pressQuality, releaseQuality, vaultHeight, rivalVault } from '../src/events/poleVaultRules.js';
+import { pressQuality, releaseQuality, releaseTarget, vaultHeight, rivalVault } from '../src/events/poleVaultRules.js';
 import { throwMark, rivalThrow } from '../src/events/javelinRules.js';
 
 const STEP = CONFIG.loop.fixedStep;
@@ -373,7 +373,7 @@ function pvPlayer(rate, psd, rsd) {
   const vaults = Array.from({ length: PV.rounds }, () => {
     const pe = gauss(0, psd);
     if (Math.abs(pe) > PV.press.miss) return null; // missed the plant: no height
-    return vaultHeight({ v, pq: pressQuality(pe, PV.press), rq: releaseQuality(PV.spark.climbTime + gauss(0, rsd), PV) }, PV);
+    return vaultHeight({ v, pq: pressQuality(pe, PV.press), rq: releaseQuality(releaseTarget(PV) + gauss(0, rsd), PV) }, PV);
   });
   const ok = vaults.filter((h) => h != null);
   return { v, best: ok.length ? Math.max(...ok) : 0, fails: vaults.length - ok.length };

@@ -54,7 +54,7 @@ export class ResultScene {
       new Button({ label: 'Menu', color: 'rgba(255,255,255,0.18)', onTap: () => flow.menu(this.game) }),
       new Button({ label: '⚙ Tuning', color: 'rgba(255,255,255,0.18)', onTap: () => flow.tuning(this.game) }),
     ];
-    if (this.ev.online) this.buttons.splice(2, 0, new Button({ label: '🏆 Online', color: 'rgba(255,255,255,0.18)', onTap: () => flow.leaderboard(this.game, this.ev) }));
+    if (this.ev.online) this.buttons.splice(2, 0, new Button({ label: '🌐 Online', color: 'rgba(255,255,255,0.18)', onTap: () => flow.leaderboard(this.game, this.ev) }));
     this.layout(this.game.view);
   }
 

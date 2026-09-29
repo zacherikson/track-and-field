@@ -184,8 +184,8 @@ export const CONFIG = {
     missSpeedLoss: 0, // m/s lost on the spot for a wrong number: none, the trip at the next hurdle is the penalty (and you lose that stride)
     buttons: {
       slotsX: [0.16, 0.5, 0.84], // slot centres as a fraction of screen width (hit zones are the thirds)
-      y: 0.24, // fraction of screen height
-      radius: 54, // bigger, like the original's
+      y: 0.25, // fraction of screen height
+      radius: 64, // bigger, like the original's (was 54)
       fadeIn: 0.08, // s for a new set to fade in
     },
     // Rivals read a new set in `setReact` s, then tap `tapGap` s apart (their
@@ -329,7 +329,10 @@ export const CONFIG = {
     chordWindow: 0.12, // s: left + right presses this close together count as both
     press: { window: 0.18, miss: 0.35 }, // s either side of the plant: plant quality falls to 0 at `window`; no press within `miss` and you run through (no height)
     spark: { climbTime: 0.6 }, // s for the spark to climb back up the pole while you hold
-    release: { window: 0.18 }, // s either side of the spark reaching your hands
+    // Best release: `lead` s after the spark reaches your hands (covers the ~0.15 s between
+    // seeing it get there and your finger actually leaving the screen); quality falls to 0
+    // `window` s either side of that.
+    release: { window: 0.18, lead: 0.15 },
     // Height cleared = base + perMps * (speed - vRef) + gain * quality, where
     // quality = pressWeight * plant + (1 - pressWeight) * release (each 0..1).
     height: { base: 1.4, perMps: 0.4, vRef: 9, gain: 4.0, pressWeight: 0.5 },

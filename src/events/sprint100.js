@@ -5,6 +5,7 @@ import { ORANGE, drawPad, drawX } from '../render/pads.js';
 import { drawDrop, drawHitRing } from '../render/targetPads.js';
 import { chosenGhost, isReplayable } from '../online/ghost.js';
 import { getGhost } from '../core/storage.js';
+import { tournament } from '../tournament/tournament.js';
 
 
 const LEFT_KEYS = ['ArrowLeft', 'KeyA', 'KeyZ', 'KeyF'];
@@ -32,7 +33,8 @@ const DIP_KEYS = ['Space', 'ArrowUp', 'ArrowDown'];
  * - In the lean zone both pads show orange: press both together to lean.
  *
  * Every run is recorded. The fastest one on this phone races again as a ghost
- * in the lane next to you ("Your best"), unless a ghost was picked on the online leaderboard.
+ * in the lane next to you ("Your best"), unless a ghost was picked on the online
+ * leaderboard. No ghost in a tournament: the same five rivals run every event.
  */
 export class Sprint100 extends LaneRace {
   constructor(ev) {
@@ -42,6 +44,7 @@ export class Sprint100 extends LaneRace {
 
   /** The recorded run to race: one picked on the leaderboard, else your own best. */
   pickGhost() {
+    if (tournament.active) return null; // a tournament keeps its five rivals
     const like = { runner: CONFIG.runner, dip: CONFIG.dip };
     const picked = chosenGhost();
     if (picked && isReplayable(picked.data, like)) return picked;

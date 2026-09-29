@@ -19,7 +19,7 @@ import { Runner } from '../athletes/runner.js';
  * its numbers) changes: older ghosts would no longer replay faithfully.
  *
  * Stored shape (plain JSON, and Firestore-friendly: no nested arrays):
- *   { v, mark, off, step, distance, startX, prompt, runner: {...}, dip: {...},
+ *   { v, mark, off, step, distance, startX, prompt, athlete, runner: {...}, dip: {...},
  *     ev: [n, t, code, value, n, t, code, value, ...] }
  * n = physics step since the gun, t = seconds since the gun,
  * code 0 = stride, 1 = stumble (value = speed lost), 2 = lean.
@@ -36,7 +36,7 @@ const LEAN = 2;
 
 /** Listens to the player's Runner during a race and packs what it did into a ghost. */
 export class GhostRecorder {
-  /** @param track { step, distance, startX, prompt } where prompt = the lean zone's length in m */
+  /** @param track { step, distance, startX, prompt, athlete } where prompt = the lean zone's length in m, athlete = the runner's character id */
   constructor(runner, track) {
     this.runner = runner;
     this.track = track;
@@ -60,8 +60,8 @@ export class GhostRecorder {
 
   /** The finished run, ready to save or upload. `mark` = the player's time. */
   data(mark) {
-    const { step, distance, startX, prompt } = this.track;
-    return { v: GHOST_VERSION, mark, off: this.off, step, distance, startX, prompt, runner: this.params, dip: this.dip, ev: [...this.ev] };
+    const { step, distance, startX, prompt, athlete = null } = this.track;
+    return { v: GHOST_VERSION, mark, off: this.off, step, distance, startX, prompt, athlete, runner: this.params, dip: this.dip, ev: [...this.ev] };
   }
 }
 

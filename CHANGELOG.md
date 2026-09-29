@@ -8,7 +8,7 @@ Gameplay and tuning changes, newest first. When you change a number in
 - Every 100m run is recorded (its strides, stumbles and lean, plus the physics
   numbers). Your fastest run on the phone races in the lane next to you as a
   see-through ghost called "Your best", replacing one rival.
-- 🏆 Online (menu and results screen): the fastest runs from every player,
+- 🌐 Online (menu and results screen): the fastest runs from every player,
   via Firebase. Finishing a 100m posts your run if it beats your time there,
   and the results screen shows your rank. Tap Race on a row to race that run
   as a ghost; going back to the menu returns to racing your own best.
@@ -16,6 +16,80 @@ Gameplay and tuning changes, newest first. When you change a number in
   starts as "Runner" and four random digits.
 - Runs made with changed tuning are kept as your local ghost but not posted.
 - `tools/ghostcheck.mjs` checks that recorded runs replay to the same time.
+
+## Step 8: Tournament mode
+- New 🏆 Tournament button on the menu: all five events back to back in the
+  order 100m, Long Jump, 110m Hurdles, Pole Vault, Javelin, against the same
+  five rivals.
+- Scored like a real decathlon, with the official World Athletics tables
+  (`src/events/scoring.js`): 100m and hurdles `A·(B − time)^C`, jumps
+  `A·(cm − B)^C`, javelin `A·(m − B)^C`. No mark / DNF scores 0. Our marks land
+  in the same range as real decathletes: about 1000–1400 per event.
+- After each event: this event's marks and points, and the overall standings
+  with running totals. The intro card shows the event number and your points.
+  After the javelin: the champion, your points per event, final standings.
+  Your best tournament score is saved and shown on the menu button.
+- Personal bests still count in a tournament. Leaving to the menu (✕ or Quit)
+  ends the tournament.
+
+## Step 7.3: Joey two-thirds height
+- Joey's `colors.height` 0.5 → 2/3. His tagline now ends ", bald." (his
+  brown hair is unchanged). His hurdle hop scales down with the smaller gap.
+
+## Step 7.2: Joey (half height)
+- Brix is replaced by **Joey**: blue shirt, brown hair, fair skin, and half
+  everyone's height (new `colors.height` 0.5; `heightOf()` in roster.js).
+  Looks only: same physics.
+- The height is applied everywhere he's drawn: lane races (with his start
+  position adjusted so his hands still sit at the line), long jump (his hips
+  start lower), javelin (the javelin stays in his hand), pole vault (he grips
+  the pole lower, so the plant, swing and bar clearance scale with him), the
+  menu runner and the picker.
+- Hurdles: he'd have run straight through a bar taller than his hips, so a
+  short athlete now bounces up over each hurdle (`liftFor` in hurdles110.js),
+  shadow on the track.
+- If your saved athlete was Brix you start as Juno; pick again.
+
+## Pages deploy: no more stale code on phones
+- GitHub Pages lets browsers reuse files for 10 minutes, so after a deploy a
+  phone could load the new page with old cached game code (or a mix). The
+  deploy now also copies `src/` to `v/<commit>/src` and points index.html at
+  it, so every deploy has fresh file addresses and nothing old is reused.
+
+## Step 7.1: Chan and Chonk, Juno's hair
+- Tanabe is now **Chan** (straight black fringe, new `fringe` hairstyle).
+- Moreau is now **Chonk**: a big, round build (new `colors.girth` 2.3 in
+  drawFigure: thicker limbs, wide torso, round belly and cheeks). Looks only.
+- Juno's hair was reading as yellow (the headband arc covered the crown). Now:
+  dark hair with a topknot and a thin yellow headband across the forehead.
+- If your saved athlete was Tanabe or Moreau you start as Juno; pick again.
+
+## Step 7: character selection
+- Six athletes: Juno, Brix, Okoro, Lindqvist, Tanabe, Moreau (now Chan and Chonk, 7.1). Pick yours from
+  the ATHLETE button on the menu (next to RIVALS); the other five are your
+  rivals in every event. Remembered on this device (`character` in the save).
+- Each has a kit, skin tone and hairstyle so they read apart at a glance:
+  headband (Juno), spiky, afro, ponytail, bun, short (`colors.hair`,
+  `colors.style`, drawn by drawFigure). Looks only: same physics for everyone.
+- The picker: a card per athlete (yours runs in place), a one-line tagline,
+  Ready to go back. Arrow keys work on desktop.
+
+## Step 6.3: pole vault release lines up with the spark reaching your hands
+The best release felt like the spark about 2/3 up the pole, for two reasons:
+~0.15-0.2 s between seeing the spark arrive and your finger actually leaving
+the screen (reaction plus the phone's display delay) is a third of the 0.6 s
+climb, and the spark sped up near the ends of the bent pole.
+- New `poleVault.release.lead` 0.15 s: the sweet spot is now 0.15 s after the
+  spark reaches your hands (0.75 s after the press), so letting go as you see
+  it arrive is right. On the tuning panel as "Release delay allowance".
+  Rivals and the simulator use the same target: heights unchanged (good
+  5.36m, expert 6.22m; Amateur winner 5.31m, Pro 5.95m).
+- The spark now travels at an even speed along the pole (by length, not by
+  the curve's parameter).
+
+## Step 6.2: bigger hurdle buttons
+- `hurdles110.buttons.radius` 54 → 64 (about 20% bigger), `y` 0.24 → 0.25 so
+  they still clear the top of the screen.
 
 ## Renamed to Track Royale
 - The game is now called Track Royale: menu title, page title, home-screen

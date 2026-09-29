@@ -12,7 +12,9 @@
  *   `press.miss` and you run through: no height).
  * - While you hold, the spark climbs back up the pole (`spark.climbTime`). Let
  *   go as it reaches your hands: the RELEASE quality (within `release.window`
- *   either side; hold on too long and you get nothing from it).
+ *   either side; hold on too long and you get nothing from it). The sweet
+ *   spot is `release.lead` s after the spark gets there, to cover the delay
+ *   between seeing it arrive and your finger leaving the screen.
  * - Height cleared = base + speed at the plant + both qualities (vaultHeight).
  *   Best of three counts, as in the long jump.
  */
@@ -24,7 +26,12 @@ export function pressQuality(err, p) {
 
 /** Release quality 0..1 from how long you held (s) vs. the spark's climb. */
 export function releaseQuality(held, cfg) {
-  return Math.max(0, 1 - Math.abs(held - cfg.spark.climbTime) / cfg.release.window);
+  return Math.max(0, 1 - Math.abs(held - releaseTarget(cfg)) / cfg.release.window);
+}
+
+/** The best hold time (s): the spark reaches your hands, plus the allowance for reaction and screen delay. */
+export function releaseTarget(cfg) {
+  return cfg.spark.climbTime + (cfg.release.lead ?? 0);
 }
 
 /** Height cleared (m) for plant speed v (m/s) and the two qualities. */
@@ -46,6 +53,6 @@ export function rivalVault(level, cfg, makeRunUp, rng = Math.random) {
   const v = makeRunUp();
   if (rng() < level.missChance) return { fail: true }; // missed the plant
   const pq = pressQuality(rand(-level.pressErr, level.pressErr, rng), cfg.press);
-  const rq = releaseQuality(cfg.spark.climbTime + rand(-level.releaseErr, level.releaseErr, rng), cfg);
+  const rq = releaseQuality(releaseTarget(cfg) + rand(-level.releaseErr, level.releaseErr, rng), cfg);
   return { mark: vaultHeight({ v, pq, rq }, cfg) };
 }

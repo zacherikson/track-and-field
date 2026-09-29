@@ -118,6 +118,7 @@ export const GROUPS = [
       { path: 'poleVault.zoneDistance', label: 'Plant zone', unit: 'm', min: 5, max: 20, step: 1, help: 'Meters before the plant where the pads turn orange and the spark starts down the pole.' },
       { path: 'poleVault.press.window', label: 'Plant window', unit: 'ms', scale: 1000, min: 0.08, max: 0.5, step: 0.01, help: 'How far from the plant your press can be and still count for something. Tighter = harder.' },
       { path: 'poleVault.spark.climbTime', label: 'Spark climb time', unit: 'ms', scale: 1000, min: 0.3, max: 1.5, step: 0.05, help: 'How long the spark takes to climb back up the pole while you hold.' },
+      { path: 'poleVault.release.lead', label: 'Release delay allowance', unit: 'ms', scale: 1000, min: 0, max: 0.35, step: 0.01, help: 'The best moment to let go is this long after the spark reaches your hands, to cover your reaction and the screen delay. Raise it if the best release feels early, lower it if late.' },
       { path: 'poleVault.release.window', label: 'Release window', unit: 'ms', scale: 1000, min: 0.08, max: 0.5, step: 0.01, help: 'How far from the spark reaching your hands you can let go and still get something. Tighter = harder.' },
       { path: 'poleVault.height.gain', label: 'Timing reward', unit: 'm', min: 1, max: 6, step: 0.1, help: 'Height a perfect plant and release add over a botched one.' },
       { path: 'poleVault.height.perMps', label: 'Speed reward', unit: 'm per m/s', min: 0, max: 1, step: 0.05, help: 'Extra height for each m/s of run-up speed at the plant.' },

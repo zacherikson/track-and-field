@@ -5,13 +5,15 @@ import { Lobby, MAX_PLAYERS, CLOSE_BEFORE, serverNow } from '../online/live.js';
 import { flow } from '../flow.js';
 
 /**
- * The waiting room for a live 100m (online/live.js). You join as soon as you
- * arrive; once someone else is here a countdown starts, more players can still
- * join (up to MAX_PLAYERS), and everyone goes to the track together.
+ * The waiting room for a live event or tournament (`kind`: an event id or
+ * 'tournament', online/live.js). You join as soon as you arrive; once someone
+ * else is here a countdown starts, more players can still join (up to
+ * MAX_PLAYERS), and everyone goes to the event together.
  */
 export class LobbyScene {
-  constructor() {
-    this.ev = EVENTS.find((e) => e.id === 'sprint100');
+  constructor(kind) {
+    this.kind = kind;
+    this.title = kind === 'tournament' ? 'Tournament' : EVENTS.find((e) => e.id === kind).name;
   }
 
   enter() {
@@ -26,7 +28,7 @@ export class LobbyScene {
   join() {
     this.state = 'joining';
     this.lobby?.close(false);
-    this.lobby = new Lobby(this.ev.id, (v) => this.onLobby(v));
+    this.lobby = new Lobby(this.kind, (v) => this.onLobby(v));
     this.lobby.join().catch((err) => {
       console.warn('waiting room unavailable', err);
       if (this.game.scene === this) this.state = 'error';
@@ -40,7 +42,7 @@ export class LobbyScene {
   }
 
   exit() {
-    // Going to the race keeps your place; anything else leaves the room.
+    // Going to the event keeps your place; anything else leaves the room.
     this.lobby?.close(!this.racing);
   }
 
@@ -64,12 +66,12 @@ export class LobbyScene {
       else if (e.code === 'Escape') flow.menu(this.game);
     }
     this.buttons().forEach((b) => b.update(dt));
-    // The room has closed with you in it: to the track.
+    // The room has closed with you in it: to the event.
     const v = this.view;
     const me = v?.players.find((p) => p.me);
     if (v?.startAt != null && me && v.players.length > 1 && serverNow() >= v.startAt - CLOSE_BEFORE) {
       this.racing = true;
-      flow.liveRace(this.game, { room: v.room, uid: v.uid, name: me.name, players: v.players, startAt: v.startAt, setLen: v.setLen });
+      flow.liveStart(this.game, { kind: this.kind, room: v.room, uid: v.uid, name: me.name, players: v.players, startAt: v.startAt, setLen: v.setLen });
     } else if (v && !me && this.state === 'waiting') {
       this.join(); // dropped from the room (went quiet too long): back in
     }
@@ -78,7 +80,7 @@ export class LobbyScene {
   render(ctx, view) {
     ctx.fillStyle = '#12203a';
     ctx.fillRect(0, 0, view.w, view.h);
-    text(ctx, 'RACE LIVE · 100M', view.w / 2, 40, { size: 28, color: '#ffb400', shadow: true });
+    text(ctx, `LIVE · ${this.title.toUpperCase()}`, view.w / 2, 40, { size: 28, color: '#ffb400', shadow: true });
     const w = Math.min(520, view.w - 40);
     const x0 = view.w / 2 - w / 2;
     roundRect(ctx, x0, 80, w, 340, 16);
@@ -98,9 +100,9 @@ export class LobbyScene {
 
     const v = this.view;
     const left = v.startAt == null ? null : Math.max(0, Math.ceil((v.startAt - CLOSE_BEFORE - serverNow()) / 1000));
-    if (left == null) line('Waiting for another runner to join…', 118, { size: 20, color: '#fff' });
-    else line(`Race starts in ${left}`, 118, { size: 30, color: '#59cd90', weight: 800 });
-    line(`${v.players.length} of ${MAX_PLAYERS} runners`, 150, { size: 15, color: 'rgba(255,255,255,0.55)' });
+    if (left == null) line('Waiting for another player to join…', 118, { size: 20, color: '#fff' });
+    else line(`Starts in ${left}`, 118, { size: 30, color: '#59cd90', weight: 800 });
+    line(`${v.players.length} of ${MAX_PLAYERS} players`, 150, { size: 15, color: 'rgba(255,255,255,0.55)' });
 
     v.players.forEach((p, i) => {
       const y = 196 + i * 44;
@@ -119,7 +121,7 @@ export class LobbyScene {
     // A gentle pulse while it's just you.
     if (v.players.length < 2) {
       const k = 0.5 + 0.5 * Math.sin(this.age * 3);
-      line('Tell a friend to tap Race live', 390, { size: 15, color: `rgba(255,255,255,${(0.35 + 0.3 * k).toFixed(2)})` });
+      line(`Tell a friend to tap ${this.title} in the Online row`, 390, { size: 15, color: `rgba(255,255,255,${(0.35 + 0.3 * k).toFixed(2)})` });
     }
     this.backBtn.draw(ctx);
   }

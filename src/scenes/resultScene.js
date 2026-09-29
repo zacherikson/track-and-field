@@ -35,7 +35,7 @@ export class ResultScene {
 
     this.buttons = [
       this.stats?.live
-        ? new Button({ label: 'Race live again', color: '#2bb673', onTap: () => flow.live(this.game) })
+        ? new Button({ label: `${(this.ev.againLabel ?? 'Race again').replace(' again', '')} live again`, color: '#2bb673', onTap: () => flow.live(this.game, this.ev.id) })
         : new Button({ label: this.ev.againLabel ?? 'Race again', color: '#2bb673', onTap: () => flow.play(this.game, this.ev) }),
       new Button({ label: 'Menu', color: 'rgba(255,255,255,0.18)', onTap: () => flow.menu(this.game) }),
       new Button({ label: '⚙ Tuning', color: 'rgba(255,255,255,0.18)', onTap: () => flow.tuning(this.game) }),

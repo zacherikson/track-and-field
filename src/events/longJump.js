@@ -14,6 +14,7 @@ import { drawDrop, drawHitRing } from '../render/targetPads.js';
 import { getDifficulty } from '../core/storage.js';
 import { flow } from '../flow.js';
 import { FieldGhost } from '../online/fieldGhost.js';
+import { LiveField } from '../online/liveField.js';
 
 const LEFT_KEYS = ['ArrowLeft', 'KeyA', 'KeyZ', 'KeyF'];
 const RIGHT_KEYS = ['ArrowRight', 'KeyD', 'KeyX', 'KeyJ'];
@@ -51,7 +52,7 @@ export class LongJump {
     this.track = new RunwayRenderer(cfg.runway, { from: 1, to: 10.5 }, cfg.runwayZones);
     this.camera = new Camera();
     const me = chosenPlayer();
-    this.player = { name: me.name, colors: me.colors, isPlayer: true, jumps: [] };
+    this.player = { name: this.live ? this.live.name : me.name, colors: me.colors, isPlayer: true, jumps: [] }; // live: your username, as the others see you
     // Five rivals, each with a fixed run-up pace for the whole competition.
     this.rivals = shuffle(rivalRoster())
       .slice(0, 5)
@@ -61,9 +62,15 @@ export class LongJump {
     this.exitBtn = { x: 0, y: 0, w: 44, h: 40 };
     this.stats = { hits: 0, misses: 0, topSpeed: 0 };
     this.round = 0;
-    this.ghost = new FieldGhost(this.ev);
+    this.liveField = this.live ? new LiveField(this) : null;
+    if (this.liveField) this.rivals = this.liveField.people; // live: just the other players, so every phone has the same results
+    this.ghost = new FieldGhost(this.ev, this.liveField);
     this.onResize(this.game.view);
     this.startRound();
+  }
+
+  exit() {
+    this.liveField?.close();
   }
 
   onResize(view) {
@@ -99,6 +106,7 @@ export class LongJump {
     this.track.footmarks = [];
     this.lastPose = null;
     this.ghost.startAttempt(t);
+    this.liveField?.begin();
     this.setState('ready');
     this.camera.snapTo(this.runner.x);
   }
@@ -127,6 +135,7 @@ export class LongJump {
   }
 
   update(dt, t) {
+    if (this.liveField?.update(dt, t)) return; // live: waiting for a round, or for the others
     const end = t + dt;
     for (const e of this.game.input.consume(end)) {
       if (e.type === 'down' && this.hitExit(e)) return flow.menu(this.game);
@@ -270,8 +279,10 @@ export class LongJump {
   showMark() {
     this.player.jumps.push(this.mark);
     this.ghost.endAttempt(this.mark);
+    this.liveField?.result(this.mark);
     const cfg = this.cfg;
     for (const rv of this.rivals) {
+      if (rv.live) continue; // another player: their marks come from their phone
       const level = { ...this.lv, cadence: [rv.cadence, rv.cadence] };
       rv.jumps.push(rivalJump(level, cfg, (runway) => this.rivalRunUp(rv, runway)));
     }
@@ -295,6 +306,7 @@ export class LongJump {
   }
 
   next() {
+    if (this.liveField) return this.liveField.next();
     if (this.round < this.cfg.rounds) this.startRound();
     else this.finish();
   }
@@ -308,7 +320,7 @@ export class LongJump {
     const all = [this.player, ...this.rivals];
     const results = all.map((a) => {
       const b = this.best(a);
-      return { name: a.name, colors: a.colors, isPlayer: a.isPlayer, mark: b, status: b == null ? 'nm' : 'ok' };
+      return { name: a.name, key: a.uid, colors: a.colors, isPlayer: a.isPlayer, mark: b, status: b == null ? 'nm' : 'ok' };
     });
     results.sort((a, b) => (b.mark ?? -1) - (a.mark ?? -1));
     const fouls = this.player.jumps.filter((j) => j.foul).length;
@@ -319,6 +331,7 @@ export class LongJump {
       extra: `${fouls} ${fouls === 1 ? 'foul' : 'fouls'}`,
       paceText: `jumps ${this.player.jumps.map((j) => (j.foul ? 'X' : j.mark.toFixed(2))).join(' / ')}`,
       run: this.ghost.best(), // your best jump, frame by frame, for the ghost
+      live: !!this.live,
     });
   }
 
@@ -423,17 +436,18 @@ export class LongJump {
       ctx.fill();
     }
     this.drawReferee(ctx, view, pxPerM);
-    const g = this.ghost.frame(this.now);
-    if (g) {
+    for (const fig of this.ghost.figures(this.now)) {
+      const g = fig.frame;
       const gp = tr.toScreen(this.camera, view, g.x, 1);
-      const gH = CONFIG.figure.height * pxPerM * heightOf(this.ghost.colors);
-      this.ghost.drawFigure(ctx, gp.x, gp.y + 4 - g.e * pxPerM, gH, g.pose, gp.y + 4);
+      const gH = CONFIG.figure.height * pxPerM * heightOf(fig.colors);
+      this.ghost.drawFigure(ctx, fig, gp.x, gp.y + 4 - g.e * pxPerM, gH, gp.y + 4);
     }
     drawFigure(ctx, ground.x, y, H, pose, this.player.colors, groundY);
     if (this.state !== 'mark') this.ghost.sample(this.now, x, (groundY - y) / pxPerM, pose);
     this.drawControls(ctx, view);
     this.drawHUD(ctx, view);
     if (this.state === 'mark') this.drawMark(ctx, view);
+    this.liveField?.draw(ctx, view);
   }
 
   /**
@@ -480,6 +494,7 @@ export class LongJump {
   }
 
   drawControls(ctx) {
+    if (this.liveField?.holding) return; // live: the round hasn't started
     const now = this.now;
     const padsCfg = CONFIG.sprint100.pads;
     const { L, R } = this.pads;
@@ -563,6 +578,6 @@ export class LongJump {
     });
     const last = this.round >= this.cfg.rounds;
     const pulse = 0.6 + 0.4 * Math.sin(this.now * 5);
-    text(ctx, last ? 'Tap for results' : 'Tap for the next jump', cx, 372, { size: 18, color: `rgba(255,255,255,${pulse})` });
+    text(ctx, this.liveField?.hint() ?? (last ? 'Tap for results' : 'Tap for the next jump'), cx, 372, { size: 18, color: `rgba(255,255,255,${pulse})` });
   }
 }

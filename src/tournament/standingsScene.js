@@ -30,6 +30,7 @@ export class StandingsScene {
     this.rows = tournament.record(this.ev, this.results, run);
     this.table = tournament.standings();
     this.final = tournament.finished;
+    if (this.final && tournament.live) tournament.live.done = true; // played to the end: leaving now isn't leaving early
     if (this.final) {
       // The total goes on the tournament board. This event's mark goes on its own
       // board too, but the status line is about the total.
@@ -46,7 +47,9 @@ export class StandingsScene {
     const next = tournament.nextEvent;
     this.buttons = this.final
       ? [
-          new Button({ label: 'New tournament', color: '#2bb673', onTap: () => flow.tournament(this.game) }),
+          tournament.live
+            ? new Button({ label: 'Play live again', color: '#2bb673', onTap: () => flow.live(this.game, 'tournament') })
+            : new Button({ label: 'New tournament', color: '#2bb673', onTap: () => flow.tournament(this.game) }),
           new Button({ label: '🌐 Leaderboard', color: 'rgba(255,255,255,0.18)', onTap: () => flow.leaderboard(this.game, TOURNAMENT_BOARD) }),
           new Button({ label: 'Menu', color: 'rgba(255,255,255,0.18)', onTap: () => flow.menu(this.game) }),
         ]
@@ -173,6 +176,7 @@ export class StandingsScene {
     text(ctx, String(i + 1), x + 24, y, { size: 18 });
     ctx.fillStyle = r.colors.shirt;
     ctx.fillRect(x + 42, y - 9, 6, 18);
-    text(ctx, r.name, x + 56, y, { size: 18, align: 'left', weight: r.isPlayer ? 800 : 600 });
+    // The other players in a live tournament are named in gold, as on the track.
+    text(ctx, r.name, x + 56, y, { size: 18, align: 'left', weight: r.isPlayer ? 800 : 600, color: r.live || r.key ? '#ffb400' : '#fff' });
   }
 }

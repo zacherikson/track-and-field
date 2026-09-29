@@ -30,6 +30,11 @@ export class MenuScene {
           onTap: () => flow.intro(this.game, ev),
         }),
     );
+    // Online: the same, live against other people (a waiting room first, online/live.js).
+    this.liveButtons = [
+      new Button({ label: '🏆 Tournament', sub: 'Live · all 5', color: '#1f8a58', onTap: () => flow.live(this.game, 'tournament') }),
+      ...EVENTS.map((ev) => new Button({ label: ev.name, sub: 'Live', color: '#2bb673', enabled: ev.available, onTap: () => flow.live(this.game, ev.id) })),
+    ];
     // Rival difficulty: a two-way toggle, remembered on this device.
     this.level = getDifficulty();
     this.levelButtons = ['amateur', 'pro'].map(
@@ -62,8 +67,6 @@ export class MenuScene {
     this.athleteButton = new Button({ label: `${this.me.name}  ›`, w: 200, h: 44, color: 'rgba(255,255,255,0.15)', onTap: () => flow.characters(this.game) });
     this.tuneButton = new Button({ label: '⚙ Tuning', w: 132, h: 44, color: 'rgba(255,255,255,0.15)', onTap: () => flow.tuning(this.game) });
     this.onlineButton = new Button({ label: '🌐 Leaderboard', w: 196, h: 44, color: 'rgba(255,255,255,0.15)', onTap: () => flow.leaderboard(this.game) });
-    // Live: the waiting room for a 100m against other people.
-    this.liveButton = new Button({ label: '⚡ Race live', w: 200, h: 44, color: '#2bb673', onTap: () => flow.live(this.game) });
     // Your profile (username for the online leaderboard), top right.
     this.profileButton = new Button({ label: `👤 ${getPlayerName()}`, w: 190, h: 44, color: 'rgba(255,255,255,0.15)', onTap: () => flow.profile(this.game) });
     this.fsButton = document.fullscreenEnabled
@@ -103,18 +106,21 @@ export class MenuScene {
   }
 
   layout(view) {
-    const all = [this.tourButton, ...this.buttons];
-    const n = all.length;
+    // Two rows of events: OFFLINE (against the computer) and ONLINE (live against people).
+    const rows = [[this.tourButton, ...this.buttons], this.liveButtons];
+    const n = rows[0].length;
     const margin = 24 + Math.max(view.safe.l, view.safe.r);
     const gap = 12;
     const w = Math.min(180, (view.w - margin * 2 - gap * (n - 1)) / n);
     const total = w * n + gap * (n - 1);
-    all.forEach((b, i) => {
-      b.w = w;
-      b.h = 72;
-      b.x = (view.w - total) / 2 + i * (w + gap);
-      b.y = 205;
-    });
+    rows.forEach((row, r) =>
+      row.forEach((b, i) => {
+        b.w = w;
+        b.h = 60;
+        b.x = (view.w - total) / 2 + i * (w + gap);
+        b.y = ROW_Y[r];
+      }),
+    );
     // Bottom row: ATHLETE on the left, RIVALS in the middle, GHOST on the right.
     const lw = this.levelButtons[0].w;
     const aw = this.athleteButton.w;
@@ -122,15 +128,13 @@ export class MenuScene {
     const row = aw + 40 + lw * 2 + 8 + 40 + gw;
     const x0 = view.w / 2 - row / 2;
     this.athleteButton.x = x0;
-    this.athleteButton.y = 316;
+    this.athleteButton.y = SETTINGS_Y;
     this.levelButtons.forEach((b, i) => {
       b.x = x0 + aw + 40 + i * (lw + 8);
-      b.y = 316;
+      b.y = SETTINGS_Y;
     });
     this.ghostButton.x = x0 + row - gw;
-    this.ghostButton.y = 316;
-    this.liveButton.x = view.w / 2 - this.liveButton.w / 2;
-    this.liveButton.y = 374;
+    this.ghostButton.y = SETTINGS_Y;
     this.tuneButton.x = 14 + view.safe.l;
     this.tuneButton.y = 14 + view.safe.t;
     this.onlineButton.x = this.tuneButton.x + this.tuneButton.w + 10;
@@ -149,7 +153,7 @@ export class MenuScene {
       if (this.fsButton?.tap(ev.x, ev.y)) continue;
       if (this.tuneButton.tap(ev.x, ev.y)) continue;
       if (this.onlineButton.tap(ev.x, ev.y)) return;
-      if (this.liveButton.tap(ev.x, ev.y)) return;
+      if (this.liveButtons.some((b) => b.tap(ev.x, ev.y))) return;
       if (this.profileButton.tap(ev.x, ev.y)) return;
       if (this.levelButtons.some((b) => b.tap(ev.x, ev.y))) continue;
       if (this.ghostButton.tap(ev.x, ev.y)) continue;
@@ -163,7 +167,7 @@ export class MenuScene {
     this.profileButton.update(dt);
     this.tuneButton.update(dt);
     this.onlineButton.update(dt);
-    this.liveButton.update(dt);
+    this.liveButtons.forEach((b) => b.update(dt));
     this.levelButtons.forEach((b) => b.update(dt));
     this.ghostButton.update(dt);
     this.athleteButton.update(dt);
@@ -181,23 +185,27 @@ export class MenuScene {
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, view.w, view.h);
 
-    text(ctx, 'TRACK ROYALE', view.w / 2, 88, { size: 62, color: '#ffb400', shadow: true });
-    text(ctx, `Five events. Two thumbs. Starring ${this.me.name}.`, view.w / 2, 140, { size: 18, weight: 500, color: 'rgba(255,255,255,0.8)' });
+    text(ctx, 'TRACK ROYALE', view.w / 2, 90, { size: 52, color: '#ffb400', shadow: true });
+    text(ctx, `Five events. Two thumbs. Starring ${this.me.name}.`, view.w / 2, 131, { size: 16, weight: 500, color: 'rgba(255,255,255,0.8)' });
+    const label = (s, y) => text(ctx, s, this.tourButton.x, y, { size: 13, weight: 700, align: 'left', color: 'rgba(255,255,255,0.6)' });
+    label('OFFLINE · VS THE COMPUTER', ROW_Y[0] - 11);
+    label('ONLINE · LIVE VS PEOPLE', ROW_Y[1] - 11);
     this.tourButton.draw(ctx);
     this.buttons.forEach((b) => b.draw(ctx));
+    this.liveButtons.forEach((b) => b.draw(ctx));
     this.fsButton?.draw(ctx);
     this.profileButton.draw(ctx);
     this.tuneButton.draw(ctx);
     this.onlineButton.draw(ctx);
-    this.liveButton.draw(ctx);
     const lb = this.levelButtons;
-    text(ctx, 'RIVALS', (lb[0].x + lb[1].x + lb[1].w) / 2, 300, { size: 13, weight: 700, color: 'rgba(255,255,255,0.6)' });
+    const ly = SETTINGS_Y - 14;
+    text(ctx, 'RIVALS', (lb[0].x + lb[1].x + lb[1].w) / 2, ly, { size: 13, weight: 700, color: 'rgba(255,255,255,0.6)' });
     lb.forEach((b) => b.draw(ctx));
     const gb = this.ghostButton;
-    text(ctx, 'GHOST', gb.x + gb.w / 2, 300, { size: 13, weight: 700, color: 'rgba(255,255,255,0.6)' });
+    text(ctx, 'GHOST', gb.x + gb.w / 2, ly, { size: 13, weight: 700, color: 'rgba(255,255,255,0.6)' });
     gb.draw(ctx);
     const ab = this.athleteButton;
-    text(ctx, 'ATHLETE', ab.x + ab.w / 2, 300, { size: 13, weight: 700, color: 'rgba(255,255,255,0.6)' });
+    text(ctx, 'ATHLETE', ab.x + ab.w / 2, ly, { size: 13, weight: 700, color: 'rgba(255,255,255,0.6)' });
     ab.draw(ctx);
     // Kit color chip on the athlete button.
     ctx.fillStyle = this.me.colors.shirt;
@@ -218,6 +226,9 @@ export class MenuScene {
     drawFigure(ctx, sx, trackY + 10, CONFIG.figure.height * ppm * heightOf(this.me.colors), runPose(this.phase, 1), this.me.colors);
   }
 }
+
+const ROW_Y = [168, 256]; // tops of the OFFLINE and ONLINE rows
+const SETTINGS_Y = 350; // the athlete / rivals / ghost row
 
 function toggleFullscreen() {
   if (document.fullscreenElement) {

@@ -2,7 +2,7 @@ import { CONFIG } from '../config.js';
 import { Button, text } from '../core/ui.js';
 import { drawFigure, runPose } from '../athletes/stickFigure.js';
 import { EVENTS, formatMark } from '../events/registry.js';
-import { getBest, getDifficulty, setDifficulty } from '../core/storage.js';
+import { getBest, getDifficulty, setDifficulty, getGhostOn, setGhostOn } from '../core/storage.js';
 import { player, heightOf } from '../athletes/roster.js';
 import { flow } from '../flow.js';
 import { chooseGhost } from '../online/ghost.js';
@@ -45,6 +45,17 @@ export class MenuScene {
         }),
     );
     this.styleLevels();
+    // Your ghost: race your best 100m run in the next lane (remembered on this device).
+    this.ghostButton = new Button({
+      label: '',
+      w: 110,
+      h: 44,
+      onTap: () => {
+        setGhostOn(!getGhostOn());
+        this.styleGhost();
+      },
+    });
+    this.styleGhost();
     // Your athlete: opens the character picker.
     this.me = player();
     this.athleteButton = new Button({ label: `${this.me.name}  ›`, w: 200, h: 44, color: 'rgba(255,255,255,0.15)', onTap: () => flow.characters(this.game) });
@@ -64,6 +75,12 @@ export class MenuScene {
     }
   }
 
+  styleGhost() {
+    const on = getGhostOn();
+    this.ghostButton.label = on ? 'On' : 'Off';
+    this.ghostButton.color = on ? '#e4572e' : 'rgba(255,255,255,0.15)';
+  }
+
   onResize(view) {
     this.layout(view);
   }
@@ -81,10 +98,11 @@ export class MenuScene {
       b.x = (view.w - total) / 2 + i * (w + gap);
       b.y = 205;
     });
-    // Bottom row: ATHLETE on the left, RIVALS on the right.
+    // Bottom row: ATHLETE on the left, RIVALS in the middle, GHOST on the right.
     const lw = this.levelButtons[0].w;
     const aw = this.athleteButton.w;
-    const row = aw + 40 + lw * 2 + 8;
+    const gw = this.ghostButton.w;
+    const row = aw + 40 + lw * 2 + 8 + 40 + gw;
     const x0 = view.w / 2 - row / 2;
     this.athleteButton.x = x0;
     this.athleteButton.y = 316;
@@ -92,6 +110,8 @@ export class MenuScene {
       b.x = x0 + aw + 40 + i * (lw + 8);
       b.y = 316;
     });
+    this.ghostButton.x = x0 + row - gw;
+    this.ghostButton.y = 316;
     this.tuneButton.x = 14 + view.safe.l;
     this.tuneButton.y = 14 + view.safe.t;
     this.onlineButton.x = this.tuneButton.x + this.tuneButton.w + 10;
@@ -109,6 +129,7 @@ export class MenuScene {
       if (this.tuneButton.tap(ev.x, ev.y)) continue;
       if (this.onlineButton.tap(ev.x, ev.y)) return;
       if (this.levelButtons.some((b) => b.tap(ev.x, ev.y))) continue;
+      if (this.ghostButton.tap(ev.x, ev.y)) continue;
       if (this.athleteButton.tap(ev.x, ev.y)) return;
       if (this.tourButton.tap(ev.x, ev.y)) return;
       for (const b of this.buttons) if (b.tap(ev.x, ev.y)) break;
@@ -119,6 +140,7 @@ export class MenuScene {
     this.tuneButton.update(dt);
     this.onlineButton.update(dt);
     this.levelButtons.forEach((b) => b.update(dt));
+    this.ghostButton.update(dt);
     this.athleteButton.update(dt);
 
     // Demo runner loops across the bottom of the screen.
@@ -144,6 +166,9 @@ export class MenuScene {
     const lb = this.levelButtons;
     text(ctx, 'RIVALS', (lb[0].x + lb[1].x + lb[1].w) / 2, 300, { size: 13, weight: 700, color: 'rgba(255,255,255,0.6)' });
     lb.forEach((b) => b.draw(ctx));
+    const gb = this.ghostButton;
+    text(ctx, 'GHOST', gb.x + gb.w / 2, 300, { size: 13, weight: 700, color: 'rgba(255,255,255,0.6)' });
+    gb.draw(ctx);
     const ab = this.athleteButton;
     text(ctx, 'ATHLETE', ab.x + ab.w / 2, 300, { size: 13, weight: 700, color: 'rgba(255,255,255,0.6)' });
     ab.draw(ctx);

@@ -4,6 +4,12 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Ghost toggle
+- New GHOST On/Off toggle on the menu, next to RIVALS, remembered on this
+  device. It starts Off: your best 100m run only races as a ghost when you turn
+  it on. A ghost picked with Race on the online leaderboard still races either
+  way.
+
 ## Ghosts and an online leaderboard (100m)
 - Every 100m run is recorded (its strides, stumbles and lean, plus the physics
   numbers). Your fastest run on the phone races in the lane next to you as a

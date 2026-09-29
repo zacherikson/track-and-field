@@ -1,7 +1,8 @@
 import { Button, text, roundRect } from '../core/ui.js';
 import { ordinal } from '../core/math.js';
-import { formatMark } from '../events/registry.js';
-import { submitBest } from '../core/storage.js';
+import { formatMark, TOURNAMENT_BOARD } from '../events/registry.js';
+import { submitBest, saveGhostIfFaster } from '../core/storage.js';
+import { postMark } from '../online/post.js';
 import { tournament, ORDER } from './tournament.js';
 import { flow } from '../flow.js';
 
@@ -11,25 +12,37 @@ import { flow } from '../flow.js';
  * final standings and the champion.
  */
 export class StandingsScene {
-  constructor(ev, results) {
+  constructor(ev, results, stats = null) {
     this.ev = ev;
     this.results = results;
+    this.stats = stats;
   }
 
   enter() {
     this.age = 0;
     const me = this.results.find((r) => r.isPlayer);
-    // Personal bests still count in a tournament.
+    // Personal bests, ghosts and online marks still count in a tournament.
+    this.online = null; // one line about the online leaderboard
+    const run = this.stats?.run ?? null;
+    if (run) saveGhostIfFaster(this.ev.id, run);
     if (me?.status === 'ok') submitBest(this.ev.id, me.mark, this.ev.lowerIsBetter);
     this.rows = tournament.record(this.ev, this.results);
     this.table = tournament.standings();
     this.final = tournament.finished;
+    if (this.final) {
+      // The total goes on the tournament board. This event's mark goes on its own
+      // board too, but the status line is about the total.
+      if (me?.status === 'ok') postMark(this.ev, me.mark, run, () => {});
+      const total = this.table.find((t) => t.isPlayer)?.total;
+      if (total > 0) postMark(TOURNAMENT_BOARD, total, null, (s) => (this.online = `Your total · ${s}`));
+    } else if (me?.status === 'ok') postMark(this.ev, me.mark, run, (s) => (this.online = s));
     this.myPts = this.rows.find((r) => r.isPlayer)?.pts ?? 0;
     this.myPlace = this.table.findIndex((t) => t.isPlayer) + 1;
     const next = tournament.nextEvent;
     this.buttons = this.final
       ? [
           new Button({ label: 'New tournament', color: '#2bb673', onTap: () => flow.tournament(this.game) }),
+          new Button({ label: '🌐 Online', color: 'rgba(255,255,255,0.18)', onTap: () => flow.leaderboard(this.game, TOURNAMENT_BOARD) }),
           new Button({ label: 'Menu', color: 'rgba(255,255,255,0.18)', onTap: () => flow.menu(this.game) }),
         ]
       : [
@@ -49,13 +62,13 @@ export class StandingsScene {
   }
 
   layout(view) {
-    const [a, b] = this.buttons;
-    a.w = 280;
-    b.w = 170;
     const gap = 14;
-    const x0 = view.w / 2 - (a.w + b.w + gap) / 2;
-    Object.assign(a, { x: x0, y: view.h - 72 - view.safe.b, h: 56 });
-    Object.assign(b, { x: x0 + a.w + gap, y: view.h - 72 - view.safe.b, h: 56 });
+    this.buttons.forEach((b, i) => (b.w = i === 0 ? 280 : 170));
+    let x = view.w / 2 - (this.buttons.reduce((s, b) => s + b.w, 0) + gap * (this.buttons.length - 1)) / 2;
+    for (const b of this.buttons) {
+      Object.assign(b, { x, y: view.h - 72 - view.safe.b, h: 56 });
+      x += b.w + gap;
+    }
   }
 
   update(dt, t) {
@@ -95,7 +108,7 @@ export class StandingsScene {
     const colW = Math.min(420, (view.w - 60) / 2);
     const lx = cx - colW - 10;
     const rx = cx + 10;
-    const rowH = Math.min(44, (bottom - top - 44) / 6);
+    const rowH = Math.min(44, (bottom - top - 64) / 6); // leaves room for the online line
 
     // Left: this event (or, at the end, points per event).
     this.panel(ctx, lx, top, colW, bottom - top, this.final ? 'POINTS PER EVENT' : 'THIS EVENT');
@@ -121,6 +134,8 @@ export class StandingsScene {
         text(ctx, `+${r.pts}`, lx + colW - 16, y, { size: 18, align: 'right' });
       });
     }
+
+    if (this.online) text(ctx, this.online, lx + colW / 2, bottom - 16, { size: 13, weight: 500, color: 'rgba(255,255,255,0.65)', maxWidth: colW - 24 });
 
     // Right: overall standings.
     this.panel(ctx, rx, top, colW, bottom - top, this.final ? 'FINAL STANDINGS' : `OVERALL AFTER ${n} OF ${ORDER.length}`);

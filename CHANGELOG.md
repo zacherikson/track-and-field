@@ -4,6 +4,17 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Online leaderboards for every event
+- 🌐 Online now has a tab for each event (100m, Long jump, Hurdles, Pole vault,
+  Javelin) and one for Tournament points. ← → switch tabs on a keyboard.
+- Finishing any event posts your mark to its board if it beats your mark
+  there, in a tournament too. Finishing a tournament posts your total to the
+  Tournament board; its final standings have a 🌐 Online button.
+- Your fastest 100m from a tournament now counts as your ghost too.
+- The menu lists the events in tournament order: 100m, Long Jump, 110m
+  Hurdles, Pole Vault, Javelin.
+- `firestore.rules` changed: publish it again in the Firebase console.
+
 ## Profile and unique usernames
 - 👤 button at the top right of the menu (showing your name) opens your
   Profile, where you change your username. The name button on the online

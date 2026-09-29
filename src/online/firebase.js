@@ -2,7 +2,12 @@ import { getPlayerName, setPlayerName } from '../core/storage.js';
 import { toWire, fromWire } from './trace.js';
 
 /**
- * ONLINE LEADERBOARD (Firebase: Firestore + anonymous sign-in).
+ * ONLINE LEADERBOARD (Firebase: Firestore + anonymous or Google sign-in).
+ *
+ * Every player has an id: a guest's is anonymous (this phone only), and
+ * signing in with Google keeps it (signInWithGoogle). Only signed-in players
+ * go on the leaderboards; guests keep their bests on the phone until they sign
+ * in (online/bests.js postBests).
  *
  * Firestore layout:
  *   users/{uid}                       = { name, key, updatedAt }  your profile
@@ -63,6 +68,7 @@ function connect() {
     await a.authStateReady(); // a returning player is still signed in from last time
     const user = a.currentUser ?? (await auth.signInAnonymously(a)).user;
     rememberUid(user.uid);
+    rememberSignedIn(!user.isAnonymous);
     connected = { app: fbApp, fs, db: fs.getFirestore(fbApp), uid: user.uid, auth: a, A: auth };
     return connected;
   })();
@@ -85,6 +91,28 @@ const UID_KEY = 'trackroyale.uid';
 function rememberUid(uid) {
   try {
     localStorage.setItem(UID_KEY, uid);
+  } catch {}
+}
+
+const SIGNED_IN_KEY = 'trackroyale.signedin';
+
+/**
+ * True if this phone's player is signed in (with Google), not a guest. Known
+ * without loading the SDK: remembered at every sign-in and sign-out. Only
+ * signed-in players go on the leaderboards (firestore.rules checks it too).
+ */
+export function isSignedIn() {
+  try {
+    return localStorage.getItem(SIGNED_IN_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function rememberSignedIn(yes) {
+  try {
+    if (yes) localStorage.setItem(SIGNED_IN_KEY, '1');
+    else localStorage.removeItem(SIGNED_IN_KEY);
   } catch {}
 }
 
@@ -113,20 +141,26 @@ export async function accountInfo() {
  * id, so your name, bests and board entries all stay. One that has (you signed
  * in on another phone first) takes over instead: this phone plays as that
  * player from now on, and what this phone did as a guest stays behind.
- * Resolves to { switched }: true means the page should reload, so everything
- * starts again as the other player.
+ * Resolves to { switched }: true means the page should reload (after posting
+ * this phone's bests to that player, if you like), so everything starts again
+ * as them.
  */
 export function signInWithGoogle() {
   if (!connected) return Promise.reject(new Error('not-ready'));
   const { auth: a, A, fs, db } = connected;
   const provider = new A.GoogleAuthProvider();
   return A.linkWithPopup(a.currentUser, provider).then(
-    () => ({ switched: false }),
+    () => {
+      rememberSignedIn(true);
+      return { switched: false };
+    },
     async (err) => {
       if (err?.code !== 'auth/credential-already-in-use') throw err;
       const cred = A.GoogleAuthProvider.credentialFromError(err);
       const { user } = await A.signInWithCredential(a, cred);
       rememberUid(user.uid);
+      rememberSignedIn(true);
+      connected.uid = user.uid;
       // That player's name, from their profile (a player who never picked one gets a new made-up name).
       const profile = await fs.getDoc(fs.doc(db, 'users', user.uid)).catch(() => null);
       setPlayerName(profile?.exists() ? profile.data().name : null);
@@ -143,6 +177,7 @@ export async function signOut() {
   const { auth: a, A } = await connect();
   await A.signOut(a);
   forgetUid();
+  rememberSignedIn(false);
   setPlayerName(null);
 }
 
@@ -185,7 +220,8 @@ async function rankOf(fs, db, board, mark) {
  * `lost` says why a recording didn't go up with the mark (the mark still did).
  */
 export async function submitMark(board, mark, ghost = null) {
-  const { fs, db, uid } = await connect();
+  const { fs, db, uid, auth: a } = await connect();
+  if (a.currentUser?.isAnonymous !== false) throw Object.assign(new Error('guest'), { code: 'guest' });
   const ref = fs.doc(runs(fs, db, board.id), uid);
   const prev = await fs.getDoc(ref);
   const prevMark = prev.exists() ? prev.data().mark : null;

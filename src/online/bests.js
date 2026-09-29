@@ -1,7 +1,7 @@
 import { BOARDS, TOURNAMENT_BOARD } from '../events/registry.js';
 import { getBest, setBest, getGhost, setGhost, getBestTournament, saveBestTournament } from '../core/storage.js';
 import { changes } from '../tuning/store.js';
-import { myEntries, fetchGhost } from './firebase.js';
+import { myEntries, fetchGhost, isSignedIn, submitMark } from './firebase.js';
 import { isReplayable } from './ghost.js';
 import { isTrace } from './trace.js';
 import { CONFIG } from '../config.js';
@@ -16,6 +16,10 @@ import { CONFIG } from '../config.js';
  *
  * Only marks made with the shipped physics can go on a board, so only those
  * count as a best at all (see counts()).
+ *
+ * Only signed-in players go on the boards. A guest's bests stay on the phone
+ * alone (syncBests leaves them be) until they sign in, when postBests() puts
+ * them up.
  */
 
 /** True if a run made now can be a personal best: tuning is as shipped. */
@@ -34,9 +38,11 @@ const beats = (board, a, b) => (board.lowerIsBetter ? a < b : a > b);
 
 /**
  * Makes your saved bests match your board entries. Resolves true if anything
- * changed. Does nothing (resolves false) offline or before you've an online id.
+ * changed. Does nothing (resolves false) offline, before you've an online id,
+ * or as a guest (your bests aren't on the boards).
  */
 export async function syncBests() {
+  if (!isSignedIn()) return false;
   const started = posts;
   const entries = await myEntries(BOARDS.map((b) => b.id)).catch(() => null);
   if (!entries || posts !== started) return false;
@@ -86,4 +92,28 @@ export function forgetBests() {
     setGhost(board.id, null);
   }
   saveBestTournament(null);
+}
+
+/**
+ * Puts your saved bests on the boards (with their ghosts, where the saved
+ * ghost is of that mark): what you did as a guest, now that you've signed in.
+ * A board only takes a mark that beats your entry there. Resolves to how many
+ * boards took one.
+ */
+export async function postBests() {
+  if (!counts()) return 0;
+  posted();
+  let n = 0;
+  for (const board of BOARDS) {
+    const mark = getBest(board.id);
+    if (!board.online || mark == null) continue;
+    const saved = board === TOURNAMENT_BOARD ? null : getGhost(board.id);
+    let ghost = saved && same(saved.mark, mark) ? saved : null;
+    if (board.ghosts) {
+      if (!ghost || !isReplayable(ghost, { runner: CONFIG.runner, dip: CONFIG.dip })) continue; // the 100m goes up with its run or not at all
+    } else if (ghost && !isTrace(ghost, board.id, board.traceProps)) ghost = null;
+    const r = await submitMark(board, mark, ghost).catch((e) => (console.warn('best not posted', board.id, e), null));
+    if (r?.improved) n++;
+  }
+  return n;
 }

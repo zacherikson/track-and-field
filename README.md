@@ -126,7 +126,10 @@ anonymous sign-in so each phone gets an ID without a login screen. Signing in
 with Google on the Profile screen links that same ID to a Google account
 (`linkWithPopup`), so the username, bests and board entries stay and follow the
 player to any phone they sign in on; if that Google account already has a
-player, the phone switches to it and reloads. It needs Google turned on in
+player, the phone switches to it and reloads. Only signed-in players go on the
+leaderboards (`firestore.rules` checks the sign-in provider): a guest's bests
+stay on the phone and are posted when they sign in (`postBests` in
+`src/online/bests.js`). It needs Google turned on in
 Firebase console > Authentication > Sign-in method, and the site's domain
 (`zacherikson.github.io`, plus `localhost` for testing) in Authentication >
 Settings > Authorized domains. Profiles are

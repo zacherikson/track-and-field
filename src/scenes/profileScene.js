@@ -1,7 +1,7 @@
 import { Button, text, roundRect } from '../core/ui.js';
 import { getPlayerName, setPlayerName, cleanName } from '../core/storage.js';
 import { setUsername, accountInfo, signInWithGoogle, signOut } from '../online/firebase.js';
-import { forgetBests } from '../online/bests.js';
+import { forgetBests, postBests } from '../online/bests.js';
 import { flow } from '../flow.js';
 
 const WARN = '#ffb35c';
@@ -14,9 +14,10 @@ const DIM = 'rgba(255,255,255,0.6)';
  * online/firebase.js), so a change only sticks once the server has claimed it
  * for you.
  *
- * You start as a guest: an online id for this phone only. Signing in with
- * Google keeps that id (so your name, bests and board entries stay) and lets
- * you pick it up on any phone by signing in there too.
+ * You start as a guest: an online id for this phone only, off the
+ * leaderboards. Signing in with Google keeps that id (so your name, bests and
+ * any board entries stay), puts your bests on the boards, and lets you pick it
+ * up on any phone by signing in there too.
  */
 export class ProfileScene {
   enter() {
@@ -82,15 +83,18 @@ export class ProfileScene {
     this.busy = true;
     this.status = { text: 'Signing in…', color: 'rgba(255,255,255,0.7)' };
     signInWithGoogle()
-      .then(({ switched }) => {
+      .then(async ({ switched }) => {
+        // What you did as a guest goes on the leaderboard now (only where it beats your entry).
+        this.status = { text: 'Signed in. Putting your bests on the leaderboard…', color: OK };
+        const posted = await postBests();
         if (switched) {
           // That Google account already had a player: this phone is them now.
           forgetBests();
-          this.status = { text: 'Signed in. Loading your player…', color: OK };
+          this.status = { text: 'Loading your player…', color: OK };
           location.reload();
           return;
         }
-        this.status = { text: 'Signed in. Your name and bests are saved to your Google account.', color: OK };
+        this.status = { text: posted ? 'Signed in. Your bests are on the online leaderboard.' : 'Signed in. Your name and bests are saved to your Google account.', color: OK };
         this.loadAccount();
       })
       .catch((e) => {
@@ -184,7 +188,7 @@ export class ProfileScene {
 function accountLines(account) {
   if (!account) return ['Checking…', ''];
   if (account === 'offline') return ['Offline', 'Signing in needs a connection.'];
-  if (account.guest) return ['Guest on this phone', 'Sign in to keep your name and bests on any phone.'];
+  if (account.guest) return ['Guest on this phone', 'Sign in to go on the online leaderboard and keep your name and bests on any phone.'];
   return [`Signed in with ${account.via}`, account.email ?? 'Sign in with the same account on another phone to play as you there.'];
 }
 

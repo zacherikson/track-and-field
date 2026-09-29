@@ -12,11 +12,16 @@ Gameplay and tuning changes, newest first. When you change a number in
 - If that Google account already has a player (you signed in on another phone
   first), this phone switches to it and reloads; what it did as a guest stays
   with the old guest ID.
+- Only signed-in players go on the online leaderboards. Guests still play
+  everything (live play too) and keep their bests on the phone; signing in
+  posts them. The leaderboard's name button reads "Sign in to join" for guests.
+  Entries posted by guests before this stay until you delete them in the
+  console (or their players sign in, which makes them theirs).
 - Sign out turns the phone back into a new guest (new made-up name, bests
   cleared) until you sign in again.
 - Turn on Google in Firebase console > Authentication > Sign-in method, and
   check `zacherikson.github.io` is in Authentication > Settings > Authorized
-  domains.
+  domains. Then publish the new `firestore.rules` (Firestore Database > Rules).
 
 ## Live for every event and the tournament
 - The menu has two rows of events: OFFLINE (against the computer) and ONLINE

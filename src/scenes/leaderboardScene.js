@@ -2,7 +2,7 @@ import { CONFIG } from '../config.js';
 import { Button, text, roundRect } from '../core/ui.js';
 import { BOARDS, TOURNAMENT_BOARD, formatMark } from '../events/registry.js';
 import { getPlayerName } from '../core/storage.js';
-import { leaderboard, cachedLeaderboard, fetchGhost, learnUid } from '../online/firebase.js';
+import { leaderboard, cachedLeaderboard, fetchGhost, learnUid, isSignedIn } from '../online/firebase.js';
 import { chooseGhost, isReplayable } from '../online/ghost.js';
 import { isTrace } from '../online/trace.js';
 import { flow } from '../flow.js';
@@ -41,8 +41,11 @@ export class LeaderboardScene {
       .catch(() => {});
   }
 
+  /** Your name, or for a guest (not on the boards) the way on: sign in on the Profile. */
   setNameLabel() {
-    this.nameBtn.label = `👤 ${getPlayerName()}`;
+    const guest = !isSignedIn();
+    this.nameBtn.label = guest ? '👤 Sign in to join' : `👤 ${getPlayerName()}`;
+    this.nameBtn.color = guest ? '#3a6fd8' : 'rgba(255,255,255,0.18)';
   }
 
   show(board) {

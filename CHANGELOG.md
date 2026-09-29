@@ -4,6 +4,12 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Pages deploy: no more stale code on phones
+- GitHub Pages lets browsers reuse files for 10 minutes, so after a deploy a
+  phone could load the new page with old cached game code (or a mix). The
+  deploy now also copies `src/` to `v/<commit>/src` and points index.html at
+  it, so every deploy has fresh file addresses and nothing old is reused.
+
 ## Step 7.1: Chan and Chonk, Juno's hair
 - Tanabe is now **Chan** (straight black fringe, new `fringe` hairstyle).
 - Moreau is now **Chonk**: a big, round build (new `colors.girth` 2.3 in

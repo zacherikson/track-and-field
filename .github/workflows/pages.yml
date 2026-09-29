@@ -1,5 +1,8 @@
 # Publishes the game to GitHub Pages on every push to master.
-# There is no build step: the repo root is the site.
+# There is no build step: the repo root is the site, except that the game's
+# code is also copied to v/<commit>/src and index.html loads it from there.
+# GitHub Pages lets browsers reuse files for 10 minutes; a new folder per
+# deploy means a phone can never mix old cached code with a new page.
 name: Deploy to GitHub Pages
 
 on:
@@ -26,8 +29,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+      - name: Assemble the site (code in a per-commit folder)
+        run: |
+          set -euo pipefail
+          v="v/${GITHUB_SHA::8}"
+          mkdir -p _site
+          shopt -s dotglob nullglob
+          for f in *; do
+            case "$f" in .git|.github|_site) ;; *) cp -r "$f" _site/ ;; esac
+          done
+          mkdir -p "_site/$v"
+          cp -r src "_site/$v/src"
+          sed -i "s#src=\"src/main.js\"#src=\"$v/src/main.js\"#" _site/index.html
+          grep -q "$v/src/main.js" _site/index.html
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: _site
       - id: deployment
         uses: actions/deploy-pages@v4

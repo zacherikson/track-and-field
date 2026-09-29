@@ -4,6 +4,10 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 7.3: Joey two-thirds height
+- Joey's `colors.height` 0.5 → 2/3. His tagline now ends ", bald." (his
+  brown hair is unchanged). His hurdle hop scales down with the smaller gap.
+
 ## Step 7.2: Joey (half height)
 - Brix is replaced by **Joey**: blue shirt, brown hair, fair skin, and half
   everyone's height (new `colors.height` 0.5; `heightOf()` in roster.js).

@@ -10,6 +10,14 @@ export class MenuScene {
   enter() {
     this.demoX = 0;
     this.phase = 0;
+    // Tournament: all five events in a row, decathlon scoring.
+    const best = getBest('tournament');
+    this.tourButton = new Button({
+      label: '🏆 Tournament',
+      sub: best == null ? 'All 5 events' : `Best ${best} pts`,
+      color: '#c98a00',
+      onTap: () => flow.tournament(this.game),
+    });
     this.buttons = EVENTS.map(
       (ev) =>
         new Button({
@@ -57,12 +65,13 @@ export class MenuScene {
   }
 
   layout(view) {
-    const n = this.buttons.length;
+    const all = [this.tourButton, ...this.buttons];
+    const n = all.length;
     const margin = 24 + Math.max(view.safe.l, view.safe.r);
     const gap = 12;
     const w = Math.min(180, (view.w - margin * 2 - gap * (n - 1)) / n);
     const total = w * n + gap * (n - 1);
-    this.buttons.forEach((b, i) => {
+    all.forEach((b, i) => {
       b.w = w;
       b.h = 72;
       b.x = (view.w - total) / 2 + i * (w + gap);
@@ -94,9 +103,11 @@ export class MenuScene {
       if (this.tuneButton.tap(ev.x, ev.y)) continue;
       if (this.levelButtons.some((b) => b.tap(ev.x, ev.y))) continue;
       if (this.athleteButton.tap(ev.x, ev.y)) return;
+      if (this.tourButton.tap(ev.x, ev.y)) return;
       for (const b of this.buttons) if (b.tap(ev.x, ev.y)) break;
     }
     this.buttons.forEach((b) => b.update(dt));
+    this.tourButton.update(dt);
     this.fsButton?.update(dt);
     this.tuneButton.update(dt);
     this.levelButtons.forEach((b) => b.update(dt));
@@ -117,6 +128,7 @@ export class MenuScene {
 
     text(ctx, 'TRACK ROYALE', view.w / 2, 88, { size: 62, color: '#ffb400', shadow: true });
     text(ctx, `Five events. Two thumbs. Starring ${this.me.name}.`, view.w / 2, 140, { size: 18, weight: 500, color: 'rgba(255,255,255,0.8)' });
+    this.tourButton.draw(ctx);
     this.buttons.forEach((b) => b.draw(ctx));
     this.fsButton?.draw(ctx);
     this.tuneButton.draw(ctx);

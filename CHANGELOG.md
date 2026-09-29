@@ -4,6 +4,21 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 8: Tournament mode
+- New 🏆 Tournament button on the menu: all five events back to back in the
+  order 100m, Long Jump, 110m Hurdles, Pole Vault, Javelin, against the same
+  five rivals.
+- Scored like a real decathlon, with the official World Athletics tables
+  (`src/events/scoring.js`): 100m and hurdles `A·(B − time)^C`, jumps
+  `A·(cm − B)^C`, javelin `A·(m − B)^C`. No mark / DNF scores 0. Our marks land
+  in the same range as real decathletes: about 1000–1400 per event.
+- After each event: this event's marks and points, and the overall standings
+  with running totals. The intro card shows the event number and your points.
+  After the javelin: the champion, your points per event, final standings.
+  Your best tournament score is saved and shown on the menu button.
+- Personal bests still count in a tournament. Leaving to the menu (✕ or Quit)
+  ends the tournament.
+
 ## Step 7.3: Joey two-thirds height
 - Joey's `colors.height` 0.5 → 2/3. His tagline now ends ", bald." (his
   brown hair is unchanged). His hurdle hop scales down with the smaller gap.

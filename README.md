@@ -86,6 +86,8 @@ src/events/
   javelinRules.js     javelin: angle while held, distance from speed/angle/gap, rival throws (pure)
   javelin.js          javelin: run-up, hold to draw back, let go to throw, flight shot to the landing and the mark line
   poleVault.js        pole vault: run-up with the pole, spark, hold-and-release, swing, bar, mat, rising camera
+src/tournament/       tournament mode: event order and running totals, standings/champion screen
+src/events/scoring.js decathlon points (official World Athletics tables)
 src/scenes/characterScene.js  choose your athlete (the rest are your rivals)
 src/render/track.js   stadium with one-point perspective (camera 1m ahead of the player), parallax crowd
 src/render/pads.js    glossy tap targets, numbered buttons and the red ✕

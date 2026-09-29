@@ -2,6 +2,7 @@ import { text, roundRect } from '../core/ui.js';
 import { getBest } from '../core/storage.js';
 import { formatMark } from '../events/registry.js';
 import { flow } from '../flow.js';
+import { tournament, ORDER } from '../tournament/tournament.js';
 
 /** Event title card: name, world record, your best, how to play. Tap to start. */
 export class IntroScene {
@@ -33,6 +34,11 @@ export class IntroScene {
     ctx.fillStyle = '#1d3a66';
     ctx.fill();
 
+    if (tournament.active) {
+      const me = tournament.standings().find((t) => t.isPlayer);
+      const pts = me ? ` · ${me.total} pts` : '';
+      text(ctx, `TOURNAMENT · EVENT ${tournament.index + 1} OF ${ORDER.length}${pts}`, cx, 20, { size: 15, weight: 700, color: 'rgba(255,255,255,0.7)' });
+    }
     text(ctx, this.ev.name.toUpperCase(), cx, 100, { size: 50, color: '#ffb400', shadow: true });
     text(ctx, `World Record  ${formatMark(this.ev, this.ev.record)}`, cx, 160, { size: 22 });
     text(ctx, `Your Best  ${formatMark(this.ev, this.best)}`, cx, 192, { size: 18, weight: 500, color: 'rgba(255,255,255,0.8)' });

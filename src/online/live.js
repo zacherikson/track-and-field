@@ -30,15 +30,18 @@ import { player as chosenPlayer } from '../athletes/roster.js';
  * - everything else: your athlete frame by frame (`f`, chunks of a trace,
  *   online/trace.js), drawn a moment behind (liveTrace.js).
  * `res/{stage}` is your result for each stage, kept for the whole room.
- * `ready/{stage}` says you're ready for a stage: once everyone is (or a while
- * after the first), it starts on every phone at the same moment (startOf).
+ * `ready/{stage}` says you're ready for a stage, which the game says for you
+ * as soon as you've finished the one before (nobody has to tap): once everyone
+ * is (or a while after the first), it starts on every phone at the same
+ * moment, a few seconds later (startOf), with a countdown on screen.
  */
 export const MAX_PLAYERS = 4;
 const START_DELAY = 10000; // ms from the second player arriving to the start
 export const CLOSE_BEFORE = 6000; // ms before the start the room stops taking players (and everyone goes to the event)
 const SEND_EVERY = 100; // ms between updates during a stage
 const READY_WAIT = 20000; // ms after the first player is ready for a stage that it starts without the others
-const START_LEAD = 5000; // ms from everyone being ready to the stage starting (the gun, or a round's first target)
+const ROUND_LEAD = 6000; // ms from everyone finishing a field-event round to the next one starting (a look at the marks first)
+export const EVENT_LEAD = 14000; // ms from everyone finishing a tournament event to the next one's start (standings, then its title card)
 
 // The server's clock minus this phone's (ms), from the database.
 let offset = 0;
@@ -202,9 +205,9 @@ export class LiveSession {
     return `${this.step}-${evId}${round ? `-${round}` : ''}`;
   }
 
-  /** The stage an event starts with. */
-  eventStage(evId) {
-    return this.stage(evId, FIELD.has(evId) ? 1 : 0);
+  /** The stage an event starts with (of event `step` of the room: this one unless given). */
+  eventStage(evId, step = this.step) {
+    return `${step}-${evId}${FIELD.has(evId) ? '-1' : ''}`;
   }
 
   /** How long GET SET lasts before the gun of a race stage: the waiting room's for the first, then random but the same on every phone. */
@@ -224,8 +227,9 @@ export class LiveSession {
 
   /**
    * When `stage` starts (server ms): a little after everyone still here is
-   * ready for it, or after READY_WAIT if someone isn't. Null until that's
-   * known. Every phone works out the same time from the same ready times.
+   * ready for it (ROUND_LEAD for a field event's later rounds, EVENT_LEAD for
+   * an event), or after READY_WAIT if someone isn't. Null until that's known.
+   * Every phone works out the same time from the same ready times.
    */
   startOf(stage) {
     if (this.starts.has(stage)) return this.starts.get(stage);
@@ -245,7 +249,7 @@ export class LiveSession {
     if (!missing) at = Math.max(...times);
     else if (serverNow() >= first + READY_WAIT) at = first + READY_WAIT;
     else return null;
-    const start = at + START_LEAD;
+    const start = at + (/-[2-9]$/.test(stage) ? ROUND_LEAD : EVENT_LEAD);
     this.starts.set(stage, start);
     return start;
   }

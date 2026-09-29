@@ -74,10 +74,12 @@ same moment (each phone reads the server's clock). There are no computer rivals
 in live play, so every phone shows the same results.
 - Races: everyone's gun fires together, in the lanes next to yours.
 - Field events: every round starts together, so you all run up at once; the
-  others are drawn on your runway, see-through and named in gold. Between
-  rounds everyone waits until all are ready (or 20 s after the first).
-- Tournament: the five events in a row with the same people. Each event starts
-  once everyone has tapped ready on its title card.
+  others are drawn on your runway, see-through and named in gold. Once
+  everyone's attempt is over, the next round counts down and starts by itself.
+- Tournament: the five events in a row with the same people. Once everyone has
+  finished an event, the standings count down to the next one, which starts by
+  itself. Nobody taps to go on; anyone still playing after 20 s is left to
+  catch up.
 
 Live play runs on Firebase's Realtime Database, which is quick with small
 frequent messages and marks a player as gone when their phone drops off; its

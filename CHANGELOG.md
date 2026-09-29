@@ -11,11 +11,14 @@ Gameplay and tuning changes, newest first. When you change a number in
 - Every event and the tournament has its own waiting room.
 - Hurdles: everyone's gun fires together, as in the 100m.
 - Long jump, pole vault, javelin: each round starts on every phone at once, so
-  you run up together with the others drawn on your runway. Between rounds it
-  waits for everyone (at most 20 s after the first is ready).
-- Live tournament: the same people through all five events; each event starts
-  when everyone has tapped ready on its title card. Standings show the other
-  players in gold.
+  you run up together with the others drawn on your runway. Once everyone's
+  attempt is over the next round counts down (6 s) and starts by itself.
+- Live tournament: the same people through all five events. Once everyone has
+  finished an event, the standings count down to the next (14 s, the last few
+  on its title card) and it starts by itself. Standings show the other players
+  in gold.
+- Nobody taps to go on in live play; anyone still playing 20 s after the first
+  player finished is left to catch up.
 - No computer rivals in live play (the 100m had them), so every phone shows
   the same results and the same champion. In live play you're shown by your
   username, as the others see you.

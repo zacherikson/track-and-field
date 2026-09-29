@@ -5,20 +5,22 @@ import { LiveTrace, TraceStream } from './liveTrace.js';
 import { flow } from '../flow.js';
 
 const FINISH_WAIT = 30000; // ms after your last attempt to wait for the others'
+const RESULTS_AFTER = 5000; // ms after your last attempt before the results, at the soonest
 
 /**
  * A field event (long jump, pole vault, javelin) played live (online/live.js).
  * Each round starts at the same moment on every phone, so everyone runs up
  * together: the other players are drawn on your runway, see-through and named
  * in gold, a moment behind (liveTrace.js), and their marks join the standings
- * as they land. Between rounds everyone waits for everyone to be ready; at the
- * end, for everyone's last attempt. The other players are the only rivals
+ * as they land. Nobody taps to go on: once everyone's attempt is over the next
+ * round counts down and starts by itself; after the last, the results come up
+ * once everyone has had theirs. The other players are the only rivals
  * (`people`), so every phone shows the same results.
  *
  * The event scene takes `people` as its rivals and calls update() first in its update
  * (true = waiting: do nothing else), begin() in startRound(), pump() after
  * recording a frame (FieldGhost does), result() with its mark, next() instead
- * of going on, figures() to draw the others (FieldGhost does), hint() for the
+ * of going on (it does nothing: going on is automatic), figures() to draw the others (FieldGhost does), hint() for the
  * line under its standings, draw() last in its render, and close() on exit.
  */
 export class LiveField {
@@ -41,6 +43,7 @@ export class LiveField {
     this.stageKey = null;
     this.wait = { round: 1, stage: this.session.stage(this.ev.id, 1) }; // round 1 waits for its start
     this.finishing = null; // server ms to give up waiting for the others' last attempts
+    this.finishAfter = null; // server ms before which the results don't come up
     this.stop = this.session.listen((uid, doc) => this.onDoc(uid, doc));
   }
 
@@ -64,25 +67,32 @@ export class LiveField {
     p.trace?.receive(doc);
   }
 
-  /** First thing in the scene's update. True while waiting: the scene does nothing else this step. */
+  /**
+   * First thing in the scene's update: starts the next round, or shows the
+   * results, when it's time. True if the scene should do nothing else this
+   * step (before round 1, which is set up but mustn't move yet).
+   */
   update(dt, t) {
     const sc = this.scene;
-    if (!this.wait && this.finishing == null) return false;
-    for (const e of sc.game.input.consume(t + dt)) {
-      if ((e.type === 'down' && sc.hitExit(e)) || (e.type === 'key' && e.code === 'Escape')) {
-        flow.menu(sc.game);
-        return true;
+    if (this.wait?.round === 1) {
+      for (const e of sc.game.input.consume(t + dt)) {
+        if ((e.type === 'down' && sc.hitExit(e)) || (e.type === 'key' && e.code === 'Escape')) {
+          flow.menu(sc.game);
+          return true;
+        }
       }
     }
     if (this.wait) {
       const start = this.session.startOf(this.wait.stage);
-      if (start == null || serverNow() < start) return true;
+      if (start == null || serverNow() < start) return this.wait.round === 1;
       sc.round = this.wait.round - 1;
       this.wait = null;
       sc.startRound();
       return false;
     }
-    if (this.unfinished().length && serverNow() < this.finishing) return true;
+    if (this.finishing == null) return false;
+    const now = serverNow();
+    if (now < this.finishAfter || (this.unfinished().length && now < this.finishing)) return false;
     this.finishing = null;
     sc.finish();
     return true;
@@ -111,27 +121,33 @@ export class LiveField {
     if (this.stageKey && !this.wait) this.stream.pump();
   }
 
-  /** Your attempt is over: `mark` = { mark } or { foul } / { fail }. */
+  /**
+   * Your attempt is over: `mark` = { mark } or { foul } / { fail }. From here
+   * wait for the next round's start, or for everyone's last attempt.
+   */
   result(mark) {
     if (!this.stageKey) return;
     this.stream.pump(true);
     this.session.result(this.stageKey, Number.isFinite(mark?.mark) ? { mark: mark.mark } : mark?.fail ? { fail: true } : { foul: true });
-  }
-
-  /** Tapped on after an attempt: wait for the next round's start, or for everyone's last attempt. */
-  next() {
     const r = this.scene.round;
     if (r < this.rounds) {
       this.wait = { round: r + 1, stage: this.session.stage(this.ev.id, r + 1) };
       this.session.ready(this.wait.stage);
     } else {
+      this.finishAfter = serverNow() + RESULTS_AFTER;
       this.finishing = serverNow() + FINISH_WAIT;
     }
   }
 
+  /** A tap after an attempt: nothing (the next round, or the results, come by themselves). */
+  next() {}
+
   /** The line under the standings after an attempt, while waiting (else null). */
   hint() {
-    if (this.finishing != null) return `Waiting for ${names(this.unfinished())} to finish…`;
+    if (this.finishing != null) {
+      const left = this.unfinished();
+      return left.length ? `Waiting for ${names(left)} to finish…` : `Results in ${Math.max(1, Math.ceil((this.finishAfter - serverNow()) / 1000))}`;
+    }
     if (!this.wait) return null;
     const start = this.session.startOf(this.wait.stage);
     if (start != null) return `Round ${this.wait.round} starts in ${Math.max(1, Math.ceil((start - serverNow()) / 1000))}`;

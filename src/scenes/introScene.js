@@ -3,11 +3,14 @@ import { getBest } from '../core/storage.js';
 import { formatMark } from '../events/registry.js';
 import { flow } from '../flow.js';
 import { tournament, ORDER } from '../tournament/tournament.js';
+import { serverNow } from '../online/live.js';
+
+const ON_TRACK = 4000; // ms before a live event starts that it's shown (the gun's READY / GET SET, or a round's countdown)
 
 /**
  * Event title card: name, world record, your best, how to play. Tap to start.
- * In a live tournament a tap says you're ready, and the event starts for
- * everyone once they all are (online/live.js).
+ * In a live tournament it counts down instead, and the event starts at the
+ * same moment for everyone (online/live.js).
  */
 export class IntroScene {
   constructor(ev) {
@@ -19,6 +22,7 @@ export class IntroScene {
     this.best = getBest(this.ev.id);
     this.live = tournament.active ? tournament.live : null;
     this.stage = this.live?.eventStage(this.ev.id);
+    this.live?.ready(this.stage); // already, from the standings
   }
 
   update(dt, t) {
@@ -27,21 +31,20 @@ export class IntroScene {
       // Short grace period so the tap that opened this card doesn't also skip it.
       if (this.age < 0.35) continue;
       if (e.type === 'key' && e.code === 'Escape') return flow.menu(this.game);
-      if (e.type === 'down' || ['Space', 'Enter'].includes(e.code)) {
-        if (!this.live) return flow.play(this.game, this.ev);
-        this.live.ready(this.stage);
-      }
+      if (!this.live && (e.type === 'down' || ['Space', 'Enter'].includes(e.code))) return flow.play(this.game, this.ev);
     }
-    // Live: to the event as soon as its start is settled (it counts down there).
-    if (this.live && this.live.startOf(this.stage) != null) flow.play(this.game, this.ev);
+    // Live: to the event a few seconds before it starts (it counts down the rest there).
+    const start = this.live?.startOf(this.stage);
+    if (start != null && serverNow() >= start - ON_TRACK) flow.play(this.game, this.ev);
   }
 
-  /** The line at the bottom: what a tap does, or who a live tournament is waiting for. */
+  /** The line at the bottom: what a tap does, or when a live tournament's event starts. */
   prompt() {
     if (!this.live) return 'Tap to start';
-    if (this.live.readyAt[this.stage] == null) return 'Tap when you’re ready';
+    const start = this.live.startOf(this.stage);
+    if (start != null) return `Starts in ${Math.max(1, Math.ceil((start - serverNow()) / 1000))}`;
     const names = this.live.waitingFor(this.stage).map((p) => p.name);
-    return names.length ? `Waiting for ${names.join(', ')}…` : 'Starting…';
+    return `Waiting for ${names.join(', ') || 'the others'}…`;
   }
 
   render(ctx, view) {

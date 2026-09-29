@@ -6,11 +6,18 @@ import { postMark } from '../online/post.js';
 import { counts } from '../online/bests.js';
 import { tournament, ORDER } from './tournament.js';
 import { flow } from '../flow.js';
+import { serverNow } from '../online/live.js';
+
+const TITLE_CARD = 8000; // ms before a live tournament's next event starts that its title card comes up
 
 /**
  * Between tournament events: this event's results with the points each mark
  * scored (left) and the running totals (right). After the last event: the
  * final standings and the champion.
+ *
+ * In a live tournament nobody taps Next: you're ready for the next event as
+ * soon as you get here, and it comes up by itself once everyone is (a
+ * countdown on the button; see online/live.js startOf).
  */
 export class StandingsScene {
   constructor(ev, results, stats = null) {
@@ -45,6 +52,11 @@ export class StandingsScene {
     const mine = this.table.find((t) => t.isPlayer)?.total ?? 0;
     this.vsBest = best == null ? null : mine - best;
     const next = tournament.nextEvent;
+    this.live = !this.final ? tournament.live : null;
+    if (this.live) {
+      this.nextStage = this.live.eventStage(next.id, tournament.index + 1);
+      this.live.ready(this.nextStage);
+    }
     this.buttons = this.final
       ? [
           tournament.live
@@ -54,7 +66,7 @@ export class StandingsScene {
           new Button({ label: 'Menu', color: 'rgba(255,255,255,0.18)', onTap: () => flow.menu(this.game) }),
         ]
       : [
-          new Button({ label: `Next: ${next.name}  ›`, color: '#2bb673', onTap: () => this.goNext() }),
+          new Button({ label: `Next: ${next.name}  ›`, color: '#2bb673', onTap: () => !this.live && this.goNext() }),
           new Button({ label: 'Quit', color: 'rgba(255,255,255,0.18)', onTap: () => flow.menu(this.game) }),
         ];
     this.layout(this.game.view);
@@ -88,6 +100,20 @@ export class StandingsScene {
       else if (e.code === 'Escape') flow.menu(this.game);
     }
     this.buttons.forEach((b) => b.update(dt));
+    if (this.live) this.countDown();
+  }
+
+  /** Live: the Next button counts down to the next event, which comes up by itself. */
+  countDown() {
+    const start = this.live.startOf(this.nextStage);
+    const next = tournament.nextEvent;
+    if (start == null) {
+      const names = this.live.waitingFor(this.nextStage).map((p) => p.name);
+      this.buttons[0].label = `Waiting for ${names.join(', ') || 'the others'}…`;
+      return;
+    }
+    this.buttons[0].label = `${next.name} in ${Math.max(1, Math.ceil((start - serverNow()) / 1000))}`;
+    if (serverNow() >= start - TITLE_CARD) this.goNext();
   }
 
   render(ctx, view) {

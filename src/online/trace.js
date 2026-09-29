@@ -24,7 +24,7 @@ export const TRACE_VERSION = 1;
 export const TRACE_HZ = 30;
 export const MAX_FRAMES = 600; // 20 s: longer than any attempt
 const POSE_N = 14;
-const HEAD = 3 + POSE_N; // t, x, e, pose
+export const HEAD = 3 + POSE_N; // numbers per frame before the event ones: t, x, e, pose
 
 const r3 = (v) => Math.round(v * 1000) / 1000;
 

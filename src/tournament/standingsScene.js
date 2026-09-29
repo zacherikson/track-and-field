@@ -6,11 +6,18 @@ import { postMark } from '../online/post.js';
 import { counts } from '../online/bests.js';
 import { tournament, ORDER } from './tournament.js';
 import { flow } from '../flow.js';
+import { serverNow } from '../online/live.js';
+
+const TITLE_CARD = 8000; // ms before a live tournament's next event starts that its title card comes up
 
 /**
  * Between tournament events: this event's results with the points each mark
  * scored (left) and the running totals (right). After the last event: the
  * final standings and the champion.
+ *
+ * In a live tournament nobody taps Next: you're ready for the next event as
+ * soon as you get here, and it comes up by itself once everyone is (a
+ * countdown on the button; see online/live.js startOf).
  */
 export class StandingsScene {
   constructor(ev, results, stats = null) {
@@ -30,6 +37,7 @@ export class StandingsScene {
     this.rows = tournament.record(this.ev, this.results, run);
     this.table = tournament.standings();
     this.final = tournament.finished;
+    if (this.final && tournament.live) tournament.live.done = true; // played to the end: leaving now isn't leaving early
     if (this.final) {
       // The total goes on the tournament board. This event's mark goes on its own
       // board too, but the status line is about the total.
@@ -44,14 +52,21 @@ export class StandingsScene {
     const mine = this.table.find((t) => t.isPlayer)?.total ?? 0;
     this.vsBest = best == null ? null : mine - best;
     const next = tournament.nextEvent;
+    this.live = !this.final ? tournament.live : null;
+    if (this.live) {
+      this.nextStage = this.live.eventStage(next.id, tournament.index + 1);
+      this.live.ready(this.nextStage);
+    }
     this.buttons = this.final
       ? [
-          new Button({ label: 'New tournament', color: '#2bb673', onTap: () => flow.tournament(this.game) }),
+          tournament.live
+            ? new Button({ label: 'Play live again', color: '#2bb673', onTap: () => flow.live(this.game, 'tournament') })
+            : new Button({ label: 'New tournament', color: '#2bb673', onTap: () => flow.tournament(this.game) }),
           new Button({ label: '🌐 Leaderboard', color: 'rgba(255,255,255,0.18)', onTap: () => flow.leaderboard(this.game, TOURNAMENT_BOARD) }),
           new Button({ label: 'Menu', color: 'rgba(255,255,255,0.18)', onTap: () => flow.menu(this.game) }),
         ]
       : [
-          new Button({ label: `Next: ${next.name}  ›`, color: '#2bb673', onTap: () => this.goNext() }),
+          new Button({ label: `Next: ${next.name}  ›`, color: '#2bb673', onTap: () => !this.live && this.goNext() }),
           new Button({ label: 'Quit', color: 'rgba(255,255,255,0.18)', onTap: () => flow.menu(this.game) }),
         ];
     this.layout(this.game.view);
@@ -85,6 +100,20 @@ export class StandingsScene {
       else if (e.code === 'Escape') flow.menu(this.game);
     }
     this.buttons.forEach((b) => b.update(dt));
+    if (this.live) this.countDown();
+  }
+
+  /** Live: the Next button counts down to the next event, which comes up by itself. */
+  countDown() {
+    const start = this.live.startOf(this.nextStage);
+    const next = tournament.nextEvent;
+    if (start == null) {
+      const names = this.live.waitingFor(this.nextStage).map((p) => p.name);
+      this.buttons[0].label = `Waiting for ${names.join(', ') || 'the others'}…`;
+      return;
+    }
+    this.buttons[0].label = `${next.name} in ${Math.max(1, Math.ceil((start - serverNow()) / 1000))}`;
+    if (serverNow() >= start - TITLE_CARD) this.goNext();
   }
 
   render(ctx, view) {
@@ -173,6 +202,7 @@ export class StandingsScene {
     text(ctx, String(i + 1), x + 24, y, { size: 18 });
     ctx.fillStyle = r.colors.shirt;
     ctx.fillRect(x + 42, y - 9, 6, 18);
-    text(ctx, r.name, x + 56, y, { size: 18, align: 'left', weight: r.isPlayer ? 800 : 600 });
+    // The other players in a live tournament are named in gold, as on the track.
+    text(ctx, r.name, x + 56, y, { size: 18, align: 'left', weight: r.isPlayer ? 800 : 600, color: r.live || r.key ? '#ffb400' : '#fff' });
   }
 }

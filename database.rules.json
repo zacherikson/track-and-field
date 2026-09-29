@@ -1,9 +1,9 @@
 {
   "rules": {
     "lobby": {
-      "$event": {
-        ".read": "auth != null && $event === 'sprint100'",
-        ".write": "auth != null && $event === 'sprint100'",
+      "$kind": {
+        ".read": "auth != null && $kind.matches(/^(sprint100|longjump|hurdles110|polevault|javelin|tournament)$/)",
+        ".write": "auth != null && $kind.matches(/^(sprint100|longjump|hurdles110|polevault|javelin|tournament)$/)",
         "room": { ".validate": "newData.isString() && newData.val().length <= 40" },
         "startAt": { ".validate": "newData.isNumber()" },
         "setLen": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 5" },
@@ -24,15 +24,33 @@
         ".read": "auth != null",
         "$uid": {
           ".write": "auth != null && auth.uid === $uid",
+          "v": { ".validate": "newData.isNumber()" },
           "name": { ".validate": "newData.isString() && newData.val().length <= 16" },
           "athlete": { ".validate": "newData.isString() && newData.val().length <= 32" },
+          "left": { ".validate": "newData.isBoolean()" },
+          "s": { ".validate": "newData.isString() && newData.val().length <= 40" },
+          "t0": { ".validate": "newData.isNumber()" },
           "run": {
             "ev": { ".validate": "newData.hasChildren() && !newData.hasChild('4000')" }
           },
           "n": { ".validate": "newData.isNumber()" },
           "done": { ".validate": "newData.isBoolean()" },
-          "left": { ".validate": "newData.isBoolean()" },
-          "v": { ".validate": "newData.isNumber()" },
+          "f": {
+            ".validate": "!newData.hasChild('400')",
+            "$k": { ".validate": "newData.isString() && newData.val().length <= 100000" }
+          },
+          "res": {
+            "$stage": {
+              "mark": { ".validate": "newData.isNumber()" },
+              "foul": { ".validate": "newData.isBoolean()" },
+              "fail": { ".validate": "newData.isBoolean()" },
+              "status": { ".validate": "newData.isString() && newData.val().length <= 8" },
+              "$other": { ".validate": false }
+            }
+          },
+          "ready": {
+            "$stage": { ".validate": "newData.isNumber()" }
+          },
           "$other": { ".validate": false }
         }
       }

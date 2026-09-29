@@ -41,7 +41,7 @@ export class Hurdles110 extends LaneRace {
     this.positions = hurdlePositions(this.cfg.hurdles);
     this.slotPos = [0, 1, 2].map(() => ({ x: 0, y: 0 }));
     this.rings = []; // { slot, t0 }
-    this.ghostSpec = pickGhost(this.ev, (d) => isTrace(d, this.ev.id, this.traceProps));
+    this.ghostSpec = this.live ? null : pickGhost(this.ev, (d) => isTrace(d, this.ev.id, this.traceProps)); // a live race has real people instead
     super.enter();
     this.set = new ButtonSet(this.player.runner, this.cfg);
   }
@@ -142,7 +142,7 @@ export class Hurdles110 extends LaneRace {
 
   /** A short athlete (Joey) bounces up over each hurdle: the shorter, the bigger the hop (m). */
   liftFor(a) {
-    if (a.trace) return 0; // a ghost's lift is in its recording
+    if (a.trace || a.frame) return 0; // a ghost's (or live runner's) lift is in its recording
     const tall = a.colors.height ?? 1;
     if (tall >= 1 || (this.state !== 'race' && this.state !== 'finished')) return 0;
     const k = a.hurdles?.hopProgress(a.runner.x);
@@ -152,7 +152,7 @@ export class Hurdles110 extends LaneRace {
 
   poseFor(a) {
     let pose = super.poseFor(a);
-    if (a.trace || (this.state !== 'race' && this.state !== 'finished')) return pose; // a ghost's pose is recorded as drawn
+    if (a.trace || a.frame || (this.state !== 'race' && this.state !== 'finished')) return pose; // a ghost's (or live runner's) pose is recorded as drawn
     const k = a.hurdles?.hopProgress(a.runner.x);
     if (k != null) pose = hurdlePose(pose, Math.pow(Math.sin(Math.PI * k), 0.6));
     // Caught the hurdle: stumble on from the hurdling pose.

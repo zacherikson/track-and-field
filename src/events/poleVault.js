@@ -14,6 +14,7 @@ import { drawDrop, drawHitRing } from '../render/targetPads.js';
 import { getDifficulty } from '../core/storage.js';
 import { flow } from '../flow.js';
 import { FieldGhost } from '../online/fieldGhost.js';
+import { LiveField } from '../online/liveField.js';
 
 const LEFT_KEYS = ['ArrowLeft', 'KeyA', 'KeyZ', 'KeyF'];
 const RIGHT_KEYS = ['ArrowRight', 'KeyD', 'KeyX', 'KeyJ'];
@@ -97,7 +98,7 @@ export class PoleVault {
     this.track = new VaultRenderer(cfg);
     this.camera = new Camera();
     const me = chosenPlayer();
-    this.player = { name: me.name, colors: me.colors, isPlayer: true, jumps: [] };
+    this.player = { name: this.live ? this.live.name : me.name, colors: me.colors, isPlayer: true, jumps: [] }; // live: your username, as the others see you
     this.rivals = shuffle(rivalRoster())
       .slice(0, 5)
       .map((r) => ({ name: r.name, colors: r.colors, isPlayer: false, jumps: [], cadence: rand(...this.lv.cadence) }));
@@ -106,12 +107,15 @@ export class PoleVault {
     this.exitBtn = { x: 0, y: 0, w: 44, h: 40 };
     this.stats = { hits: 0, misses: 0, topSpeed: 0 };
     this.round = 0;
-    this.ghost = new FieldGhost(this.ev);
+    this.liveField = this.live ? new LiveField(this) : null;
+    if (this.liveField) this.rivals = this.liveField.people; // live: just the other players, so every phone has the same results
+    this.ghost = new FieldGhost(this.ev, this.liveField);
     this.onResize(this.game.view);
     this.startRound();
   }
 
   exit() {
+    this.liveField?.close();
     this.game.input.wantReleases = false;
   }
 
@@ -151,6 +155,7 @@ export class PoleVault {
     this.camY = 0;
     this.puff = [];
     this.ghost.startAttempt(t);
+    this.liveField?.begin();
     this.setState('ready');
     this.camera.snapTo(this.runner.x);
   }
@@ -171,6 +176,7 @@ export class PoleVault {
   }
 
   update(dt, t) {
+    if (this.liveField?.update(dt, t)) return; // live: waiting for a round, or for the others
     const end = t + dt;
     for (const e of this.game.input.consume(end)) {
       if (e.type === 'down' && this.hitExit(e)) return flow.menu(this.game);
@@ -424,7 +430,9 @@ export class PoleVault {
   showMark() {
     this.player.jumps.push(this.mark);
     this.ghost.endAttempt(this.mark);
+    this.liveField?.result(this.mark);
     for (const rv of this.rivals) {
+      if (rv.live) continue; // another player: their marks come from their phone
       const level = { ...this.lv, cadence: [rv.cadence, rv.cadence] };
       rv.jumps.push(rivalVault(level, this.cfg, () => this.rivalRunUp(rv)));
     }
@@ -450,6 +458,7 @@ export class PoleVault {
   }
 
   next() {
+    if (this.liveField) return this.liveField.next();
     if (this.round < this.cfg.rounds) this.startRound();
     else this.finish();
   }
@@ -463,7 +472,7 @@ export class PoleVault {
     const all = [this.player, ...this.rivals];
     const results = all.map((a) => {
       const b = this.best(a);
-      return { name: a.name, colors: a.colors, isPlayer: a.isPlayer, mark: b, status: b == null ? 'nm' : 'ok' };
+      return { name: a.name, key: a.uid, colors: a.colors, isPlayer: a.isPlayer, mark: b, status: b == null ? 'nm' : 'ok' };
     });
     results.sort((a, b) => (b.mark ?? -1) - (a.mark ?? -1));
     const fails = this.player.jumps.filter((j) => j.fail).length;
@@ -474,6 +483,7 @@ export class PoleVault {
       extra: `${fails} ${fails === 1 ? 'miss' : 'misses'}`,
       paceText: `vaults ${this.player.jumps.map((j) => (j.fail ? 'X' : j.mark.toFixed(2))).join(' / ')}`,
       run: this.ghost.best(), // your best vault, frame by frame, for the ghost
+      live: !!this.live,
     });
   }
 
@@ -596,19 +606,23 @@ export class PoleVault {
     this.drawControls(ctx, view);
     this.drawHUD(ctx, view);
     if (this.state === 'mark') this.drawMark(ctx, view);
+    this.liveField?.draw(ctx, view);
   }
 
-  /** The ghost vaulter and its pole, see-through, from its recorded frames. */
+  /** The ghost vaulter (or the other live players) and the pole, see-through, from recorded frames. */
   drawGhost(ctx, view, pxPerM) {
-    const g = this.ghost.frame(this.now);
-    if (!g) return;
+    for (const fig of this.ghost.figures(this.now)) this.drawGhostFigure(ctx, view, pxPerM, fig);
+  }
+
+  drawGhostFigure(ctx, view, pxPerM, fig) {
+    const g = fig.frame;
     const tr = this.track;
     const ground = tr.toScreen(this.camera, view, g.x, 1);
     const groundY = ground.y + 4;
     const onMat = g.x > this.cfg.mat.from && g.x < this.cfg.mat.to;
     const floorY = groundY - (onMat ? this.cfg.mat.height * pxPerM : 0);
     const y = groundY - g.e * pxPerM;
-    const H = FIG_H * heightOf(this.ghost.colors) * pxPerM;
+    const H = FIG_H * heightOf(fig.colors) * pxPerM;
     // The pole: blended between frames while it's shown in both.
     const [pa, pb] = [g.pa, g.pb];
     const p = pa[0] && pb[0] ? pa.map((v, i) => v + (pb[i] - v) * g.k) : g.k < 0.5 ? pa : pb;
@@ -619,7 +633,7 @@ export class PoleVault {
       strokePole(ctx, pt(1), pt(3), pt(5), pt(7), H);
       ctx.restore();
     }
-    this.ghost.drawFigure(ctx, ground.x, y, H, g.pose, onMat ? floorY : groundY);
+    this.ghost.drawFigure(ctx, fig, ground.x, y, H, onMat ? floorY : groundY);
   }
 
   /**
@@ -735,6 +749,7 @@ export class PoleVault {
   }
 
   drawControls(ctx) {
+    if (this.liveField?.holding) return; // live: the round hasn't started
     const now = this.now;
     const padsCfg = CONFIG.sprint100.pads;
     const { L, R } = this.pads;
@@ -822,7 +837,7 @@ export class PoleVault {
     });
     const last = this.round >= this.cfg.rounds;
     const pulse = 0.6 + 0.4 * Math.sin(this.now * 5);
-    text(ctx, last ? 'Tap for results' : 'Tap for the next vault', cx, 372, { size: 18, color: `rgba(255,255,255,${pulse})` });
+    text(ctx, this.liveField?.hint() ?? (last ? 'Tap for results' : 'Tap for the next vault'), cx, 372, { size: 18, color: `rgba(255,255,255,${pulse})` });
   }
 }
 

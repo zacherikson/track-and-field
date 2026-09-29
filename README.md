@@ -66,19 +66,33 @@ total. Marks made with changed tuning aren't posted, and don't count as a
 personal best either. Set your username with the 👤 button at the top right of
 the menu; names are unique.
 
-⚡ **Race live** (on the menu) is a 100m against other people. You wait in a
-waiting room until someone else joins; then a countdown starts, more can join
-(up to 4), and everyone's gun fires at the same moment (each phone reads the
-server's clock). Computer rivals fill the other lanes. Live races run on
-Firebase's Realtime Database, which is quick with small frequent messages and
-takes a player out of the room when their phone drops off; its rules are in
-[`database.rules.json`](database.rules.json) (paste them into Firebase console
-> Realtime Database > Rules after changing them). Each phone sends its
-taps as they happen, the same data as a 100m ghost, and replays everyone
-else's through the same physics, so every phone gets every time exactly. The
-others' taps arrive a moment late, so their runners are drawn carried on at
-their current speed until the next update (`src/online/live.js`,
-`src/online/liveRun.js`).
+**Live play**: the menu has two rows of events. OFFLINE is against the
+computer; ONLINE is live against other people, for every event and the
+tournament. You wait in a waiting room for that event until someone else joins;
+then a countdown starts, more can join (up to 4), and everyone starts at the
+same moment (each phone reads the server's clock). There are no computer rivals
+in live play, so every phone shows the same results.
+- Races: everyone's gun fires together, in the lanes next to yours.
+- Field events: every round starts together, so you all run up at once; the
+  others are drawn on your runway, see-through and named in gold. Once
+  everyone's attempt is over, the next round counts down and starts by itself.
+- Tournament: the five events in a row with the same people. Once everyone has
+  finished an event, the standings count down to the next one, which starts by
+  itself. Nobody taps to go on; anyone still playing after 20 s is left to
+  catch up.
+
+Live play runs on Firebase's Realtime Database, which is quick with small
+frequent messages and marks a player as gone when their phone drops off; its
+rules are in [`database.rules.json`](database.rules.json) (paste them into
+Firebase console > Realtime Database > Rules after changing them). In the 100m
+each phone sends its taps as they happen, the same data as a 100m ghost, and
+replays everyone else's through the same physics, so every phone gets every
+time exactly; the others' runners are drawn carried on at their current speed
+until the next update (`src/online/liveRun.js`). Every other event sends the
+athlete frame by frame instead, drawn about a quarter of a second behind
+(`src/online/liveTrace.js`), with marks taken from each player's own phone.
+`src/online/live.js` has the waiting room, the shared start times and the
+messages.
 
 Your **personal bests** are your entries on the online boards
 (`src/online/bests.js`). The phone keeps a copy so offline play works; each
@@ -166,19 +180,21 @@ src/online/
   firebase.js         online leaderboards: lazy-loaded Firebase SDK, anonymous sign-in, Firestore
   post.js             posts a finished mark to its board and reports how it went
   bests.js            personal bests: your board entries, synced to the phone's copy
-  live.js             live races: the waiting room, the shared start time, sending and receiving runners
-  liveRun.js          another player's runner in a live race, replayed as their taps arrive
+  live.js             live play: the waiting rooms, shared start times, sending and receiving players
+  liveRun.js          another player's runner in a live 100m, replayed as their taps arrive
+  liveTrace.js        sends your athlete frame by frame in live play, and draws the others' (all but the 100m)
+  liveField.js        a field event played live: rounds together, the others on your runway
   trace.js            records an attempt frame by frame and plays it back (every event but the 100m)
   fieldGhost.js       records and draws ghosts in the long jump, pole vault and javelin
   ghosts.js           picks which ghost races: best tournament, a leaderboard pick, or your best
 src/scenes/leaderboardScene.js  online leaderboards, a tab per event, with Race buttons
 src/scenes/profileScene.js      your username (unique, saved in Firebase)
-src/scenes/lobbyScene.js        the live race waiting room
+src/scenes/lobbyScene.js        the live waiting room (any event, or the tournament)
 src/tuning/           in-game tuning panel (params list, saved overrides, live estimates)
 tools/simulate.mjs    headless tuning simulator
 tools/ghostcheck.mjs  checks that recorded runs replay to the exact same time
 firestore.rules       Firestore security rules for the leaderboards and usernames
-database.rules.json   Realtime Database security rules for live races
+database.rules.json   Realtime Database security rules for live play
 ```
 
 ### Game-dev concepts used here

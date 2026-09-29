@@ -36,10 +36,11 @@ export class LiveRun {
     return this.known === Infinity;
   }
 
-  /** Their latest doc from the channel. Returns false if it can't be used. */
-  receive(doc, nowMs = Date.now()) {
+  /** Their latest doc (live.js) for race `stage`. Returns false if it can't be used. */
+  receive(doc, stage, nowMs = Date.now()) {
     if (doc?.left) this.left = true;
-    const run = doc?.run;
+    if (doc?.s !== stage) return false; // not on this race (yet)
+    const run = doc.run;
     if (!usable(run) || !Number.isFinite(doc.n)) return false;
     this.heardAt = nowMs;
     if (!this.ghost) {
@@ -73,7 +74,7 @@ export class LiveRun {
 
 const finite = (x) => typeof x === 'number' && Number.isFinite(x);
 
-/** A run as the channel sends it: like a ghost (ghost.js isReplayable), but unfinished, so no mark yet. */
+/** A run as a live race sends it: like a ghost (ghost.js isReplayable), but unfinished, so no mark yet. */
 function usable(run) {
   if (!run || typeof run !== 'object' || run.v !== GHOST_VERSION) return false;
   if (![run.off, run.step, run.distance, run.startX, run.prompt].every(finite)) return false;

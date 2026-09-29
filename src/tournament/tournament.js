@@ -8,17 +8,24 @@ import { counts } from '../online/bests.js';
  * real decathlon (see scoring.js). Points add up after each event; the most
  * points at the end is the champion. Your rivals are the same five athletes
  * throughout. State lives here for the length of one tournament.
+ *
+ * A live tournament (`live` = the room, online/live.js) is the same five events
+ * against the other players in the room, each event starting together (see
+ * IntroScene). Rows are kept apart by `key` (a live player's id) where there is
+ * one, else by name.
  */
 export const ORDER = ['sprint100', 'longjump', 'hurdles110', 'polevault', 'javelin'];
 
 export const tournament = {
   active: false,
   index: 0, // which event is next / being played
-  totals: new Map(), // name -> { name, colors, isPlayer, total }
+  totals: new Map(), // key or name -> { name, colors, isPlayer, total }
   history: [], // per event: { ev, rows: [{ name, colors, isPlayer, mark, status, pts }], ghost }
+  live: null, // the room, for a live tournament
 
-  start() {
+  start(live = null) {
     this.active = true;
+    this.live = live;
     this.index = 0;
     this.totals = new Map();
     this.history = [];
@@ -26,6 +33,7 @@ export const tournament = {
 
   end() {
     this.active = false;
+    this.live = null;
   },
 
   get event() {
@@ -48,9 +56,10 @@ export const tournament = {
   record(ev, results, ghost = null) {
     const rows = results.map((r) => ({ ...r, pts: points(ev.id, r.mark, r.status) }));
     for (const r of rows) {
-      const t = this.totals.get(r.name) ?? { name: r.name, colors: r.colors, isPlayer: r.isPlayer, total: 0 };
+      const key = r.key ?? r.name;
+      const t = this.totals.get(key) ?? { name: r.name, colors: r.colors, isPlayer: r.isPlayer, live: !!r.key, total: 0 };
       t.total += r.pts;
-      this.totals.set(r.name, t);
+      this.totals.set(key, t);
     }
     this.history.push({ ev, rows, ghost });
     if (this.finished) {
@@ -89,5 +98,6 @@ export const tournament = {
 
   advance() {
     this.index++;
+    if (this.live) this.live.step = this.index; // the room's stages for the next event
   },
 };

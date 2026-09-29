@@ -3,29 +3,45 @@ import { getPlayerName } from '../core/storage.js';
 import { player as chosenPlayer } from '../athletes/roster.js';
 
 /**
- * LIVE RACES: a waiting room, then a 100m against the other people in it.
+ * LIVE: a waiting room, then an event (or a whole tournament) against the other
+ * people in it.
  *
- * They run on Firebase's Realtime Database (the leaderboards stay in
+ * It runs on Firebase's Realtime Database (the leaderboards stay in
  * Firestore): it's quick with small, frequent messages, tells us the server's
- * clock, and removes a player whose phone drops off (onDisconnect).
+ * clock, and marks a player whose phone drops off (onDisconnect).
  * database.rules.json says who may write what.
  *
- *   lobby/{eventId}            = { room, startAt, setLen, players: { uid: { name, athlete, at } } }
- *   live/{room}/{uid}          = { name, athlete, run, n, done, left, v }
+ *   lobby/{kind}               = { room, startAt, setLen, players: { uid: { name, athlete, at } } }
+ *   live/{room}/{uid}          = { v, name, athlete, left, s, t0, run, n, done, f, res, ready }
  *
- * The lobby node IS the waiting room: whoever is in `players` races together.
- * When a second player arrives it gets a start time (`startAt`, server clock,
- * ms) a few seconds ahead; everyone's gun fires then. Shortly before, the room
- * closes: the next player to arrive starts a new room in the same node.
+ * `kind` is an event id or 'tournament'. The lobby node IS the waiting room:
+ * whoever is in `players` plays together. When a second player arrives it gets
+ * a start time (`startAt`, server clock, ms) a few seconds ahead; everyone
+ * starts then. Shortly before, the room closes: the next player to arrive
+ * starts a new room in the same node.
  *
- * In the race each phone sends its runner's inputs as they happen (the same
- * data as a 100m ghost, online/ghost.js) and replays everyone else's through
- * the same physics (liveRun.js), so each phone works out every time exactly.
+ * In the room, play is split into STAGES: a race, or one round of a field
+ * event; a tournament has one stage per race and per round. `s` is the stage
+ * you're on and `t0` when it started (server ms). While it runs your phone
+ * sends what the others need to draw you:
+ * - the 100m: your inputs (`run`, the same data as a 100m ghost, online/ghost.js)
+ *   and `n`, the physics steps run so far; the others replay them through the
+ *   same physics (liveRun.js), so every phone works out every time exactly;
+ * - everything else: your athlete frame by frame (`f`, chunks of a trace,
+ *   online/trace.js), drawn a moment behind (liveTrace.js).
+ * `res/{stage}` is your result for each stage, kept for the whole room.
+ * `ready/{stage}` says you're ready for a stage, which the game says for you
+ * as soon as you've finished the one before (nobody has to tap): once everyone
+ * is (or a while after the first), it starts on every phone at the same
+ * moment, a few seconds later (startOf), with a countdown on screen.
  */
 export const MAX_PLAYERS = 4;
-const START_DELAY = 10000; // ms from the second player arriving to the gun
-export const CLOSE_BEFORE = 6000; // ms before the gun the room stops taking players (and everyone goes to the track)
-const SEND_EVERY = 120; // ms between updates of your runner during a race
+const START_DELAY = 10000; // ms from the second player arriving to the start
+export const CLOSE_BEFORE = 6000; // ms before the start the room stops taking players (and everyone goes to the event)
+const SEND_EVERY = 100; // ms between updates during a stage
+const READY_WAIT = 20000; // ms after the first player is ready for a stage that it starts without the others
+const ROUND_LEAD = 6000; // ms from everyone finishing a field-event round to the next one starting (a look at the marks first)
+export const EVENT_LEAD = 14000; // ms from everyone finishing a tournament event to the next one's start (standings, then its title card)
 
 // The server's clock minus this phone's (ms), from the database.
 let offset = 0;
@@ -56,7 +72,7 @@ const newRoomId = () => `${Date.now().toString(36)}${Math.random().toString(36).
 
 const closed = (d, now) => d?.startAt != null && now > d.startAt - CLOSE_BEFORE;
 
-/** Two or more players: the gun is set. Fewer: it's off. */
+/** Two or more players: the start is set. Fewer: it's off. */
 function withStart(d, now) {
   const n = Object.keys(d.players ?? {}).length;
   if (n < 2) return { ...d, startAt: null, setLen: null };
@@ -65,12 +81,12 @@ function withStart(d, now) {
 }
 
 /**
- * The waiting room for one event. `onChange(view)` gets
+ * The waiting room for one event, or the tournament (`kind`). `onChange(view)` gets
  * { room, players: [{ uid, name, athlete, me }], startAt, setLen, closed, uid } whenever it changes.
  */
 export class Lobby {
-  constructor(evId, onChange) {
-    this.evId = evId;
+  constructor(kind, onChange) {
+    this.kind = kind;
     this.onChange = onChange;
     this.data = null;
   }
@@ -78,7 +94,7 @@ export class Lobby {
   async join() {
     const { rt, db, uid } = await connectRT();
     Object.assign(this, { rt, db, uid });
-    this.ref = rt.ref(db, `lobby/${this.evId}`);
+    this.ref = rt.ref(db, `lobby/${this.kind}`);
     const me = { name: getPlayerName(), athlete: chosenPlayer().id };
     await this.update((d, now) => {
       // Join the room in the node unless it's closed or full; otherwise start a new one.
@@ -89,12 +105,12 @@ export class Lobby {
       return withStart(next, now);
     });
     // Your phone drops off: the server takes you out of the room.
-    this.gone = rt.onDisconnect(rt.ref(db, `lobby/${this.evId}/players/${uid}`));
+    this.gone = rt.onDisconnect(rt.ref(db, `lobby/${this.kind}/players/${uid}`));
     this.gone.remove();
     this.stop = rt.onValue(this.ref, (snap) => {
       this.data = snap.val();
       const v = this.view();
-      // Someone dropped off and left one runner: call the start off.
+      // Someone dropped off and left one player: call the start off.
       if (v.startAt != null && !v.closed && v.players.length < 2) this.update((d, now) => (!d || closed(d, now) ? undefined : withStart(d, now))).catch(() => {});
       this.onChange(v);
     });
@@ -113,7 +129,7 @@ export class Lobby {
     return { room: d?.room ?? null, players, startAt: d?.startAt ?? null, setLen: d?.setLen ?? null, closed: closed(d, serverNow()), uid: this.uid };
   }
 
-  /** Stops listening. `leave` also takes you out of the room (unless it has closed for the race). */
+  /** Stops listening. `leave` also takes you out of the room (unless it has closed for the start). */
   async close(leave = true) {
     this.stop?.();
     this.gone?.cancel();
@@ -127,67 +143,190 @@ export class Lobby {
   }
 }
 
+/** The field events: three rounds, each its own stage. */
+export const FIELD = new Set(['longjump', 'polevault', 'javelin']);
+
+/** True if `a` would clash with `b` in one update (one path inside the other). */
+const clash = (a, b) => a !== b && (a.startsWith(`${b}/`) || b.startsWith(`${a}/`));
+
 /**
- * One live race's messages: your runner out, everyone else's in.
- * `onRunner(uid, doc)` gets each other runner's latest doc.
+ * One room's play, from the waiting room closing to the end of the event or
+ * tournament: your updates out, everyone else's in, and when each stage starts.
+ * `info` = { kind, room, uid, name, players, startAt, setLen } from the waiting
+ * room, and `first` = the event it starts with.
  */
-export class LiveChannel {
-  constructor(session, onRunner) {
-    this.session = session;
-    this.onRunner = onRunner;
-    this.latest = null;
-    this.sending = false;
+export class LiveSession {
+  constructor(info, first) {
+    Object.assign(this, info);
+    this.others = info.players.filter((p) => p.uid !== info.uid);
+    this.docs = new Map(); // uid -> their latest doc
+    this.listeners = new Set();
+    this.batches = []; // updates waiting to go out, in order
     this.lastSent = 0;
+    this.readyAt = {}; // stage -> when you said you were ready (server ms)
+    this.step = 0; // which event of the room this is (a tournament has five)
+    this.starts = new Map([[this.eventStage(first), info.startAt]]); // stage -> start (server ms), once known
+    this.done = false; // played to the end: leaving now isn't leaving early
+    this.send({ v: 2, name: info.name ?? '', athlete: chosenPlayer().id }, true);
   }
 
   async open() {
     const { rt, db, uid } = await connectRT();
+    if (this.closed) return;
     Object.assign(this, { rt, db, uid });
-    this.ref = rt.ref(db, `live/${this.session.room}/${uid}`);
-    // Your phone drops off mid-race: the others see you've left.
+    this.ref = rt.ref(db, `live/${this.room}/${uid}`);
+    // Your phone drops off: the others see you've left.
     this.gone = rt.onDisconnect(this.ref);
     this.gone.update({ left: true });
-    this.stop = rt.onValue(rt.ref(db, `live/${this.session.room}`), (snap) => {
-      for (const [id, doc] of Object.entries(snap.val() ?? {})) if (id !== uid) this.onRunner(id, doc);
+    this.stop = rt.onValue(rt.ref(db, `live/${this.room}`), (snap) => {
+      for (const [id, doc] of Object.entries(snap.val() ?? {})) {
+        if (id === uid || !doc || typeof doc !== 'object') continue;
+        this.docs.set(id, doc);
+        for (const fn of this.listeners) fn(id, doc);
+      }
     });
-    if (this.latest) this.flush();
+    this.flush();
   }
 
-  /** Queues your runner's latest state; it goes out at most every SEND_EVERY ms (at once with `now`). */
-  send(doc, now = false) {
-    this.latest = { v: 1, ...doc };
-    if (now) this.lastSent = 0;
+  /** Calls `fn(uid, doc)` with each other player's latest doc, now and on every change. Returns a function that stops it. */
+  listen(fn) {
+    this.listeners.add(fn);
+    for (const [id, doc] of this.docs) fn(id, doc);
+    return () => this.listeners.delete(fn);
+  }
+
+  /** True if that player has left (or their phone dropped off). */
+  left(uid) {
+    return !!this.docs.get(uid)?.left;
+  }
+
+  /** A stage's key: this event of the room, and the round for a field event. */
+  stage(evId, round = 0) {
+    return `${this.step}-${evId}${round ? `-${round}` : ''}`;
+  }
+
+  /** The stage an event starts with (of event `step` of the room: this one unless given). */
+  eventStage(evId, step = this.step) {
+    return `${step}-${evId}${FIELD.has(evId) ? '-1' : ''}`;
+  }
+
+  /** How long GET SET lasts before the gun of a race stage: the waiting room's for the first, then random but the same on every phone. */
+  setLenFor(stage) {
+    if (stage === this.eventStage(this.kind === 'tournament' ? 'sprint100' : this.kind) && this.setLen != null) return this.setLen;
+    let h = 0;
+    for (const c of `${this.room}/${stage}`) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+    return 1.1 + (h % 1000) / 1000 * 1.2;
+  }
+
+  /** You're ready for `stage`. */
+  ready(stage) {
+    if (this.readyAt[stage] != null) return;
+    this.readyAt[stage] = Math.round(serverNow());
+    this.send({ [`ready/${stage}`]: this.readyAt[stage] }, true);
+  }
+
+  /**
+   * When `stage` starts (server ms): a little after everyone still here is
+   * ready for it (ROUND_LEAD for a field event's later rounds, EVENT_LEAD for
+   * an event), or after READY_WAIT if someone isn't. Null until that's known.
+   * Every phone works out the same time from the same ready times.
+   */
+  startOf(stage) {
+    if (this.starts.has(stage)) return this.starts.get(stage);
+    const mine = this.readyAt[stage];
+    if (mine == null) return null;
+    const times = [mine];
+    let missing = 0;
+    for (const p of this.others) {
+      const d = this.docs.get(p.uid);
+      if (d?.left) continue;
+      const t = d?.ready?.[stage];
+      if (Number.isFinite(t)) times.push(t);
+      else missing++;
+    }
+    const first = Math.min(...times);
+    let at;
+    if (!missing) at = Math.max(...times);
+    else if (serverNow() >= first + READY_WAIT) at = first + READY_WAIT;
+    else return null;
+    const start = at + (/-[2-9]$/.test(stage) ? ROUND_LEAD : EVENT_LEAD);
+    this.starts.set(stage, start);
+    return start;
+  }
+
+  /** The other players still here who aren't ready for `stage` yet. */
+  waitingFor(stage) {
+    return this.others.filter((p) => !this.left(p.uid) && !Number.isFinite(this.docs.get(p.uid)?.ready?.[stage]));
+  }
+
+  /** You've started `stage` at `t0` (server ms): what you send from now on is for it. */
+  begin(stage, t0) {
+    this.send({ s: stage, t0: Math.round(t0), run: null, n: null, done: null, f: null }, true);
+  }
+
+  /** Your result for `stage`: { mark } or { foul } / { fail } / { status: 'dnf' }. */
+  result(stage, r) {
+    this.send({ [`res/${stage}`]: r }, true);
+  }
+
+  /**
+   * Queues an update to your doc (`patch` = { path: value }, null deletes).
+   * Updates go out at most every SEND_EVERY ms, merged, in order; `now` sends at once.
+   */
+  send(patch, now = false) {
+    let b = this.batches[this.batches.length - 1];
+    if (!b || Object.keys(patch).some((k) => Object.keys(b).some((j) => clash(k, j)))) this.batches.push((b = {}));
+    Object.assign(b, patch);
+    if (now) this.urgent = true;
     this.flush();
   }
 
   flush() {
-    if (!this.ref || this.closed || this.sending || !this.latest) return;
-    const wait = this.lastSent + SEND_EVERY - Date.now();
+    if (!this.ref || this.closed || !this.batches.length) return;
+    const wait = this.urgent ? 0 : this.lastSent + SEND_EVERY - Date.now();
     if (wait > 0) {
       clearTimeout(this.timer);
       this.timer = setTimeout(() => this.flush(), wait);
       return;
     }
-    const doc = this.latest;
-    this.latest = null;
-    this.sending = true;
+    // The database keeps one phone's writes in order, so they can all go now.
+    while (this.batches.length) this.rt.update(this.ref, this.batches.shift()).catch((err) => console.warn('live update failed', err));
+    this.urgent = false;
     this.lastSent = Date.now();
-    this.rt
-      .set(this.ref, doc)
-      .catch(() => {})
-      .finally(() => {
-        this.sending = false;
-        this.flush();
-      });
   }
 
-  /** Stops listening; `last` (e.g. { left: true }) goes out first if given. */
-  close(last = null) {
-    this.closed = true; // nothing queued goes out after this
+  /** Stops listening. Unless you played to the end, the others see you've left. */
+  end() {
+    if (this.closed) return;
+    if (!this.done) {
+      this.batches = [];
+      this.send({ left: true }, true);
+    }
+    this.closed = true;
     clearTimeout(this.timer);
     this.stop?.();
-    if (!this.ref) return;
-    if (last) this.rt.update(this.ref, { v: 1, ...last }).catch(() => {});
-    else this.gone?.cancel(); // finished: nothing to say if the phone drops off now
+    this.listeners.clear();
+    if (this.done) this.gone?.cancel(); // nothing to say if the phone drops off now
   }
+}
+
+// The room being played, from the waiting room closing until you leave it.
+let current = null;
+
+/** Starts a room's play (see LiveSession) and makes it the current one. */
+export function startLive(info, first) {
+  endLive();
+  current = new LiveSession(info, first);
+  current.open().catch((err) => console.warn('live room unavailable', err));
+  return current;
+}
+
+export function currentLive() {
+  return current;
+}
+
+/** Leaves the current room, if any. */
+export function endLive() {
+  current?.end();
+  current = null;
 }

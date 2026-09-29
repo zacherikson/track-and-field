@@ -31,7 +31,9 @@ export class LeaderboardScene {
     this.nameBtn = new Button({ label: '', w: 280, h: 50, color: dim, onTap: () => flow.profile(this.game) });
     this.retryBtn = new Button({ label: 'Try again', w: 180, h: 50, onTap: () => this.load() });
     this.tabs = BOARDS.map((b) => new Button({ label: TAB_LABELS[b.id] ?? b.name, h: 38, size: 16, onTap: () => this.show(b) }));
+    this.age = 0; // s on this screen: animates the loading rows
     this.setNameLabel();
+    this.layout(this.game.view); // before anything loads, so the buttons start in place
     this.show(this.board);
     // Your row is found by your player id; sign in to learn it if needed, then load again.
     learnUid()
@@ -152,6 +154,7 @@ export class LeaderboardScene {
       }
     }
     this.buttons().forEach((b) => b.update(dt));
+    this.age += dt;
   }
 
   render(ctx, view) {
@@ -166,7 +169,7 @@ export class LeaderboardScene {
     ctx.fill();
 
     const mid = (s) => text(ctx, s, view.w / 2, 250, { size: 18, weight: 500, color: 'rgba(255,255,255,0.75)', maxWidth: w - 30 });
-    if (this.state === 'loading') mid('Loading…');
+    if (this.state === 'loading') this.drawLoading(ctx, x0, w);
     else if (this.state === 'error') mid('Can’t reach the online leaderboard right now.');
     else if (!this.rows.length) mid(this.board === TOURNAMENT_BOARD ? 'No scores yet. Finish a tournament to be first!' : `No marks yet. Finish a ${this.board.name} to be first!`);
     else {
@@ -184,5 +187,21 @@ export class LeaderboardScene {
       });
     }
     this.buttons().forEach((b) => b.draw(ctx));
+  }
+
+  /** Placeholder rows where the marks will go, shimmering until they arrive. */
+  drawLoading(ctx, x0, w) {
+    for (let i = 0; i < 10; i++) {
+      const y = TOP + i * ROW_H;
+      const a = 0.05 + 0.05 * (0.5 + 0.5 * Math.sin(this.age * 5 - i * 0.6));
+      ctx.fillStyle = `rgba(255,255,255,${a.toFixed(3)})`;
+      roundRect(ctx, x0 + 22, y - 7, 20, 14, 7);
+      ctx.fill();
+      roundRect(ctx, x0 + 60, y - 7, (w - 280) * (0.55 + 0.35 * ((i * 37) % 10) / 10), 14, 7);
+      ctx.fill();
+      roundRect(ctx, x0 + w - 170, y - 7, 60, 14, 7);
+      ctx.fill();
+    }
+    text(ctx, 'Loading…', this.game.view.w / 2, TOP + 10 * ROW_H + 12, { size: 15, weight: 500, color: 'rgba(255,255,255,0.55)' });
   }
 }

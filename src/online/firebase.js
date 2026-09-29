@@ -1,4 +1,5 @@
 import { getPlayerName } from '../core/storage.js';
+import { toWire, fromWire } from './trace.js';
 
 /**
  * ONLINE LEADERBOARD (Firebase: Firestore + anonymous sign-in).
@@ -107,7 +108,8 @@ async function rankOf(fs, db, board, mark) {
 
 /**
  * Posts a mark (with `ghost`, its recording, when there is one) if it beats
- * your mark on the board. Resolves to { improved, best, rank }.
+ * your mark on the board. Resolves to { improved, best, rank, lost }, where
+ * `lost` says why a recording didn't go up with the mark (the mark still did).
  */
 export async function submitMark(board, mark, ghost = null) {
   const { fs, db, uid } = await connect();
@@ -116,19 +118,26 @@ export async function submitMark(board, mark, ghost = null) {
   const prevMark = prev.exists() ? prev.data().mark : null;
   if (prevMark != null && !beats(board, mark, prevMark)) return { improved: false, best: prevMark, rank: await rankOf(fs, db, board, prevMark) };
   const doc = { name: getPlayerName(), mark, v: DOC_VERSION, createdAt: fs.serverTimestamp() };
+  let lost = null;
   if (ghost?.kind === 'trace') {
-    // The mark and its recording land together, or neither does.
-    doc.traced = true;
-    const batch = fs.writeBatch(db);
-    batch.set(ref, doc);
-    batch.set(fs.doc(ghostRuns(fs, db, board.id), uid), { mark, ghost, v: DOC_VERSION, createdAt: fs.serverTimestamp() });
-    await batch.commit();
+    // The mark and its recording land together. If the recording can't go up,
+    // the mark still does, on its own.
+    try {
+      const batch = fs.writeBatch(db);
+      batch.set(ref, { ...doc, traced: true });
+      batch.set(fs.doc(ghostRuns(fs, db, board.id), uid), { mark, ghost: toWire(ghost), v: DOC_VERSION, createdAt: fs.serverTimestamp() });
+      await batch.commit();
+    } catch (err) {
+      console.warn('recording not uploaded', err);
+      lost = err?.code ?? err?.message ?? 'error';
+      await fs.setDoc(ref, doc);
+    }
   } else {
     if (ghost) doc.ghost = ghost;
     await fs.setDoc(ref, doc);
   }
   boards.delete(board.id); // your row changed
-  return { improved: true, best: mark, rank: await rankOf(fs, db, board, mark) };
+  return { improved: true, best: mark, rank: await rankOf(fs, db, board, mark), lost };
 }
 
 // ---------------------------------------------------------------- REST reads
@@ -216,7 +225,7 @@ export async function leaderboard(board, n = 10) {
 export async function fetchGhost(board, row) {
   const doc = await rest(`ghosts/${board.id}/runs/${row.uid}`);
   const d = doc?.fields ? fields(doc.fields) : null;
-  return d && d.mark === row.mark ? d.ghost : null;
+  return d && d.mark === row.mark ? fromWire(d.ghost) : null;
 }
 
 /** Changes your name on your existing board entries. */

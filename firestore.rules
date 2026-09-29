@@ -42,6 +42,7 @@ service cloud.firestore {
 
     // Frame-by-frame recordings (online/trace.js) for the events other than the
     // 100m, one per player per event, for the mark on their leaderboard entry.
+    // The frames are one comma-separated string (trace.js toWire).
     // Written in the same batch as that entry, which must say `traced`.
     match /ghosts/{event}/runs/{uid} {
       allow read: if event in ['longjump', 'hurdles110', 'polevault', 'javelin'];
@@ -91,7 +92,7 @@ service cloud.firestore {
         && d.createdAt == request.time
         && d.ghost is map && d.ghost.v == 1 && d.ghost.kind == 'trace' && d.ghost.ev == event
         && d.ghost.mark == d.mark
-        && d.ghost.f is list && d.ghost.f.size() <= 20000;
+        && d.ghost.f is string && d.ghost.f.size() <= 200000;
     }
 
     function validGhost(d) {

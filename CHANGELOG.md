@@ -4,6 +4,16 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Online marks post again; tidier loading screen
+- A new best in the long jump, hurdles, pole vault or javelin now reaches the
+  online board even if its recording can't be uploaded with it. The results
+  screen says when the ghost didn't go up, and why.
+- Recordings are uploaded as one compact string of numbers instead of a long
+  list (about 37 KB for a pole vault), which Firestore handles far better.
+- The online screen puts its tabs and buttons in place straight away and shows
+  placeholder rows while a board loads (they used to pile up in the corner).
+- `firestore.rules` changed: publish it again in the Firebase console.
+
 ## Faster online leaderboards
 - Boards are read straight from Firestore's REST API instead of through the
   Firebase SDK, so opening one no longer waits for the SDK download, sign-in

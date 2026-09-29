@@ -16,6 +16,13 @@ export function postMark(board, mark, ghost, onStatus) {
   }
   onStatus('Posting to the online leaderboard…');
   submitMark(board, mark, ghost)
-    .then((r) => onStatus(r.improved ? `Online leaderboard: #${r.rank}` : `Online: your best ${formatMark(board, r.best)} is #${r.rank}`))
-    .catch(() => onStatus('Online leaderboard unavailable'));
+    .then((r) => {
+      if (!r.improved) onStatus(`Online: your best ${formatMark(board, r.best)} is #${r.rank}`);
+      else if (r.lost) onStatus(`Online leaderboard: #${r.rank} (ghost not uploaded: ${r.lost})`);
+      else onStatus(`Online leaderboard: #${r.rank}`);
+    })
+    .catch((err) => {
+      console.warn('mark not posted', err);
+      onStatus(`Online leaderboard unavailable${err?.code ? ` (${err.code})` : ''}`);
+    });
 }

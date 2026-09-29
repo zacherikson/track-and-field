@@ -3,10 +3,12 @@
 import { MenuScene } from './scenes/menuScene.js';
 import { IntroScene } from './scenes/introScene.js';
 import { ResultScene } from './scenes/resultScene.js';
+import { CharacterScene } from './scenes/characterScene.js';
 import { openTuning } from './tuning/panel.js';
 
 export const flow = {
   menu: (game) => game.setScene(new MenuScene()),
+  characters: (game) => game.setScene(new CharacterScene()),
   intro: (game, ev) => game.setScene(new IntroScene(ev)),
   play: (game, ev) => game.setScene(ev.create()),
   results: (game, ev, results, stats) => game.setScene(new ResultScene(ev, results, stats)),

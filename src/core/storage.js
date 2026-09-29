@@ -47,6 +47,17 @@ export function submitBest(eventId, value, lowerIsBetter = true) {
   return better;
 }
 
+/** The athlete you play as (a character id from roster.js), or null for the default. */
+export function getCharacter() {
+  return load().character ?? null;
+}
+
+export function setCharacter(id) {
+  const data = load();
+  data.character = id;
+  save(data);
+}
+
 /** Rival difficulty chosen on the menu: 'amateur' or 'pro'. */
 export function getDifficulty() {
   const d = load().difficulty;

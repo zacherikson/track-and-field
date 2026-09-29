@@ -72,7 +72,7 @@ src/athletes/
   runner.js           shared runner physics (player and AI)
   ai.js               AI "thumbs": taps at a personal cadence
   stickFigure.js      placeholder figure: blendable poses (blocks, set, run, stand, hurdle)
-  roster.js           Juno + rivals
+  roster.js           the six athletes (kit, skin, hairstyle); your pick and your rivals
 src/events/
   registry.js         event list for the menu
   strideTargets.js    100m random targets (max 2 in a row) + hit/miss judging
@@ -86,6 +86,7 @@ src/events/
   javelinRules.js     javelin: angle while held, distance from speed/angle/gap, rival throws (pure)
   javelin.js          javelin: run-up, hold to draw back, let go to throw, flight shot to the landing and the mark line
   poleVault.js        pole vault: run-up with the pole, spark, hold-and-release, swing, bar, mat, rising camera
+src/scenes/characterScene.js  choose your athlete (the rest are your rivals)
 src/render/track.js   stadium with one-point perspective (camera 1m ahead of the player), parallax crowd
 src/render/pads.js    glossy tap targets, numbered buttons and the red ✕
 src/render/targetPads.js  falling target + hit ring animations (100m, long jump run-up)

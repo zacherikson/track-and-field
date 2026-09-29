@@ -4,7 +4,7 @@ import { clamp, damp, rand, shuffle } from '../core/math.js';
 import { text, roundRect } from '../core/ui.js';
 import { Runner } from '../athletes/runner.js';
 import { AIController } from '../athletes/ai.js';
-import { HERO, RIVALS } from '../athletes/roster.js';
+import { player as chosenPlayer, rivals as rivalRoster } from '../athletes/roster.js';
 import { drawFigure, runPose, lerpPose, sampleTrack, handPos, vaultSwingPose, wrapNear, VAULT_POSES, POSES } from '../athletes/stickFigure.js';
 import { StrideTargets } from './strideTargets.js';
 import { pressQuality, releaseQuality, releaseTarget, vaultHeight, rivalVault } from './poleVaultRules.js';
@@ -89,8 +89,9 @@ export class PoleVault {
     this.reach = Math.hypot(top.x, top.y);
     this.track = new VaultRenderer(cfg);
     this.camera = new Camera();
-    this.player = { name: HERO.name, colors: HERO.colors, isPlayer: true, jumps: [] };
-    this.rivals = shuffle([...RIVALS])
+    const me = chosenPlayer();
+    this.player = { name: me.name, colors: me.colors, isPlayer: true, jumps: [] };
+    this.rivals = shuffle(rivalRoster())
       .slice(0, 5)
       .map((r) => ({ name: r.name, colors: r.colors, isPlayer: false, jumps: [], cadence: rand(...this.lv.cadence) }));
     const r = CONFIG.sprint100.pads.radius;
@@ -562,7 +563,7 @@ export class PoleVault {
     const sx = ground.x;
     // Pole behind the athlete's near arm: draw it first, then the athlete.
     this.drawPole(ctx, view, sx, y, H, pose, pxPerM);
-    drawFigure(ctx, sx, y, H, pose, HERO.colors, onMat ? floorY : groundY);
+    drawFigure(ctx, sx, y, H, pose, this.player.colors, onMat ? floorY : groundY);
     this.drawSpark(ctx);
     for (const p of this.puff) {
       const s = tr.toScreen(cam, view, p.x, 1);

@@ -4,7 +4,7 @@ import { clamp, rand, shuffle } from '../core/math.js';
 import { text, roundRect } from '../core/ui.js';
 import { Runner } from '../athletes/runner.js';
 import { AIController } from '../athletes/ai.js';
-import { HERO, RIVALS } from '../athletes/roster.js';
+import { player as chosenPlayer, rivals as rivalRoster } from '../athletes/roster.js';
 import { drawFigure, runPose, lerpPose, sampleTrack, handPos, headCircle, JUMP_POSES, POSES } from '../athletes/stickFigure.js';
 import { StrideTargets } from './strideTargets.js';
 import { flightPath, rivalJump } from './longJumpRules.js';
@@ -49,9 +49,10 @@ export class LongJump {
     const cfg = this.cfg;
     this.track = new RunwayRenderer(cfg.runway, { from: 1, to: 10.5 }, cfg.runwayZones);
     this.camera = new Camera();
-    this.player = { name: HERO.name, colors: HERO.colors, isPlayer: true, jumps: [] };
+    const me = chosenPlayer();
+    this.player = { name: me.name, colors: me.colors, isPlayer: true, jumps: [] };
     // Five rivals, each with a fixed run-up pace for the whole competition.
-    this.rivals = shuffle([...RIVALS])
+    this.rivals = shuffle(rivalRoster())
       .slice(0, 5)
       .map((r) => ({ name: r.name, colors: r.colors, isPlayer: false, jumps: [], cadence: rand(...this.lv.cadence) }));
     const r = CONFIG.sprint100.pads.radius;
@@ -416,7 +417,7 @@ export class LongJump {
       ctx.fill();
     }
     this.drawReferee(ctx, view, pxPerM);
-    drawFigure(ctx, ground.x, y, H, pose, HERO.colors, groundY);
+    drawFigure(ctx, ground.x, y, H, pose, this.player.colors, groundY);
     this.drawControls(ctx, view);
     this.drawHUD(ctx, view);
     if (this.state === 'mark') this.drawMark(ctx, view);

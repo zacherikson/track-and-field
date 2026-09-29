@@ -4,6 +4,16 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 7: character selection
+- Six athletes: Juno, Brix, Okoro, Lindqvist, Tanabe, Moreau. Pick yours from
+  the ATHLETE button on the menu (next to RIVALS); the other five are your
+  rivals in every event. Remembered on this device (`character` in the save).
+- Each has a kit, skin tone and hairstyle so they read apart at a glance:
+  headband (Juno), spiky, afro, ponytail, bun, short (`colors.hair`,
+  `colors.style`, drawn by drawFigure). Looks only: same physics for everyone.
+- The picker: a card per athlete (yours runs in place), a one-line tagline,
+  Ready to go back. Arrow keys work on desktop.
+
 ## Step 6.3: pole vault release lines up with the spark reaching your hands
 The best release felt like the spark about 2/3 up the pole, for two reasons:
 ~0.15-0.2 s between seeing the spark arrive and your finger actually leaving

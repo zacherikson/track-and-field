@@ -4,7 +4,7 @@ import { rand, shuffle, clamp } from '../core/math.js';
 import { text, roundRect } from '../core/ui.js';
 import { Runner } from '../athletes/runner.js';
 import { AIController } from '../athletes/ai.js';
-import { HERO, RIVALS } from '../athletes/roster.js';
+import { player as chosenPlayer, rivals as rivalRoster } from '../athletes/roster.js';
 import { drawFigure, runPose, lerpPose, leanPose, launchPose, handReach, POSES, LAUNCH } from '../athletes/stickFigure.js';
 import { TrackRenderer } from '../render/track.js';
 import { ORANGE, drawPad } from '../render/pads.js';
@@ -44,11 +44,11 @@ export class LaneRace {
     this.camera = new Camera();
 
     // Build the field: player in their lane, rivals in the others.
-    const rivals = shuffle([...RIVALS]);
+    const rivals = shuffle(rivalRoster());
     this.athletes = [];
     for (let lane = 1; lane <= cfg.lanes; lane++) {
       const isPlayer = lane === cfg.playerLane;
-      const who = isPlayer ? HERO : rivals.pop();
+      const who = isPlayer ? chosenPlayer() : rivals.pop();
       const runner = new Runner(this.runnerParams, undefined, cfg.startX); // event-specific physics, if any
       this.athletes.push({
         lane,

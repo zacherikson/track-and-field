@@ -88,7 +88,9 @@ The leaderboard uses Firebase (project `track-royale-f18ad`): Firestore, with
 anonymous sign-in so each phone gets an ID without a login screen. Profiles are
 in `users/{uid}`, and `usernames/{lowercased name}` records who owns each name.
 Frame-by-frame recordings sit in `ghosts/{event}/runs/{uid}`, apart from the
-boards, and are only downloaded to race one. Boards and recordings are read with
+boards, with their frames as one comma-separated string (`toWire` in
+`src/online/trace.js`), and are only downloaded to race one. A mark is posted
+even if its recording can't be. Boards and recordings are read with
 plain `fetch()` calls to Firestore's REST API (they're public), so viewing a
 board doesn't wait for the Firebase SDK; the SDK is loaded only to post. The web
 config in `src/online/firebase.js` is public by design. The security rules in

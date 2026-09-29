@@ -8,8 +8,11 @@
  * A frame is taken about 30 times a second while the player's attempt is drawn
  * and played back with the frames blended, so the ghost moves smoothly.
  *
- * Stored shape (plain JSON, Firestore-friendly: one flat number list):
+ * Stored shape (plain JSON: one flat number list):
  *   { v, kind: 'trace', ev, mark, athlete, props, f: [frame, frame, ...] }
+ * Online, `f` travels as one comma-separated string instead (toWire/fromWire):
+ * several thousand numbers make a big Firestore array, which is indexed number
+ * by number; one string is smaller and isn't.
  * frame = t, x, e, 14 pose numbers, `props` event numbers
  *   t = seconds since the attempt (or the gun) began, x = where the athlete is
  *   along the track (m), e = how far the figure is drawn above the ground (m),
@@ -88,6 +91,17 @@ export function isTrace(data, evId, props) {
   const f = data.f;
   const stride = HEAD + props;
   return Array.isArray(f) && f.length >= stride && f.length % stride === 0 && f.length <= MAX_FRAMES * stride && f.every(Number.isFinite);
+}
+
+/** A trace as it's uploaded: the frames as one string. */
+export function toWire(data) {
+  return { ...data, f: data.f.join(',') };
+}
+
+/** A downloaded trace back as toWire got it (a string of frames, or a list from before). */
+export function fromWire(data) {
+  if (!data || typeof data.f !== 'string') return data;
+  return { ...data, f: data.f.split(',').map(Number) };
 }
 
 /**

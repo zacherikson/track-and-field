@@ -4,6 +4,10 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Step 6.2: bigger hurdle buttons
+- `hurdles110.buttons.radius` 54 → 64 (about 20% bigger), `y` 0.24 → 0.25 so
+  they still clear the top of the screen.
+
 ## Step 6.1: javelin landing is the end of the flight shot
 - No separate landing shot. The flight shot follows the javelin all the way
   down until its tip goes into the grass (it sticks at the angle it came down,

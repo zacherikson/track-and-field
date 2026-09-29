@@ -4,6 +4,8 @@ import { LaneRace } from './laneRace.js';
 import { ButtonSet, HurdleRun, HurdleAI, hurdlePositions } from './hurdleRules.js';
 import { hurdlePose, tripPose } from '../athletes/stickFigure.js';
 import { ORANGE, RIM, drawPad, drawX, drawNumberButton } from '../render/pads.js';
+import { isTrace } from '../online/trace.js';
+import { pickGhost } from '../online/ghosts.js';
 
 const SLOT_KEYS = [['ArrowLeft', 'KeyA'], ['ArrowDown', 'KeyS'], ['ArrowRight', 'KeyD']];
 const NUMBER_KEYS = { Digit1: 1, Numpad1: 1, Digit2: 2, Numpad2: 2, Digit3: 3, Numpad3: 3 };
@@ -31,6 +33,7 @@ export class Hurdles110 extends LaneRace {
     super(ev, { ...CONFIG.sprint100, ...CONFIG.hurdles110 });
     // Same rival skill levels, with set-reading speeds for hurdles and the same miss price as you.
     this.difficulty = { ...CONFIG.ai[this.level], ...this.cfg.ai[this.level], missSpeedLoss: this.cfg.missSpeedLoss };
+    this.traceProps = ev.traceProps; // one number per frame: the hurdles knocked down so far (a bit each)
   }
 
   enter() {
@@ -38,6 +41,7 @@ export class Hurdles110 extends LaneRace {
     this.positions = hurdlePositions(this.cfg.hurdles);
     this.slotPos = [0, 1, 2].map(() => ({ x: 0, y: 0 }));
     this.rings = []; // { slot, t0 }
+    this.ghostSpec = pickGhost(this.ev, (d) => isTrace(d, this.ev.id, this.traceProps));
     super.enter();
     this.set = new ButtonSet(this.player.runner, this.cfg);
   }
@@ -77,6 +81,20 @@ export class Hurdles110 extends LaneRace {
     if (hop.last) ctrl.stop();
     else ctrl.start(t);
     if (a.isPlayer && hop.trip) navigator.vibrate?.(80);
+  }
+
+  traceFrameProps(a) {
+    let mask = 0;
+    for (const i of a.hurdles?.knocked.keys() ?? []) mask |= 1 << i;
+    return [mask];
+  }
+
+  /** The ghost knocks down the hurdles its recording did, in its own lane. */
+  onTraceFrame(a, f, rt) {
+    const mask = f.pa[0];
+    this.positions.forEach((_, i) => {
+      if (mask & (1 << i) && !a.hurdles.knocked.has(i)) a.hurdles.knocked.set(i, this.goT + rt);
+    });
   }
 
   /** Player numbers for the results screen. */
@@ -124,6 +142,7 @@ export class Hurdles110 extends LaneRace {
 
   /** A short athlete (Joey) bounces up over each hurdle: the shorter, the bigger the hop (m). */
   liftFor(a) {
+    if (a.trace) return 0; // a ghost's lift is in its recording
     const tall = a.colors.height ?? 1;
     if (tall >= 1 || (this.state !== 'race' && this.state !== 'finished')) return 0;
     const k = a.hurdles?.hopProgress(a.runner.x);
@@ -133,7 +152,7 @@ export class Hurdles110 extends LaneRace {
 
   poseFor(a) {
     let pose = super.poseFor(a);
-    if (this.state !== 'race' && this.state !== 'finished') return pose;
+    if (a.trace || (this.state !== 'race' && this.state !== 'finished')) return pose; // a ghost's pose is recorded as drawn
     const k = a.hurdles?.hopProgress(a.runner.x);
     if (k != null) pose = hurdlePose(pose, Math.pow(Math.sin(Math.PI * k), 0.6));
     // Caught the hurdle: stumble on from the hurdling pose.

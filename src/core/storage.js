@@ -81,8 +81,9 @@ export function setGhostOn(on) {
   save(data);
 }
 
-// Your best recorded run per event, raced as a ghost (see online/ghost.js). Kept
-// under its own key: a run is a few KB and the main save stays small.
+// Your best recorded attempt per event, raced as a ghost (see online/ghost.js and
+// online/trace.js). Kept under its own key: a recording is a few KB and the main
+// save stays small.
 const GHOSTS = 'trackroyale.ghosts.v1';
 
 export function getGhost(eventId) {
@@ -93,14 +94,34 @@ export function getGhost(eventId) {
   }
 }
 
-/** Keeps `run` as this event's ghost if it is faster than the one saved. Returns true if kept. */
-export function saveGhostIfFaster(eventId, run) {
-  const prev = getGhost(eventId);
-  if (prev && Number.isFinite(prev.mark) && prev.mark <= run.mark) return false;
+/** Keeps `run` as this event's ghost if it beats the one saved (`ev` from registry.js). Returns true if kept. */
+export function saveGhostIfBetter(ev, run) {
+  const prev = getGhost(ev.id);
+  if (prev && Number.isFinite(prev.mark) && (ev.lowerIsBetter ? prev.mark <= run.mark : prev.mark >= run.mark)) return false;
   try {
     const all = JSON.parse(localStorage.getItem(GHOSTS)) || {};
-    all[eventId] = run;
+    all[ev.id] = run;
     localStorage.setItem(GHOSTS, JSON.stringify(all));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Your best tournament, for its ghosts: { total, events: { [eventId]: { mark, pts, ghost } } }.
+const BEST_TOURNAMENT = 'trackroyale.besttournament.v1';
+
+export function getBestTournament() {
+  try {
+    return JSON.parse(localStorage.getItem(BEST_TOURNAMENT));
+  } catch {
+    return null;
+  }
+}
+
+export function saveBestTournament(best) {
+  try {
+    localStorage.setItem(BEST_TOURNAMENT, JSON.stringify(best));
     return true;
   } catch {
     return false;

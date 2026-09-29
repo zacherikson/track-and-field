@@ -13,6 +13,7 @@ import { ORANGE, drawPad, drawX } from '../render/pads.js';
 import { drawDrop, drawHitRing } from '../render/targetPads.js';
 import { getDifficulty } from '../core/storage.js';
 import { flow } from '../flow.js';
+import { FieldGhost } from '../online/fieldGhost.js';
 
 const LEFT_KEYS = ['ArrowLeft', 'KeyA', 'KeyZ', 'KeyF'];
 const RIGHT_KEYS = ['ArrowRight', 'KeyD', 'KeyX', 'KeyJ'];
@@ -60,6 +61,7 @@ export class LongJump {
     this.exitBtn = { x: 0, y: 0, w: 44, h: 40 };
     this.stats = { hits: 0, misses: 0, topSpeed: 0 };
     this.round = 0;
+    this.ghost = new FieldGhost(this.ev);
     this.onResize(this.game.view);
     this.startRound();
   }
@@ -96,6 +98,7 @@ export class LongJump {
     this.track.marks = [];
     this.track.footmarks = [];
     this.lastPose = null;
+    this.ghost.startAttempt(t);
     this.setState('ready');
     this.camera.snapTo(this.runner.x);
   }
@@ -266,6 +269,7 @@ export class LongJump {
   /** Record this round for everyone and show the banner. */
   showMark() {
     this.player.jumps.push(this.mark);
+    this.ghost.endAttempt(this.mark);
     const cfg = this.cfg;
     for (const rv of this.rivals) {
       const level = { ...this.lv, cadence: [rv.cadence, rv.cadence] };
@@ -314,6 +318,7 @@ export class LongJump {
       topSpeed: this.stats.topSpeed,
       extra: `${fouls} ${fouls === 1 ? 'foul' : 'fouls'}`,
       paceText: `jumps ${this.player.jumps.map((j) => (j.foul ? 'X' : j.mark.toFixed(2))).join(' / ')}`,
+      run: this.ghost.best(), // your best jump, frame by frame, for the ghost
     });
   }
 
@@ -418,7 +423,14 @@ export class LongJump {
       ctx.fill();
     }
     this.drawReferee(ctx, view, pxPerM);
+    const g = this.ghost.frame(this.now);
+    if (g) {
+      const gp = tr.toScreen(this.camera, view, g.x, 1);
+      const gH = CONFIG.figure.height * pxPerM * heightOf(this.ghost.colors);
+      this.ghost.drawFigure(ctx, gp.x, gp.y + 4 - g.e * pxPerM, gH, g.pose, gp.y + 4);
+    }
     drawFigure(ctx, ground.x, y, H, pose, this.player.colors, groundY);
+    if (this.state !== 'mark') this.ghost.sample(this.now, x, (groundY - y) / pxPerM, pose);
     this.drawControls(ctx, view);
     this.drawHUD(ctx, view);
     if (this.state === 'mark') this.drawMark(ctx, view);

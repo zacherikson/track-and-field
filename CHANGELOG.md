@@ -4,6 +4,16 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Race live
+- ⚡ Race live on the menu: a waiting room for a 100m against other people. When
+  a second runner joins, a 10 s countdown starts (up to 4 runners); everyone's
+  gun fires at the same moment, with computer rivals in the spare lanes.
+- The others' runners are replayed from their taps as they arrive, so every
+  phone gets the same times; they're drawn a step ahead of the last update so
+  they look right beside you. Someone who quits shows as "(left)" and DNF.
+- Live marks count for your personal best and the leaderboard like any 100m.
+- `firestore.rules` changed: publish it again in the Firebase console.
+
 ## "Online" is now "Leaderboard"
 - The 🌐 Online buttons (menu, results, tournament standings) are now 🌐 Leaderboard.
 

@@ -66,6 +66,16 @@ total. Marks made with changed tuning aren't posted, and don't count as a
 personal best either. Set your username with the 👤 button at the top right of
 the menu; names are unique.
 
+⚡ **Race live** (on the menu) is a 100m against other people. You wait in a
+waiting room until someone else joins; then a countdown starts, more can join
+(up to 4), and everyone's gun fires at the same moment (each phone reads the
+server's clock). Computer rivals fill the other lanes. Each phone sends its
+taps as they happen, the same data as a 100m ghost, and replays everyone
+else's through the same physics, so every phone gets every time exactly. The
+others' taps arrive a moment late, so their runners are drawn carried on at
+their current speed until the next update (`src/online/live.js`,
+`src/online/liveRun.js`).
+
 Your **personal bests** are your entries on the online boards
 (`src/online/bests.js`). The phone keeps a copy so offline play works; each
 time you're back at the menu it's brought in line with the boards in one
@@ -152,11 +162,14 @@ src/online/
   firebase.js         online leaderboards: lazy-loaded Firebase SDK, anonymous sign-in, Firestore
   post.js             posts a finished mark to its board and reports how it went
   bests.js            personal bests: your board entries, synced to the phone's copy
+  live.js             live races: the waiting room, the shared start time, sending and receiving runners
+  liveRun.js          another player's runner in a live race, replayed as their taps arrive
   trace.js            records an attempt frame by frame and plays it back (every event but the 100m)
   fieldGhost.js       records and draws ghosts in the long jump, pole vault and javelin
   ghosts.js           picks which ghost races: best tournament, a leaderboard pick, or your best
 src/scenes/leaderboardScene.js  online leaderboards, a tab per event, with Race buttons
 src/scenes/profileScene.js      your username (unique, saved in Firebase)
+src/scenes/lobbyScene.js        the live race waiting room
 src/tuning/           in-game tuning panel (params list, saved overrides, live estimates)
 tools/simulate.mjs    headless tuning simulator
 tools/ghostcheck.mjs  checks that recorded runs replay to the exact same time

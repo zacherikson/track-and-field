@@ -62,6 +62,8 @@ export class MenuScene {
     this.athleteButton = new Button({ label: `${this.me.name}  ›`, w: 200, h: 44, color: 'rgba(255,255,255,0.15)', onTap: () => flow.characters(this.game) });
     this.tuneButton = new Button({ label: '⚙ Tuning', w: 132, h: 44, color: 'rgba(255,255,255,0.15)', onTap: () => flow.tuning(this.game) });
     this.onlineButton = new Button({ label: '🌐 Leaderboard', w: 196, h: 44, color: 'rgba(255,255,255,0.15)', onTap: () => flow.leaderboard(this.game) });
+    // Live: the waiting room for a 100m against other people.
+    this.liveButton = new Button({ label: '⚡ Race live', w: 200, h: 44, color: '#2bb673', onTap: () => flow.live(this.game) });
     // Your profile (username for the online leaderboard), top right.
     this.profileButton = new Button({ label: `👤 ${getPlayerName()}`, w: 190, h: 44, color: 'rgba(255,255,255,0.15)', onTap: () => flow.profile(this.game) });
     this.fsButton = document.fullscreenEnabled
@@ -127,6 +129,8 @@ export class MenuScene {
     });
     this.ghostButton.x = x0 + row - gw;
     this.ghostButton.y = 316;
+    this.liveButton.x = view.w / 2 - this.liveButton.w / 2;
+    this.liveButton.y = 374;
     this.tuneButton.x = 14 + view.safe.l;
     this.tuneButton.y = 14 + view.safe.t;
     this.onlineButton.x = this.tuneButton.x + this.tuneButton.w + 10;
@@ -145,6 +149,7 @@ export class MenuScene {
       if (this.fsButton?.tap(ev.x, ev.y)) continue;
       if (this.tuneButton.tap(ev.x, ev.y)) continue;
       if (this.onlineButton.tap(ev.x, ev.y)) return;
+      if (this.liveButton.tap(ev.x, ev.y)) return;
       if (this.profileButton.tap(ev.x, ev.y)) return;
       if (this.levelButtons.some((b) => b.tap(ev.x, ev.y))) continue;
       if (this.ghostButton.tap(ev.x, ev.y)) continue;
@@ -158,6 +163,7 @@ export class MenuScene {
     this.profileButton.update(dt);
     this.tuneButton.update(dt);
     this.onlineButton.update(dt);
+    this.liveButton.update(dt);
     this.levelButtons.forEach((b) => b.update(dt));
     this.ghostButton.update(dt);
     this.athleteButton.update(dt);
@@ -183,6 +189,7 @@ export class MenuScene {
     this.profileButton.draw(ctx);
     this.tuneButton.draw(ctx);
     this.onlineButton.draw(ctx);
+    this.liveButton.draw(ctx);
     const lb = this.levelButtons;
     text(ctx, 'RIVALS', (lb[0].x + lb[1].x + lb[1].w) / 2, 300, { size: 13, weight: 700, color: 'rgba(255,255,255,0.6)' });
     lb.forEach((b) => b.draw(ctx));

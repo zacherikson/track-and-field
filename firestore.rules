@@ -53,6 +53,32 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Live races (src/online/live.js). The waiting room for an event: one doc
+    // everyone waiting shares, rewritten in transactions as players come and go.
+    match /lobby/{event} {
+      allow read: if request.auth != null && event == 'sprint100';
+      allow write: if request.auth != null && event == 'sprint100'
+        && request.resource.data.keys().hasOnly(['room', 'players', 'startAt', 'setLen'])
+        && request.resource.data.room is string && request.resource.data.room.size() <= 40
+        && request.resource.data.players is map && request.resource.data.players.size() <= 4;
+    }
+
+    // Each runner in a live race sends their inputs as they go.
+    match /live/{room}/runners/{uid} {
+      allow read: if request.auth != null;
+      allow write: if isMe(uid)
+        && request.resource.data.keys().hasOnly(['name', 'athlete', 'run', 'n', 'done', 'left', 'v'])
+        && (!request.resource.data.keys().hasAny(['run'])
+            || (request.resource.data.run is map && request.resource.data.run.ev is list
+                && request.resource.data.run.ev.size() <= 4000));
+    }
+
+    // Reads the server's clock, so every phone fires the gun at the same moment.
+    match /clock/{uid} {
+      allow read: if isMe(uid);
+      allow write: if isMe(uid) && request.resource.data.keys().hasOnly(['t']) && request.resource.data.t == request.time;
+    }
+
     function isMe(uid) {
       return request.auth != null && request.auth.uid == uid;
     }

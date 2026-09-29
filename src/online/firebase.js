@@ -63,6 +63,9 @@ function connect() {
   return connecting;
 }
 
+/** The SDK and your sign-in ({ fs, db, uid }), for the other online modules (live.js). */
+export const connectSDK = () => connect();
+
 // This phone's player id, remembered so a board can mark your row without
 // loading the SDK first.
 const UID_KEY = 'trackroyale.uid';

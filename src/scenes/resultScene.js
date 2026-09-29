@@ -34,11 +34,13 @@ export class ResultScene {
     if (me.status === 'ok') postMark(this.ev, me.mark, run, (s) => (this.online = s));
 
     this.buttons = [
-      new Button({ label: this.ev.againLabel ?? 'Race again', color: '#2bb673', onTap: () => flow.play(this.game, this.ev) }),
+      this.stats?.live
+        ? new Button({ label: 'Race live again', color: '#2bb673', onTap: () => flow.live(this.game) })
+        : new Button({ label: this.ev.againLabel ?? 'Race again', color: '#2bb673', onTap: () => flow.play(this.game, this.ev) }),
       new Button({ label: 'Menu', color: 'rgba(255,255,255,0.18)', onTap: () => flow.menu(this.game) }),
       new Button({ label: '⚙ Tuning', color: 'rgba(255,255,255,0.18)', onTap: () => flow.tuning(this.game) }),
     ];
-    if (this.ev.online) this.buttons.splice(2, 0, new Button({ label: '🌐 Online', color: 'rgba(255,255,255,0.18)', onTap: () => flow.leaderboard(this.game, this.ev) }));
+    if (this.ev.online) this.buttons.splice(2, 0, new Button({ label: '🌐 Leaderboard', color: 'rgba(255,255,255,0.18)', onTap: () => flow.leaderboard(this.game, this.ev) }));
     this.layout(this.game.view);
   }
 

@@ -50,7 +50,7 @@ export class Sprint100 extends LaneRace {
     this.spawnT = -Infinity; // when the current target started dropping in
     this.rings = []; // hit outlines: { side, t0 }
     const like = { runner: CONFIG.runner, dip: CONFIG.dip };
-    this.ghostSpec = pickGhost(this.ev, (d) => isReplayable(d, like));
+    this.ghostSpec = this.live ? null : pickGhost(this.ev, (d) => isReplayable(d, like)); // a live race has real people instead
     super.enter();
     this.judge = new StrideTargets(this.player.runner, CONFIG.sprint100.targets);
   }

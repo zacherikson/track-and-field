@@ -12,6 +12,8 @@ import { flow } from '../flow.js';
 import { getDifficulty } from '../core/storage.js';
 import { GhostRecorder, GhostRun } from '../online/ghost.js';
 import { TraceRecorder, TracePlayer } from '../online/trace.js';
+import { LiveChannel, serverNow } from '../online/live.js';
+import { LiveRun } from '../online/liveRun.js';
 
 
 /**
@@ -38,6 +40,11 @@ import { TraceRecorder, TracePlayer } from '../online/trace.js';
  * the lane next to the player instead of one rival, or with `overlay` in the
  * player's own lane (a tournament keeps its five rivals). A ghost is never
  * scored in a tournament.
+ *
+ * LIVE: with `live` set (a session from the waiting room, online/live.js:
+ * { room, uid, players, startAt, setLen }) the other players take the lanes
+ * next to yours, the countdown runs itself so the gun fires at `startAt` on
+ * every phone, and runners travel both ways as the race goes (liveRun.js).
  */
 export class LaneRace {
   constructor(ev, cfg) {
@@ -58,10 +65,17 @@ export class LaneRace {
     const rivals = shuffle(rivalRoster());
     const spec = this.ghostSpec;
     const ghostLane = spec && !spec.overlay ? (cfg.playerLane < cfg.lanes ? cfg.playerLane + 1 : cfg.playerLane - 1) : null;
+    // Live: the other players in the lanes nearest yours.
+    const others = this.live ? this.live.players.filter((p) => p.uid !== this.live.uid) : [];
+    const liveLanes = new Map(nearestLanes(cfg.playerLane, cfg.lanes).slice(0, others.length).map((lane, i) => [lane, others[i]]));
     this.athletes = [];
     for (let lane = 1; lane <= cfg.lanes; lane++) {
       if (lane === ghostLane) {
         this.athletes.push(this.ghostAthlete(lane));
+        continue;
+      }
+      if (liveLanes.has(lane)) {
+        this.athletes.push(this.liveAthlete(lane, liveLanes.get(lane)));
         continue;
       }
       const isPlayer = lane === cfg.playerLane;
@@ -96,6 +110,41 @@ export class LaneRace {
     this.onResize(this.game.view);
     this.resetField();
     this.setState('waiting', this.game.time);
+    if (this.live) this.openLive();
+  }
+
+  /** Another player in a live race, replayed from what their phone sends. */
+  liveAthlete(lane, p) {
+    const who = CHARACTERS.find((c) => c.id === p.athlete) ?? chosenPlayer();
+    const live = new LiveRun(this.cfg.startX);
+    return { lane, isPlayer: false, name: p.name, uid: p.uid, colors: who.colors, runner: live.runner, ai: null, live, mark: null, status: 'ok', idlePhase: rand(0, Math.PI * 2) };
+  }
+
+  /** Live race: when the gun fires here (this game's clock), and the channel to the others. */
+  openLive() {
+    const c = this.cfg.countdown;
+    const now = this.game.time;
+    this.liveGoT = now + (this.live.startAt - serverNow()) / 1000;
+    this.liveSetT = this.liveGoT - this.live.setLen;
+    this.liveReadyT = Math.max(now, this.liveSetT - c.readyTime);
+    const byUid = new Map(this.athletes.filter((a) => a.live).map((a) => [a.uid, a]));
+    this.channel = new LiveChannel(this.live, (uid, doc) => {
+      const a = byUid.get(uid);
+      if (a?.live.receive(doc)) a.runner = a.live.runner;
+    });
+    this.channel.open().catch(() => {});
+  }
+
+  /** Your runner so far, for the others (the same data as a 100m ghost, plus how far it's got). */
+  sendLive(force = false) {
+    const done = this.player.mark != null || this.player.status !== 'ok';
+    this.channel.send({ name: this.live.name ?? '', athlete: chosenPlayer().id, run: this.recorder.data(null), n: this.stepN, done }, force || done);
+  }
+
+  exit() {
+    if (!this.channel) return;
+    const done = this.player.mark != null;
+    this.channel.close(done ? null : { name: this.live.name ?? '', athlete: chosenPlayer().id, left: true });
   }
 
   /**
@@ -163,6 +212,11 @@ export class LaneRace {
     this.stateT = t;
     this.setT = t + c.readyTime;
     this.goT = this.setT + rand(c.setMin, c.setMax);
+    // Live: the same gun on every phone.
+    if (this.live) {
+      this.setT = Math.max(t, this.liveSetT);
+      this.goT = this.liveGoT;
+    }
     this.onCountdown?.();
   }
 
@@ -179,12 +233,13 @@ export class LaneRace {
     const end = t + dt;
 
     // 1. Timed transitions that happen inside this step.
+    if (this.live && this.state === 'waiting' && end >= this.liveReadyT) this.startCountdown(this.liveReadyT);
     if (this.state === 'ready' && end >= this.setT) this.setState('set', this.setT);
     if (this.state === 'set' && end >= this.goT) {
       this.setState('race', this.goT);
       for (const a of this.athletes) {
         if (a.ghost) a.ghost.go();
-        else if (!a.trace) (a.ai ?? a.runner).go(this.goT);
+        else if (!a.trace && !a.live) (a.ai ?? a.runner).go(this.goT);
       }
       // Count physics steps from the gun, and note where this step sat relative
       // to it, so a recorded run can replay on exactly the same step grid.
@@ -203,8 +258,8 @@ export class LaneRace {
       if (e.type === 'down' && this.hitExit(e)) return flow.menu(this.game);
       if (e.type === 'key' && e.code === 'Escape') return flow.menu(this.game);
       if (this.state === 'waiting') {
-        // Any tap or key starts READY / GET SET / GO.
-        if (e.type === 'down' || this.mapInput(e) != null || e.code === 'Enter') this.startCountdown(e.t);
+        // Any tap or key starts READY / GET SET / GO (a live race starts itself).
+        if (!this.live && (e.type === 'down' || this.mapInput(e) != null || e.code === 'Enter')) this.startCountdown(e.t);
         continue;
       }
       const action = this.mapInput(e);
@@ -224,6 +279,7 @@ export class LaneRace {
     if (racing) {
       this.simulate(dt, t);
       this.stepN++;
+      if (this.channel) this.sendLive();
     }
 
     // 4. State timers.
@@ -231,7 +287,9 @@ export class LaneRace {
       this.player.status = 'dnf';
       this.setState('finished', t);
     }
-    if (this.state === 'finished' && end - this.stateT >= this.cfg.finishHold) return this.finish();
+    // Live: wait for the others to finish (or give up on them).
+    const waitLive = this.athletes.some((a) => a.live && a.mark == null && !a.live.left) && end - this.stateT < this.cfg.finishHold + LIVE_WAIT;
+    if (this.state === 'finished' && end - this.stateT >= this.cfg.finishHold && !waitLive) return this.finish();
 
     this.updateControls?.(dt);
     const pr = this.player.runner;
@@ -241,6 +299,7 @@ export class LaneRace {
   /** One physics step for one athlete, shared by live play and the fast-forward in finish(). */
   stepAthlete(a, dt, t) {
     if (a.ghost) return a.ghost.advanceTo(t + dt - this.goT); // replays on its own step grid
+    if (a.live) return a.live.advanceTo(t + dt - this.goT, dt); // as far as their phone has told us
     if (a.trace) return this.stepTrace(a, t + dt - this.goT);
     const D = this.cfg.distance;
     const r = a.runner;
@@ -353,6 +412,7 @@ export class LaneRace {
   /** If athlete `a` crossed the line during this step, the exact crossing time, else null. */
   crossing(a, t, dt) {
     if (a.ghost) return a.ghost.mark == null ? null : this.goT + a.ghost.mark;
+    if (a.live) return a.live.mark == null ? null : this.goT + a.live.mark;
     if (a.trace) return t + dt - this.goT >= a.trace.data.mark ? this.goT + a.trace.data.mark : null;
     return a.runner.crossing(this.cfg.distance, t, dt);
   }
@@ -375,7 +435,7 @@ export class LaneRace {
     const step = CONFIG.loop.fixedStep;
     let t = this.game.time;
     const goT = this.goT;
-    const pending = () => this.athletes.filter((a) => !a.isPlayer && a.mark == null);
+    const pending = () => this.athletes.filter((a) => !a.isPlayer && !a.live && a.mark == null);
     for (let guard = 0; pending().length && guard < 60 / step; guard++) {
       for (const a of pending()) {
         this.stepAthlete(a, step, t);
@@ -397,6 +457,7 @@ export class LaneRace {
     const rank = (r) => (r.status === 'ok' ? r.mark : r.status === 'dnf' ? 1e6 : 2e6);
     results.sort((a, b) => rank(a) - rank(b));
     const stats = this.raceStats?.();
+    if (stats && this.live) stats.live = true;
     // The player's run, for the ghost and the online leaderboard.
     if (stats && this.player.status === 'ok' && this.player.mark != null) {
       if (this.recorder) stats.run = this.recorder.data(this.player.mark);
@@ -421,7 +482,7 @@ export class LaneRace {
     for (let i = this.athletes.length - 1; i >= 0; i--) {
       const a = this.athletes[i];
       if (!a.overlay) this.drawLaneProps?.(ctx, view, a); // e.g. hurdles, under the athlete in the same lane
-      const p = this.track.toScreen(this.camera, view, a.runner.x + a.runner.reach * 0.5 + this.startNudge(a), a.lane);
+      const p = this.track.toScreen(this.camera, view, a.runner.x + a.runner.reach * 0.5 + this.startNudge(a) + (a.live?.dx ?? 0), a.lane);
       const tall = heightOf(a.colors);
       if (p.x < -80 || p.x > view.w + 80) continue;
       const scale = this.track.figureScale(a.lane);
@@ -438,6 +499,8 @@ export class LaneRace {
         text(ctx, a.name, p.x, p.y - H * scale * tall - 6 - (a.overlay ? 18 : 0), { size: 14, color: 'rgba(255,255,255,0.8)', shadow: true });
       } else {
         drawFigure(ctx, p.x, p.y + 4 - lift, H * scale * tall, pose, a.colors, p.y + 4);
+        // Live: the other players are real rivals, named.
+        if (a.live) text(ctx, a.live.left ? `${a.name} (left)` : a.name, p.x, p.y - H * scale * tall - 6, { size: 14, color: '#ffb400', shadow: true });
       }
       // Keep the player's frames for a frame-by-frame ghost.
       if (a.isPlayer && this.tracer && (this.state === 'race' || this.state === 'finished')) {
@@ -613,6 +676,18 @@ export class LaneRace {
     ];
     lines.forEach((l, i) => text(ctx, l, 12 + view.safe.l, 90 + i * 16, { size: 12, align: 'left', weight: 500, shadow: true }));
   }
+}
+
+const LIVE_WAIT = 12; // s after you finish to wait for the other live runners
+
+/** Lanes from nearest to `lane` outwards (not `lane` itself). */
+function nearestLanes(lane, lanes) {
+  const out = [];
+  for (let d = 1; out.length < lanes - 1; d++) {
+    if (lane + d <= lanes) out.push(lane + d);
+    if (lane - d >= 1) out.push(lane - d);
+  }
+  return out;
 }
 
 /** Where a frame-by-frame ghost is, in the shape the lane drawing reads from a Runner. */

@@ -47,7 +47,7 @@ export class StandingsScene {
     this.buttons = this.final
       ? [
           new Button({ label: 'New tournament', color: '#2bb673', onTap: () => flow.tournament(this.game) }),
-          new Button({ label: '🌐 Online', color: 'rgba(255,255,255,0.18)', onTap: () => flow.leaderboard(this.game, TOURNAMENT_BOARD) }),
+          new Button({ label: '🌐 Leaderboard', color: 'rgba(255,255,255,0.18)', onTap: () => flow.leaderboard(this.game, TOURNAMENT_BOARD) }),
           new Button({ label: 'Menu', color: 'rgba(255,255,255,0.18)', onTap: () => flow.menu(this.game) }),
         ]
       : [

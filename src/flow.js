@@ -25,8 +25,11 @@ export const flow = {
   intro: (game, ev) => game.setScene(new IntroScene(ev)),
   play: (game, ev) => game.setScene(ev.create()),
   results: (game, ev, results, stats) =>
-    game.setScene(tournament.active ? new StandingsScene(ev, results) : new ResultScene(ev, results, stats)),
-  leaderboard: (game, ev) => game.setScene(new LeaderboardScene(ev)),
+    game.setScene(tournament.active ? new StandingsScene(ev, results, stats) : new ResultScene(ev, results, stats)),
+  leaderboard: (game, board) => {
+    tournament.end(); // a Race from the board is a normal race
+    game.setScene(new LeaderboardScene(board));
+  },
   profile: (game) => game.setScene(new ProfileScene()),
   // Tuning panel overlay; the canvas scene underneath stays as it was.
   tuning: (game) => openTuning(() => game.input.clear()),

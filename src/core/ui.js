@@ -30,8 +30,8 @@ export function roundRect(ctx, x, y, w, h, r) {
 }
 
 export class Button {
-  constructor({ x = 0, y = 0, w = 200, h = 56, label = '', sub = '', enabled = true, color = '#e4572e', onTap = null }) {
-    Object.assign(this, { x, y, w, h, label, sub, enabled, color, onTap });
+  constructor({ x = 0, y = 0, w = 200, h = 56, label = '', sub = '', size = 22, enabled = true, color = '#e4572e', onTap = null }) {
+    Object.assign(this, { x, y, w, h, label, sub, size, enabled, color, onTap });
     this.pressT = 0; // visual press feedback timer
   }
 
@@ -58,10 +58,10 @@ export class Button {
     ctx.fill();
     const cy = this.y + this.h / 2;
     if (this.sub) {
-      text(ctx, this.label, this.x + this.w / 2, cy - 9, { size: 22, maxWidth: this.w - 14, color: this.enabled ? '#fff' : 'rgba(255,255,255,0.45)' });
+      text(ctx, this.label, this.x + this.w / 2, cy - 9, { size: this.size, maxWidth: this.w - 14, color: this.enabled ? '#fff' : 'rgba(255,255,255,0.45)' });
       text(ctx, this.sub, this.x + this.w / 2, cy + 14, { size: 13, weight: 500, color: this.enabled ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.35)' });
     } else {
-      text(ctx, this.label, this.x + this.w / 2, cy, { size: 22, maxWidth: this.w - 14, color: this.enabled ? '#fff' : 'rgba(255,255,255,0.45)' });
+      text(ctx, this.label, this.x + this.w / 2, cy, { size: this.size, maxWidth: this.w - 14, color: this.enabled ? '#fff' : 'rgba(255,255,255,0.45)' });
     }
   }
 }

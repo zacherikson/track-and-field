@@ -4,8 +4,8 @@ import { LongJump } from './longJump.js';
 import { PoleVault } from './poleVault.js';
 import { Javelin } from './javelin.js';
 
-// The list of events shown on the menu. Each available event provides
-// `create()` returning its play scene.
+// The list of events shown on the menu, in tournament order. Each available
+// event provides `create()` returning its play scene.
 export const EVENTS = [
   {
     id: 'sprint100',
@@ -14,7 +14,8 @@ export const EVENTS = [
     unit: 's',
     lowerIsBetter: true,
     available: true,
-    online: true, // records runs for ghosts and posts them to the online leaderboard
+    online: true, // posts marks to the online leaderboard
+    ghosts: true, // each entry carries its recorded run, which others can race as a ghost
     howTo: [
       'At GO the first green target appears.',
       'Tap the side the green target is on. It jumps around at random!',
@@ -28,30 +29,13 @@ export const EVENTS = [
     },
   },
   {
-    id: 'hurdles110',
-    name: '110m Hurdles',
-    record: 11.58,
-    unit: 's',
-    lowerIsBetter: true,
-    available: true,
-    howTo: [
-      'Three numbered buttons appear in a random order: tap 1, 2, 3.',
-      'Every hurdle you jump brings a new set. Clear it fast to run fast.',
-      'Any mistake (a wrong number, or not finishing in time) and you trip over the next hurdle.',
-      'After the last hurdle the pads turn ORANGE: press BOTH together to lean.',
-      'Desktop: number keys 1 2 3 (or ← ↓ → for the slots), Space to lean.',
-    ],
-    create() {
-      return new Hurdles110(this);
-    },
-  },
-  {
     id: 'longjump',
     name: 'Long Jump',
     record: 9.86,
     unit: 'm',
     lowerIsBetter: false,
     available: true,
+    online: true, // posts marks to the online leaderboard
     againLabel: 'Jump again',
     howTo: [
       'Three jumps; your best counts. Tap the green targets to run up.',
@@ -65,22 +49,22 @@ export const EVENTS = [
     },
   },
   {
-    id: 'javelin',
-    name: 'Javelin',
-    record: 104.8,
-    unit: 'm',
-    lowerIsBetter: false,
+    id: 'hurdles110',
+    name: '110m Hurdles',
+    record: 11.58,
+    unit: 's',
+    lowerIsBetter: true,
     available: true,
-    againLabel: 'Throw again',
+    online: true, // posts marks to the online leaderboard
     howTo: [
-      'Three throws; your best counts. Tap the green targets to run up.',
-      'Near the line the pads turn ORANGE: press and HOLD both.',
-      'The javelin is drawn back and its tip rises. Let go to throw.',
-      'Best angle is about 36°. Let go close to the line, but not past it: FOUL.',
-      'Desktop: ← → to run, hold Space and let go to throw.',
+      'Three numbered buttons appear in a random order: tap 1, 2, 3.',
+      'Every hurdle you jump brings a new set. Clear it fast to run fast.',
+      'Any mistake (a wrong number, or not finishing in time) and you trip over the next hurdle.',
+      'After the last hurdle the pads turn ORANGE: press BOTH together to lean.',
+      'Desktop: number keys 1 2 3 (or ← ↓ → for the slots), Space to lean.',
     ],
     create() {
-      return new Javelin(this);
+      return new Hurdles110(this);
     },
   },
   {
@@ -90,6 +74,7 @@ export const EVENTS = [
     unit: 'm',
     lowerIsBetter: false,
     available: true,
+    online: true, // posts marks to the online leaderboard
     againLabel: 'Vault again',
     howTo: [
       'Three vaults; your best height counts. Tap the green targets to run up.',
@@ -102,9 +87,37 @@ export const EVENTS = [
       return new PoleVault(this);
     },
   },
+  {
+    id: 'javelin',
+    name: 'Javelin',
+    record: 104.8,
+    unit: 'm',
+    lowerIsBetter: false,
+    available: true,
+    online: true, // posts marks to the online leaderboard
+    againLabel: 'Throw again',
+    howTo: [
+      'Three throws; your best counts. Tap the green targets to run up.',
+      'Near the line the pads turn ORANGE: press and HOLD both.',
+      'The javelin is drawn back and its tip rises. Let go to throw.',
+      'Best angle is about 36°. Let go close to the line, but not past it: FOUL.',
+      'Desktop: ← → to run, hold Space and let go to throw.',
+    ],
+    create() {
+      return new Javelin(this);
+    },
+  },
 ];
+
+// The tournament's online leaderboard (total decathlon points). Not playable
+// on its own, so it isn't in EVENTS.
+export const TOURNAMENT_BOARD = { id: 'tournament', name: 'Tournament', unit: 'pts', lowerIsBetter: false, online: true };
+
+/** Every online leaderboard, in menu order. */
+export const BOARDS = [...EVENTS, TOURNAMENT_BOARD];
 
 export function formatMark(ev, value) {
   if (value == null) return '—';
+  if (ev.unit === 'pts') return `${Math.round(value)} pts`;
   return ev.unit === 's' ? `${value.toFixed(2)}s` : `${value.toFixed(2)}m`;
 }

@@ -1,5 +1,4 @@
 import { getPlayerName } from '../core/storage.js';
-import { GHOST_VERSION } from './ghost.js';
 
 /**
  * ONLINE LEADERBOARD (Firebase: Firestore + anonymous sign-in).
@@ -7,10 +6,12 @@ import { GHOST_VERSION } from './ghost.js';
  * Firestore layout:
  *   users/{uid}                       = { name, key, updatedAt }  your profile
  *   usernames/{key}                   = { uid }  claims a name (key = lowercased), so names are unique
- *   leaderboards/{eventId}/runs/{uid} = { name, mark, ghost, v, createdAt }
- * One run doc per player per event, holding their best time and its recorded
- * run (the ghost others can race), with a copy of their name so the board is
- * one query. firestore.rules says who may write what.
+ *   leaderboards/{boardId}/runs/{uid} = { name, mark, ghost?, v, createdAt }
+ * One doc per player per board, holding their best mark (a time, a distance or
+ * tournament points), for the 100m its recorded run (the ghost others can
+ * race), and a copy of their name so the board is one query. A board is an
+ * event from registry.js or TOURNAMENT_BOARD: { id, lowerIsBetter }.
+ * firestore.rules says who may write what.
  *
  * The Firebase SDK is loaded from Google's CDN the first time something online
  * is needed (the game has no build step, and the SDK is big). Everything here is
@@ -52,40 +53,48 @@ function connect() {
   return connecting;
 }
 
-const runs = (fs, db, eventId) => fs.collection(db, 'leaderboards', eventId, 'runs');
+const DOC_VERSION = 1;
 
-/** Your place on the board for a time of `mark` (1 = fastest). */
-async function rankOf(fs, db, eventId, mark) {
-  const faster = await fs.getCountFromServer(fs.query(runs(fs, db, eventId), fs.where('mark', '<', mark)));
-  return faster.data().count + 1;
+const runs = (fs, db, boardId) => fs.collection(db, 'leaderboards', boardId, 'runs');
+
+/** True if mark `a` beats mark `b` on this board. */
+const beats = (board, a, b) => (board.lowerIsBetter ? a < b : a > b);
+
+/** Your place on the board for a mark (1 = best). */
+async function rankOf(fs, db, board, mark) {
+  const better = fs.where('mark', board.lowerIsBetter ? '<' : '>', mark);
+  const n = await fs.getCountFromServer(fs.query(runs(fs, db, board.id), better));
+  return n.data().count + 1;
 }
 
 /**
- * Posts a finished run if it beats your time on the board.
- * Resolves to { improved, best, rank }.
+ * Posts a mark (with `ghost`, the recorded 100m run, when there is one) if it
+ * beats your mark on the board. Resolves to { improved, best, rank }.
  */
-export async function submitRun(eventId, run) {
+export async function submitMark(board, mark, ghost = null) {
   const { fs, db, uid } = await connect();
-  const ref = fs.doc(runs(fs, db, eventId), uid);
+  const ref = fs.doc(runs(fs, db, board.id), uid);
   const prev = await fs.getDoc(ref);
   const prevMark = prev.exists() ? prev.data().mark : null;
-  if (prevMark != null && prevMark <= run.mark) return { improved: false, best: prevMark, rank: await rankOf(fs, db, eventId, prevMark) };
-  await fs.setDoc(ref, { name: getPlayerName(), mark: run.mark, ghost: run, v: GHOST_VERSION, createdAt: fs.serverTimestamp() });
-  return { improved: true, best: run.mark, rank: await rankOf(fs, db, eventId, run.mark) };
+  if (prevMark != null && !beats(board, mark, prevMark)) return { improved: false, best: prevMark, rank: await rankOf(fs, db, board, prevMark) };
+  const doc = { name: getPlayerName(), mark, v: DOC_VERSION, createdAt: fs.serverTimestamp() };
+  if (ghost) doc.ghost = ghost;
+  await fs.setDoc(ref, doc);
+  return { improved: true, best: mark, rank: await rankOf(fs, db, board, mark) };
 }
 
 /**
- * The fastest `n` runs, plus yours if it isn't among them.
+ * The best `n` marks, plus yours if it isn't among them.
  * Resolves to { top: [{ uid, name, mark, ghost, me, rank }], mine }.
  */
-export async function leaderboard(eventId, n = 10) {
+export async function leaderboard(board, n = 10) {
   const { fs, db, uid } = await connect();
-  const snap = await fs.getDocs(fs.query(runs(fs, db, eventId), fs.orderBy('mark'), fs.limit(n)));
+  const snap = await fs.getDocs(fs.query(runs(fs, db, board.id), fs.orderBy('mark', board.lowerIsBetter ? 'asc' : 'desc'), fs.limit(n)));
   const top = snap.docs.map((d, i) => ({ uid: d.id, ...d.data(), me: d.id === uid, rank: i + 1 }));
   let mine = top.find((r) => r.me) ?? null;
   if (!mine) {
-    const own = await fs.getDoc(fs.doc(runs(fs, db, eventId), uid));
-    if (own.exists()) mine = { uid, ...own.data(), me: true, rank: await rankOf(fs, db, eventId, own.data().mark) };
+    const own = await fs.getDoc(fs.doc(runs(fs, db, board.id), uid));
+    if (own.exists()) mine = { uid, ...own.data(), me: true, rank: await rankOf(fs, db, board, own.data().mark) };
   }
   return { top, mine };
 }
@@ -97,7 +106,8 @@ async function renameOnBoard(eventId, name) {
   if ((await fs.getDoc(ref)).exists()) await fs.updateDoc(ref, { name });
 }
 
-const ONLINE_EVENTS = ['sprint100'];
+// Every board (registry.js BOARDS ids; firestore.rules lists the same).
+const ONLINE_EVENTS = ['sprint100', 'longjump', 'hurdles110', 'polevault', 'javelin', 'tournament'];
 
 /** The key a name is claimed under: names are unique regardless of case. */
 export const nameKey = (name) => name.toLowerCase();

@@ -2,8 +2,7 @@ import { Button, text, roundRect } from '../core/ui.js';
 import { ordinal } from '../core/math.js';
 import { formatMark } from '../events/registry.js';
 import { getBest, submitBest, getDifficulty, saveGhostIfFaster } from '../core/storage.js';
-import { changes } from '../tuning/store.js';
-import { submitRun } from '../online/firebase.js';
+import { postMark } from '../online/post.js';
 import { flow } from '../flow.js';
 
 /**
@@ -17,25 +16,6 @@ export class ResultScene {
     this.stats = stats; // { hits, misses, topSpeed, run } for the player, when the event tracks them
   }
 
-  /** Keep the run as your ghost if it's your fastest, and post it to the online leaderboard. */
-  keepRun(run) {
-    saveGhostIfFaster(this.ev.id, run);
-    if (!this.ev.online) return;
-    if (changes().length) {
-      // Only runs on the shipped physics count online.
-      this.online = 'Not posted online: tuning is changed on this phone';
-      return;
-    }
-    this.online = 'Posting to the online leaderboard…';
-    submitRun(this.ev.id, run)
-      .then((r) => {
-        this.online = r.improved ? `Online leaderboard: #${r.rank}` : `Online: your best ${formatMark(this.ev, r.best)} is #${r.rank}`;
-      })
-      .catch(() => {
-        this.online = 'Online leaderboard unavailable';
-      });
-  }
-
   enter() {
     this.age = 0;
     const me = this.results.find((r) => r.isPlayer);
@@ -47,7 +27,9 @@ export class ResultScene {
     this.hadBest = prevBest != null;
     this.beatWR = me.status === 'ok' && (this.ev.lowerIsBetter ? me.mark < this.ev.record : me.mark > this.ev.record);
     this.online = null; // one line about the online leaderboard
-    if (this.stats?.run) this.keepRun(this.stats.run);
+    const run = this.stats?.run ?? null; // the 100m's recorded run: your ghost
+    if (run) saveGhostIfFaster(this.ev.id, run);
+    if (me.status === 'ok') postMark(this.ev, me.mark, run, (s) => (this.online = s));
 
     this.buttons = [
       new Button({ label: this.ev.againLabel ?? 'Race again', color: '#2bb673', onTap: () => flow.play(this.game, this.ev) }),

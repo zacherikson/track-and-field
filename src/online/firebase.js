@@ -1,4 +1,4 @@
-import { getPlayerName } from '../core/storage.js';
+import { getPlayerName, setPlayerName } from '../core/storage.js';
 import { toWire, fromWire } from './trace.js';
 
 /**
@@ -42,8 +42,15 @@ const firebaseConfig = {
 const SDK = 'https://www.gstatic.com/firebasejs/12.19.0';
 
 let connecting = null;
+let connected = null; // what connect() resolved to, once it has
 
-/** Loads the SDK and signs in (anonymously, once per phone). Resolves to { fs, db, uid }. */
+/**
+ * Loads the SDK and signs in. Resolves to { app, fs, db, uid, auth, A } (A = the
+ * auth module). A new player is signed in anonymously: a player id for this
+ * phone only, until they sign in with Google (signInWithGoogle), which keeps
+ * the same id and so everything that hangs off it (username, board entries,
+ * ghosts). A returning player is still signed in, either way.
+ */
 function connect() {
   connecting ??= (async () => {
     const [app, auth, fs] = await Promise.all([
@@ -56,7 +63,8 @@ function connect() {
     await a.authStateReady(); // a returning player is still signed in from last time
     const user = a.currentUser ?? (await auth.signInAnonymously(a)).user;
     rememberUid(user.uid);
-    return { app: fbApp, fs, db: fs.getFirestore(fbApp), uid: user.uid };
+    connected = { app: fbApp, fs, db: fs.getFirestore(fbApp), uid: user.uid, auth: a, A: auth };
+    return connected;
   })();
   connecting.catch(() => {
     connecting = null; // try again next time
@@ -64,7 +72,7 @@ function connect() {
   return connecting;
 }
 
-/** The Firebase app and your sign-in ({ app, fs, db, uid }), for the other online modules (live.js). */
+/** The Firebase app and your sign-in ({ app, fs, db, uid, auth, A }), for the other online modules (live.js). */
 export const connectSDK = () => connect();
 
 /** Where the Firebase SDK's modules load from (`${SDK_URL}/firebase-database.js`, ...). */
@@ -78,6 +86,64 @@ function rememberUid(uid) {
   try {
     localStorage.setItem(UID_KEY, uid);
   } catch {}
+}
+
+function forgetUid() {
+  try {
+    localStorage.removeItem(UID_KEY);
+  } catch {}
+}
+
+/**
+ * Your account: { guest: true } while you play as this phone's anonymous
+ * player, else { guest: false, via: 'Google', email }. Loads the SDK.
+ */
+export async function accountInfo() {
+  const { auth: a } = await connect();
+  const u = a.currentUser;
+  if (!u || u.isAnonymous) return { guest: true };
+  return { guest: false, via: u.providerData?.some((p) => p.providerId === 'google.com') ? 'Google' : 'email', email: u.email ?? null };
+}
+
+/**
+ * Signs in with Google, in a popup. Call it straight from a tap (browsers only
+ * open popups then), after accountInfo() has resolved.
+ *
+ * A Google account that hasn't played yet becomes this phone's player: same
+ * id, so your name, bests and board entries all stay. One that has (you signed
+ * in on another phone first) takes over instead: this phone plays as that
+ * player from now on, and what this phone did as a guest stays behind.
+ * Resolves to { switched }: true means the page should reload, so everything
+ * starts again as the other player.
+ */
+export function signInWithGoogle() {
+  if (!connected) return Promise.reject(new Error('not-ready'));
+  const { auth: a, A, fs, db } = connected;
+  const provider = new A.GoogleAuthProvider();
+  return A.linkWithPopup(a.currentUser, provider).then(
+    () => ({ switched: false }),
+    async (err) => {
+      if (err?.code !== 'auth/credential-already-in-use') throw err;
+      const cred = A.GoogleAuthProvider.credentialFromError(err);
+      const { user } = await A.signInWithCredential(a, cred);
+      rememberUid(user.uid);
+      // That player's name, from their profile (a player who never picked one gets a new made-up name).
+      const profile = await fs.getDoc(fs.doc(db, 'users', user.uid)).catch(() => null);
+      setPlayerName(profile?.exists() ? profile.data().name : null);
+      return { switched: true };
+    },
+  );
+}
+
+/**
+ * Signs out: this phone goes back to a new guest player (with a new made-up
+ * name) the next time the page loads, which the caller should do now.
+ */
+export async function signOut() {
+  const { auth: a, A } = await connect();
+  await A.signOut(a);
+  forgetUid();
+  setPlayerName(null);
 }
 
 function knownUid() {

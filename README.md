@@ -122,7 +122,14 @@ the physics. Each event's `traceProps` in `registry.js` says how many extra
 numbers its frames keep; changing what they mean needs `TRACE_VERSION` bumped.
 
 The leaderboard uses Firebase (project `track-royale-f18ad`): Firestore, with
-anonymous sign-in so each phone gets an ID without a login screen. Profiles are
+anonymous sign-in so each phone gets an ID without a login screen. Signing in
+with Google on the Profile screen links that same ID to a Google account
+(`linkWithPopup`), so the username, bests and board entries stay and follow the
+player to any phone they sign in on; if that Google account already has a
+player, the phone switches to it and reloads. It needs Google turned on in
+Firebase console > Authentication > Sign-in method, and the site's domain
+(`zacherikson.github.io`, plus `localhost` for testing) in Authentication >
+Settings > Authorized domains. Profiles are
 in `users/{uid}`, and `usernames/{lowercased name}` records who owns each name.
 Frame-by-frame recordings sit in `ghosts/{event}/runs/{uid}`, apart from the
 boards, with their frames as one comma-separated string (`toWire` in
@@ -177,7 +184,7 @@ src/render/javelinField.js  javelin runway, foul line and sector; the flight sho
 src/render/vaultArena.js  pole vault runway, plant box, landing mat, uprights with height marks, tall sky
 src/online/
   ghost.js            records a run's inputs and replays them as a ghost (pure)
-  firebase.js         online leaderboards: lazy-loaded Firebase SDK, anonymous sign-in, Firestore
+  firebase.js         online leaderboards: lazy-loaded Firebase SDK, anonymous and Google sign-in, Firestore
   post.js             posts a finished mark to its board and reports how it went
   bests.js            personal bests: your board entries, synced to the phone's copy
   live.js             live play: the waiting rooms, shared start times, sending and receiving players
@@ -188,7 +195,7 @@ src/online/
   fieldGhost.js       records and draws ghosts in the long jump, pole vault and javelin
   ghosts.js           picks which ghost races: best tournament, a leaderboard pick, or your best
 src/scenes/leaderboardScene.js  online leaderboards, a tab per event, with Race buttons
-src/scenes/profileScene.js      your username (unique, saved in Firebase)
+src/scenes/profileScene.js      your username (unique, saved in Firebase) and Google sign-in
 src/scenes/lobbyScene.js        the live waiting room (any event, or the tournament)
 src/tuning/           in-game tuning panel (params list, saved overrides, live estimates)
 tools/simulate.mjs    headless tuning simulator

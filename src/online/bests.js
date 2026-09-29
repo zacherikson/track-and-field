@@ -74,3 +74,16 @@ async function syncGhost(board, entry) {
   if (online && (board.ghosts || isTrace(online, board.id, board.traceProps))) setGhost(board.id, online);
   else if (mine && beats(board, mine.mark, entry.mark)) setGhost(board.id, null); // better than your best: not a real one
 }
+
+/**
+ * Forgets your saved bests, ghosts and best tournament: they belonged to the
+ * player you were (you signed out, or signed in as someone else). The next
+ * syncBests() fills them in again for the player you are now.
+ */
+export function forgetBests() {
+  for (const board of BOARDS) {
+    setBest(board.id, null);
+    setGhost(board.id, null);
+  }
+  saveBestTournament(null);
+}

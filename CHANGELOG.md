@@ -4,6 +4,20 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Sign in with Google
+- Profile has an Account panel. Everyone starts as a guest (an online ID for
+  this phone only); Sign in with Google keeps that same ID, so your username,
+  bests and leaderboard entries stay, and signing in on another phone plays as
+  you there.
+- If that Google account already has a player (you signed in on another phone
+  first), this phone switches to it and reloads; what it did as a guest stays
+  with the old guest ID.
+- Sign out turns the phone back into a new guest (new made-up name, bests
+  cleared) until you sign in again.
+- Turn on Google in Firebase console > Authentication > Sign-in method, and
+  check `zacherikson.github.io` is in Authentication > Settings > Authorized
+  domains.
+
 ## Live for every event and the tournament
 - The menu has two rows of events: OFFLINE (against the computer) and ONLINE
   (live against people). The ⚡ Race live button is gone; the Online row's

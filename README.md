@@ -58,8 +58,9 @@ the repo and open it) so poses can be checked side by side.
 
 ## Ghosts and the online leaderboard (100m)
 
-Every 100m run is recorded. Your fastest one on the phone races again as a
-see-through **ghost** in the lane next to you ("Your best"). A finished run is
+Every 100m run is recorded. Turn **GHOST** on in the menu (it starts off) and
+your fastest one on the phone races again as a see-through **ghost** in the
+lane next to you ("Your best"). A finished run is
 also posted to the **online leaderboard** (🌐 Online on the menu or results
 screen) if it beats your time there. Tap **Race** on any row to race that
 player's run as a ghost. Runs made with changed tuning aren't posted.

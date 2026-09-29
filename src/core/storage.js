@@ -70,6 +70,17 @@ export function setDifficulty(level) {
   save(data);
 }
 
+/** Whether your own best run races as a ghost (menu toggle; off unless turned on). */
+export function getGhostOn() {
+  return load().ghost === true;
+}
+
+export function setGhostOn(on) {
+  const data = load();
+  data.ghost = on;
+  save(data);
+}
+
 // Your best recorded run per event, raced as a ghost (see online/ghost.js). Kept
 // under its own key: a run is a few KB and the main save stays small.
 const GHOSTS = 'trackroyale.ghosts.v1';

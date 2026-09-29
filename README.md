@@ -69,7 +69,11 @@ the menu; names are unique.
 ⚡ **Race live** (on the menu) is a 100m against other people. You wait in a
 waiting room until someone else joins; then a countdown starts, more can join
 (up to 4), and everyone's gun fires at the same moment (each phone reads the
-server's clock). Computer rivals fill the other lanes. Each phone sends its
+server's clock). Computer rivals fill the other lanes. Live races run on
+Firebase's Realtime Database, which is quick with small frequent messages and
+takes a player out of the room when their phone drops off; its rules are in
+[`database.rules.json`](database.rules.json) (paste them into Firebase console
+> Realtime Database > Rules after changing them). Each phone sends its
 taps as they happen, the same data as a 100m ghost, and replays everyone
 else's through the same physics, so every phone gets every time exactly. The
 others' taps arrive a moment late, so their runners are drawn carried on at
@@ -174,6 +178,7 @@ src/tuning/           in-game tuning panel (params list, saved overrides, live e
 tools/simulate.mjs    headless tuning simulator
 tools/ghostcheck.mjs  checks that recorded runs replay to the exact same time
 firestore.rules       Firestore security rules for the leaderboards and usernames
+database.rules.json   Realtime Database security rules for live races
 ```
 
 ### Game-dev concepts used here

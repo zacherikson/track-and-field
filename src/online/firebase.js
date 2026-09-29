@@ -36,6 +36,7 @@ const firebaseConfig = {
   storageBucket: 'track-royale-f18ad.firebasestorage.app',
   messagingSenderId: '701591973322',
   appId: '1:701591973322:web:d44061828fb08aff243333',
+  databaseURL: 'https://track-royale-f18ad-default-rtdb.firebaseio.com', // Realtime Database: live races (live.js)
 };
 
 const SDK = 'https://www.gstatic.com/firebasejs/12.19.0';
@@ -55,7 +56,7 @@ function connect() {
     await a.authStateReady(); // a returning player is still signed in from last time
     const user = a.currentUser ?? (await auth.signInAnonymously(a)).user;
     rememberUid(user.uid);
-    return { fs, db: fs.getFirestore(fbApp), uid: user.uid };
+    return { app: fbApp, fs, db: fs.getFirestore(fbApp), uid: user.uid };
   })();
   connecting.catch(() => {
     connecting = null; // try again next time
@@ -63,8 +64,11 @@ function connect() {
   return connecting;
 }
 
-/** The SDK and your sign-in ({ fs, db, uid }), for the other online modules (live.js). */
+/** The Firebase app and your sign-in ({ app, fs, db, uid }), for the other online modules (live.js). */
 export const connectSDK = () => connect();
+
+/** Where the Firebase SDK's modules load from (`${SDK_URL}/firebase-database.js`, ...). */
+export const SDK_URL = SDK;
 
 // This phone's player id, remembered so a board can mark your row without
 // loading the SDK first.

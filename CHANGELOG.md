@@ -4,6 +4,20 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Ghosts in every event, and your best tournament
+- GHOST on the menu now works in every event, not just the 100m. Hurdles: your
+  best race runs in the lane next to you. Long jump, pole vault, javelin: your
+  best attempt runs on your runway (with its pole or javelin), starting when
+  each of your attempts starts.
+- These ghosts are recorded frame by frame (the 100m keeps its exact replay).
+- Tournament: with GHOST on, each event races your best tournament's attempt
+  at it, in your own lane so the five rivals stay. The standings say how many
+  points you're ahead of or behind your best tournament. Your first finished
+  tournament is kept as the best one until you beat it.
+- Online: every event's board has Race buttons on marks posted from now on
+  (their recordings are stored separately and downloaded when you tap Race).
+- `firestore.rules` changed: publish it again in the Firebase console.
+
 ## Online leaderboards for every event
 - 🌐 Online now has a tab for each event (100m, Long jump, Hurdles, Pole vault,
   Javelin) and one for Tournament points. ← → switch tabs on a keyboard.

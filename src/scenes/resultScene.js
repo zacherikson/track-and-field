@@ -1,7 +1,7 @@
 import { Button, text, roundRect } from '../core/ui.js';
 import { ordinal } from '../core/math.js';
 import { formatMark } from '../events/registry.js';
-import { getBest, submitBest, getDifficulty, saveGhostIfFaster } from '../core/storage.js';
+import { getBest, submitBest, getDifficulty, saveGhostIfBetter } from '../core/storage.js';
 import { postMark } from '../online/post.js';
 import { flow } from '../flow.js';
 
@@ -27,8 +27,8 @@ export class ResultScene {
     this.hadBest = prevBest != null;
     this.beatWR = me.status === 'ok' && (this.ev.lowerIsBetter ? me.mark < this.ev.record : me.mark > this.ev.record);
     this.online = null; // one line about the online leaderboard
-    const run = this.stats?.run ?? null; // the 100m's recorded run: your ghost
-    if (run) saveGhostIfFaster(this.ev.id, run);
+    const run = this.stats?.run ?? null; // the recorded attempt: your ghost
+    if (run) saveGhostIfBetter(this.ev, run);
     if (me.status === 'ok') postMark(this.ev, me.mark, run, (s) => (this.online = s));
 
     this.buttons = [

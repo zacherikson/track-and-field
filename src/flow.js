@@ -25,7 +25,11 @@ export const flow = {
   intro: (game, ev) => game.setScene(new IntroScene(ev)),
   play: (game, ev) => game.setScene(ev.create()),
   results: (game, ev, results, stats) =>
-    game.setScene(tournament.active ? new StandingsScene(ev, results, stats) : new ResultScene(ev, results, stats)),
+    game.setScene(
+      tournament.active
+        ? new StandingsScene(ev, results.filter((r) => !r.ghost), stats) // a ghost is never scored
+        : new ResultScene(ev, results, stats),
+    ),
   leaderboard: (game, board) => {
     tournament.end(); // a Race from the board is a normal race
     game.setScene(new LeaderboardScene(board));

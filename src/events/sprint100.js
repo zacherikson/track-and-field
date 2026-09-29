@@ -3,9 +3,8 @@ import { LaneRace } from './laneRace.js';
 import { StrideTargets } from './strideTargets.js';
 import { ORANGE, drawPad, drawX } from '../render/pads.js';
 import { drawDrop, drawHitRing } from '../render/targetPads.js';
-import { chosenGhost, isReplayable } from '../online/ghost.js';
-import { getGhost, getGhostOn } from '../core/storage.js';
-import { tournament } from '../tournament/tournament.js';
+import { isReplayable } from '../online/ghost.js';
+import { pickGhost } from '../online/ghosts.js';
 
 
 const LEFT_KEYS = ['ArrowLeft', 'KeyA', 'KeyZ', 'KeyF'];
@@ -34,23 +33,13 @@ const DIP_KEYS = ['Space', 'ArrowUp', 'ArrowDown'];
  *
  * Every run is recorded. With GHOST turned on in the menu, the fastest one on
  * this phone races again in the lane next to you ("Your best"). A ghost picked
- * on the online leaderboard races whatever the toggle says. No ghost in a tournament: the same five rivals run every event.
+ * on the online leaderboard races whatever the toggle says. In a tournament the
+ * ghost is your best tournament's run, in your own lane (see online/ghosts.js).
  */
 export class Sprint100 extends LaneRace {
   constructor(ev) {
     super(ev, CONFIG.sprint100);
     this.recordGhost = true;
-  }
-
-  /** The recorded run to race: one picked on the leaderboard, else your own best. */
-  pickGhost() {
-    if (tournament.active) return null; // a tournament keeps its five rivals
-    const like = { runner: CONFIG.runner, dip: CONFIG.dip };
-    const picked = chosenGhost();
-    if (picked && isReplayable(picked.data, like)) return picked;
-    if (!getGhostOn()) return null;
-    const mine = getGhost(this.ev.id);
-    return isReplayable(mine, like) ? { name: 'Your best', data: mine } : null;
   }
 
   enter() {
@@ -60,7 +49,8 @@ export class Sprint100 extends LaneRace {
     this.missT = -Infinity;
     this.spawnT = -Infinity; // when the current target started dropping in
     this.rings = []; // hit outlines: { side, t0 }
-    this.ghostSpec = this.pickGhost();
+    const like = { runner: CONFIG.runner, dip: CONFIG.dip };
+    this.ghostSpec = pickGhost(this.ev, (d) => isReplayable(d, like));
     super.enter();
     this.judge = new StrideTargets(this.player.runner, CONFIG.sprint100.targets);
   }

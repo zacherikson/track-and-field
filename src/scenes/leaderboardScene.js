@@ -2,8 +2,9 @@ import { CONFIG } from '../config.js';
 import { Button, text, roundRect } from '../core/ui.js';
 import { BOARDS, TOURNAMENT_BOARD, formatMark } from '../events/registry.js';
 import { getPlayerName } from '../core/storage.js';
-import { leaderboard } from '../online/firebase.js';
+import { leaderboard, fetchGhost } from '../online/firebase.js';
 import { chooseGhost, isReplayable } from '../online/ghost.js';
+import { isTrace } from '../online/trace.js';
 import { flow } from '../flow.js';
 
 const ROW_H = 30;
@@ -16,8 +17,8 @@ let lastBoard = null; // the tab you looked at last, for the menu's Online butto
 
 /**
  * The online leaderboards: a tab per event plus the tournament score, each
- * with the best marks from every player. On the 100m each run has a Race
- * button that puts it next to you as a ghost.
+ * with the best marks from every player. On the event boards each recorded
+ * mark has a Race button that puts it next to you as a ghost.
  */
 export class LeaderboardScene {
   constructor(board = null) {
@@ -62,21 +63,39 @@ export class LeaderboardScene {
       });
   }
 
-  /** A Race button for a row whose recorded run this version can replay (the 100m). */
+  /**
+   * A Race button for a row with a recording this version can play: the 100m's
+   * comes with the row, the other events' is fetched when you tap.
+   */
   raceButton(r) {
-    if (!isReplayable(r.ghost, { runner: CONFIG.runner, dip: CONFIG.dip })) return null;
     const ev = this.board;
-    return new Button({
-      label: 'Race',
-      w: 84,
-      h: ROW_H - 4,
-      size: 18,
-      color: '#2bb673',
-      onTap: () => {
-        chooseGhost({ name: r.me ? 'Your online best' : r.name, data: r.ghost });
-        flow.play(this.game, ev);
-      },
-    });
+    const name = r.me ? 'Your online best' : r.name;
+    const race = (data) => {
+      chooseGhost({ name, data, ev: ev.id });
+      flow.play(this.game, ev);
+    };
+    const btn = new Button({ label: 'Race', w: 84, h: ROW_H - 4, size: 18, color: '#2bb673' });
+    if (ev.ghosts) {
+      if (!isReplayable(r.ghost, { runner: CONFIG.runner, dip: CONFIG.dip })) return null;
+      btn.onTap = () => race(r.ghost);
+    } else if (ev.traceProps != null && r.traced === true) {
+      btn.onTap = () => {
+        if (!btn.enabled) return;
+        btn.enabled = false;
+        btn.label = '…';
+        fetchGhost(ev, r)
+          .then((data) => {
+            if (this.board !== ev || this.game.scene !== this) return; // moved on meanwhile
+            if (isTrace(data, ev.id, ev.traceProps)) return race(data);
+            btn.label = 'Gone';
+          })
+          .catch(() => {
+            btn.label = 'Retry';
+            btn.enabled = true;
+          });
+      };
+    } else return null;
+    return btn;
   }
 
   onResize(view) {

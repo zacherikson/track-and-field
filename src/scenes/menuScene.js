@@ -9,7 +9,7 @@ import { chooseGhost } from '../online/ghost.js';
 
 export class MenuScene {
   enter() {
-    chooseGhost(null); // back at the menu: the 100m races your own best run again
+    chooseGhost(null); // back at the menu: events race your own best again
     this.demoX = 0;
     this.phase = 0;
     // Tournament: all five events in a row, decathlon scoring.
@@ -45,7 +45,7 @@ export class MenuScene {
         }),
     );
     this.styleLevels();
-    // Your ghost: race your best 100m run in the next lane (remembered on this device).
+    // Your ghost: race your best attempt in every event (remembered on this device).
     this.ghostButton = new Button({
       label: '',
       w: 110,

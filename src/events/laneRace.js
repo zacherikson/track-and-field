@@ -11,6 +11,7 @@ import { ORANGE, drawPad } from '../render/pads.js';
 import { flow } from '../flow.js';
 import { getDifficulty } from '../core/storage.js';
 import { GhostRecorder, GhostRun } from '../online/ghost.js';
+import { TraceRecorder, TracePlayer } from '../online/trace.js';
 
 
 /**
@@ -30,9 +31,13 @@ import { GhostRecorder, GhostRun } from '../online/ghost.js';
  *
  * Subclasses provide the controls: mapInput(), onPlayerAction(), drawControls().
  *
- * GHOSTS (online/ghost.js): a subclass can set `recordGhost` to record the
- * player's run, and `ghostSpec` ({ name, data }) to race a recorded run in the
- * lane next to the player instead of one rival.
+ * GHOSTS: a subclass can set `recordGhost` to record the player's run for an
+ * exact replay (online/ghost.js, the 100m), or `traceProps` (how many event
+ * numbers each frame keeps, see traceFrameProps) to record it frame by frame
+ * (online/trace.js). `ghostSpec` ({ name, data, overlay }) races a recording in
+ * the lane next to the player instead of one rival, or with `overlay` in the
+ * player's own lane (a tournament keeps its five rivals). A ghost is never
+ * scored in a tournament.
  */
 export class LaneRace {
   constructor(ev, cfg) {
@@ -49,29 +54,35 @@ export class LaneRace {
     this.camera = new Camera();
 
     // Build the field: player in their lane, rivals in the others (a ghost, if
-    // there is one, takes the lane next to the player, looking like the athlete it recorded).
+    // there is one, takes the lane next to the player, or shares the player's).
     const rivals = shuffle(rivalRoster());
-    const ghostLane = this.ghostSpec ? (cfg.playerLane < cfg.lanes ? cfg.playerLane + 1 : cfg.playerLane - 1) : null;
+    const spec = this.ghostSpec;
+    const ghostLane = spec && !spec.overlay ? (cfg.playerLane < cfg.lanes ? cfg.playerLane + 1 : cfg.playerLane - 1) : null;
     this.athletes = [];
     for (let lane = 1; lane <= cfg.lanes; lane++) {
+      if (lane === ghostLane) {
+        this.athletes.push(this.ghostAthlete(lane));
+        continue;
+      }
       const isPlayer = lane === cfg.playerLane;
-      const ghost = lane === ghostLane ? new GhostRun(this.ghostSpec.data) : null;
-      const who = isPlayer ? chosenPlayer() : ghost ? (CHARACTERS.find((c) => c.id === this.ghostSpec.data.athlete) ?? chosenPlayer()) : rivals.pop();
-      const runner = ghost ? ghost.runner : new Runner(this.runnerParams, undefined, cfg.startX); // event-specific physics, if any
+      const who = isPlayer ? chosenPlayer() : rivals.pop();
+      const runner = new Runner(this.runnerParams, undefined, cfg.startX); // event-specific physics, if any
       this.athletes.push({
         lane,
         isPlayer,
-        name: ghost ? this.ghostSpec.name : who.name,
+        name: who.name,
         colors: who.colors,
         runner,
-        ai: isPlayer || ghost ? null : this.createAI(runner),
-        ghost,
+        ai: isPlayer ? null : this.createAI(runner),
         mark: null,
         status: 'ok',
         idlePhase: rand(0, Math.PI * 2), // so the waiting athletes don't sway in unison
       });
+      // Sharing the player's lane: drawn just behind them.
+      if (isPlayer && spec?.overlay) this.athletes.push(this.ghostAthlete(lane));
     }
     this.player = this.athletes.find((a) => a.isPlayer);
+    if (this.traceProps != null) this.tracer = new TraceRecorder(this.ev.id, this.traceProps);
     if (this.recordGhost) {
       this.recorder = new GhostRecorder(this.player.runner, {
         step: CONFIG.loop.fixedStep,
@@ -87,6 +98,32 @@ export class LaneRace {
     this.setState('waiting', this.game.time);
   }
 
+  /**
+   * The ghost, looking like the athlete who made the recording. An exact replay
+   * (`ghost`) has its own Runner; a frame-by-frame one (`trace`) only needs a
+   * stand-in with a position.
+   */
+  ghostAthlete(lane) {
+    const spec = this.ghostSpec;
+    const who = CHARACTERS.find((c) => c.id === spec.data.athlete) ?? chosenPlayer();
+    const trace = spec.data.kind === 'trace' ? new TracePlayer(spec.data) : null;
+    const ghost = trace ? null : new GhostRun(spec.data);
+    return {
+      lane,
+      isPlayer: false,
+      name: spec.name,
+      colors: who.colors,
+      runner: ghost ? ghost.runner : new TraceBody(this.cfg.startX),
+      ai: null,
+      ghost,
+      trace,
+      overlay: !!spec.overlay,
+      mark: null,
+      status: 'ok',
+      idlePhase: rand(0, Math.PI * 2),
+    };
+  }
+
   /** A rival's thumbs. `prev` is their controller from the last race (keeps their pace). */
   createAI(runner, prev = null) {
     return new AIController(runner, this.difficulty, prev?.cadence);
@@ -99,6 +136,7 @@ export class LaneRace {
     for (const a of this.athletes) {
       a.runner.reset();
       a.ghost?.reset();
+      a.frame = null;
       if (a.ai) a.ai = this.createAI(a.runner, a.ai);
       a.mark = null;
     }
@@ -146,12 +184,13 @@ export class LaneRace {
       this.setState('race', this.goT);
       for (const a of this.athletes) {
         if (a.ghost) a.ghost.go();
-        else (a.ai ?? a.runner).go(this.goT);
+        else if (!a.trace) (a.ai ?? a.runner).go(this.goT);
       }
       // Count physics steps from the gun, and note where this step sat relative
       // to it, so a recorded run can replay on exactly the same step grid.
       this.stepN = 0;
       this.recorder?.start(this.goT, t - this.goT);
+      this.tracer?.start();
       this.game.input.resetStats(); // input diagnostics cover the race itself
       this.game.worstFrameMs = 0;
       this.onGo?.();
@@ -202,6 +241,7 @@ export class LaneRace {
   /** One physics step for one athlete, shared by live play and the fast-forward in finish(). */
   stepAthlete(a, dt, t) {
     if (a.ghost) return a.ghost.advanceTo(t + dt - this.goT); // replays on its own step grid
+    if (a.trace) return this.stepTrace(a, t + dt - this.goT);
     const D = this.cfg.distance;
     const r = a.runner;
     if (D - r.x <= (this.cfg.dipPromptDistance ?? CONFIG.dip.promptDistance) && r.mode === 'run' && !r.dipUsed) {
@@ -211,6 +251,20 @@ export class LaneRace {
     a.ai?.update(t, dt, r.x / D, D - r.x);
     r.update(dt, t);
     this.afterStep?.(a, t + dt);
+  }
+
+  /** Moves a frame-by-frame ghost to race time `rt`; it holds its last frame at the end. */
+  stepTrace(a, rt) {
+    const f = a.trace.at(rt);
+    if (!f) return;
+    a.frame = f;
+    a.runner.x = f.x;
+    this.onTraceFrame?.(a, f, rt);
+  }
+
+  /** The event numbers to keep with each recorded frame of the player (see traceProps). */
+  traceFrameProps() {
+    return [];
   }
 
   /**
@@ -299,6 +353,7 @@ export class LaneRace {
   /** If athlete `a` crossed the line during this step, the exact crossing time, else null. */
   crossing(a, t, dt) {
     if (a.ghost) return a.ghost.mark == null ? null : this.goT + a.ghost.mark;
+    if (a.trace) return t + dt - this.goT >= a.trace.data.mark ? this.goT + a.trace.data.mark : null;
     return a.runner.crossing(this.cfg.distance, t, dt);
   }
 
@@ -335,7 +390,7 @@ export class LaneRace {
       lane: this.track.laneNumber(a.lane),
       colors: a.colors,
       isPlayer: a.isPlayer,
-      ghost: !!a.ghost,
+      ghost: !!(a.ghost || a.trace),
       mark: a.mark,
       status: a.isPlayer ? a.status : a.mark == null ? 'dnf' : 'ok',
     }));
@@ -343,7 +398,10 @@ export class LaneRace {
     results.sort((a, b) => rank(a) - rank(b));
     const stats = this.raceStats?.();
     // The player's run, for the ghost and the online leaderboard.
-    if (stats && this.recorder && this.player.status === 'ok' && this.player.mark != null) stats.run = this.recorder.data(this.player.mark);
+    if (stats && this.player.status === 'ok' && this.player.mark != null) {
+      if (this.recorder) stats.run = this.recorder.data(this.player.mark);
+      else if (this.tracer) stats.run = this.tracer.data(this.player.mark, chosenPlayer().id);
+    }
     flow.results(this.game, this.ev, results, stats);
   }
 
@@ -362,22 +420,28 @@ export class LaneRace {
     const H = CONFIG.figure.height * this.camera.ppm;
     for (let i = this.athletes.length - 1; i >= 0; i--) {
       const a = this.athletes[i];
-      this.drawLaneProps?.(ctx, view, a); // e.g. hurdles, under the athlete in the same lane
+      if (!a.overlay) this.drawLaneProps?.(ctx, view, a); // e.g. hurdles, under the athlete in the same lane
       const p = this.track.toScreen(this.camera, view, a.runner.x + a.runner.reach * 0.5 + this.startNudge(a), a.lane);
       const tall = heightOf(a.colors);
       if (p.x < -80 || p.x > view.w + 80) continue;
       const scale = this.track.figureScale(a.lane);
       // Events can lift an athlete off the track (a short one bouncing over a hurdle); the shadow stays down.
-      const lift = (this.liftFor?.(a) ?? 0) * this.camera.ppm * scale;
-      if (a.ghost) {
+      const liftM = a.trace ? (a.frame?.e ?? 0) : this.liftFor?.(a) ?? 0;
+      const lift = liftM * this.camera.ppm * scale;
+      const pose = this.poseFor(a);
+      if (a.ghost || a.trace) {
         // See-through, with a name tag, so it never reads as a real rival.
         ctx.save();
         ctx.globalAlpha = 0.45;
-        drawFigure(ctx, p.x, p.y + 4 - lift, H * scale * tall, this.poseFor(a), a.colors, p.y + 4);
+        drawFigure(ctx, p.x, p.y + 4 - lift, H * scale * tall, pose, a.colors, p.y + 4);
         ctx.restore();
-        text(ctx, a.name, p.x, p.y - H * scale * tall - 6, { size: 14, color: 'rgba(255,255,255,0.8)', shadow: true });
+        text(ctx, a.name, p.x, p.y - H * scale * tall - 6 - (a.overlay ? 18 : 0), { size: 14, color: 'rgba(255,255,255,0.8)', shadow: true });
       } else {
-        drawFigure(ctx, p.x, p.y + 4 - lift, H * scale * tall, this.poseFor(a), a.colors, p.y + 4);
+        drawFigure(ctx, p.x, p.y + 4 - lift, H * scale * tall, pose, a.colors, p.y + 4);
+      }
+      // Keep the player's frames for a frame-by-frame ghost.
+      if (a.isPlayer && this.tracer && (this.state === 'race' || this.state === 'finished')) {
+        this.tracer.sample(this.game.time - this.goT, a.runner.x + a.runner.reach * 0.5, liftM, pose, this.traceFrameProps(a));
       }
     }
     this.drawHUD(ctx, view);
@@ -465,7 +529,9 @@ export class LaneRace {
     if (this.state === 'set') {
       return lerpPose(POSES.blocks, POSES.set, ease(clamp((now - this.stateT - a.setDelay) / c.riseTime, 0, 1)));
     }
-    // Racing. Until an athlete reacts to the gun they hold the set position.
+    // Racing. A frame-by-frame ghost shows what it recorded.
+    if (a.trace && a.frame) return a.frame.pose;
+    // Until an athlete reacts to the gun they hold the set position.
     const d = r.x - r.startX; // meters out of the blocks
     if (d <= 0 && r.v === 0 && !r.finished) return POSES.set;
     const amp = clamp(r.v / 11, 0.15, 1); // knee lift, back-kick and arm swing grow with speed
@@ -546,5 +612,21 @@ export class LaneRace {
       `x ${r.x.toFixed(1)}m  taps ${r.taps}`,
     ];
     lines.forEach((l, i) => text(ctx, l, 12 + view.safe.l, 90 + i * 16, { size: 12, align: 'left', weight: 500, shadow: true }));
+  }
+}
+
+/** Where a frame-by-frame ghost is, in the shape the lane drawing reads from a Runner. */
+class TraceBody {
+  constructor(startX) {
+    this.startX = startX;
+    this.reach = 0; // the recorded x is already where the body is drawn
+    this.reset();
+  }
+
+  reset() {
+    this.x = this.startX;
+    this.v = 0;
+    this.mode = 'run';
+    this.finished = false;
   }
 }

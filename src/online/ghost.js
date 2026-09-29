@@ -147,8 +147,9 @@ export function isReplayable(data, like) {
   return Array.isArray(ev) && ev.length % 4 === 0 && ev.length <= MAX_EVENTS * 4 && ev.every(finite);
 }
 
-// The ghost picked on the leaderboard to race next ({ name, data }), until the
-// player goes back to the menu. Without one, the 100m races your own best run.
+// The ghost picked on the leaderboard to race next ({ name, data, ev }), until
+// the player goes back to the menu. Without one, an event races your own best
+// (see ghosts.js).
 let chosen = null;
 
 export function chooseGhost(ghost) {

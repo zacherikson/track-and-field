@@ -65,20 +65,30 @@ event's board if it beats your mark there; finishing a tournament posts your
 total. Marks made with changed tuning aren't posted. Set your username with the
 👤 button at the top right of the menu; names are unique.
 
-Every 100m run is also recorded. Turn **GHOST** on in the menu (it starts off)
-and your fastest one on the phone races again as a see-through **ghost** in the
-lane next to you ("Your best"). On the online 100m board, tap **Race** on any
-row to race that player's run as a ghost.
+Every attempt is also recorded. Turn **GHOST** on in the menu (it starts off)
+and your best one on the phone comes back as a see-through **ghost** ("Your
+best"): in the lane next to you in the 100m and hurdles, and on your runway,
+starting when your attempt starts, in the long jump, pole vault and javelin. In
+a tournament the ghosts are your best tournament's attempts, sharing your lane
+so the same five rivals stay in, and the standings say how many points you are
+ahead of or behind that tournament. On an event's online board, tap **Race**
+on a row to race that player's attempt as a ghost.
 
-A ghost is the run's stride, stumble and lean inputs plus the physics numbers
-used, replayed through the same `Runner` code on the same step grid, so it
-reproduces the recorded time exactly. `node tools/ghostcheck.mjs` checks that;
-run it after changing `runner.js` or `laneRace.js`, and if it fails bump
-`GHOST_VERSION` in `src/online/ghost.js`.
+The 100m ghost is the run's stride, stumble and lean inputs plus the physics
+numbers used, replayed through the same `Runner` code on the same step grid, so
+it reproduces the recorded time exactly. `node tools/ghostcheck.mjs` checks
+that; run it after changing `runner.js` or `laneRace.js`, and if it fails bump
+`GHOST_VERSION` in `src/online/ghost.js`. The other events' ghosts are recorded
+frame by frame instead (`src/online/trace.js`: position, pose, and the pole or
+javelin, about 30 times a second), so they play back what was drawn whatever
+the physics. Each event's `traceProps` in `registry.js` says how many extra
+numbers its frames keep; changing what they mean needs `TRACE_VERSION` bumped.
 
 The leaderboard uses Firebase (project `track-royale-f18ad`): Firestore, with
 anonymous sign-in so each phone gets an ID without a login screen. Profiles are
-in `users/{uid}`, and `usernames/{lowercased name}` records who owns each name. The web
+in `users/{uid}`, and `usernames/{lowercased name}` records who owns each name.
+Frame-by-frame recordings sit in `ghosts/{event}/runs/{uid}`, apart from the
+boards, and are only downloaded to race one. The web
 config in `src/online/firebase.js` is public by design. The security rules in
 [`firestore.rules`](firestore.rules) protect the data (paste them into Firebase
 console > Firestore Database > Rules after changing them). They only
@@ -128,7 +138,10 @@ src/online/
   ghost.js            records a run's inputs and replays them as a ghost (pure)
   firebase.js         online leaderboards: lazy-loaded Firebase SDK, anonymous sign-in, Firestore
   post.js             posts a finished mark to its board and reports how it went
-src/scenes/leaderboardScene.js  online leaderboards, a tab per event (Race buttons on the 100m)
+  trace.js            records an attempt frame by frame and plays it back (every event but the 100m)
+  fieldGhost.js       records and draws ghosts in the long jump, pole vault and javelin
+  ghosts.js           picks which ghost races: best tournament, a leaderboard pick, or your best
+src/scenes/leaderboardScene.js  online leaderboards, a tab per event, with Race buttons
 src/scenes/profileScene.js      your username (unique, saved in Firebase)
 src/tuning/           in-game tuning panel (params list, saved overrides, live estimates)
 tools/simulate.mjs    headless tuning simulator

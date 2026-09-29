@@ -4,8 +4,8 @@ rules_version = '2';
 // Paste into Firebase console > Firestore Database > Rules, then Publish.
 //
 // Anyone can read. A signed-in player (anonymous sign-in) can only write their
-// own profile, their own name claim, and their own leaderboard entries (only
-// with a better mark, or to change their name).
+// own profile, their own name claim, and their own leaderboard entries and
+// recordings (only with a better mark, or to change their name).
 service cloud.firestore {
   match /databases/{database}/documents {
     // Your profile. Saved in the same transaction as the name claim below,
@@ -40,6 +40,18 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Frame-by-frame recordings (online/trace.js) for the events other than the
+    // 100m, one per player per event, for the mark on their leaderboard entry.
+    // Written in the same batch as that entry, which must say `traced`.
+    match /ghosts/{event}/runs/{uid} {
+      allow read: if event in ['longjump', 'hurdles110', 'polevault', 'javelin'];
+      allow create, update: if isMe(uid) && event in ['longjump', 'hurdles110', 'polevault', 'javelin']
+        && validTrace(event, request.resource.data)
+        && getAfter(/databases/$(database)/documents/leaderboards/$(event)/runs/$(uid)).data.mark == request.resource.data.mark
+        && getAfter(/databases/$(database)/documents/leaderboards/$(event)/runs/$(uid)).data.traced == true;
+      allow delete: if false;
+    }
+
     function isMe(uid) {
       return request.auth != null && request.auth.uid == uid;
     }
@@ -58,16 +70,28 @@ service cloud.firestore {
     }
 
     // Basic sanity checks only: the server doesn't replay the run to prove the mark.
-    // The 100m entry carries its recorded run (the ghost); no other board has one.
+    // The 100m entry carries its recorded run (the ghost). Other events may say
+    // `traced` (their recording is in ghosts/).
     function validRun(event, d) {
-      return d.keys().hasOnly(['name', 'mark', 'ghost', 'v', 'createdAt'])
+      return d.keys().hasOnly(['name', 'mark', 'ghost', 'traced', 'v', 'createdAt'])
         && d.keys().hasAll(['name', 'mark', 'v', 'createdAt'])
         && validName(d.name)
         && validMark(event, d.mark)
         && d.v == 1
         && d.createdAt == request.time
-        && ((event == 'sprint100' && d.keys().hasAll(['ghost']) && validGhost(d))
-            || (event != 'sprint100' && !d.keys().hasAny(['ghost'])));
+        && ((event == 'sprint100' && d.keys().hasAll(['ghost']) && !d.keys().hasAny(['traced']) && validGhost(d))
+            || (event != 'sprint100' && !d.keys().hasAny(['ghost'])
+                && (!d.keys().hasAny(['traced']) || (d.traced == true && event != 'tournament'))));
+    }
+
+    function validTrace(event, d) {
+      return d.keys().hasOnly(['mark', 'ghost', 'v', 'createdAt'])
+        && d.keys().hasAll(['mark', 'ghost', 'v', 'createdAt'])
+        && d.v == 1
+        && d.createdAt == request.time
+        && d.ghost is map && d.ghost.v == 1 && d.ghost.kind == 'trace' && d.ghost.ev == event
+        && d.ghost.mark == d.mark
+        && d.ghost.f is list && d.ghost.f.size() <= 20000;
     }
 
     function validGhost(d) {

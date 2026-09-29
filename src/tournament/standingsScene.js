@@ -1,7 +1,7 @@
 import { Button, text, roundRect } from '../core/ui.js';
 import { ordinal } from '../core/math.js';
 import { formatMark, TOURNAMENT_BOARD } from '../events/registry.js';
-import { submitBest, saveGhostIfFaster } from '../core/storage.js';
+import { submitBest, saveGhostIfBetter } from '../core/storage.js';
 import { postMark } from '../online/post.js';
 import { tournament, ORDER } from './tournament.js';
 import { flow } from '../flow.js';
@@ -24,9 +24,9 @@ export class StandingsScene {
     // Personal bests, ghosts and online marks still count in a tournament.
     this.online = null; // one line about the online leaderboard
     const run = this.stats?.run ?? null;
-    if (run) saveGhostIfFaster(this.ev.id, run);
+    if (run) saveGhostIfBetter(this.ev, run);
     if (me?.status === 'ok') submitBest(this.ev.id, me.mark, this.ev.lowerIsBetter);
-    this.rows = tournament.record(this.ev, this.results);
+    this.rows = tournament.record(this.ev, this.results, run);
     this.table = tournament.standings();
     this.final = tournament.finished;
     if (this.final) {
@@ -38,6 +38,10 @@ export class StandingsScene {
     } else if (me?.status === 'ok') postMark(this.ev, me.mark, run, (s) => (this.online = s));
     this.myPts = this.rows.find((r) => r.isPlayer)?.pts ?? 0;
     this.myPlace = this.table.findIndex((t) => t.isPlayer) + 1;
+    // How you stand against your best recorded tournament after as many events.
+    const best = this.final ? null : tournament.bestAfter(tournament.history.length);
+    const mine = this.table.find((t) => t.isPlayer)?.total ?? 0;
+    this.vsBest = best == null ? null : mine - best;
     const next = tournament.nextEvent;
     this.buttons = this.final
       ? [
@@ -100,7 +104,8 @@ export class StandingsScene {
     } else {
       text(ctx, `TOURNAMENT · EVENT ${n} OF ${ORDER.length}`, cx, 34, { size: 18, color: 'rgba(255,255,255,0.7)' });
       text(ctx, this.ev.name.toUpperCase(), cx, 72, { size: 40, color: '#ffb400', shadow: true });
-      text(ctx, `+${this.myPts} points · ${ordinal(this.myPlace)} overall`, cx, 110, { size: 20, weight: 600 });
+      const vs = this.vsBest == null ? '' : this.vsBest >= 0 ? ` · ${this.vsBest} ahead of your best` : ` · ${-this.vsBest} behind your best`;
+      text(ctx, `+${this.myPts} points · ${ordinal(this.myPlace)} overall${vs}`, cx, 110, { size: 20, weight: 600, maxWidth: view.w - 40 });
     }
 
     const top = 136;

@@ -15,7 +15,7 @@ export const EVENTS = [
     lowerIsBetter: true,
     available: true,
     online: true, // posts marks to the online leaderboard
-    ghosts: true, // each entry carries its recorded run, which others can race as a ghost
+    ghosts: true, // each entry carries its recorded run, which others can race as a ghost (online/ghost.js)
     howTo: [
       'At GO the first green target appears.',
       'Tap the side the green target is on. It jumps around at random!',
@@ -36,6 +36,7 @@ export const EVENTS = [
     lowerIsBetter: false,
     available: true,
     online: true, // posts marks to the online leaderboard
+    traceProps: 0, // its ghost is recorded frame by frame (online/trace.js), keeping the body only
     againLabel: 'Jump again',
     howTo: [
       'Three jumps; your best counts. Tap the green targets to run up.',
@@ -56,6 +57,7 @@ export const EVENTS = [
     lowerIsBetter: true,
     available: true,
     online: true, // posts marks to the online leaderboard
+    traceProps: 1, // its ghost is recorded frame by frame (online/trace.js), keeping the hurdles knocked down
     howTo: [
       'Three numbered buttons appear in a random order: tap 1, 2, 3.',
       'Every hurdle you jump brings a new set. Clear it fast to run fast.',
@@ -75,6 +77,7 @@ export const EVENTS = [
     lowerIsBetter: false,
     available: true,
     online: true, // posts marks to the online leaderboard
+    traceProps: 9, // its ghost is recorded frame by frame (online/trace.js), keeping the pole
     againLabel: 'Vault again',
     howTo: [
       'Three vaults; your best height counts. Tap the green targets to run up.',
@@ -95,6 +98,7 @@ export const EVENTS = [
     lowerIsBetter: false,
     available: true,
     online: true, // posts marks to the online leaderboard
+    traceProps: 3, // its ghost is recorded frame by frame (online/trace.js), keeping the javelin
     againLabel: 'Throw again',
     howTo: [
       'Three throws; your best counts. Tap the green targets to run up.',

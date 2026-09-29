@@ -13,6 +13,7 @@ import { ORANGE, drawPad, drawX } from '../render/pads.js';
 import { drawDrop, drawHitRing } from '../render/targetPads.js';
 import { getDifficulty } from '../core/storage.js';
 import { flow } from '../flow.js';
+import { FieldGhost } from '../online/fieldGhost.js';
 
 const LEFT_KEYS = ['ArrowLeft', 'KeyA', 'KeyZ', 'KeyF'];
 const RIGHT_KEYS = ['ArrowRight', 'KeyD', 'KeyX', 'KeyJ'];
@@ -21,6 +22,8 @@ const G = 9.81;
 const DEG = Math.PI / 180;
 const RELEASE_H = 2.1; // m: the javelin leaves the hand this high
 const FIG_H = CONFIG.figure.height;
+// Ghost frames keep the javelin (registry traceProps = 3): its middle (x, y in
+// m from where the figure stands) and its angle.
 
 /**
  * Javelin, from footage of the original (rules in javelinRules.js):
@@ -63,6 +66,7 @@ export class Javelin {
     this.ffBtn = { x: 0, y: 0, r: 34 };
     this.stats = { hits: 0, misses: 0, topSpeed: 0 };
     this.round = 0;
+    this.ghost = new FieldGhost(this.ev);
     this.onResize(this.game.view);
     this.startRound();
   }
@@ -106,6 +110,7 @@ export class Javelin {
     this.mark = null; // { mark } or { foul: true }
     this.sparks = [];
     this.lastPose = null;
+    this.ghost.startAttempt(t);
     this.setState('ready');
     this.camera.snapTo(this.runner.x);
   }
@@ -284,6 +289,7 @@ export class Javelin {
 
   showMark() {
     this.player.jumps.push(this.mark);
+    this.ghost.endAttempt(this.mark);
     for (const rv of this.rivals) {
       const level = { ...this.lv, cadence: [rv.cadence, rv.cadence] };
       rv.jumps.push(rivalThrow(level, this.cfg, () => this.rivalRunUp(rv)));
@@ -331,6 +337,7 @@ export class Javelin {
       topSpeed: this.stats.topSpeed,
       extra: `${fouls} ${fouls === 1 ? 'foul' : 'fouls'}`,
       paceText: `throws ${this.player.jumps.map((j) => (j.foul ? 'X' : j.mark.toFixed(2))).join(' / ')}`,
+      run: this.ghost.best(), // your best throw, frame by frame, for the ghost
     });
   }
 
@@ -401,10 +408,12 @@ export class Javelin {
     const pose = this.poseFor();
     if (this.state === 'run') this.lastRunPose = pose;
     this.drawReferee(ctx, view, pxPerM);
+    this.drawGhost(ctx, view, pxPerM);
     // The javelin behind the near arm: in the hand until it leaves, then flying.
     const s = this.shot;
     const hand = handPos(ground.x, groundY, H, pose, 0);
     const len = this.cfg.javelinLength * pxPerM;
+    let jav; // the javelin's middle and angle, for the ghost recording
     if (!s || this.now < s.outT) {
       const ang = this.javelinHandAngle(pose);
       // Gripped a little behind its middle: more of it ahead of the hand.
@@ -412,16 +421,34 @@ export class Javelin {
       drawFigure(ctx, ground.x, groundY, H, pose, this.player.colors);
       drawJavelin(ctx, c.x, c.y, len, ang, Math.max(3, 0.03 * H));
       this.drawSparks(ctx, { x: c.x - Math.cos(ang) * len * 0.5, y: c.y + Math.sin(ang) * len * 0.5 });
+      jav = { ...c, ang };
     } else {
       const j = this.javelinAt(this.now - s.outT);
       const p = tr.toScreen(this.camera, view, j.x, 1);
       drawFigure(ctx, ground.x, groundY, H, pose, this.player.colors);
       drawJavelin(ctx, p.x, p.y + 4 - j.y * pxPerM, len, j.ang, Math.max(3, 0.03 * H));
       this.drawSparks(ctx, hand);
+      jav = { x: p.x, y: p.y + 4 - j.y * pxPerM, ang: j.ang };
     }
+    if (this.state !== 'mark') this.ghost.sample(this.now, this.runner.x, 0, pose, [(jav.x - ground.x) / pxPerM, (jav.y - groundY) / pxPerM, jav.ang]);
     this.drawControls(ctx, view);
     this.drawHUD(ctx, view);
     if (this.state === 'mark') this.drawMark(ctx, view);
+  }
+
+  /** The ghost thrower and its javelin, see-through, from its recorded frames. */
+  drawGhost(ctx, view, pxPerM) {
+    const g = this.ghost.frame(this.now);
+    if (!g) return;
+    const ground = this.track.toScreen(this.camera, view, g.x, 1);
+    const groundY = ground.y + 4;
+    const H = FIG_H * heightOf(this.ghost.colors) * pxPerM;
+    const [dx, dy, ang] = g.pa.map((v, i) => v + (g.pb[i] - v) * g.k);
+    ctx.save();
+    ctx.globalAlpha = 0.45;
+    drawJavelin(ctx, ground.x + dx * pxPerM, groundY + dy * pxPerM, this.cfg.javelinLength * pxPerM, ang, Math.max(3, 0.03 * H));
+    ctx.restore();
+    this.ghost.drawFigure(ctx, ground.x, groundY - g.e * pxPerM, H, g.pose, groundY);
   }
 
   /** The javelin's angle on screen while in the hand: level when carried, the held angle when drawn back, over the top at the release. */

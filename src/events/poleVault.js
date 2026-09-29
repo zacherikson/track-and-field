@@ -13,6 +13,7 @@ import { ORANGE, drawPad, drawX } from '../render/pads.js';
 import { drawDrop, drawHitRing } from '../render/targetPads.js';
 import { getDifficulty } from '../core/storage.js';
 import { flow } from '../flow.js';
+import { FieldGhost } from '../online/fieldGhost.js';
 
 const LEFT_KEYS = ['ArrowLeft', 'KeyA', 'KeyZ', 'KeyF'];
 const RIGHT_KEYS = ['ArrowRight', 'KeyD', 'KeyX', 'KeyJ'];
@@ -30,6 +31,8 @@ const mirror = (p) => ({
 });
 const G = 9.81;
 const FIG_H = CONFIG.figure.height;
+// Ghost frames keep the pole (registry traceProps = 9): shown (1/0), then its
+// end, hands, bend and tip, each x, y in m from where the figure is drawn.
 // The swing, keyed from a phase diagram of a real vault (takeoff, swing,
 // rock back, L, extension, inversion), per swing progress u:
 //   phi   pole chord angle above level, as a share of the way from the plant
@@ -103,6 +106,7 @@ export class PoleVault {
     this.exitBtn = { x: 0, y: 0, w: 44, h: 40 };
     this.stats = { hits: 0, misses: 0, topSpeed: 0 };
     this.round = 0;
+    this.ghost = new FieldGhost(this.ev);
     this.onResize(this.game.view);
     this.startRound();
   }
@@ -146,6 +150,7 @@ export class PoleVault {
     this.hip = { x: this.runner.x, y: 0.5 * (this.figH ?? FIG_H) };
     this.camY = 0;
     this.puff = [];
+    this.ghost.startAttempt(t);
     this.setState('ready');
     this.camera.snapTo(this.runner.x);
   }
@@ -418,6 +423,7 @@ export class PoleVault {
 
   showMark() {
     this.player.jumps.push(this.mark);
+    this.ghost.endAttempt(this.mark);
     for (const rv of this.rivals) {
       const level = { ...this.lv, cadence: [rv.cadence, rv.cadence] };
       rv.jumps.push(rivalVault(level, this.cfg, () => this.rivalRunUp(rv)));
@@ -467,6 +473,7 @@ export class PoleVault {
       topSpeed: this.stats.topSpeed,
       extra: `${fails} ${fails === 1 ? 'miss' : 'misses'}`,
       paceText: `vaults ${this.player.jumps.map((j) => (j.fail ? 'X' : j.mark.toFixed(2))).join(' / ')}`,
+      run: this.ghost.best(), // your best vault, frame by frame, for the ghost
     });
   }
 
@@ -565,9 +572,16 @@ export class PoleVault {
     if (this.state === 'balk' && this.hip.y <= 0.5 * this.figH + 0.01) y = groundY;
 
     const sx = ground.x;
+    this.drawGhost(ctx, view, pxPerM);
     // Pole behind the athlete's near arm: draw it first, then the athlete.
     this.drawPole(ctx, view, sx, y, H, pose, pxPerM);
     drawFigure(ctx, sx, y, H, pose, this.player.colors, onMat ? floorY : groundY);
+    if (this.state !== 'mark') {
+      const p = this.poleDrawn;
+      const rel = (q) => [(q.x - sx) / pxPerM, (q.y - y) / pxPerM];
+      const props = p ? [1, ...rel(p.e), ...rel(p.a), ...rel(p.c), ...rel(p.b)] : [0];
+      this.ghost.sample(this.now, this.hip.x, (groundY - y) / pxPerM, pose, props);
+    }
     this.drawSpark(ctx);
     for (const p of this.puff) {
       const s = tr.toScreen(cam, view, p.x, 1);
@@ -582,6 +596,30 @@ export class PoleVault {
     this.drawControls(ctx, view);
     this.drawHUD(ctx, view);
     if (this.state === 'mark') this.drawMark(ctx, view);
+  }
+
+  /** The ghost vaulter and its pole, see-through, from its recorded frames. */
+  drawGhost(ctx, view, pxPerM) {
+    const g = this.ghost.frame(this.now);
+    if (!g) return;
+    const tr = this.track;
+    const ground = tr.toScreen(this.camera, view, g.x, 1);
+    const groundY = ground.y + 4;
+    const onMat = g.x > this.cfg.mat.from && g.x < this.cfg.mat.to;
+    const floorY = groundY - (onMat ? this.cfg.mat.height * pxPerM : 0);
+    const y = groundY - g.e * pxPerM;
+    const H = FIG_H * heightOf(this.ghost.colors) * pxPerM;
+    // The pole: blended between frames while it's shown in both.
+    const [pa, pb] = [g.pa, g.pb];
+    const p = pa[0] && pb[0] ? pa.map((v, i) => v + (pb[i] - v) * g.k) : g.k < 0.5 ? pa : pb;
+    if (p[0] > 0.5) {
+      const pt = (i) => ({ x: ground.x + p[i] * pxPerM, y: y + p[i + 1] * pxPerM });
+      ctx.save();
+      ctx.globalAlpha = 0.45;
+      strokePole(ctx, pt(1), pt(3), pt(5), pt(7), H);
+      ctx.restore();
+    }
+    this.ghost.drawFigure(ctx, ground.x, y, H, g.pose, onMat ? floorY : groundY);
   }
 
   /**
@@ -618,6 +656,7 @@ export class PoleVault {
     } else {
       // Let go: the pole falls back toward the runway.
       const f = this.state === 'balk' ? this.balkFall : this.fly;
+      this.poleDrawn = null;
       if (!f) return;
       const ta = this.now - f.poleT;
       const phi = Math.max(0.12, f.phiEnd - 1.6 * ta * ta);
@@ -640,17 +679,8 @@ export class PoleVault {
     const tl = Math.hypot(tx, ty) || 1;
     const over = this.cfg.pole.overhang * pxPerM;
     const e = { x: a.x + (tx / tl) * over, y: a.y + (ty / tl) * over };
-    ctx.lineCap = 'round';
-    ctx.strokeStyle = '#2e6b12';
-    ctx.lineWidth = Math.max(3, 0.05 * H);
-    ctx.beginPath();
-    ctx.moveTo(e.x, e.y);
-    ctx.lineTo(a.x, a.y);
-    ctx.quadraticCurveTo(c.x, c.y, b.x, b.y);
-    ctx.stroke();
-    ctx.strokeStyle = '#9be14a';
-    ctx.lineWidth = Math.max(2, 0.03 * H);
-    ctx.stroke();
+    strokePole(ctx, e, a, c, b, H);
+    this.poleDrawn = { e, a, c, b }; // for the ghost recording
     // Spark: down the pole in the plant zone, back up it while you hold.
     let s = null; // 0 = hands, 1 = tip
     if ((this.state === 'run' && this.zoneT != null) || (this.state === 'vault' && this.holdT == null)) s = this.state === 'vault' ? 1 : this.sparkS;
@@ -794,4 +824,19 @@ export class PoleVault {
     const pulse = 0.6 + 0.4 * Math.sin(this.now * 5);
     text(ctx, last ? 'Tap for results' : 'Tap for the next vault', cx, 372, { size: 18, color: `rgba(255,255,255,${pulse})` });
   }
+}
+
+/** A pole from its end `e` through the hands `a`, bending toward `c`, to the tip `b` (screen points). */
+function strokePole(ctx, e, a, c, b, H) {
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = '#2e6b12';
+  ctx.lineWidth = Math.max(3, 0.05 * H);
+  ctx.beginPath();
+  ctx.moveTo(e.x, e.y);
+  ctx.lineTo(a.x, a.y);
+  ctx.quadraticCurveTo(c.x, c.y, b.x, b.y);
+  ctx.stroke();
+  ctx.strokeStyle = '#9be14a';
+  ctx.lineWidth = Math.max(2, 0.03 * H);
+  ctx.stroke();
 }

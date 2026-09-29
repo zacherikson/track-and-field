@@ -6,11 +6,15 @@ import { getPlayerName } from '../core/storage.js';
  * Firestore layout:
  *   users/{uid}                       = { name, key, updatedAt }  your profile
  *   usernames/{key}                   = { uid }  claims a name (key = lowercased), so names are unique
- *   leaderboards/{boardId}/runs/{uid} = { name, mark, ghost?, v, createdAt }
+ *   leaderboards/{boardId}/runs/{uid} = { name, mark, ghost?, traced?, v, createdAt }
+ *   ghosts/{boardId}/runs/{uid}       = { mark, ghost, v, createdAt }
  * One doc per player per board, holding their best mark (a time, a distance or
- * tournament points), for the 100m its recorded run (the ghost others can
- * race), and a copy of their name so the board is one query. A board is an
- * event from registry.js or TOURNAMENT_BOARD: { id, lowerIsBetter }.
+ * tournament points) and a copy of their name, so the board is one query. The
+ * 100m doc carries its recorded run (the ghost others can race: small). Other
+ * events' recordings are frame by frame (online/trace.js) and much bigger, so
+ * they sit in ghosts/, fetched only to race one; `traced: true` says there is
+ * one for this mark. A board is an event from registry.js or TOURNAMENT_BOARD:
+ * { id, lowerIsBetter }.
  * firestore.rules says who may write what.
  *
  * The Firebase SDK is loaded from Google's CDN the first time something online
@@ -56,6 +60,7 @@ function connect() {
 const DOC_VERSION = 1;
 
 const runs = (fs, db, boardId) => fs.collection(db, 'leaderboards', boardId, 'runs');
+const ghostRuns = (fs, db, boardId) => fs.collection(db, 'ghosts', boardId, 'runs');
 
 /** True if mark `a` beats mark `b` on this board. */
 const beats = (board, a, b) => (board.lowerIsBetter ? a < b : a > b);
@@ -68,8 +73,8 @@ async function rankOf(fs, db, board, mark) {
 }
 
 /**
- * Posts a mark (with `ghost`, the recorded 100m run, when there is one) if it
- * beats your mark on the board. Resolves to { improved, best, rank }.
+ * Posts a mark (with `ghost`, its recording, when there is one) if it beats
+ * your mark on the board. Resolves to { improved, best, rank }.
  */
 export async function submitMark(board, mark, ghost = null) {
   const { fs, db, uid } = await connect();
@@ -78,8 +83,17 @@ export async function submitMark(board, mark, ghost = null) {
   const prevMark = prev.exists() ? prev.data().mark : null;
   if (prevMark != null && !beats(board, mark, prevMark)) return { improved: false, best: prevMark, rank: await rankOf(fs, db, board, prevMark) };
   const doc = { name: getPlayerName(), mark, v: DOC_VERSION, createdAt: fs.serverTimestamp() };
-  if (ghost) doc.ghost = ghost;
-  await fs.setDoc(ref, doc);
+  if (ghost?.kind === 'trace') {
+    // The mark and its recording land together, or neither does.
+    doc.traced = true;
+    const batch = fs.writeBatch(db);
+    batch.set(ref, doc);
+    batch.set(fs.doc(ghostRuns(fs, db, board.id), uid), { mark, ghost, v: DOC_VERSION, createdAt: fs.serverTimestamp() });
+    await batch.commit();
+  } else {
+    if (ghost) doc.ghost = ghost;
+    await fs.setDoc(ref, doc);
+  }
   return { improved: true, best: mark, rank: await rankOf(fs, db, board, mark) };
 }
 
@@ -97,6 +111,14 @@ export async function leaderboard(board, n = 10) {
     if (own.exists()) mine = { uid, ...own.data(), me: true, rank: await rankOf(fs, db, board, own.data().mark) };
   }
   return { top, mine };
+}
+
+/** A player's recording for their mark on a board (a leaderboard row with `traced`), or null. */
+export async function fetchGhost(board, row) {
+  const { fs, db } = await connect();
+  const snap = await fs.getDoc(fs.doc(ghostRuns(fs, db, board.id), row.uid));
+  const d = snap.exists() ? snap.data() : null;
+  return d && d.mark === row.mark ? d.ghost : null;
 }
 
 /** Changes your name on your existing board entries. */

@@ -13,6 +13,7 @@ import { ORANGE, drawPad, drawX } from '../render/pads.js';
 import { drawDrop, drawHitRing } from '../render/targetPads.js';
 import { getDifficulty } from '../core/storage.js';
 import { flow } from '../flow.js';
+import { Venue, fieldSpot, FIELD_DEPTH } from '../brawl/venue.js';
 import { FieldGhost } from '../online/fieldGhost.js';
 import { LiveField } from '../online/liveField.js';
 
@@ -484,6 +485,27 @@ export class PoleVault {
       paceText: `vaults ${this.player.jumps.map((j) => (j.fail ? 'X' : j.mark.toFixed(2))).join(' / ')}`,
       run: this.ghost.best(), // your best vault, frame by frame, for the ghost
       live: !!this.live,
+    });
+  }
+
+  /** The late hits: just past the landing mat, and up on it (brawl/venue.js). */
+  brawlVenue() {
+    const tr = this.track;
+    const m = this.cfg.mat;
+    return new Venue({
+      track: tr,
+      draw: (ctx, view, camera) => {
+        tr.draw(ctx, view, camera);
+        tr.drawMat(ctx, view, camera);
+        tr.drawUprightsBack(ctx, view, camera);
+      },
+      drawFront: (ctx, view, camera) => tr.drawUprightsFront(ctx, view, camera),
+      x: [-3, 17],
+      depth: FIELD_DEPTH,
+      zPerM: 1 / FIELD_DEPTH,
+      // The mat stands `height` off the ground over its middle stretch of the infield (as drawMat).
+      floor: (x, d) => (x > m.from && x < m.to && d > 0.12 * FIELD_DEPTH && d < 0.88 * FIELD_DEPTH ? m.height : 0),
+      spot: fieldSpot(m.to + 3.5, FIELD_DEPTH),
     });
   }
 

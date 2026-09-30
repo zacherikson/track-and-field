@@ -40,7 +40,7 @@ export const BLOCK_FEET = {
  * Two-bone leg IK: thigh and shin angles (from straight down, + = forward) that
  * put the ankle at (ax, ay) from a hip at (hx, hy), knee bending forward.
  */
-function legIK(hx, hy, ax, ay) {
+export function legIK(hx, hy, ax, ay) {
   const dx = ax - hx;
   const dy = ay - hy;
   const d = Math.min(Math.hypot(dx, dy), THIGH_L + SHIN_L - 1e-4);
@@ -53,7 +53,7 @@ function legIK(hx, hy, ax, ay) {
 }
 
 /** Legs for a hip position with feet flat on the track at the given toe x's. */
-function flatLegs(hipX, hipY, frontX, rearX) {
+export function flatLegs(hipX, hipY, frontX, rearX) {
   return [
     { ...legIK(hipX, hipY, frontX - FOOT_L, 0), toe: 0 },
     { ...legIK(hipX, hipY, rearX - FOOT_L, 0), toe: 0 },

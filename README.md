@@ -31,6 +31,20 @@ Open http://localhost:8000. To test on a phone on the same Wi-Fi, open `http://<
 - `?debug` in the URL shows fps, cadence, target speed and speed.
 - Keyboard: ← / → (or Z / X) are the left and right thumbs, Space leans at the finish. Esc quits a race.
 
+## Late hits
+
+Once an event is over, everyone who took part hangs around where it finished
+(past the finish line, round the pit) until the next one, and you can go and
+beat them up, NFL Blitz style. The results come up first; tap anywhere off
+their buttons (or wait a few seconds) and they fold into a bar at the top.
+Left thumb: drag to walk. Right thumb: PUNCH, KICK, SLAM (grab, hoist overhead,
+slam down), and hold 😀 then drag to an emote on the wheel. Three punches in a
+row knock someone down. Hits leave bruises, black eyes and a bit of blood,
+which stay on everyone until you go back to the menu. Nothing counts: it's for
+fun. The computer rivals fight back (and each other); in live play it's the
+other players, and each phone decides its own player's hits. Keyboard: arrows
+or WASD, J / K / L, 1-6 for emotes.
+
 ## Tuning
 
 **On the phone:** tap **⚙ Tuning** on the menu or results screen. Every speed
@@ -197,6 +211,9 @@ src/events/
   javelin.js          javelin: run-up, hold to draw back, let go to throw, flight shot to the landing and the mark line
   poleVault.js        pole vault: run-up with the pole, spark, hold-and-release, swing, bar, mat, rising camera
 src/tournament/       tournament mode: event order and running totals, standings/champion screen
+src/brawl/            late hits after each event: the fight (brawl.js, fighter.js, poses.js), wounds,
+                      controls with the emote wheel, the rivals' brains (bots.js), live sync
+                      (liveBrawl.js), the event's venue (venue.js) and the results screens' host (aftermath.js)
 src/events/scoring.js decathlon points (official World Athletics tables)
 src/scenes/lineupScene.js     your lineup: who does each event, and your solo athlete
 src/render/track.js   stadium with one-point perspective (camera 1m ahead of the player), parallax crowd

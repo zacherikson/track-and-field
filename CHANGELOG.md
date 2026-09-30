@@ -4,6 +4,26 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Late hits
+- After every event (on its own or in a tournament) you stay where it finished,
+  past the finish line or round the pit, with everyone who took part, and you
+  can punch, kick and body slam them, or emote, until the next one. Nothing
+  counts. Idea borrowed from NFL Blitz.
+- The results come up first over the venue; tap off their buttons (or wait 6 s)
+  and they fold into a bar at the top: Results, the main button (Next, Race
+  again, the live countdown) and Menu or Quit.
+- Controls: drag on the left to walk; PUNCH, KICK, SLAM on the right; hold the
+  😀 button and drag to an emote on the wheel (Flex, Dance, Come on, Laugh,
+  Dab, Chicken). Three punches in a row knock someone down; a kick or a slam
+  always does.
+- Hits leave black eyes, bruises, a bloody nose, a cut or blood on the shirt,
+  kept until you go back to the menu.
+- Offline, the computer rivals fight back (no more than two on you at once) and
+  brawl among themselves. Live, it's the other players.
+- Live tournament: 22 s (was 14) from everyone finishing an event to the next
+  one's start, so there's time for it. Publish the new `database.rules.json`
+  (Realtime Database > Rules): live play sends where you are and who you hit.
+
 ## Lineup, solo and team tournaments
 - The menu's Athlete button is now **Lineup**: a slot per event, each filled
   with any athlete (the same one or different ones), plus a Solo slot for the

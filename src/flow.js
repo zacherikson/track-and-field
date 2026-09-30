@@ -15,9 +15,11 @@ import { openTuning } from './tuning/panel.js';
 import { roundMark, EVENTS } from './events/registry.js';
 import { ORDER, tourModeOf } from './tournament/tournament.js';
 import { startLive, endLive, currentLive } from './online/live.js';
+import { resetScars } from './brawl/wounds.js';
 
 export const flow = {
   menu: (game) => {
+    resetScars(); // the late hits' wounds heal
     endLive(); // and leaves a live room
     tournament.end(); // leaving to the menu ends a tournament in progress
     game.setScene(new MenuScene());
@@ -25,6 +27,7 @@ export const flow = {
   // Tournament: the five events in a row, decathlon points, a champion at the end.
   // `mode`: 'solo' (one athlete) or 'team' (your lineup).
   tournament: (game, mode) => {
+    resetScars();
     endLive();
     tournament.start(mode);
     game.setScene(new IntroScene(tournament.event));
@@ -43,10 +46,12 @@ export const flow = {
     if (stats?.run) stats = { ...stats, run: { ...stats.run, mark: roundMark(ev, stats.run.mark) } };
     // A live event played to the end: going on from here isn't leaving early (a tournament's is at the end).
     if (stats?.live && !tournament.active && currentLive()) currentLive().done = true;
+    // Where the late hits happen: where this event finished (brawl/venue.js).
+    const venue = game.scene?.brawlVenue?.() ?? null;
     game.setScene(
       tournament.active
-        ? new StandingsScene(ev, results.filter((r) => !r.ghost), stats) // a ghost is never scored
-        : new ResultScene(ev, results, stats),
+        ? new StandingsScene(ev, results.filter((r) => !r.ghost), stats, venue) // a ghost is never scored
+        : new ResultScene(ev, results, stats, venue),
     );
   },
   leaderboard: (game, board) => {
@@ -63,6 +68,7 @@ export const flow = {
   },
   // The waiting room has closed: `info` = { kind, room, uid, name, players, startAt, setLen }.
   liveStart: (game, info) => {
+    resetScars();
     const mode = tourModeOf(info.kind);
     const first = mode ? ORDER[0] : info.kind;
     const session = startLive(info, first);

@@ -13,6 +13,7 @@ import { ORANGE, drawPad, drawX } from '../render/pads.js';
 import { drawDrop, drawHitRing } from '../render/targetPads.js';
 import { getDifficulty } from '../core/storage.js';
 import { flow } from '../flow.js';
+import { Venue, fieldSpot, FIELD_DEPTH } from '../brawl/venue.js';
 import { FieldGhost } from '../online/fieldGhost.js';
 import { LiveField } from '../online/liveField.js';
 
@@ -348,6 +349,18 @@ export class Javelin {
       paceText: `throws ${this.player.jumps.map((j) => (j.foul ? 'X' : j.mark.toFixed(2))).join(' / ')}`,
       run: this.ghost.best(), // your best throw, frame by frame, for the ghost
       live: !!this.live,
+    });
+  }
+
+  /** The late hits: on the grass past the foul line (brawl/venue.js). */
+  brawlVenue() {
+    return new Venue({
+      track: this.track,
+      draw: (ctx, view, camera) => this.track.draw(ctx, view, camera),
+      x: [-3, 16],
+      depth: FIELD_DEPTH,
+      zPerM: 1 / FIELD_DEPTH,
+      spot: fieldSpot(6, FIELD_DEPTH),
     });
   }
 

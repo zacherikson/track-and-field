@@ -11,7 +11,7 @@ import { getPlayerName } from '../core/storage.js';
  * database.rules.json says who may write what.
  *
  *   lobby/{kind}               = { room, startAt, setLen, players: { uid: { name, athlete, at } } }
- *   live/{room}/{uid}          = { v, name, athlete, left, s, t0, run, n, done, f, res, ready }
+ *   live/{room}/{uid}          = { v, name, athlete, left, s, t0, run, n, done, f, res, ready, b, h }
  *
  * `kind` is an event id, 'tournament' (solo) or 'teamtournament' (tournament.js TOUR_KINDS). The lobby node IS the waiting room:
  * whoever is in `players` plays together. When a second player arrives it gets
@@ -33,6 +33,8 @@ import { getPlayerName } from '../core/storage.js';
  * as soon as you've finished the one before (nobody has to tap): once everyone
  * is (or a while after the first), it starts on every phone at the same
  * moment, a few seconds later (startOf), with a countdown on screen.
+ * `b` and `h` are the late hits between events: where you are and who you
+ * hit (brawl/liveBrawl.js).
  */
 export const MAX_PLAYERS = 4;
 const START_DELAY = 10000; // ms from the second player arriving to the start
@@ -40,7 +42,7 @@ export const CLOSE_BEFORE = 6000; // ms before the start the room stops taking p
 const SEND_EVERY = 100; // ms between updates during a stage
 const READY_WAIT = 20000; // ms after the first player is ready for a stage that it starts without the others
 const ROUND_LEAD = 6000; // ms from everyone finishing a field-event round to the next one starting (a look at the marks first)
-export const EVENT_LEAD = 14000; // ms from everyone finishing a tournament event to the next one's start (standings, then its title card)
+export const EVENT_LEAD = 22000; // ms from everyone finishing a tournament event to the next one's start (standings and late hits, then its title card)
 
 // The server's clock minus this phone's (ms), from the database.
 let offset = 0;
@@ -305,7 +307,7 @@ export class LiveSession {
     if (!this.done) {
       this.batches = [];
       this.send({ left: true }, true);
-    }
+    } else this.send({ b: null }, true); // off the others' late hits (brawl/liveBrawl.js)
     this.closed = true;
     clearTimeout(this.timer);
     this.stop?.();

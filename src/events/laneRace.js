@@ -15,6 +15,7 @@ import { TraceRecorder, TracePlayer } from '../online/trace.js';
 import { serverNow } from '../online/live.js';
 import { LiveRun } from '../online/liveRun.js';
 import { LiveTrace, TraceStream } from '../online/liveTrace.js';
+import { Venue } from '../brawl/venue.js';
 
 
 /**
@@ -494,6 +495,26 @@ export class LaneRace {
     flow.results(this.game, this.ev, results, stats);
   }
 
+  /** The late hits: just past the finish line, everyone in their lane where they pulled up (brawl/venue.js). */
+  brawlVenue() {
+    const D = this.cfg.distance;
+    const W = LANE_WIDTH;
+    const find = (row) => this.athletes.find((a) => (row.isPlayer ? a.isPlayer : row.key ? a.uid === row.key : a.name === row.name && !a.isPlayer));
+    return new Venue({
+      track: this.track,
+      draw: (ctx, view, camera) => this.track.draw(ctx, view, camera),
+      x: [D - 3, D + 18],
+      depth: this.cfg.lanes * W,
+      zPerM: 1 / W,
+      spot: (row, k) => {
+        const a = find(row);
+        const x = clamp((a?.runner.x ?? D + 4) + (a?.runner.reach ?? 0) * 0.5 + (k % 3) * 1.1, D + 1.5, D + 10);
+        const lane = a?.lane ?? Math.min(this.cfg.lanes, k + 1);
+        return { x, d: (lane - 0.5) * W, facing: row.isPlayer ? 1 : x > this.player.runner.x ? -1 : 1 };
+      },
+    });
+  }
+
   hitExit(e) {
     const b = this.exitBtn;
     return e.x >= b.x && e.x <= b.x + b.w && e.y >= b.y && e.y <= b.y + b.h;
@@ -712,6 +733,7 @@ export class LaneRace {
 }
 
 const LIVE_WAIT = 12; // s after you finish to wait for the other live runners
+const LANE_WIDTH = 1.22; // m
 
 /** Lanes from nearest to `lane` outwards (not `lane` itself). */
 function nearestLanes(lane, lanes) {

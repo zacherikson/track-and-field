@@ -5,16 +5,23 @@ import { getBest, submitBest, getDifficulty, saveGhostIfBetter } from '../core/s
 import { postMark } from '../online/post.js';
 import { counts } from '../online/bests.js';
 import { flow } from '../flow.js';
+import { currentLive } from '../online/live.js';
+import { Aftermath } from '../brawl/aftermath.js';
 
 /**
  * Results: your mark, placing, personal best, and full standings.
  * `results` is a sorted array of { name, lane, mark, status: 'ok'|'dnf', isPlayer, colors }.
+ *
+ * With a `venue` (where the event finished) the results sit over the late
+ * hits, and fold away to let you at the others (brawl/aftermath.js).
  */
 export class ResultScene {
-  constructor(ev, results, stats = null) {
+  constructor(ev, results, stats = null, venue = null) {
     this.ev = ev;
     this.results = results;
     this.stats = stats; // { hits, misses, topSpeed, run } for the player, when the event tracks them
+    this.venue = venue;
+    this.wantsReleases = !!venue; // the late hits' stick is held
   }
 
   enter() {
@@ -42,10 +49,24 @@ export class ResultScene {
     ];
     if (this.ev.online) this.buttons.splice(2, 0, new Button({ label: '🌐 Leaderboard', color: 'rgba(255,255,255,0.18)', onTap: () => flow.leaderboard(this.game, this.ev) }));
     this.layout(this.game.view);
+    const live = this.stats?.live ? currentLive() : null;
+    this.after = this.venue
+      ? new Aftermath(this, this.venue, this.results, {
+          live,
+          key: live ? live.stage(this.ev.id) : '',
+          bar: [this.buttons[0], this.buttons.find((b) => b.label === 'Menu')],
+          summary: () => (me.status === 'ok' ? `${ordinal(this.place)} · ${formatMark(this.ev, me.mark)}` : me.status === 'dnf' ? 'Did not finish' : 'No mark'),
+        })
+      : null;
+  }
+
+  exit() {
+    this.after?.exit();
   }
 
   onResize(view) {
     this.layout(view);
+    this.after?.layout(view);
   }
 
   layout(view) {
@@ -59,17 +80,25 @@ export class ResultScene {
   update(dt, t) {
     this.age += dt;
     for (const e of this.game.input.consume(t + dt)) {
-      if (this.age < 0.6) continue; // don't let frantic race taps hit a button
+      if (this.age < 0.6 && e.type !== 'up' && e.type !== 'keyup') continue; // don't let frantic race taps hit a button
+      if (this.after?.handle(e)) continue;
       if (e.type === 'down') this.buttons.some((b) => b.tap(e.x, e.y));
       else if (e.code === 'Space' || e.code === 'Enter') flow.play(this.game, this.ev);
       else if (e.code === 'Escape') flow.menu(this.game);
     }
     this.buttons.forEach((b) => b.update(dt));
+    this.after?.update(dt, t);
   }
 
   render(ctx, view) {
-    ctx.fillStyle = '#12203a';
-    ctx.fillRect(0, 0, view.w, view.h);
+    if (this.after) {
+      this.after.drawWorld(ctx, view);
+      if (!this.after.open) return this.after.drawHUD(ctx, view);
+      this.after.dim(ctx, view);
+    } else {
+      ctx.fillStyle = '#12203a';
+      ctx.fillRect(0, 0, view.w, view.h);
+    }
     const me = this.me;
     const colW = Math.min(360, (view.w - 60) / 2);
     const lx = view.w / 2 - colW - 10;

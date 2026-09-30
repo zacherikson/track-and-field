@@ -163,7 +163,7 @@ export class StandingsScene {
     if (this.backdrop) {
       this.backdrop.lateRender(ctx, view);
       this.panel.draw(ctx, view);
-      this.backdrop.after?.drawControls(ctx, view);
+      this.backdrop.after?.drawControls(ctx, view, false); // the how-to line would sit under the buttons
       return;
     }
     ctx.fillStyle = '#12203a';

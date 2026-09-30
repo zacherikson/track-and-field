@@ -3,7 +3,7 @@ import { clamp, damp, rand } from '../core/math.js';
 import { text } from '../core/ui.js';
 import { drawFigure, handPos, headCircle } from '../athletes/stickFigure.js';
 import { Fighter, WALK, INVULN } from './fighter.js';
-import { PUNCH, KICK, SLAM, EMOTES } from './poses.js';
+import { PUNCH, KICK, SLAM } from './poses.js';
 import { wound, drawWounds } from './wounds.js';
 
 /**
@@ -34,7 +34,6 @@ export class Brawl {
     this.venue = venue;
     this.fighters = people.map((p) => new Fighter(p));
     this.me = this.fighters.find((f) => f.isMe) ?? null;
-    this.pops = []; // POW! WHAM! SLAM! { text, x, d, h, t0, color }
     this.drops = []; // flying blood: { x, d, h, vx, vd, vh }
     this.splats = []; // blood on the ground: { x, d, r }
     this.shake = 0; // s of screen shake left
@@ -133,7 +132,6 @@ export class Brawl {
       }
     }
     if (v.state === 'emote' || v.free) v.facing = -a.facing;
-    let shown = kind;
     if (kind === 'punch') {
       v.punches = v.punches.filter((p) => t - p < COMBO.within);
       v.punches.push(t);
@@ -142,7 +140,6 @@ export class Brawl {
         v.punches = [];
         this.setState(v, 'fly', t);
         v.vx = a.facing * 2.6;
-        shown = 'combo';
       } else {
         this.setState(v, 'hurt', t);
         v.vx = a.facing * 2.4;
@@ -163,8 +160,6 @@ export class Brawl {
       const w = wound(v.wounds, kind, seed);
       this.bleed(v, w && w.type !== 'bruise' && w.type !== 'eye' ? 4 : 1, a.facing);
     }
-    const word = { punch: 'POW!', combo: 'KO!', kick: 'WHAM!', slam: 'GOTCHA!' }[shown];
-    this.pop(word, v, shown === 'combo' ? '#ff4b3e' : '#ffd23f');
     if (a.isMe || v.isMe) this.shake = Math.max(this.shake, kind === 'punch' ? 0.12 : 0.2);
     if (v.isMe) navigator.vibrate?.(kind === 'punch' ? 40 : 80);
     else if (a.isMe) navigator.vibrate?.(20);
@@ -187,13 +182,8 @@ export class Brawl {
     this.setState(v, 'down', t);
     wound(v.wounds, 'slam', v.dropSeed);
     this.bleed(v, 4, a?.facing ?? 1, 0.2);
-    this.pop('SLAM!', v, '#ff7a1a', 0.9);
     if (v.isMe || a?.isMe) this.shake = Math.max(this.shake, 0.3);
     if (v.isMe) navigator.vibrate?.(120);
-  }
-
-  pop(word, v, color, h = 2.0) {
-    this.pops.push({ text: word, x: v.x, d: v.d, h: h * v.tall, t0: this.t, color });
   }
 
   /** A few drops of blood from `v`'s head, flying away from the hit. */
@@ -233,7 +223,6 @@ export class Brawl {
     for (const p of this.drops) if (p.h <= 0) this.splats.push({ x: p.x, d: p.d, r: p.r });
     this.drops = this.drops.filter((p) => p.h > 0);
     if (this.splats.length > 40) this.splats.splice(0, this.splats.length - 40);
-    this.pops = this.pops.filter((p) => t - p.t0 < 0.8);
     this.shake = Math.max(0, this.shake - dt);
     if (this.me) v.follow(this.me.x, dt);
   }
@@ -401,15 +390,6 @@ export class Brawl {
       ctx.fill();
     }
     v.drawFront?.(ctx, view);
-    for (const p of this.pops) {
-      const s = v.screen(view, p.x, p.d);
-      const k = (t - p.t0) / 0.8;
-      const size = Math.round(34 * (0.7 + 0.5 * Math.min(1, k * 6)) * (s.px / CONFIG.world.pixelsPerMeter));
-      ctx.save();
-      ctx.globalAlpha = 1 - Math.max(0, k - 0.6) / 0.4;
-      text(ctx, p.text, s.x, s.y - p.h * s.px - k * 30, { size: Math.max(18, size), color: p.color, shadow: true, weight: 900 });
-      ctx.restore();
-    }
     ctx.restore();
   }
 
@@ -445,9 +425,6 @@ export class Brawl {
     if (f.state === 'down' || (f.state === 'getup' && t - f.st < 0.3)) this.drawStars(ctx, hx, head.y, head.r, t);
     if (f.state === 'emote') {
       const u = t - f.st;
-      const e = EMOTES.find((x) => x.id === f.variant);
-      const top = p.y - p.H * 1.08;
-      if (e && u < 1.6) text(ctx, e.icon, p.x, top - 14 - Math.min(u, 0.2) * 40, { size: 30, shadow: false });
       if (f.variant === 'laugh') text(ctx, 'HA HA!', hx + 26 * f.facing, head.y - head.r * 2 - 4 * Math.sin(u * 20), { size: 15, color: '#fff', shadow: true, weight: 900 });
       if (f.variant === 'chicken' && Math.floor(u * 3) % 2 === 0) text(ctx, 'BAWK!', hx + 24 * f.facing, head.y - head.r * 2.2, { size: 14, color: '#fff', shadow: true, weight: 900 });
     }

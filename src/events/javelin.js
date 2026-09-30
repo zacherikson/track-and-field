@@ -57,9 +57,9 @@ export class Javelin {
   enter() {
     this.track = new JavelinRenderer(this.cfg, this.ev.record);
     this.camera = new Camera();
-    const me = chosenPlayer();
+    const me = chosenPlayer(this.ev.id);
     this.player = { name: this.live ? this.live.name : me.name, colors: me.colors, isPlayer: true, jumps: [] }; // live: your username, as the others see you
-    this.rivals = shuffle(rivalRoster())
+    this.rivals = shuffle(rivalRoster(this.ev.id))
       .slice(0, 5)
       .map((r) => ({ name: r.name, colors: r.colors, isPlayer: false, jumps: [], cadence: rand(...this.lv.cadence) }));
     const r = CONFIG.sprint100.pads.radius;

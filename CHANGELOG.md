@@ -24,6 +24,26 @@ Gameplay and tuning changes, newest first. When you change a number in
   one's start, so there's time for it. Publish the new `database.rules.json`
   (Realtime Database > Rules): live play sends where you are and who you hit.
 
+## Lineup, solo and team tournaments
+- The menu's Athlete button is now **Lineup**: a slot per event, each filled
+  with any athlete (the same one or different ones), plus a Solo slot for the
+  athlete who does a whole solo tournament. Everyone starts with the athlete
+  they had picked in every slot. Looks only for now: same physics for all.
+- A **TOURNAMENT** toggle on the menu: **Solo** (one athlete, all five) or
+  **Team** (your lineup). It applies to the offline and live tournament buttons.
+- Separate leaderboards: the old tournament board is now the Solo board (its
+  entries carry over) and there's a new Team board. Best tournaments and their
+  ghosts are kept per kind.
+- Live play sends your lineup, so the others see who you picked for each event.
+- Publish both `firestore.rules` (new `teamtournament` board) and
+  `database.rules.json` (new `teamtournament` waiting room, `lineup` field) in
+  the Firebase console.
+
+## Leaderboard without the name button
+- The leaderboard screen no longer has a button with your name: your name is
+  changed on the Profile screen only (a change still renames your entries on
+  every board).
+
 ## Sign in with Google from the home screen
 - Sign in with Google now goes to Google's page and comes back, instead of a
   popup, which hung on "Signing in…" when the game ran from an iPhone's home
@@ -42,7 +62,7 @@ Gameplay and tuning changes, newest first. When you change a number in
   with the old guest ID.
 - Only signed-in players go on the online leaderboards. Guests still play
   everything (live play too) and keep their bests on the phone; signing in
-  posts them. The leaderboard's name button reads "Sign in to join" for guests.
+  posts them.
   Entries posted by guests before this stay until you delete them in the
   console (or their players sign in, which makes them theirs).
 - Sign out turns the phone back into a new guest (new made-up name, bests

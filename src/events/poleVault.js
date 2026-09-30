@@ -88,7 +88,7 @@ export class PoleVault {
     const P = cfg.pole;
     this.L = P.length;
     // A shorter athlete (Joey) is smaller all over and plants with the hands lower.
-    this.tall = heightOf(chosenPlayer().colors);
+    this.tall = heightOf(chosenPlayer(this.ev.id).colors);
     this.figH = FIG_H * this.tall;
     const gripY = P.gripY * this.tall;
     this.plantX = -Math.sqrt(P.length ** 2 - gripY ** 2);
@@ -98,9 +98,9 @@ export class PoleVault {
     this.reach = Math.hypot(top.x, top.y);
     this.track = new VaultRenderer(cfg);
     this.camera = new Camera();
-    const me = chosenPlayer();
+    const me = chosenPlayer(this.ev.id);
     this.player = { name: this.live ? this.live.name : me.name, colors: me.colors, isPlayer: true, jumps: [] }; // live: your username, as the others see you
-    this.rivals = shuffle(rivalRoster())
+    this.rivals = shuffle(rivalRoster(this.ev.id))
       .slice(0, 5)
       .map((r) => ({ name: r.name, colors: r.colors, isPlayer: false, jumps: [], cadence: rand(...this.lv.cadence) }));
     const r = CONFIG.sprint100.pads.radius;

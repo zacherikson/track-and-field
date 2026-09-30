@@ -31,7 +31,7 @@ export class FieldGhost {
     const spec = live ? null : pickGhost(ev, (d) => isTrace(d, ev.id, props));
     this.spec = spec;
     this.play = spec ? new TracePlayer(spec.data) : null;
-    this.colors = spec ? (CHARACTERS.find((c) => c.id === spec.data.athlete) ?? chosenPlayer()).colors : null;
+    this.colors = spec ? (CHARACTERS.find((c) => c.id === spec.data.athlete) ?? chosenPlayer(this.ev.id)).colors : null;
     this.label = spec ? `${spec.name} · ${formatMark(ev, spec.data.mark)}` : '';
   }
 
@@ -48,7 +48,7 @@ export class FieldGhost {
 
   /** The attempt is over: `result` = { mark }, or { foul: true } / { fail: true }. */
   endAttempt(result) {
-    this.takes.push(result.foul || result.fail || result.mark == null ? null : this.tracer.data(result.mark, chosenPlayer().id));
+    this.takes.push(result.foul || result.fail || result.mark == null ? null : this.tracer.data(result.mark, chosenPlayer(this.ev.id).id));
   }
 
   /** The recording of the attempt that set your mark for this competition (the best one). */

@@ -31,9 +31,9 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.key != key;
     }
 
-    // One board per event plus the tournament score (registry.js BOARDS).
+    // One board per event plus the solo and team tournament scores (registry.js BOARDS).
     match /leaderboards/{event}/runs/{uid} {
-      allow read: if event in ['sprint100', 'longjump', 'hurdles110', 'polevault', 'javelin', 'tournament'];
+      allow read: if event in ['sprint100', 'longjump', 'hurdles110', 'polevault', 'javelin', 'tournament', 'teamtournament'];
       allow create: if isMember(uid) && validRun(event, request.resource.data);
       allow update: if isMe(uid) && (
         (isMember(uid) && validRun(event, request.resource.data) && beats(event, request.resource.data.mark, resource.data.mark))
@@ -89,7 +89,7 @@ service cloud.firestore {
         && d.createdAt == request.time
         && ((event == 'sprint100' && d.keys().hasAll(['ghost']) && !d.keys().hasAny(['traced']) && validGhost(d))
             || (event != 'sprint100' && !d.keys().hasAny(['ghost'])
-                && (!d.keys().hasAny(['traced']) || (d.traced == true && event != 'tournament'))));
+                && (!d.keys().hasAny(['traced']) || (d.traced == true && !(event in ['tournament', 'teamtournament'])))));
     }
 
     function validTrace(event, d) {
@@ -107,7 +107,7 @@ service cloud.firestore {
         && d.ghost.ev is list && d.ghost.ev.size() <= 4000;
     }
 
-    // Times in seconds, distances and heights in metres, tournament in points.
+    // Times in seconds, distances and heights in metres, tournaments in points.
     function validMark(event, m) {
       return m is number && (
         (event == 'sprint100' && m >= 7 && m <= 60)
@@ -115,7 +115,7 @@ service cloud.firestore {
         || (event == 'longjump' && m > 0 && m <= 15)
         || (event == 'polevault' && m > 0 && m <= 9)
         || (event == 'javelin' && m > 0 && m <= 150)
-        || (event == 'tournament' && m >= 1 && m <= 15000));
+        || (event in ['tournament', 'teamtournament'] && m >= 1 && m <= 15000));
     }
 
     // True if mark a is better than mark b: lower times win, the rest go higher.

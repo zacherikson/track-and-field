@@ -1,6 +1,5 @@
 import { connectSDK, SDK_URL } from './firebase.js';
 import { getPlayerName } from '../core/storage.js';
-import { player as chosenPlayer } from '../athletes/roster.js';
 
 /**
  * LIVE: a waiting room, then an event (or a whole tournament) against the other
@@ -14,7 +13,7 @@ import { player as chosenPlayer } from '../athletes/roster.js';
  *   lobby/{kind}               = { room, startAt, setLen, players: { uid: { name, athlete, at } } }
  *   live/{room}/{uid}          = { v, name, athlete, left, s, t0, run, n, done, f, res, ready, b, h }
  *
- * `kind` is an event id or 'tournament'. The lobby node IS the waiting room:
+ * `kind` is an event id, 'tournament' (solo) or 'teamtournament' (tournament.js TOUR_KINDS). The lobby node IS the waiting room:
  * whoever is in `players` plays together. When a second player arrives it gets
  * a start time (`startAt`, server clock, ms) a few seconds ahead; everyone
  * starts then. Shortly before, the room closes: the next player to arrive
@@ -83,13 +82,16 @@ function withStart(d, now) {
 }
 
 /**
- * The waiting room for one event, or the tournament (`kind`). `onChange(view)` gets
- * { room, players: [{ uid, name, athlete, me }], startAt, setLen, closed, uid } whenever it changes.
+ * The waiting room for one event, or a tournament (`kind`). `onChange(view)` gets
+ * { room, players: [{ uid, name, athlete, lineup, me }], startAt, setLen, closed, uid } whenever it changes.
+ * `who` = the athletes you play as: { athlete } (a character id), plus a team
+ * tournament's `lineup` ({ [eventId]: character id }).
  */
 export class Lobby {
-  constructor(kind, onChange) {
+  constructor(kind, onChange, who) {
     this.kind = kind;
     this.onChange = onChange;
+    this.who = who;
     this.data = null;
   }
 
@@ -97,7 +99,7 @@ export class Lobby {
     const { rt, db, uid } = await connectRT();
     Object.assign(this, { rt, db, uid });
     this.ref = rt.ref(db, `lobby/${this.kind}`);
-    const me = { name: getPlayerName(), athlete: chosenPlayer().id };
+    const me = { name: getPlayerName(), ...this.who };
     await this.update((d, now) => {
       // Join the room in the node unless it's closed or full; otherwise start a new one.
       const players = d?.players ?? {};
@@ -126,7 +128,7 @@ export class Lobby {
   view() {
     const d = this.data;
     const players = Object.entries(d?.players ?? {})
-      .map(([uid, p]) => ({ uid, name: p.name, athlete: p.athlete ?? null, at: p.at, me: uid === this.uid }))
+      .map(([uid, p]) => ({ uid, name: p.name, athlete: p.athlete ?? null, lineup: p.lineup ?? null, at: p.at, me: uid === this.uid }))
       .sort((a, b) => a.at - b.at);
     return { room: d?.room ?? null, players, startAt: d?.startAt ?? null, setLen: d?.setLen ?? null, closed: closed(d, serverNow()), uid: this.uid };
   }
@@ -160,6 +162,7 @@ const clash = (a, b) => a !== b && (a.startsWith(`${b}/`) || b.startsWith(`${a}/
 export class LiveSession {
   constructor(info, first) {
     Object.assign(this, info);
+    this.first = first;
     this.others = info.players.filter((p) => p.uid !== info.uid);
     this.docs = new Map(); // uid -> their latest doc
     this.listeners = new Set();
@@ -169,7 +172,8 @@ export class LiveSession {
     this.step = 0; // which event of the room this is (a tournament has five)
     this.starts = new Map([[this.eventStage(first), info.startAt]]); // stage -> start (server ms), once known
     this.done = false; // played to the end: leaving now isn't leaving early
-    this.send({ v: 2, name: info.name ?? '', athlete: chosenPlayer().id }, true);
+    const me = info.players.find((p) => p.uid === info.uid);
+    this.send({ v: 2, name: info.name ?? '', athlete: me?.athlete ?? '', ...(me?.lineup ? { lineup: me.lineup } : {}) }, true);
   }
 
   async open() {
@@ -214,7 +218,7 @@ export class LiveSession {
 
   /** How long GET SET lasts before the gun of a race stage: the waiting room's for the first, then random but the same on every phone. */
   setLenFor(stage) {
-    if (stage === this.eventStage(this.kind === 'tournament' ? 'sprint100' : this.kind) && this.setLen != null) return this.setLen;
+    if (stage === this.eventStage(this.first, 0) && this.setLen != null) return this.setLen;
     let h = 0;
     for (const c of `${this.room}/${stage}`) h = (h * 31 + c.charCodeAt(0)) >>> 0;
     return 1.1 + (h % 1000) / 1000 * 1.2;

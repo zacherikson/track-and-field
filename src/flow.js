@@ -8,12 +8,12 @@ import { ResultScene } from './scenes/resultScene.js';
 import { LeaderboardScene } from './scenes/leaderboardScene.js';
 import { ProfileScene } from './scenes/profileScene.js';
 import { LobbyScene } from './scenes/lobbyScene.js';
-import { CharacterScene } from './scenes/characterScene.js';
+import { LineupScene } from './scenes/lineupScene.js';
 import { StandingsScene } from './tournament/standingsScene.js';
 import { tournament } from './tournament/tournament.js';
 import { openTuning } from './tuning/panel.js';
 import { roundMark, EVENTS } from './events/registry.js';
-import { ORDER } from './tournament/tournament.js';
+import { ORDER, tourModeOf } from './tournament/tournament.js';
 import { startLive, endLive, currentLive } from './online/live.js';
 import { resetScars } from './brawl/wounds.js';
 
@@ -25,13 +25,14 @@ export const flow = {
     game.setScene(new MenuScene());
   },
   // Tournament: the five events in a row, decathlon points, a champion at the end.
-  tournament: (game) => {
+  // `mode`: 'solo' (one athlete) or 'team' (your lineup).
+  tournament: (game, mode) => {
     resetScars();
     endLive();
-    tournament.start();
+    tournament.start(mode);
     game.setScene(new IntroScene(tournament.event));
   },
-  characters: (game) => game.setScene(new CharacterScene()),
+  lineup: (game) => game.setScene(new LineupScene()),
   intro: (game, ev) => game.setScene(new IntroScene(ev)),
   play: (game, ev) => {
     const scene = ev.create();
@@ -68,9 +69,10 @@ export const flow = {
   // The waiting room has closed: `info` = { kind, room, uid, name, players, startAt, setLen }.
   liveStart: (game, info) => {
     resetScars();
-    const first = info.kind === 'tournament' ? ORDER[0] : info.kind;
+    const mode = tourModeOf(info.kind);
+    const first = mode ? ORDER[0] : info.kind;
     const session = startLive(info, first);
-    if (info.kind === 'tournament') tournament.start(session);
+    if (mode) tournament.start(mode, session);
     const scene = EVENTS.find((e) => e.id === first).create();
     scene.live = session;
     game.setScene(scene);

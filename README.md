@@ -70,10 +70,24 @@ view (plant, swing, rock back, inversion, bar, landing) for checking against
 reference photos. `tools/sprites.html` draws Juno's long jump keyframes as a sprite sheet (serve
 the repo and open it) so poses can be checked side by side.
 
+## Lineup and tournaments
+
+**Lineup** (on the menu) has a slot per event: pick who does each one. It can
+be the same athlete in every slot or a different one in each. There's also a
+**Solo** slot: the athlete who does all five in a solo tournament. The athletes
+only look different for now; they all run on the same physics.
+
+The menu's **TOURNAMENT** toggle picks the kind of tournament, offline and live:
+- **Solo**: your solo athlete does all five events, like a pentathlon.
+- **Team**: your lineup, one athlete per event. Your rivals in each event are
+  the athletes who aren't doing it for you, and your total is your team's.
+
+Each kind has its own leaderboard and its own best tournament (and ghosts).
+
 ## Online leaderboards and ghosts
 
 🌐 **Leaderboard** (on the menu, the results screen and the tournament's final
-standings) has a leaderboard for every event plus one for tournament points.
+standings) has a leaderboard for every event plus one each for solo and team tournament points.
 Finishing an event, on its own or in a tournament, posts your mark to that
 event's board if it beats your mark there; finishing a tournament posts your
 total. Marks made with changed tuning aren't posted, and don't count as a
@@ -182,7 +196,7 @@ src/athletes/
   runner.js           shared runner physics (player and AI)
   ai.js               AI "thumbs": taps at a personal cadence
   stickFigure.js      placeholder figure: blendable poses (blocks, set, run, stand, hurdle)
-  roster.js           the six athletes (kit, skin, hairstyle); your pick and your rivals
+  roster.js           the six athletes (kit, skin, hairstyle); who you play each event as, and your rivals
 src/events/
   registry.js         event list for the menu
   strideTargets.js    100m random targets (max 2 in a row) + hit/miss judging
@@ -201,7 +215,7 @@ src/brawl/            late hits after each event: the fight (brawl.js, fighter.j
                       controls with the emote wheel, the rivals' brains (bots.js), live sync
                       (liveBrawl.js), the event's venue (venue.js) and the results screens' host (aftermath.js)
 src/events/scoring.js decathlon points (official World Athletics tables)
-src/scenes/characterScene.js  choose your athlete (the rest are your rivals)
+src/scenes/lineupScene.js     your lineup: who does each event, and your solo athlete
 src/render/track.js   stadium with one-point perspective (camera 1m ahead of the player), parallax crowd
 src/render/pads.js    glossy tap targets, numbered buttons and the red ✕
 src/render/targetPads.js  falling target + hit ring animations (100m, long jump run-up)
@@ -222,7 +236,7 @@ src/online/
   ghosts.js           picks which ghost races: best tournament, a leaderboard pick, or your best
 src/scenes/leaderboardScene.js  online leaderboards, a tab per event, with Race buttons
 src/scenes/profileScene.js      your username (unique, saved in Firebase) and Google sign-in
-src/scenes/lobbyScene.js        the live waiting room (any event, or the tournament)
+src/scenes/lobbyScene.js        the live waiting room (any event, or a solo or team tournament)
 src/tuning/           in-game tuning panel (params list, saved overrides, live estimates)
 tools/simulate.mjs    headless tuning simulator
 tools/ghostcheck.mjs  checks that recorded runs replay to the exact same time

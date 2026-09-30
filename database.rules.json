@@ -2,8 +2,8 @@
   "rules": {
     "lobby": {
       "$kind": {
-        ".read": "auth != null && $kind.matches(/^(sprint100|longjump|hurdles110|polevault|javelin|tournament)$/)",
-        ".write": "auth != null && $kind.matches(/^(sprint100|longjump|hurdles110|polevault|javelin|tournament)$/)",
+        ".read": "auth != null && $kind.matches(/^(sprint100|longjump|hurdles110|polevault|javelin|tournament|teamtournament)$/)",
+        ".write": "auth != null && $kind.matches(/^(sprint100|longjump|hurdles110|polevault|javelin|tournament|teamtournament)$/)",
         "room": { ".validate": "newData.isString() && newData.val().length <= 40" },
         "startAt": { ".validate": "newData.isNumber()" },
         "setLen": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 5" },
@@ -12,6 +12,7 @@
             ".validate": "newData.hasChildren(['name', 'at'])",
             "name": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16" },
             "athlete": { ".validate": "newData.isString() && newData.val().length <= 32" },
+            "lineup": { "$event": { ".validate": "$event.matches(/^(sprint100|longjump|hurdles110|polevault|javelin)$/) && newData.isString() && newData.val().length <= 32" } },
             "at": { ".validate": "newData.isNumber()" },
             "$other": { ".validate": false }
           }
@@ -27,6 +28,7 @@
           "v": { ".validate": "newData.isNumber()" },
           "name": { ".validate": "newData.isString() && newData.val().length <= 16" },
           "athlete": { ".validate": "newData.isString() && newData.val().length <= 32" },
+          "lineup": { "$event": { ".validate": "$event.matches(/^(sprint100|longjump|hurdles110|polevault|javelin)$/) && newData.isString() && newData.val().length <= 32" } },
           "left": { ".validate": "newData.isBoolean()" },
           "s": { ".validate": "newData.isString() && newData.val().length <= 40" },
           "t0": { ".validate": "newData.isNumber()" },

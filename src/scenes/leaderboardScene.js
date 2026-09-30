@@ -1,8 +1,7 @@
 import { CONFIG } from '../config.js';
 import { Button, text, roundRect } from '../core/ui.js';
-import { BOARDS, TOURNAMENT_BOARD, formatMark } from '../events/registry.js';
-import { getPlayerName } from '../core/storage.js';
-import { leaderboard, cachedLeaderboard, fetchGhost, learnUid, isSignedIn } from '../online/firebase.js';
+import { BOARDS, formatMark } from '../events/registry.js';
+import { leaderboard, cachedLeaderboard, fetchGhost, learnUid } from '../online/firebase.js';
 import { chooseGhost, isReplayable } from '../online/ghost.js';
 import { isTrace } from '../online/trace.js';
 import { flow } from '../flow.js';
@@ -11,12 +10,12 @@ const ROW_H = 30;
 const TOP = 122;
 const BOX_Y = 100;
 
-const TAB_LABELS = { sprint100: '100m', longjump: 'Long jump', hurdles110: 'Hurdles', polevault: 'Pole vault', javelin: 'Javelin', tournament: 'Tournament' };
+const TAB_LABELS = { sprint100: '100m', longjump: 'Long jump', hurdles110: 'Hurdles', polevault: 'Pole vault', javelin: 'Javelin', tournament: '🏆 Solo', teamtournament: '🏆 Team' };
 
 let lastBoard = null; // the tab you looked at last, for the menu's Leaderboard button
 
 /**
- * The online leaderboards: a tab per event plus the tournament score, each
+ * The online leaderboards: a tab per event plus the solo and team tournament scores, each
  * with the best marks from every player. On the event boards each recorded
  * mark has a Race button that puts it next to you as a ghost.
  */
@@ -28,24 +27,15 @@ export class LeaderboardScene {
   enter() {
     const dim = 'rgba(255,255,255,0.18)';
     this.backBtn = new Button({ label: 'Menu', w: 150, h: 50, color: dim, onTap: () => flow.menu(this.game) });
-    this.nameBtn = new Button({ label: '', w: 280, h: 50, color: dim, onTap: () => flow.profile(this.game) });
     this.retryBtn = new Button({ label: 'Try again', w: 180, h: 50, onTap: () => this.load() });
     this.tabs = BOARDS.map((b) => new Button({ label: TAB_LABELS[b.id] ?? b.name, h: 38, size: 16, onTap: () => this.show(b) }));
     this.age = 0; // s on this screen: animates the loading rows
-    this.setNameLabel();
     this.layout(this.game.view); // before anything loads, so the buttons start in place
     this.show(this.board);
     // Your row is found by your player id; sign in to learn it if needed, then load again.
     learnUid()
       .then((learned) => learned && this.game.scene === this && this.load())
       .catch(() => {});
-  }
-
-  /** Your name, or for a guest (not on the boards) the way on: sign in on the Profile. */
-  setNameLabel() {
-    const guest = !isSignedIn();
-    this.nameBtn.label = guest ? '👤 Sign in to join' : `👤 ${getPlayerName()}`;
-    this.nameBtn.color = guest ? '#3a6fd8' : 'rgba(255,255,255,0.18)';
   }
 
   show(board) {
@@ -127,11 +117,10 @@ export class LeaderboardScene {
       if (r.btn) Object.assign(r.btn, { x: x0 + this.boxW - r.btn.w - 10, y: this.rowY(i) - (ROW_H - 4) / 2 });
     });
     const gap = 6;
-    const tabsW = Math.min(720, view.w - 40);
+    const tabsW = Math.min(800, view.w - 40);
     const tw = (tabsW - gap * (this.tabs.length - 1)) / this.tabs.length;
     this.tabs.forEach((t, i) => Object.assign(t, { x: view.w / 2 - tabsW / 2 + i * (tw + gap), y: 52, w: tw }));
-    Object.assign(this.backBtn, { x: view.w / 2 - 150 - 8, y: 472 });
-    Object.assign(this.nameBtn, { x: view.w / 2 + 8, y: 472 });
+    Object.assign(this.backBtn, { x: view.w / 2 - 75, y: 472 });
     Object.assign(this.retryBtn, { x: view.w / 2 - 90, y: 300 });
   }
 
@@ -141,7 +130,7 @@ export class LeaderboardScene {
   }
 
   buttons() {
-    const list = [this.backBtn, this.nameBtn, ...this.tabs];
+    const list = [this.backBtn, ...this.tabs];
     if (this.state === 'error') list.push(this.retryBtn);
     if (this.state === 'ready') for (const r of this.rows) if (r.btn) list.push(r.btn);
     return list;
@@ -174,7 +163,7 @@ export class LeaderboardScene {
     const mid = (s) => text(ctx, s, view.w / 2, 250, { size: 18, weight: 500, color: 'rgba(255,255,255,0.75)', maxWidth: w - 30 });
     if (this.state === 'loading') this.drawLoading(ctx, x0, w);
     else if (this.state === 'error') mid('Can’t reach the online leaderboard right now.');
-    else if (!this.rows.length) mid(this.board === TOURNAMENT_BOARD ? 'No scores yet. Finish a tournament to be first!' : `No marks yet. Finish a ${this.board.name} to be first!`);
+    else if (!this.rows.length) mid(this.board.tournament ? `No scores yet. Finish a ${this.board.name.toLowerCase()} to be first!` : `No marks yet. Finish a ${this.board.name} to be first!`);
     else {
       this.rows.forEach((r, i) => {
         const y = this.rowY(i);

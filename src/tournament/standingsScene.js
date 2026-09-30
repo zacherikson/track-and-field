@@ -7,7 +7,7 @@ import { counts } from '../online/bests.js';
 import { tournament, ORDER, TOUR_KINDS } from './tournament.js';
 import { flow } from '../flow.js';
 import { serverNow } from '../online/live.js';
-import { Aftermath } from '../brawl/aftermath.js';
+import { ResultsPanel } from '../brawl/aftermath.js';
 
 const TITLE_CARD = 8000; // ms before a live tournament's next event starts that its title card comes up
 
@@ -20,17 +20,17 @@ const TITLE_CARD = 8000; // ms before a live tournament's next event starts that
  * soon as you get here, and it comes up by itself once everyone is (a
  * countdown on the button; see online/live.js startOf).
  *
- * With a `venue` (where the event finished) it's the late hits instead: the
- * standings small in a corner, Next (or New tournament) and Quit (or Menu),
- * and the others to fight (brawl/aftermath.js).
+ * With a `backdrop` (the event scene, carrying on with its late hits) it's
+ * just the standings in the middle over the event, with Next (or New
+ * tournament) and Quit (or Menu) under them (brawl/aftermath.js ResultsPanel).
  */
 export class StandingsScene {
-  constructor(ev, results, stats = null, venue = null) {
+  constructor(ev, results, stats = null, backdrop = null) {
     this.ev = ev;
     this.results = results;
     this.stats = stats;
-    this.venue = venue;
-    this.wantsReleases = !!venue; // the late hits' stick is held
+    this.backdrop = backdrop;
+    this.wantsReleases = !!backdrop; // the late hits' stick is held
   }
 
   enter() {
@@ -76,16 +76,13 @@ export class StandingsScene {
           new Button({ label: `Next: ${next.name}  ›`, color: '#2bb673', onTap: () => !this.live && this.goNext() }),
           new Button({ label: 'Quit', color: 'rgba(255,255,255,0.18)', onTap: () => flow.menu(this.game) }),
         ];
-    const live = tournament.live;
-    if (this.venue) {
-      // Late hits: just the two buttons, and the standings small in a corner.
+    if (this.backdrop) {
+      // Over the late hits: just the standings and the two buttons.
       this.buttons = [this.buttons[0], this.buttons[this.buttons.length - 1]];
-      this.after = new Aftermath(this, this.venue, this.results, {
-        live,
-        key: live ? live.stage(this.ev.id) : '',
-        bar: this.buttons,
-        title: () => (this.final ? `🏆 ${this.table[0].name.toUpperCase()} WINS · FINAL STANDINGS` : `OVERALL AFTER ${tournament.history.length} OF ${ORDER.length} · ${this.ev.name.toUpperCase()}`),
-        table: () =>
+      this.panel = new ResultsPanel(
+        this.buttons,
+        () => (this.final ? `🏆 ${this.table[0].name.toUpperCase()} WINS · FINAL STANDINGS` : `OVERALL AFTER ${tournament.history.length} OF ${ORDER.length} · ${this.ev.name.toUpperCase()}`),
+        () =>
           this.table.map((t, i) => {
             const pts = this.rows.find((r) => (r.isPlayer ? 'you' : r.key ?? r.name) === t.key)?.pts;
             return {
@@ -97,15 +94,16 @@ export class StandingsScene {
               gold: t.live,
             };
           }),
-      });
+      );
+      this.panel.layout(this.game.view);
     } else {
-      this.after = null;
+      this.panel = null;
       this.layout(this.game.view);
     }
   }
 
   exit() {
-    this.after?.exit();
+    this.backdrop?.leave();
   }
 
   goNext() {
@@ -114,8 +112,9 @@ export class StandingsScene {
   }
 
   onResize(view) {
-    if (this.after) this.after.layout(view);
+    if (this.panel) this.panel.layout(view);
     else this.layout(view);
+    this.backdrop?.after?.layout(view);
   }
 
   layout(view) {
@@ -130,15 +129,20 @@ export class StandingsScene {
 
   update(dt, t) {
     this.age += dt;
+    const bd = this.backdrop;
     for (const e of this.game.input.consume(t + dt)) {
+      const onButton = e.type === 'down' && this.buttons.some((b) => b.hit(e.x, e.y));
+      // Over the late hits, everything but the buttons (and Enter / Space / Escape) is for your controls.
+      if (bd && !onButton && bd.after?.handle(e)) continue;
       if (this.age < 0.6 && e.type !== 'up' && e.type !== 'keyup') continue; // don't let frantic event taps hit a button
-      if (this.after?.handle(e)) continue;
       if (e.type === 'down') this.buttons.some((b) => b.tap(e.x, e.y));
       else if (e.code === 'Space' || e.code === 'Enter') this.buttons[0].onTap();
       else if (e.code === 'Escape') flow.menu(this.game);
     }
+    if (this.game.scene !== this) return; // a button took us on
     this.buttons.forEach((b) => b.update(dt));
-    this.after?.update(dt, t);
+    this.panel?.update(dt);
+    bd?.lateUpdate(dt, t);
     if (this.live) this.countDown();
   }
 
@@ -156,7 +160,12 @@ export class StandingsScene {
   }
 
   render(ctx, view) {
-    if (this.after) return this.after.render(ctx, view);
+    if (this.backdrop) {
+      this.backdrop.lateRender(ctx, view);
+      this.panel.draw(ctx, view);
+      this.backdrop.after?.drawControls(ctx, view);
+      return;
+    }
     ctx.fillStyle = '#12203a';
     ctx.fillRect(0, 0, view.w, view.h);
     const n = tournament.history.length;

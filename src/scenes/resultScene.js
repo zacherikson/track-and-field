@@ -5,24 +5,23 @@ import { getBest, submitBest, getDifficulty, saveGhostIfBetter } from '../core/s
 import { postMark } from '../online/post.js';
 import { counts } from '../online/bests.js';
 import { flow } from '../flow.js';
-import { currentLive } from '../online/live.js';
-import { Aftermath } from '../brawl/aftermath.js';
+import { ResultsPanel } from '../brawl/aftermath.js';
 
 /**
  * Results: your mark, placing, personal best, and full standings.
  * `results` is a sorted array of { name, lane, mark, status: 'ok'|'dnf', isPlayer, colors }.
  *
- * With a `venue` (where the event finished) it's the late hits instead: the
- * results small in a corner, Race again and Menu, and the others to fight
- * (brawl/aftermath.js).
+ * With a `backdrop` (the event scene, carrying on with its late hits) it's
+ * just the results in the middle over the event, with Race again and Menu
+ * under them (brawl/aftermath.js ResultsPanel).
  */
 export class ResultScene {
-  constructor(ev, results, stats = null, venue = null) {
+  constructor(ev, results, stats = null, backdrop = null) {
     this.ev = ev;
     this.results = results;
     this.stats = stats; // { hits, misses, topSpeed, run } for the player, when the event tracks them
-    this.venue = venue;
-    this.wantsReleases = !!venue; // the late hits' stick is held
+    this.backdrop = backdrop;
+    this.wantsReleases = !!backdrop; // the late hits' stick is held
   }
 
   enter() {
@@ -49,38 +48,35 @@ export class ResultScene {
       new Button({ label: '⚙ Tuning', color: 'rgba(255,255,255,0.18)', onTap: () => flow.tuning(this.game) }),
     ];
     if (this.ev.online) this.buttons.splice(2, 0, new Button({ label: '🌐 Leaderboard', color: 'rgba(255,255,255,0.18)', onTap: () => flow.leaderboard(this.game, this.ev) }));
-    const live = this.stats?.live ? currentLive() : null;
-    if (this.venue) {
-      // Late hits: just the two buttons, and the results small in a corner.
+    const live = !!this.stats?.live;
+    if (this.backdrop) {
+      // Over the late hits: just the results and the two buttons.
       this.buttons = this.buttons.slice(0, 2);
-      this.after = new Aftermath(this, this.venue, this.results, {
-        live,
-        key: live ? live.stage(this.ev.id) : '',
-        bar: this.buttons,
-        title: () => `RESULTS · ${this.ev.name.toUpperCase()}`,
-        table: () =>
-          this.results.map((r, i) => ({
-            place: r.status === 'ok' ? String(i + 1) : '–',
-            name: r.name,
-            colors: r.colors,
-            value: r.status === 'ok' ? formatMark(this.ev, r.mark) : r.status.toUpperCase(),
-            isPlayer: r.isPlayer,
-            gold: !!live && !r.isPlayer,
-          })),
-      });
+      this.panel = new ResultsPanel(this.buttons, () => `RESULTS · ${this.ev.name.toUpperCase()}`, () =>
+        this.results.map((r, i) => ({
+          place: r.status === 'ok' ? String(i + 1) : '–',
+          name: r.name,
+          colors: r.colors,
+          value: r.status === 'ok' ? formatMark(this.ev, r.mark) : r.status.toUpperCase(),
+          isPlayer: r.isPlayer,
+          gold: live && !r.isPlayer,
+        })),
+      );
+      this.panel.layout(this.game.view);
     } else {
-      this.after = null;
+      this.panel = null;
       this.layout(this.game.view);
     }
   }
 
   exit() {
-    this.after?.exit();
+    this.backdrop?.leave();
   }
 
   onResize(view) {
-    if (this.after) this.after.layout(view);
+    if (this.panel) this.panel.layout(view);
     else this.layout(view);
+    this.backdrop?.after?.layout(view);
   }
 
   layout(view) {
@@ -93,19 +89,29 @@ export class ResultScene {
 
   update(dt, t) {
     this.age += dt;
+    const bd = this.backdrop;
     for (const e of this.game.input.consume(t + dt)) {
+      const onButton = e.type === 'down' && this.buttons.some((b) => b.hit(e.x, e.y));
+      // Over the late hits, everything but the buttons (and Enter / Space / Escape) is for your controls.
+      if (bd && !onButton && bd.after?.handle(e)) continue;
       if (this.age < 0.6 && e.type !== 'up' && e.type !== 'keyup') continue; // don't let frantic race taps hit a button
-      if (this.after?.handle(e)) continue;
       if (e.type === 'down') this.buttons.some((b) => b.tap(e.x, e.y));
-      else if (e.code === 'Space' || e.code === 'Enter') flow.play(this.game, this.ev);
+      else if (e.code === 'Space' || e.code === 'Enter') this.buttons[0].onTap();
       else if (e.code === 'Escape') flow.menu(this.game);
     }
+    if (this.game.scene !== this) return; // a button took us on
     this.buttons.forEach((b) => b.update(dt));
-    this.after?.update(dt, t);
+    this.panel?.update(dt);
+    bd?.lateUpdate(dt, t);
   }
 
   render(ctx, view) {
-    if (this.after) return this.after.render(ctx, view);
+    if (this.backdrop) {
+      this.backdrop.lateRender(ctx, view);
+      this.panel.draw(ctx, view);
+      this.backdrop.after?.drawControls(ctx, view);
+      return;
+    }
     ctx.fillStyle = '#12203a';
     ctx.fillRect(0, 0, view.w, view.h);
     const me = this.me;

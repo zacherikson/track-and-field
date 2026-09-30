@@ -13,7 +13,8 @@ import { ORANGE, drawPad, drawX } from '../render/pads.js';
 import { drawDrop, drawHitRing } from '../render/targetPads.js';
 import { getDifficulty } from '../core/storage.js';
 import { flow } from '../flow.js';
-import { Venue, fieldSpot, FIELD_DEPTH } from '../brawl/venue.js';
+import { Venue, FIELD_DEPTH } from '../brawl/venue.js';
+import { startFieldLateHits, fieldLateStep, fieldLateRender } from '../brawl/fieldLateHits.js';
 import { FieldGhost } from '../online/fieldGhost.js';
 import { LiveField } from '../online/liveField.js';
 
@@ -71,7 +72,15 @@ export class LongJump {
   }
 
   exit() {
+    if (this.handedOver) return; // still running under the results (leave())
     this.liveField?.close();
+    this.after?.exit();
+  }
+
+  /** The results screen is done with the jump underneath it. */
+  leave() {
+    this.handedOver = false;
+    this.exit();
   }
 
   onResize(view) {
@@ -137,6 +146,7 @@ export class LongJump {
 
   update(dt, t) {
     if (this.liveField?.update(dt, t)) return; // live: waiting for a round, or for the others
+    if (this.after) return fieldLateStep(this, dt, t); // after your last jump
     const end = t + dt;
     for (const e of this.game.input.consume(end)) {
       if (e.type === 'down' && this.hitExit(e)) return flow.menu(this.game);
@@ -288,6 +298,8 @@ export class LongJump {
       rv.jumps.push(rivalJump(level, cfg, (runway) => this.rivalRunUp(rv, runway)));
     }
     this.setState('mark');
+    // Your last jump: up on your feet in the sand, the late hits start (brawl/fieldLateHits.js).
+    if (this.round >= this.cfg.rounds) startFieldLateHits(this, this.jump?.hipX ?? this.runner.x, this.poseFor());
   }
 
   /** A rival's speed at takeoff after their run-up (same physics as yours). */
@@ -336,16 +348,33 @@ export class LongJump {
     });
   }
 
-  /** The late hits: round the sand pit (brawl/venue.js). */
-  brawlVenue() {
+  // ---------------------------------------------------------------- late hits
+
+  /** Round the sand pit (brawl/venue.js). */
+  lateVenue() {
     return new Venue({
       track: this.track,
-      draw: (ctx, view, camera) => this.track.draw(ctx, view, camera),
+      camera: this.camera,
+      draw: (ctx, view, camera) => {
+        this.track.draw(ctx, view, camera);
+        this.drawReferee(ctx, view, camera.ppm * this.track.figureScale(1));
+      },
       x: [-4, 16],
       depth: FIELD_DEPTH,
       zPerM: 1 / FIELD_DEPTH,
-      spot: fieldSpot(6, FIELD_DEPTH),
     });
+  }
+
+  lateUpdate(dt, t) {
+    this.after.update(dt, t);
+  }
+
+  lateRender(ctx, view) {
+    this.after.render(ctx, view);
+  }
+
+  markLabel() {
+    return this.mark.foul ? 'FOUL' : `${this.mark.mark.toFixed(2)} m`;
   }
 
   hitExit(e) {
@@ -421,6 +450,7 @@ export class LongJump {
   }
 
   render(ctx, view) {
+    if (this.after) return fieldLateRender(this, ctx, view);
     this.track.draw(ctx, view, this.camera);
     const tr = this.track;
     const pxPerM = this.camera.ppm * tr.figureScale(1);

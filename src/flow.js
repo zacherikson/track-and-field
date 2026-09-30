@@ -46,12 +46,13 @@ export const flow = {
     if (stats?.run) stats = { ...stats, run: { ...stats.run, mark: roundMark(ev, stats.run.mark) } };
     // A live event played to the end: going on from here isn't leaving early (a tournament's is at the end).
     if (stats?.live && !tournament.active && currentLive()) currentLive().done = true;
-    // Where the late hits happen: where this event finished (brawl/venue.js).
-    const venue = game.scene?.brawlVenue?.() ?? null;
+    // The event carries on under the results with its late hits (brawl/aftermath.js).
+    const backdrop = game.scene?.lateRender ? game.scene : null;
+    if (backdrop) backdrop.handedOver = true; // it stays open until the results scene leaves it
     game.setScene(
       tournament.active
-        ? new StandingsScene(ev, results.filter((r) => !r.ghost), stats, venue) // a ghost is never scored
-        : new ResultScene(ev, results, stats, venue),
+        ? new StandingsScene(ev, results.filter((r) => !r.ghost), stats, backdrop) // a ghost is never scored
+        : new ResultScene(ev, results, stats, backdrop),
     );
   },
   leaderboard: (game, board) => {

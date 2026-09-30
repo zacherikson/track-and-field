@@ -35,9 +35,14 @@ Open http://localhost:8000. To test on a phone on the same Wi-Fi, open `http://<
 
 Once an event is over, everyone who took part hangs around where it finished
 (past the finish line, round the pit) until the next one, and you can go and
-beat them up, NFL Blitz style. The results (or tournament standings) sit
-small in the top left, with just Race again (or Next) and Menu (or Quit) in the
-top right, and the fight controls work from the start.
+beat them up, NFL Blitz style. There's no cut: once you've crossed the line and
+pulled up (or got to your feet after your last attempt), the fight controls
+appear right where you are, and each rival joins in as they come to a stop, so
+finishing first means getting the first hits in. After a field event the
+rivals walk over to you. The results (or tournament standings) come up in the
+middle of the screen over it all, with Race again (or Next) and Menu (or Quit)
+under them. Everyone walks about normally until a fight starts; then the
+fists come up.
 Left thumb: drag to walk. Right thumb: PUNCH, KICK, SLAM (grab, hoist overhead,
 slam down), and hold 😀 then drag to an emote on the wheel. Three punches in a
 row knock someone down. Hits leave bruises, black eyes and a bit of blood,
@@ -215,7 +220,8 @@ src/events/
 src/tournament/       tournament mode: event order and running totals, standings/champion screen
 src/brawl/            late hits after each event: the fight (brawl.js, fighter.js, poses.js), wounds,
                       controls with the emote wheel, the rivals' brains (bots.js), live sync
-                      (liveBrawl.js), the event's venue (venue.js) and the results screens' host (aftermath.js)
+                      (liveBrawl.js), the event's venue (venue.js), the late hits run inside the event
+                      (aftermath.js, fieldLateHits.js) and the results panel over them (aftermath.js)
 src/events/scoring.js decathlon points (official World Athletics tables)
 src/scenes/lineupScene.js     your lineup: who does each event, and your solo athlete
 src/render/track.js   stadium with one-point perspective (camera 1m ahead of the player), parallax crowd

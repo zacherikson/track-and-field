@@ -4,6 +4,24 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Late hits: straight from the finish
+- No jump into the late hits any more: they start inside the event, the moment
+  you've pulled up after the line (or got to your feet after your last
+  attempt), with you and the camera exactly where you are. Each rival joins as
+  they come to a stop, so the first one home gets the first hits in. After a
+  field event the rivals walk over from off screen.
+- The fight controls only appear once you've stopped.
+- The results (or tournament standings) come up big in the middle, over the
+  event, on a light see-through panel with Race again (or Next) and Menu (or
+  Quit) under it. The event carries on under them: stragglers still pulling up.
+- A field event's last mark no longer waits for a tap: it shows for about 2 s,
+  then the results come up (the javelin goes back to you at the line first).
+- Everyone stands and walks normally, hands down, until a fight starts: a move
+  or a hit puts the fists up for 5 s after the last one, and an angry rival
+  keeps them up.
+- Live: another player turns up when their phone starts its late hits, and
+  walks over from where they were in the race.
+
 ## Late hits: rivals wait for you to start it
 - The computer rivals no longer brawl from the start, with you or each other:
   they stand about and stroll. Hit one, or emote within about 2 m of one, and

@@ -13,7 +13,8 @@ import { ORANGE, drawPad, drawX } from '../render/pads.js';
 import { drawDrop, drawHitRing } from '../render/targetPads.js';
 import { getDifficulty } from '../core/storage.js';
 import { flow } from '../flow.js';
-import { Venue, fieldSpot, FIELD_DEPTH } from '../brawl/venue.js';
+import { Venue, FIELD_DEPTH } from '../brawl/venue.js';
+import { startFieldLateHits, fieldLateStep, fieldLateRender } from '../brawl/fieldLateHits.js';
 import { FieldGhost } from '../online/fieldGhost.js';
 import { LiveField } from '../online/liveField.js';
 
@@ -45,6 +46,8 @@ const FIG_H = CONFIG.figure.height;
  * States: 'ready' → 'run' (zoneT, holdT inside it) → 'throw' → 'flight' →
  * 'landed' → 'mark'; or 'run' → 'overrun' (FOUL) → 'mark'.
  */
+const FINAL_MARK = 2.5; // s your last throw's mark stays up before it's back to you and the late hits
+
 export class Javelin {
   constructor(ev) {
     this.ev = ev;
@@ -76,8 +79,16 @@ export class Javelin {
   }
 
   exit() {
+    if (this.handedOver) return; // still running under the results (leave())
     this.liveField?.close();
+    this.after?.exit();
     this.game.input.wantReleases = false;
+  }
+
+  /** The results screen is done with the throw underneath it. */
+  leave() {
+    this.handedOver = false;
+    this.exit();
   }
 
   onResize(view) {
@@ -138,6 +149,7 @@ export class Javelin {
 
   update(dt, t) {
     if (this.liveField?.update(dt, t)) return; // live: waiting for a round, or for the others
+    if (this.after) return fieldLateStep(this, dt, t); // after your last throw
     const end = t + dt;
     for (const e of this.game.input.consume(end)) {
       if (e.type === 'down' && this.hitExit(e)) return flow.menu(this.game);
@@ -251,6 +263,8 @@ export class Javelin {
       if (this.flightAge(end) >= this.shot.T) this.land(end);
     } else if (this.state === 'landed') {
       if (end - this.stateT > cfg.landHold) this.showMark();
+    } else if (this.state === 'mark' && this.flightT != null && this.round >= cfg.rounds && end - this.stateT > FINAL_MARK) {
+      return this.backToThrower();
     }
     for (const p of this.sparks) {
       p.x += p.vx * dt;
@@ -304,6 +318,15 @@ export class Javelin {
       rv.jumps.push(rivalThrow(level, this.cfg, () => this.rivalRunUp(rv)));
     }
     this.setState('mark');
+    // A last throw run through the line: the late hits start right here (brawl/fieldLateHits.js).
+    if (this.round >= this.cfg.rounds && this.flightT == null) startFieldLateHits(this, this.runner.x, this.poseFor());
+  }
+
+  /** After your last throw's mark: back to you at the line, and the late hits (the results come up over them). */
+  backToThrower() {
+    this.flightT = null;
+    startFieldLateHits(this, this.runner.x, this.poseFor());
+    if (!this.liveField) this.finish();
   }
 
   /** A rival's speed arriving at the line (same physics as yours). */
@@ -325,7 +348,7 @@ export class Javelin {
   next() {
     if (this.liveField) return this.liveField.next();
     if (this.round < this.cfg.rounds) this.startRound();
-    else this.finish();
+    else this.backToThrower();
   }
 
   best(a) {
@@ -352,16 +375,33 @@ export class Javelin {
     });
   }
 
-  /** The late hits: on the grass past the foul line (brawl/venue.js). */
-  brawlVenue() {
+  // ---------------------------------------------------------------- late hits
+
+  /** Round the foul line (brawl/venue.js). */
+  lateVenue() {
     return new Venue({
       track: this.track,
-      draw: (ctx, view, camera) => this.track.draw(ctx, view, camera),
-      x: [-3, 16],
+      camera: this.camera,
+      draw: (ctx, view, camera) => {
+        this.track.draw(ctx, view, camera);
+        this.drawReferee(ctx, view, camera.ppm * this.track.figureScale(1));
+      },
+      x: [-14, 16],
       depth: FIELD_DEPTH,
       zPerM: 1 / FIELD_DEPTH,
-      spot: fieldSpot(6, FIELD_DEPTH),
     });
+  }
+
+  lateUpdate(dt, t) {
+    this.after.update(dt, t);
+  }
+
+  lateRender(ctx, view) {
+    this.after.render(ctx, view);
+  }
+
+  markLabel() {
+    return this.mark.foul ? 'FOUL' : `${this.mark.mark.toFixed(2)} m`;
   }
 
   hitExit(e) {
@@ -420,6 +460,7 @@ export class Javelin {
   }
 
   render(ctx, view) {
+    if (this.after) return fieldLateRender(this, ctx, view);
     // The flight shot carries on to the landing: the javelin sticks in the grass and the mark line appears.
     if (this.state === 'flight' || this.state === 'landed' || (this.state === 'mark' && this.flightT != null)) return this.renderFlight(ctx, view);
     const tr = this.track;

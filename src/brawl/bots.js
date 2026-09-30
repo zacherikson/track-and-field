@@ -23,7 +23,7 @@ export class BotBrain {
     this.floored = false; // they've just put you down (to gloat once)
     this.nextSwing = 0;
     this.nextStroll = rand(1, 4);
-    this.wander = null; // { x, d } to stroll to
+    this.wander = null; // { x, d, pace?, facing? } to stroll to (and which way to face there)
     this.tauntSeq = -1; // your emote they've already reacted to
   }
 
@@ -39,7 +39,12 @@ export class BotBrain {
     this.floored = true;
   }
 
-  /** One step: steer the fighter and maybe start a move. `spare` = true to leave you alone (you're reading the results). */
+  /** Walk over to (x, d) and face that way, e.g. coming over after a field event. */
+  goTo(x, d, facing) {
+    this.wander = { x, d, pace: 0.8, facing };
+  }
+
+  /** One step: steer the fighter and maybe start a move. `spare` = true to leave you alone. */
   update(dt, t, brawl, spare) {
     const f = this.f;
     const me = brawl.me;
@@ -51,6 +56,7 @@ export class BotBrain {
       this.tauntSeq = me.seq;
       this.provoked(me, t);
     }
+    if (this.angry) f.guardUntil = Math.max(f.guardUntil, t + 1.5); // fists up while they're after you
     if (this.angry && !spare) return this.fight(t, brawl, me);
     this.stroll(t, brawl);
   }
@@ -85,8 +91,10 @@ export class BotBrain {
     if (this.wander) {
       const dx = this.wander.x - f.x;
       const dd = this.wander.d - f.d;
-      if (Math.hypot(dx, dd) < 0.3) this.wander = null;
-      else this.steer(dx, dd, 0.45);
+      if (Math.hypot(dx, dd) < 0.3) {
+        if (this.wander.facing) f.facing = this.wander.facing;
+        this.wander = null;
+      } else this.steer(dx, dd, this.wander.pace ?? 0.45);
       return;
     }
     if (t < this.nextStroll) return;

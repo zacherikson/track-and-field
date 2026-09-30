@@ -47,7 +47,7 @@ export class Brawl {
     return this.fighters.find((f) => f.id === id) ?? null;
   }
 
-  /** Adds an athlete (a live player arriving late). */
+  /** Adds an athlete (someone done with the event, or a live player arriving). */
   add(p) {
     const f = new Fighter(p);
     this.fighters.push(f);
@@ -209,6 +209,7 @@ export class Brawl {
     this.t = t;
     const v = this.venue;
     for (const f of this.fighters) {
+      f.updateGuard(dt, t);
       this.advance(f, t);
       if (f.remote) this.follow(f, dt);
       else this.move(f, dt, t);
@@ -217,7 +218,9 @@ export class Brawl {
     this.separate();
     for (const f of this.fighters) {
       if (f.holder) continue;
-      f.x = clamp(f.x, v.xMin, v.xMax);
+      // Someone walking over from off screen is let in from outside the ground.
+      if (f.entering && f.x > v.xMin && f.x < v.xMax) f.entering = false;
+      if (!f.entering) f.x = clamp(f.x, v.xMin, v.xMax);
       f.d = clamp(f.d, v.dMin, v.dMax);
     }
     // Blood: flies, falls, and stays where it lands.
@@ -290,6 +293,27 @@ export class Brawl {
   /** Another player: glide to where their phone last said they were. */
   follow(f, dt) {
     if (!f.net || f.holder) return;
+    if (f.arriving) {
+      // Just turned up from where they were here: walk over to where their phone has them.
+      const dx = f.net.x - f.x;
+      const dd = f.net.d - f.d;
+      const m = Math.hypot(dx, dd);
+      const step = WALK.x * 0.8 * dt;
+      if (m <= step || !f.free) {
+        f.arriving = false;
+        f.mx = f.md = 0;
+        if (f.state === 'walk') f.state = 'idle';
+      } else {
+        f.x += (dx / m) * step;
+        f.d += (dd / m) * step;
+        f.mx = dx / m;
+        f.md = dd / m;
+        f.state = 'walk';
+        if (Math.abs(dx) > 0.05) f.facing = Math.sign(dx);
+        f.phase += (WALK.x * 0.8 / 1.3) * Math.PI * dt;
+        return;
+      }
+    }
     const k = 1 - Math.exp(-12 * dt);
     f.x += (f.net.x - f.x) * k;
     f.d += (f.net.d - f.d) * k;
@@ -341,7 +365,12 @@ export class Brawl {
 
   // ---------------------------------------------------------------- drawing
 
-  render(ctx, view) {
+  /**
+   * Draws it all. `extras` are other things standing in the venue, drawn in
+   * depth order with the athletes: [{ d, draw(ctx) }] (the event's athletes
+   * who are still finishing).
+   */
+  render(ctx, view, extras = []) {
     const v = this.venue;
     const t = this.t;
     ctx.save();
@@ -355,8 +384,12 @@ export class Brawl {
       ctx.fill();
     }
     // Far to near; someone held up is drawn with whoever's holding them.
-    const order = this.fighters.filter((f) => !f.holder).sort((a, b) => b.d - a.d);
+    const order = [...this.fighters.filter((f) => !f.holder), ...extras].sort((a, b) => b.d - a.d);
     for (const f of order) {
+      if (f.draw) {
+        f.draw(ctx);
+        continue;
+      }
       this.drawFighter(ctx, view, f, t);
       if (f.grabbed?.holder === f) this.drawHeld(ctx, view, f.grabbed, f, t);
     }
@@ -420,7 +453,9 @@ export class Brawl {
     }
     if (!f.isMe) {
       const top = p.y - p.H * (f.floored || f.state === 'getup' ? 0.35 : 1.05);
+      ctx.globalAlpha = Math.min(1, (t - (f.bornT ?? -1)) / 0.6); // name tags fade in as people join
       text(ctx, f.name, p.x, top - 8, { size: 13, color: f.remote ? '#ffb400' : 'rgba(255,255,255,0.85)', shadow: true });
+      ctx.globalAlpha = 1;
     }
   }
 

@@ -4,6 +4,11 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Leaderboard without the name button
+- The leaderboard screen no longer has a button with your name: your name is
+  changed on the Profile screen only (a change still renames your entries on
+  every board).
+
 ## Sign in with Google from the home screen
 - Sign in with Google now goes to Google's page and comes back, instead of a
   popup, which hung on "Signing in…" when the game ran from an iPhone's home
@@ -22,7 +27,7 @@ Gameplay and tuning changes, newest first. When you change a number in
   with the old guest ID.
 - Only signed-in players go on the online leaderboards. Guests still play
   everything (live play too) and keep their bests on the phone; signing in
-  posts them. The leaderboard's name button reads "Sign in to join" for guests.
+  posts them.
   Entries posted by guests before this stay until you delete them in the
   console (or their players sign in, which makes them theirs).
 - Sign out turns the phone back into a new guest (new made-up name, bests

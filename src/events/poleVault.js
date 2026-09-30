@@ -13,7 +13,8 @@ import { ORANGE, drawPad, drawX } from '../render/pads.js';
 import { drawDrop, drawHitRing } from '../render/targetPads.js';
 import { getDifficulty } from '../core/storage.js';
 import { flow } from '../flow.js';
-import { Venue, fieldSpot, FIELD_DEPTH } from '../brawl/venue.js';
+import { Venue, FIELD_DEPTH } from '../brawl/venue.js';
+import { startFieldLateHits, fieldLateStep, fieldLateRender } from '../brawl/fieldLateHits.js';
 import { FieldGhost } from '../online/fieldGhost.js';
 import { LiveField } from '../online/liveField.js';
 
@@ -116,8 +117,16 @@ export class PoleVault {
   }
 
   exit() {
+    if (this.handedOver) return; // still running under the results (leave())
     this.liveField?.close();
+    this.after?.exit();
     this.game.input.wantReleases = false;
+  }
+
+  /** The results screen is done with the vault underneath it. */
+  leave() {
+    this.handedOver = false;
+    this.exit();
   }
 
   onResize(view) {
@@ -178,6 +187,7 @@ export class PoleVault {
 
   update(dt, t) {
     if (this.liveField?.update(dt, t)) return; // live: waiting for a round, or for the others
+    if (this.after) return fieldLateStep(this, dt, t); // after your last vault
     const end = t + dt;
     for (const e of this.game.input.consume(end)) {
       if (e.type === 'down' && this.hitExit(e)) return flow.menu(this.game);
@@ -440,6 +450,8 @@ export class PoleVault {
     const best = this.best(this.player);
     this.track.bar = best;
     this.setState('mark');
+    // Your last vault: on your feet (on the mat, facing back the way you came), the late hits start (brawl/fieldLateHits.js).
+    if (this.round >= this.cfg.rounds) startFieldLateHits(this, this.hip.x, this.poseFor(), this.fly ? -1 : 1);
   }
 
   /** A rival's speed at the plant (same physics as yours). */
@@ -488,25 +500,43 @@ export class PoleVault {
     });
   }
 
-  /** The late hits: just past the landing mat, and up on it (brawl/venue.js). */
-  brawlVenue() {
+  // ---------------------------------------------------------------- late hits
+
+  /** Round the landing mat, and up on it (brawl/venue.js). */
+  lateVenue() {
     const tr = this.track;
     const m = this.cfg.mat;
     return new Venue({
       track: tr,
+      camera: this.camera,
       draw: (ctx, view, camera) => {
         tr.draw(ctx, view, camera);
         tr.drawMat(ctx, view, camera);
         tr.drawUprightsBack(ctx, view, camera);
       },
       drawFront: (ctx, view, camera) => tr.drawUprightsFront(ctx, view, camera),
-      x: [-3, 17],
+      x: [-12, 17],
       depth: FIELD_DEPTH,
       zPerM: 1 / FIELD_DEPTH,
       // The mat stands `height` off the ground over its middle stretch of the infield (as drawMat).
       floor: (x, d) => (x > m.from && x < m.to && d > 0.12 * FIELD_DEPTH && d < 0.88 * FIELD_DEPTH ? m.height : 0),
-      spot: fieldSpot(m.to + 3.5, FIELD_DEPTH),
     });
+  }
+
+  lateUpdate(dt, t) {
+    this.after.update(dt, t);
+    this.camY = damp(this.camY, 0, 6, dt);
+  }
+
+  lateRender(ctx, view) {
+    ctx.save();
+    ctx.translate(0, this.camY);
+    this.after.render(ctx, view);
+    ctx.restore();
+  }
+
+  markLabel() {
+    return this.mark.fail ? 'NO HEIGHT' : `${this.mark.mark.toFixed(2)} m`;
   }
 
   hitExit(e) {
@@ -575,6 +605,7 @@ export class PoleVault {
   }
 
   render(ctx, view) {
+    if (this.after) return fieldLateRender(this, ctx, view);
     const tr = this.track;
     const cam = this.camera;
     const pxPerM = cam.ppm * tr.figureScale(1);

@@ -51,6 +51,24 @@ export function stance(phase, amp, t) {
   return lerpPose(base, { ...walk, lean: 0.12, arms: GUARD_ARMS }, clamp(amp, 0, 1));
 }
 
+/**
+ * Standing or walking normally, hands down: how everyone gets about until a
+ * fight starts (fighter.js blends to the guard). `phase` and `amp` as stance().
+ */
+export function relaxed(phase, amp, t) {
+  const still = { ...POSES.stand, hipY: POSES.stand.hipY + Math.sin(t * 2.2) * 0.005 };
+  if (amp < 0.02) return still;
+  const e = 0.22;
+  const w = runPose(phase, e, 0);
+  // runPose's arms, swinging the same way but hanging loose instead of bent at the elbow.
+  const base = -w.lean + 0.25 - e * 0.2;
+  const arms = w.arms.map((a) => {
+    const upper = 0.35 * ((a.upper - base) / (e * 1.1));
+    return { upper, fore: upper + 0.25 };
+  });
+  return lerpPose(still, { ...w, lean: 0.05, arms }, clamp(amp, 0, 1));
+}
+
 /** A straight punch with arm `arm` (0 near, 1 far): wind up, snap out, back to guard. */
 export const PUNCH = { time: 0.34, hitFrom: 0.07, hitTo: 0.17, reach: 0.95 };
 export function punch(u, arm = 0) {

@@ -1,6 +1,7 @@
-import { clamp } from '../core/math.js';
+import { clamp, damp } from '../core/math.js';
 import { heightOf } from '../athletes/roster.js';
-import { PUNCH, KICK, SLAM, HURT, KNOCK, EMOTE_TIME, stance, punch, kick, slam, hurt, fly, getup, held, emote, FIGHT } from './poses.js';
+import { lerpPose } from '../athletes/stickFigure.js';
+import { PUNCH, KICK, SLAM, HURT, KNOCK, EMOTE_TIME, stance, relaxed, punch, kick, slam, hurt, fly, getup, held, emote, FIGHT } from './poses.js';
 
 /**
  * One athlete in the late hits (brawl.js): where they stand, which way they
@@ -19,9 +20,15 @@ import { PUNCH, KICK, SLAM, HURT, KNOCK, EMOTE_TIME, stance, punch, kick, slam, 
  *
  * `seq` counts state changes, so a live phone can tell a new punch from the
  * same one (liveBrawl.js).
+ *
+ * Everyone stands and walks normally until they're in a fight: throwing a
+ * move or taking a hit puts their guard up (fists by the chin) for a while.
  */
 export const WALK = { x: 3.4, d: 2.4 }; // m/s at full stick
 export const INVULN = 0.6; // s after getting up that you can't be hit again
+const GUARD_HOLD = 5; // s the guard stays up after your last move or the last hit you took
+const FIGHTING = ['punch', 'kick', 'slam', 'hurt', 'fly', 'down', 'getup', 'held'];
+const BLEND = 0.08; // s to ease from one move's pose into the next
 
 export class Fighter {
   constructor({ id, scarKey, name, colors, x, d, facing = 1, isMe = false, remote = false, wounds }) {
@@ -44,6 +51,20 @@ export class Fighter {
     this.punches = []; // times of punches taken lately (three in a row knock you down)
     this.dropSeed = 0; // held: the wound you get when you land
     this.net = null; // remote: { x, d } they last said they were at
+    this.guard = 0; // 0 hands down .. 1 fists up
+    this.guardUntil = 0; // s: in a fight until then
+    this.shown = null; // the pose last drawn
+    this.from = null; // { pose, t, dur }: easing out of this pose (a new move, or how they were standing when they came in)
+  }
+
+  /** Eases out of `pose` (as they were last drawn) over `dur` s from `t`. */
+  easeFrom(pose, t, dur) {
+    if (pose) this.from = { pose, t, dur };
+  }
+
+  /** The guard goes up in a fight and comes down a while after it. */
+  updateGuard(dt, t) {
+    this.guard = damp(this.guard, t < this.guardUntil ? 1 : 0, 6, dt);
   }
 
   /** Free to move, attack or emote. */
@@ -62,6 +83,8 @@ export class Fighter {
   }
 
   set(state, t, variant = 0) {
+    if (FIGHTING.includes(state)) this.guardUntil = Math.max(this.guardUntil, t + GUARD_HOLD);
+    this.easeFrom(this.shown, t, BLEND);
     this.state = state;
     this.st = t;
     this.variant = variant;
@@ -92,7 +115,20 @@ export class Fighter {
     return 4 * KNOCK.height * k * (1 - k);
   }
 
+  /** The pose to draw at `t` (eased out of the last one after a change). */
   pose(t) {
+    let p = this.rawPose(t);
+    const f = this.from;
+    if (f) {
+      const k = (t - f.t) / f.dur;
+      if (k >= 1) this.from = null;
+      else p = lerpPose(f.pose, p, k * k * (3 - 2 * k));
+    }
+    this.shown = p;
+    return p;
+  }
+
+  rawPose(t) {
     const u = t - this.st;
     switch (this.state) {
       case 'punch': return punch(u, this.variant);
@@ -104,7 +140,12 @@ export class Fighter {
       case 'getup': return getup(u);
       case 'held': return held(t);
       case 'emote': return emote(this.variant, u);
-      default: return stance(this.phase, this.state === 'walk' ? Math.min(1, Math.hypot(this.mx, this.md)) : 0, t);
+      default: {
+        const amp = this.state === 'walk' ? Math.min(1, Math.hypot(this.mx, this.md)) : 0;
+        if (this.guard > 0.99) return stance(this.phase, amp, t);
+        const easy = relaxed(this.phase, amp, t);
+        return this.guard < 0.01 ? easy : lerpPose(easy, stance(this.phase, amp, t), this.guard);
+      }
     }
   }
 }

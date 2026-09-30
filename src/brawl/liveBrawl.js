@@ -12,8 +12,9 @@ import { serverNow } from '../online/live.js';
  *   h/{n}    = { k, to, t, s, f, at }: your n-th hit: on whom, what (punch,
  *              kick, slam), the wound seed, which way you faced, when
  *
- * Positions go out about ten times a second; a new move or a hit at once. The
- * others glide to where you say (brawl.js follow) and play your moves as they
+ * Positions go out about ten times a second; a new move or a hit at once.
+ * Someone turns up on the others' screens when their first b arrives (onJoin:
+ * they've come to a stop after the event on their phone). The others glide to where you say (brawl.js follow) and play your moves as they
  * hear of them. A hit is applied on every phone when it arrives: the one hit
  * takes the knockback, everyone sees the POW! and the same wound.
  */
@@ -22,13 +23,14 @@ const KEEP_HITS = 12; // hits kept in your doc (older ones are deleted as you go
 const STALE = 3000; // ms: hits older than this when they arrive are ignored
 
 export class LiveBrawl {
-  constructor(brawl, session, key) {
+  constructor(brawl, session, key, onJoin = null) {
     this.brawl = brawl;
     this.session = session;
     this.key = key;
     this.n = 0;
     this.seen = new Set();
     this.clock = 0;
+    this.onJoin = onJoin; // (uid, b) -> the Fighter for a player turning up, or null
     brawl.onHit = (a, v, kind, seed) => a.isMe && this.sendHit(a, v, kind, seed);
     brawl.onChange = (f) => f.state !== 'walk' && f.state !== 'idle' && this.sendState(true);
     session.send({ h: null }, true);
@@ -46,7 +48,7 @@ export class LiveBrawl {
 
   sendState(now) {
     const me = this.brawl.me;
-    if (!me) return;
+    if (!me || this.closed) return;
     const r = (v) => Math.round(v * 100) / 100;
     this.session.send({
       b: { k: this.key, x: r(me.x), d: r(me.d), f: me.facing, s: me.state, n: me.seq, e: me.variant ?? 0, h: me.holder?.id ?? '' },
@@ -62,8 +64,14 @@ export class LiveBrawl {
 
   onDoc(uid, doc) {
     const brawl = this.brawl;
-    const f = brawl.byId(uid);
-    if (!f) return;
+    let f = brawl.byId(uid);
+    if (!f) {
+      // Someone whose phone has just started these late hits: they're done with the event too.
+      const b = doc.b;
+      if (doc.left || !b || b.k !== this.key || !Number.isFinite(b.x) || !Number.isFinite(b.d) || uid === this.session.uid) return;
+      f = this.onJoin?.(uid, b);
+      if (!f) return;
+    }
     if (doc.left || (doc.b === undefined && f.net)) {
       // Gone (or on to the next event): off the field.
       if (doc.left || !doc.b) brawl.remove(f);
@@ -116,6 +124,7 @@ export class LiveBrawl {
 
   /** Leaving the brawl: off the others' screens. */
   close() {
+    this.closed = true;
     this.stop?.();
     this.session.send({ b: null }, true);
   }

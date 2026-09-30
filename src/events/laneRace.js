@@ -16,6 +16,7 @@ import { serverNow } from '../online/live.js';
 import { LiveRun } from '../online/liveRun.js';
 import { LiveTrace, TraceStream } from '../online/liveTrace.js';
 import { Venue } from '../brawl/venue.js';
+import { Aftermath } from '../brawl/aftermath.js';
 
 
 /**
@@ -24,6 +25,11 @@ import { Venue } from '../brawl/venue.js';
  * STATE MACHINE (inner, per race):
  *
  *   waiting --(tap)--> ready --(timer)--> set --(random timer)--> race --(player crosses)--> finished --(timer)--> results
+ *
+ * LATE HITS: once you've crossed the line and pulled up, the late hits start
+ * right where you stopped (brawl/aftermath.js), and each rival joins as they
+ * come to a stop. The results come up over the race, which carries on under
+ * them (lateUpdate / lateRender) until you leave.
  *
  * `waiting`: athletes stand at the line while a start button and the player's
  * lane flash together; a tap (anywhere) starts READY / GET SET / GO.
@@ -161,7 +167,15 @@ export class LaneRace {
   }
 
   exit() {
+    if (this.handedOver) return; // still running under the results (leave())
     this.unlisten?.(); // leaving the room is up to flow.js
+    this.after?.exit();
+  }
+
+  /** The results screen is done with the race underneath it. */
+  leave() {
+    this.handedOver = false;
+    this.exit();
   }
 
   /**
@@ -275,6 +289,7 @@ export class LaneRace {
     for (const e of this.game.input.consume(end)) {
       if (e.type === 'down' && this.hitExit(e)) return flow.menu(this.game);
       if (e.type === 'key' && e.code === 'Escape') return flow.menu(this.game);
+      if (this.after?.handle(e)) continue; // stopped after the line: your late hits controls
       if (this.state === 'waiting') {
         // Any tap or key starts READY / GET SET / GO (a live race starts itself).
         if (!this.live && (e.type === 'down' || this.mapInput(e) != null || e.code === 'Enter')) this.startCountdown(e.t);
@@ -299,19 +314,94 @@ export class LaneRace {
       this.stepN++;
       if (this.live) this.sendLive();
     }
+    if (this.state === 'finished') this.lateHits(dt, t);
 
     // 4. State timers.
     if (this.state === 'race' && end - this.goT > this.cfg.maxRaceTime) {
       this.player.status = 'dnf';
+      this.player.runner.finished = true; // pull up where you are
       this.setState('finished', t);
     }
-    // Live: wait for the others to finish (or give up on them).
+    // Live: wait for the others to finish (or give up on them). Everyone else crosses the line in the race itself.
     const waitLive = this.athletes.some((a) => a.live && a.mark == null && !a.live.left) && end - this.stateT < this.cfg.finishHold + LIVE_WAIT;
-    if (this.state === 'finished' && end - this.stateT >= this.cfg.finishHold && !waitLive) return this.finish();
+    const waitRivals = this.athletes.some((a) => a.ai && a.mark == null) && end - this.goT < this.cfg.maxRaceTime + RIVAL_WAIT;
+    if (this.state === 'finished' && end - this.stateT >= this.cfg.finishHold && !waitLive && !waitRivals) return this.finish();
 
     this.updateControls?.(dt);
     const pr = this.player.runner;
-    this.camera.follow(pr.x, pr.v, dt);
+    if (!this.after) this.camera.follow(pr.x, pr.v, dt); // then the late hits keep it on you
+  }
+
+  // ---------------------------------------------------------------- late hits
+
+  /** After the line: start the late hits once you've pulled up, and let each rival in as they stop. */
+  lateHits(dt, t) {
+    if (!this.after) {
+      const r = this.player.runner;
+      if (r.v > 0 || r.mode === 'lean') return;
+      this.startLateHits();
+    }
+    for (const a of this.athletes) {
+      if (a.isPlayer || a.ai == null || a.mark == null || a.runner.v > 0 || a.runner.mode === 'lean') continue;
+      if (!this.after.has(a.name)) this.after.join(this.fighterOf(a), this.poseFor(a));
+    }
+    this.after.update(dt, t);
+  }
+
+  /** You, where you stopped, and nobody else yet (brawl/aftermath.js). */
+  startLateHits() {
+    const D = this.cfg.distance;
+    const W = LANE_WIDTH;
+    const x = this.player.runner.x;
+    const venue = new Venue({
+      track: this.track,
+      camera: this.camera,
+      draw: (ctx, view, camera) => this.track.draw(ctx, view, camera),
+      x: [Math.min(D - 6, x - 4), Math.max(D + 26, x + 4)],
+      depth: this.cfg.lanes * W,
+      zPerM: 1 / W,
+    });
+    this.after = new Aftermath(this.game, venue, this.fighterOf(this.player), {
+      live: this.live,
+      key: this.stage,
+      pose: this.poseFor(this.player),
+      // Another player turning up: from where they are in the race here, if they're in it.
+      lookup: (uid) => {
+        const a = this.athletes.find((b) => b.uid === uid);
+        return a && { ...this.fighterOf(a), pose: this.poseFor(a), shown: !a.live?.left };
+      },
+    });
+  }
+
+  /** An athlete as the late hits take them: exactly where the race draws them. */
+  fighterOf(a) {
+    const r = a.runner;
+    return { id: a.uid ?? a.name, name: a.name, colors: a.colors, x: r.x + r.reach * 0.5 + (a.live?.dx ?? 0), d: (a.lane - 0.5) * LANE_WIDTH, facing: 1 };
+  }
+
+  /** One step with the results up over the race: the stragglers pull up and join in. */
+  lateUpdate(dt, t) {
+    if (this.state === 'race' || this.state === 'finished') {
+      this.simulate(dt, t);
+      this.stepN++;
+      if (this.live) this.sendLive();
+    }
+    this.lateHits(dt, t);
+    if (!this.after) this.camera.follow(this.player.runner.x, this.player.runner.v, dt);
+  }
+
+  /** The race under the results: the track and everyone on it, no race HUD. */
+  lateRender(ctx, view) {
+    if (!this.after) return this.drawField(ctx, view);
+    this.after.render(ctx, view, this.stragglers(view));
+  }
+
+  /** Everyone the late hits haven't taken in yet (still pulling up, a ghost), to draw in among them. */
+  stragglers(view) {
+    const H = CONFIG.figure.height * this.camera.ppm;
+    return this.athletes
+      .filter((a) => !a.isPlayer && !this.after.has(a.uid ?? a.name) && !(a.live && a.live.left))
+      .map((a) => ({ d: (a.lane - 0.5) * LANE_WIDTH, draw: (ctx) => this.drawAthlete(ctx, view, a, H) }));
   }
 
   /** One physics step for one athlete, shared by live play and the fast-forward in finish(). */
@@ -458,7 +548,7 @@ export class LaneRace {
     }
   }
 
-  /** Fast-forward any rivals still running, then show results. */
+  /** Show the results over the race (and, if a rival somehow still hasn't finished, fast-forward them first). */
   finish() {
     const step = CONFIG.loop.fixedStep;
     let t = this.game.time;
@@ -495,26 +585,6 @@ export class LaneRace {
     flow.results(this.game, this.ev, results, stats);
   }
 
-  /** The late hits: just past the finish line, everyone in their lane where they pulled up (brawl/venue.js). */
-  brawlVenue() {
-    const D = this.cfg.distance;
-    const W = LANE_WIDTH;
-    const find = (row) => this.athletes.find((a) => (row.isPlayer ? a.isPlayer : row.key ? a.uid === row.key : a.name === row.name && !a.isPlayer));
-    return new Venue({
-      track: this.track,
-      draw: (ctx, view, camera) => this.track.draw(ctx, view, camera),
-      x: [D - 3, D + 18],
-      depth: this.cfg.lanes * W,
-      zPerM: 1 / W,
-      spot: (row, k) => {
-        const a = find(row);
-        const x = clamp((a?.runner.x ?? D + 4) + (a?.runner.reach ?? 0) * 0.5 + (k % 3) * 1.1, D + 1.5, D + 10);
-        const lane = a?.lane ?? Math.min(this.cfg.lanes, k + 1);
-        return { x, d: (lane - 0.5) * W, facing: row.isPlayer ? 1 : x > this.player.runner.x ? -1 : 1 };
-      },
-    });
-  }
-
   hitExit(e) {
     const b = this.exitBtn;
     return e.x >= b.x && e.x <= b.x + b.w && e.y >= b.y && e.y <= b.y + b.h;
@@ -523,46 +593,55 @@ export class LaneRace {
   // ---------------------------------------------------------------- rendering
 
   render(ctx, view) {
-    this.track.draw(ctx, view, this.camera);
     const blinkOn = this.state === 'waiting' && !this.live && this.startBlinkOn(); // a live race starts itself
-    if (blinkOn) this.track.highlightLane(ctx, view, this.player.lane, 0.32);
-    // Back-to-front so nearer lanes overlap further ones.
-    const H = CONFIG.figure.height * this.camera.ppm;
-    for (let i = this.athletes.length - 1; i >= 0; i--) {
-      const a = this.athletes[i];
-      if (!a.overlay) this.drawLaneProps?.(ctx, view, a); // e.g. hurdles, under the athlete in the same lane
-      const p = this.track.toScreen(this.camera, view, a.runner.x + a.runner.reach * 0.5 + this.startNudge(a) + (a.live?.dx ?? 0), a.lane);
-      const tall = heightOf(a.colors);
-      if (p.x < -80 || p.x > view.w + 80) continue;
-      const scale = this.track.figureScale(a.lane);
-      // Events can lift an athlete off the track (a short one bouncing over a hurdle); the shadow stays down.
-      const liftM = a.trace || a.frame ? (a.frame?.e ?? 0) : this.liftFor?.(a) ?? 0;
-      const lift = liftM * this.camera.ppm * scale;
-      const pose = this.poseFor(a);
-      if (a.ghost || a.trace) {
-        // See-through, with a name tag, so it never reads as a real rival.
-        ctx.save();
-        ctx.globalAlpha = 0.45;
-        drawFigure(ctx, p.x, p.y + 4 - lift, H * scale * tall, pose, a.colors, p.y + 4);
-        ctx.restore();
-        text(ctx, a.name, p.x, p.y - H * scale * tall - 6 - (a.overlay ? 18 : 0), { size: 14, color: 'rgba(255,255,255,0.8)', shadow: true });
-      } else {
-        drawFigure(ctx, p.x, p.y + 4 - lift, H * scale * tall, pose, a.colors, p.y + 4);
-        // Live: the other players are real rivals, named.
-        if (a.live) text(ctx, a.live.left ? `${a.name} (left)` : a.name, p.x, p.y - H * scale * tall - 6, { size: 14, color: '#ffb400', shadow: true });
-      }
-      // Keep the player's frames for a frame-by-frame ghost (and a live race).
-      if (a.isPlayer && this.tracer && (this.state === 'race' || this.state === 'finished')) {
-        this.tracer.sample(this.game.time - this.goT, a.runner.x + a.runner.reach * 0.5, liftM, pose, this.traceFrameProps(a));
-        this.stream?.pump();
-      }
-    }
+    if (this.after) this.after.render(ctx, view, this.stragglers(view));
+    else this.drawField(ctx, view, blinkOn);
     this.drawHUD(ctx, view);
     if (blinkOn) this.drawStartButton(ctx, view);
-    this.drawControls(ctx, view);
+    if (this.after) this.after.drawControls(ctx, view);
+    else this.drawControls(ctx, view);
     this.drawBanner(ctx, view);
     if (CONFIG.debug.tapMarkers) this.drawTapMarkers(ctx, view);
     if (this.game.debug) this.drawDebug(ctx, view);
+  }
+
+  /** The track and the athletes on it. */
+  drawField(ctx, view, blinkOn = false) {
+    this.track.draw(ctx, view, this.camera);
+    if (blinkOn) this.track.highlightLane(ctx, view, this.player.lane, 0.32);
+    // Back-to-front so nearer lanes overlap further ones.
+    const H = CONFIG.figure.height * this.camera.ppm;
+    for (let i = this.athletes.length - 1; i >= 0; i--) this.drawAthlete(ctx, view, this.athletes[i], H);
+  }
+
+  /** One athlete (and their lane's hurdles, if any). `H` = a figure's height on screen at the camera's zoom. */
+  drawAthlete(ctx, view, a, H) {
+    if (!a.overlay) this.drawLaneProps?.(ctx, view, a); // e.g. hurdles, under the athlete in the same lane
+    const p = this.track.toScreen(this.camera, view, a.runner.x + a.runner.reach * 0.5 + this.startNudge(a) + (a.live?.dx ?? 0), a.lane);
+    const tall = heightOf(a.colors);
+    if (p.x < -80 || p.x > view.w + 80) return;
+    const scale = this.track.figureScale(a.lane);
+    // Events can lift an athlete off the track (a short one bouncing over a hurdle); the shadow stays down.
+    const liftM = a.trace || a.frame ? (a.frame?.e ?? 0) : this.liftFor?.(a) ?? 0;
+    const lift = liftM * this.camera.ppm * scale;
+    const pose = this.poseFor(a);
+    if (a.ghost || a.trace) {
+      // See-through, with a name tag, so it never reads as a real rival.
+      ctx.save();
+      ctx.globalAlpha = 0.45;
+      drawFigure(ctx, p.x, p.y + 4 - lift, H * scale * tall, pose, a.colors, p.y + 4);
+      ctx.restore();
+      text(ctx, a.name, p.x, p.y - H * scale * tall - 6 - (a.overlay ? 18 : 0), { size: 14, color: 'rgba(255,255,255,0.8)', shadow: true });
+    } else {
+      drawFigure(ctx, p.x, p.y + 4 - lift, H * scale * tall, pose, a.colors, p.y + 4);
+      // Live: the other players are real rivals, named.
+      if (a.live) text(ctx, a.live.left ? `${a.name} (left)` : a.name, p.x, p.y - H * scale * tall - 6, { size: 14, color: '#ffb400', shadow: true });
+    }
+    // Keep the player's frames for a frame-by-frame ghost (and a live race).
+    if (a.isPlayer && this.tracer && (this.state === 'race' || this.state === 'finished')) {
+      this.tracer.sample(this.game.time - this.goT, a.runner.x + a.runner.reach * 0.5, liftM, pose, this.traceFrameProps(a));
+      this.stream?.pump();
+    }
   }
 
   /**
@@ -733,6 +812,7 @@ export class LaneRace {
 }
 
 const LIVE_WAIT = 12; // s after you finish to wait for the other live runners
+const RIVAL_WAIT = 10; // s past maxRaceTime a computer rival gets to finish before being fast-forwarded
 const LANE_WIDTH = 1.22; // m
 
 /** Lanes from nearest to `lane` outwards (not `lane` itself). */

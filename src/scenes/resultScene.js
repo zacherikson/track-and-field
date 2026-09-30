@@ -12,8 +12,8 @@ import { ResultsPanel } from '../brawl/aftermath.js';
  * `results` is a sorted array of { name, lane, mark, status: 'ok'|'dnf', isPlayer, colors }.
  *
  * With a `backdrop` (the event scene, carrying on with its late hits) it's
- * just the results in the middle over the event, with Race again and Menu
- * under them (brawl/aftermath.js ResultsPanel).
+ * just the results up top over the event, with Race again and Menu along the
+ * bottom (brawl/aftermath.js ResultsPanel).
  */
 export class ResultScene {
   constructor(ev, results, stats = null, backdrop = null) {
@@ -109,7 +109,7 @@ export class ResultScene {
     if (this.backdrop) {
       this.backdrop.lateRender(ctx, view);
       this.panel.draw(ctx, view);
-      this.backdrop.after?.drawControls(ctx, view);
+      this.backdrop.after?.drawControls(ctx, view, false); // the how-to line would sit under the buttons
       return;
     }
     ctx.fillStyle = '#12203a';

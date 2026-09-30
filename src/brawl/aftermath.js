@@ -5,6 +5,7 @@ import { BrawlControls } from './controls.js';
 import { BotBrain } from './bots.js';
 import { LiveBrawl } from './liveBrawl.js';
 import { woundsOf } from './wounds.js';
+import { LAYOUT } from '../render/track.js';
 
 const HINT = 6; // s the how-to line shows
 const JOIN_EASE = 0.35; // s to ease from how someone was standing in the event into the late hits
@@ -22,7 +23,8 @@ const JOIN_EASE = 0.35; // s to ease from how someone was standing in the event 
  *   update(dt, t)   one step
  *   render(ctx, view, extras)  the venue and everyone in it; `extras` = the
  *                   event's athletes still finishing ([{ d, draw(ctx) }])
- *   drawControls(ctx, view)    your stick and buttons, over everything
+ *   drawControls(ctx, view, hint)  your stick and buttons, over everything
+ *                   (and the how-to line along the bottom, unless `hint` is false)
  *   exit()          leaving (live: off the others' screens)
  */
 export class Aftermath {
@@ -136,12 +138,12 @@ export class Aftermath {
     this.brawl.render(ctx, view, extras);
   }
 
-  drawControls(ctx, view) {
+  drawControls(ctx, view, hint = true) {
     ctx.save();
     ctx.globalAlpha = Math.min(1, this.age / 0.3); // they fade in as you come to a stop
     this.controls.draw(ctx, view);
     ctx.restore();
-    if (this.age < HINT) {
+    if (hint && this.age < HINT) {
       ctx.globalAlpha = Math.min(1, this.age / 0.3, (HINT - this.age) / 0.6);
       text(ctx, 'Drag on the left to walk · PUNCH, KICK, SLAM · hold 😀 to emote', view.w / 2, view.h - 24 - view.safe.b, {
         size: 14, color: '#fff', shadow: true, maxWidth: view.w - 460,
@@ -156,9 +158,11 @@ export class Aftermath {
 }
 
 /**
- * The results (or tournament standings) over the late hits: big, in the
- * middle, on a light see-through panel, with the scene's two buttons under
- * it. It fades in, so the results just show up over the event.
+ * The results (or tournament standings) over the late hits: the rows up top,
+ * over the stands, on a light see-through panel, and the scene's two buttons
+ * right at the bottom, on the ad boards below the track, so the track itself
+ * is left clear for the fighting. It fades in, so the results just show up
+ * over the event.
  */
 export class ResultsPanel {
   /**
@@ -168,6 +172,8 @@ export class ResultsPanel {
    */
   constructor(buttons, title, rows) {
     Object.assign(this, { buttons, title, rows });
+    // Over the busy ad boards a see-through Menu / Quit wouldn't read: solid dark instead.
+    if (buttons[1]) buttons[1].color = 'rgba(18,32,58,0.92)';
     this.age = 0;
   }
 
@@ -178,11 +184,12 @@ export class ResultsPanel {
     this.x = (view.w - this.w) / 2;
     this.y = s.t + 10;
     this.head = 36;
-    const room = view.h - s.t - s.b - 10 - this.head - 12 - 52 - 16;
+    // The rows keep above the track where they can.
+    const room = LAYOUT.farY - this.y - this.head - 10;
     this.rowH = Math.max(22, Math.min(32, room / n));
     this.h = this.head + n * this.rowH + 10;
     const [main, other] = this.buttons;
-    const by = this.y + this.h + 10;
+    const by = view.h - s.b - 52 - 4;
     const mw = Math.min(230, this.w * 0.58);
     const ow = Math.min(140, this.w - mw - 12);
     const bx = view.w / 2 - (mw + 12 + ow) / 2;

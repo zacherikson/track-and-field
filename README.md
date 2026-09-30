@@ -39,9 +39,9 @@ beat them up, NFL Blitz style. There's no cut: once you've crossed the line and
 pulled up (or got to your feet after your last attempt), the fight controls
 appear right where you are, and each rival joins in as they come to a stop, so
 finishing first means getting the first hits in. After a field event the
-rivals walk over to you. The results (or tournament standings) come up in the
-middle of the screen over it all, with Race again (or Next) and Menu (or Quit)
-under them. Everyone walks about normally until a fight starts; then the
+rivals walk over to you. The results (or tournament standings) come up at the
+top of the screen over the stands, with Race again (or Next) and Menu (or Quit)
+along the bottom on the ad boards, leaving the track clear. Everyone walks about normally until a fight starts; then the
 fists come up.
 Left thumb: drag to walk. Right thumb: PUNCH, KICK, SLAM (grab, hoist overhead,
 slam down), and hold 😀 then drag to an emote on the wheel. Three punches in a

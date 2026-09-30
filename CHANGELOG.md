@@ -4,6 +4,14 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Late hits: the track left clear
+- Race again (or Next) and Menu (or Quit) moved from under the results down to
+  the ad boards along the bottom, so they no longer sit over the fighting. The
+  results stay up top over the stands; Menu / Quit is solid so it reads over
+  the boards, and the how-to line is hidden while they're up.
+- No more POW! / WHAM! / KO! / GOTCHA! / SLAM! over hits.
+- Emotes no longer show an emoji over the head; HA HA! and BAWK! stay.
+
 ## Late hits: straight from the finish
 - No jump into the late hits any more: they start inside the event, the moment
   you've pulled up after the line (or got to your feet after your last

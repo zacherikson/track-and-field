@@ -4,6 +4,16 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Juno in 3D: Blender sprites in the 100m and hurdles
+- Juno is now a chunky arcade caricature built in Blender (big head, hands and
+  feet, muscular arms and legs, true side-profile face) instead of a stick
+  figure, in the 100m and 110m hurdles. Rivals, the other events and the menus
+  still draw stick figures.
+- Each body part is a sprite rendered in Blender and hung on the same skeleton
+  as before, so every pose, blend and hurdle stumble looks the same as it did.
+- Faces: focused at the line, gritted teeth once running, a grin for the winner
+  over the line and shock for everyone else (and on a clipped hurdle).
+
 ## Late hits: the track left clear
 - Race again (or Next) and Menu (or Quit) moved from under the results down to
   the ad boards along the bottom, so they no longer sit over the fighting. The

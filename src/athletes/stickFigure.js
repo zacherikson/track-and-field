@@ -737,6 +737,32 @@ export function headCircle(x, y, H, pose) {
 }
 
 /**
+ * Joint positions for a figure drawn at (x, y) with height H: hip, neck,
+ * shoulder, and per side (0 near, 1 far) elbow, wrist, knee and ankle. The same
+ * skeleton drawFigure draws, for renderers that hang art on it (sprites.js).
+ */
+export function joints(x, y, H, pose) {
+  const limb = (from, angle, len) => ({ x: from.x + Math.sin(angle) * len, y: from.y + Math.cos(angle) * len });
+  const hip = { x: x + pose.hipX * H, y: y + pose.hipY * H };
+  const neck = { x: hip.x + Math.sin(pose.lean) * 0.32 * H, y: hip.y - Math.cos(pose.lean) * 0.32 * H };
+  const shoulder = { x: lerp(hip.x, neck.x, 0.9), y: lerp(hip.y, neck.y, 0.9) };
+  const elbow = pose.arms.map((a) => limb(shoulder, a.upper, 0.17 * H));
+  const wrist = pose.arms.map((a, i) => limb(elbow[i], a.fore, 0.16 * H));
+  const knee = pose.legs.map((l) => limb(hip, l.thigh, THIGH_L * H));
+  const ankle = pose.legs.map((l, i) => limb(knee[i], l.shin, SHIN_L * H));
+  return { hip, neck, shoulder, elbow, wrist, knee, ankle };
+}
+
+/** Ground shadow under a figure at (x, y); at groundY when it's in the air, smaller and fainter the higher it is. */
+export function drawShadow(ctx, x, y, H, groundY = y) {
+  const lift = Math.max(0, groundY - y) / H;
+  ctx.fillStyle = `rgba(0,0,0,${0.22 * Math.max(0.3, 1 - lift)})`;
+  ctx.beginPath();
+  ctx.ellipse(x, groundY + 1, 0.2 * H * Math.max(0.5, 1 - lift * 0.8), 0.04 * H, 0, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+/**
  * Draw a figure with feet at (x, y) in logical pixels.
  * @param H figure height in pixels
  * @param colors { shirt, skin, shorts }
@@ -767,12 +793,7 @@ export function drawFigure(ctx, x, y, H, pose, colors, groundY = y) {
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
 
-  // Ground shadow (at groundY when the figure is in the air: smaller and fainter the higher it is).
-  const lift = Math.max(0, groundY - y) / H;
-  ctx.fillStyle = `rgba(0,0,0,${0.22 * Math.max(0.3, 1 - lift)})`;
-  ctx.beginPath();
-  ctx.ellipse(x, groundY + 1, 0.2 * H * Math.max(0.5, 1 - lift * 0.8), 0.04 * H, 0, 0, Math.PI * 2);
-  ctx.fill();
+  drawShadow(ctx, x, y, H, groundY);
 
   const drawLeg = (leg, color) => {
     const knee = limb(hip, leg.thigh, THIGH);

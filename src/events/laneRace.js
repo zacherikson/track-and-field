@@ -6,6 +6,7 @@ import { Runner } from '../athletes/runner.js';
 import { AIController } from '../athletes/ai.js';
 import { CHARACTERS, player as chosenPlayer, rivals as rivalRoster, theirAthlete, heightOf } from '../athletes/roster.js';
 import { drawFigure, runPose, lerpPose, leanPose, launchPose, handReach, POSES, LAUNCH } from '../athletes/stickFigure.js';
+import { drawAthleteFigure } from '../athletes/sprites.js';
 import { TrackRenderer } from '../render/track.js';
 import { ORANGE, drawPad } from '../render/pads.js';
 import { flow } from '../flow.js';
@@ -633,7 +634,7 @@ export class LaneRace {
       ctx.restore();
       text(ctx, a.name, p.x, p.y - H * scale * tall - 6 - (a.overlay ? 18 : 0), { size: 14, color: 'rgba(255,255,255,0.8)', shadow: true });
     } else {
-      drawFigure(ctx, p.x, p.y + 4 - lift, H * scale * tall, pose, a.colors, p.y + 4);
+      drawAthleteFigure(ctx, p.x, p.y + 4 - lift, H * scale * tall, pose, a.colors, p.y + 4, this.faceFor(a));
       // Live: the other players are real rivals, named.
       if (a.live) text(ctx, a.live.left ? `${a.name} (left)` : a.name, p.x, p.y - H * scale * tall - 6, { size: 14, color: '#ffb400', shadow: true });
     }
@@ -685,6 +686,18 @@ export class LaneRace {
   drawStartButton(ctx, view) {
     const { x, y } = this.startButtonPos(view);
     drawPad(ctx, ORANGE, x, y, CONFIG.sprint100.pads.radius);
+  }
+
+  /**
+   * Face for sprite athletes: focused at the line, straining once running, and
+   * over the line a grin for the winner, shock for everyone else.
+   */
+  faceFor(a) {
+    if (a.mark != null) {
+      const best = Math.min(...this.athletes.filter((b) => b.mark != null).map((b) => b.mark));
+      return a.mark === best ? 'joy' : 'shock';
+    }
+    return this.state === 'race' || this.state === 'finished' ? 'strain' : 'focus';
   }
 
   poseFor(a) {

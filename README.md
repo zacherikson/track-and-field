@@ -1,7 +1,8 @@
 # Track Royale
 
 A touch-first, mobile-browser track & field game: five events, two thumbs.
-Starring **Juno**, an original stick-figure athlete (placeholder art until step 6).
+Starring **Juno**, an original athlete: a chunky 3D arcade caricature modelled in
+Blender and drawn as sprites in the 100m and hurdles (stick figures everywhere else, for now).
 Plain HTML5 Canvas + vanilla ES modules. No framework, no build step.
 
 **Status:** all five events playable (100m Dash, 110m Hurdles, Long Jump, Pole
@@ -76,6 +77,11 @@ Log changes you keep in [CHANGELOG.md](CHANGELOG.md).
 view (plant, swing, rock back, inversion, bar, landing) for checking against
 reference photos. `tools/sprites.html` draws Juno's long jump keyframes as a sprite sheet (serve
 the repo and open it) so poses can be checked side by side.
+
+**Athlete art** is built in Blender by script: [`tools/blender/`](tools/blender/README.md)
+models Juno, renders each body part as a sprite and packs them into
+`src/athletes/sprites/juno.png` (+ `.json`). Rebuild after changing the model with
+`/Applications/Blender.app/Contents/MacOS/Blender -b -P tools/blender/export_sprites.py`.
 
 ## Lineup and tournaments
 
@@ -202,7 +208,9 @@ src/core/
 src/athletes/
   runner.js           shared runner physics (player and AI)
   ai.js               AI "thumbs": taps at a personal cadence
-  stickFigure.js      placeholder figure: blendable poses (blocks, set, run, stand, hurdle)
+  stickFigure.js      the skeleton: blendable poses (blocks, set, run, stand, hurdle), joints, stick-figure drawing
+  sprites.js          Blender-rendered body-part sprites hung on that skeleton, with faces (focus, strain, joy, shock)
+  sprites/            sprite sheets from tools/blender/export_sprites.py
   roster.js           the six athletes (kit, skin, hairstyle); who you play each event as, and your rivals
 src/events/
   registry.js         event list for the menu
@@ -247,6 +255,7 @@ src/scenes/profileScene.js      your username (unique, saved in Firebase) and Go
 src/scenes/lobbyScene.js        the live waiting room (any event, or a solo or team tournament)
 src/tuning/           in-game tuning panel (params list, saved overrides, live estimates)
 tools/simulate.mjs    headless tuning simulator
+tools/blender/        Blender scripts: athlete models and the sprite-sheet export
 tools/ghostcheck.mjs  checks that recorded runs replay to the exact same time
 firestore.rules       Firestore security rules for the leaderboards and usernames
 database.rules.json   Realtime Database security rules for live play

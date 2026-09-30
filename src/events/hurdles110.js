@@ -150,6 +150,10 @@ export class Hurdles110 extends LaneRace {
     return Math.sin(Math.PI * k) * (1 - tall) * 1.3;
   }
 
+  faceFor(a) {
+    return a.hurdles?.tripAge(this.game.time) != null ? 'shock' : super.faceFor(a);
+  }
+
   poseFor(a) {
     let pose = super.poseFor(a);
     if (a.trace || a.frame || (this.state !== 'race' && this.state !== 'finished')) return pose; // a ghost's (or live runner's) pose is recorded as drawn

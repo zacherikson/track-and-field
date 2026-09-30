@@ -1,10 +1,10 @@
 import { Button, text, roundRect } from '../core/ui.js';
 import { ordinal } from '../core/math.js';
-import { formatMark, TOURNAMENT_BOARD } from '../events/registry.js';
+import { formatMark } from '../events/registry.js';
 import { submitBest, saveGhostIfBetter } from '../core/storage.js';
 import { postMark } from '../online/post.js';
 import { counts } from '../online/bests.js';
-import { tournament, ORDER } from './tournament.js';
+import { tournament, ORDER, TOUR_KINDS } from './tournament.js';
 import { flow } from '../flow.js';
 import { serverNow } from '../online/live.js';
 
@@ -43,7 +43,7 @@ export class StandingsScene {
       // board too, but the status line is about the total.
       if (me?.status === 'ok') postMark(this.ev, me.mark, run, () => {});
       const total = this.table.find((t) => t.isPlayer)?.total;
-      if (total > 0) postMark(TOURNAMENT_BOARD, total, null, (s) => (this.online = `Your total · ${s}`));
+      if (total > 0) postMark(tournament.board, total, null, (s) => (this.online = `Your total · ${s}`));
     } else if (me?.status === 'ok') postMark(this.ev, me.mark, run, (s) => (this.online = s));
     this.myPts = this.rows.find((r) => r.isPlayer)?.pts ?? 0;
     this.myPlace = this.table.findIndex((t) => t.isPlayer) + 1;
@@ -60,9 +60,9 @@ export class StandingsScene {
     this.buttons = this.final
       ? [
           tournament.live
-            ? new Button({ label: 'Play live again', color: '#2bb673', onTap: () => flow.live(this.game, 'tournament') })
-            : new Button({ label: 'New tournament', color: '#2bb673', onTap: () => flow.tournament(this.game) }),
-          new Button({ label: '🌐 Leaderboard', color: 'rgba(255,255,255,0.18)', onTap: () => flow.leaderboard(this.game, TOURNAMENT_BOARD) }),
+            ? new Button({ label: 'Play live again', color: '#2bb673', onTap: () => flow.live(this.game, TOUR_KINDS[tournament.mode]) })
+            : new Button({ label: 'New tournament', color: '#2bb673', onTap: () => flow.tournament(this.game, tournament.mode) }),
+          new Button({ label: '🌐 Leaderboard', color: 'rgba(255,255,255,0.18)', onTap: () => flow.leaderboard(this.game, tournament.board) }),
           new Button({ label: 'Menu', color: 'rgba(255,255,255,0.18)', onTap: () => flow.menu(this.game) }),
         ]
       : [

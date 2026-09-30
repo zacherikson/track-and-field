@@ -4,6 +4,21 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Lineup, solo and team tournaments
+- The menu's Athlete button is now **Lineup**: a slot per event, each filled
+  with any athlete (the same one or different ones), plus a Solo slot for the
+  athlete who does a whole solo tournament. Everyone starts with the athlete
+  they had picked in every slot. Looks only for now: same physics for all.
+- A **TOURNAMENT** toggle on the menu: **Solo** (one athlete, all five) or
+  **Team** (your lineup). It applies to the offline and live tournament buttons.
+- Separate leaderboards: the old tournament board is now the Solo board (its
+  entries carry over) and there's a new Team board. Best tournaments and their
+  ghosts are kept per kind.
+- Live play sends your lineup, so the others see who you picked for each event.
+- Publish both `firestore.rules` (new `teamtournament` board) and
+  `database.rules.json` (new `teamtournament` waiting room, `lineup` field) in
+  the Firebase console.
+
 ## Sign in with Google from the home screen
 - Sign in with Google now goes to Google's page and comes back, instead of a
   popup, which hung on "Signing in…" when the game ran from an iPhone's home

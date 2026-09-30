@@ -3,17 +3,19 @@ import { CHARACTERS } from '../athletes/roster.js';
 import { EVENTS } from '../events/registry.js';
 import { Lobby, MAX_PLAYERS, CLOSE_BEFORE, serverNow } from '../online/live.js';
 import { flow } from '../flow.js';
+import { tourModeOf, liveAthletes } from '../tournament/tournament.js';
 
 /**
- * The waiting room for a live event or tournament (`kind`: an event id or
- * 'tournament', online/live.js). You join as soon as you arrive; once someone
+ * The waiting room for a live event or tournament (`kind`: an event id or a
+ * tournament's, online/live.js). You join as soon as you arrive; once someone
  * else is here a countdown starts, more players can still join (up to
  * MAX_PLAYERS), and everyone goes to the event together.
  */
 export class LobbyScene {
   constructor(kind) {
     this.kind = kind;
-    this.title = kind === 'tournament' ? 'Tournament' : EVENTS.find((e) => e.id === kind).name;
+    const mode = tourModeOf(kind);
+    this.title = mode ? `${mode === 'team' ? 'Team' : 'Solo'} Tournament` : EVENTS.find((e) => e.id === kind).name;
   }
 
   enter() {
@@ -28,7 +30,7 @@ export class LobbyScene {
   join() {
     this.state = 'joining';
     this.lobby?.close(false);
-    this.lobby = new Lobby(this.kind, (v) => this.onLobby(v));
+    this.lobby = new Lobby(this.kind, (v) => this.onLobby(v), liveAthletes(this.kind));
     this.lobby.join().catch((err) => {
       console.warn('waiting room unavailable', err);
       if (this.game.scene === this) this.state = 'error';

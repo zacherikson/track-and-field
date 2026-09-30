@@ -51,10 +51,10 @@ export class LongJump {
     const cfg = this.cfg;
     this.track = new RunwayRenderer(cfg.runway, { from: 1, to: 10.5 }, cfg.runwayZones);
     this.camera = new Camera();
-    const me = chosenPlayer();
+    const me = chosenPlayer(this.ev.id);
     this.player = { name: this.live ? this.live.name : me.name, colors: me.colors, isPlayer: true, jumps: [] }; // live: your username, as the others see you
     // Five rivals, each with a fixed run-up pace for the whole competition.
-    this.rivals = shuffle(rivalRoster())
+    this.rivals = shuffle(rivalRoster(this.ev.id))
       .slice(0, 5)
       .map((r) => ({ name: r.name, colors: r.colors, isPlayer: false, jumps: [], cadence: rand(...this.lv.cadence) }));
     const r = CONFIG.sprint100.pads.radius;

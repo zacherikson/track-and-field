@@ -1,4 +1,4 @@
-import { CHARACTERS, player as chosenPlayer } from '../athletes/roster.js';
+import { theirAthlete } from '../athletes/roster.js';
 import { text, roundRect } from '../core/ui.js';
 import { serverNow } from './live.js';
 import { LiveTrace, TraceStream } from './liveTrace.js';
@@ -32,7 +32,7 @@ export class LiveField {
     this.stream = new TraceStream(this.session);
     this.people = this.session.others.map((p) => ({
       name: p.name,
-      colors: (CHARACTERS.find((c) => c.id === p.athlete) ?? chosenPlayer()).colors,
+      colors: theirAthlete(p, this.ev.id).colors,
       isPlayer: false,
       uid: p.uid,
       live: true,

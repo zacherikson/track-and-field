@@ -63,11 +63,16 @@ export class ProfileScene {
     this.saving = true;
     this.status = { text: 'Saving…', color: 'rgba(255,255,255,0.7)' };
     setUsername(name)
-      .then(() => {
+      .then((renamedBoards) => {
         setPlayerName(name);
-        this.status = { text: 'Saved', color: OK };
+        // The name is saved either way; your board rows may still show the old one.
+        this.status = renamedBoards
+          ? { text: 'Saved', color: OK }
+          : { text: 'Saved. Your leaderboard rows will catch up later.', color: WARN };
       })
       .catch((e) => {
+        // The name wasn't claimed: the profile and claim are written together,
+        // before anything else, so nothing changed.
         let msg = 'Couldn’t reach the server. Your name wasn’t changed.';
         if (e?.message === 'taken') msg = `“${name}” is taken. Try another name.`;
         else if (e?.code === 'permission-denied') msg = 'The server didn’t accept that name. Try another.';

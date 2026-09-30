@@ -415,19 +415,24 @@ export async function fetchGhost(board, row) {
   return d && d.mark === row.mark ? fromWire(d.ghost) : null;
 }
 
-/** Changes your name on your existing board entries: every board read at once, then one batched write. */
+/**
+ * Changes your name on your existing board entries: every board read at once,
+ * then a write per board, all at once too. Boards stand on their own, so one
+ * that can't be read or written doesn't hold up the others; resolves to false
+ * if any of them didn't go through. A board still showing an old name catches
+ * up the next time you post a mark there (submitMark writes your name with it).
+ */
 async function renameOnBoards(name) {
   const { fs, db, uid } = await connect();
   const refs = ONLINE_EVENTS.map((eventId) => fs.doc(runs(fs, db, eventId), uid));
-  const snaps = await Promise.all(refs.map((ref) => fs.getDoc(ref)));
-  const batch = fs.writeBatch(db);
-  let any = false;
-  snaps.forEach((snap, i) => {
-    if (!snap.exists()) return;
-    batch.update(refs[i], { name });
-    any = true;
+  const reads = await Promise.allSettled(refs.map((ref) => fs.getDoc(ref)));
+  const writes = [];
+  reads.forEach((read, i) => {
+    if (read.status === 'fulfilled' && read.value.exists()) writes.push(fs.updateDoc(refs[i], { name }));
   });
-  if (any) await batch.commit();
+  const failed = [...reads, ...(await Promise.allSettled(writes))].filter((r) => r.status === 'rejected');
+  if (failed.length) console.warn('name not changed on every board', failed[0].reason);
+  return failed.length === 0;
 }
 
 // Every board (registry.js BOARDS ids; firestore.rules lists the same).
@@ -438,9 +443,12 @@ export const nameKey = (name) => name.toLowerCase();
 
 /**
  * Saves `name` as your username: claims it in usernames/ (failing with
- * Error('taken') if someone else has it), frees your old one, updates your
- * profile, then renames your leaderboard entries. One transaction, so two
- * players can't grab the same name at once.
+ * Error('taken') if someone else has it), frees your old one and updates your
+ * profile. One transaction, so two players can't grab the same name at once.
+ *
+ * Renaming your leaderboard entries comes after, and can't fail the change:
+ * the name is yours once the transaction commits. Resolves to true if those
+ * entries were renamed too, false if they (or some of them) have to catch up.
  */
 export async function setUsername(name) {
   const { fs, db, uid } = await connect();
@@ -455,6 +463,7 @@ export async function setUsername(name) {
     if (oldKey && oldKey !== key) tx.delete(fs.doc(db, 'usernames', oldKey));
     tx.set(userRef, { name, key, updatedAt: fs.serverTimestamp() });
   });
-  await renameOnBoards(name);
+  const renamed = await renameOnBoards(name).catch(() => false);
   boards.clear(); // your name changed on them
+  return renamed;
 }

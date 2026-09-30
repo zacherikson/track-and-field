@@ -76,7 +76,8 @@ Log changes you keep in [CHANGELOG.md](CHANGELOG.md).
 `tools/vault.html` draws the pole vault's phases in a flat, true-scale side
 view (plant, swing, rock back, inversion, bar, landing) for checking against
 reference photos. `tools/sprites.html` draws Juno's long jump keyframes as a sprite sheet (serve
-the repo and open it) so poses can be checked side by side.
+the repo and open it) so poses can be checked side by side. `tools/rig.html` turns drawn
+body parts into an athlete's sprite sheet (see [src/athletes/sprites/](src/athletes/sprites/README.md)).
 
 ## Lineup and tournaments
 

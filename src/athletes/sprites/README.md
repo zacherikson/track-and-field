@@ -7,8 +7,12 @@ set of drawings covers every event pose, blend and stumble
 
 To give an athlete art:
 
-1. Draw the parts below and pack them into one transparent PNG: `<name>.png` here.
-2. Describe where each part is in `<name>.json` here.
+1. Get the parts drawn (below). [tools/art-prompts.md](../../../tools/art-prompts.md)
+   has prompts for an AI image generator.
+2. Open [tools/rig.html](../../../tools/rig.html) (serve the repo:
+   `python3 -m http.server`, then `/tools/rig.html`), drop the art in, name the
+   parts, click each part's two joints, check the preview, and download
+   `<name>.png` + `<name>.json` into this folder.
 3. Add `sprite: '<name>'` to the athlete's colors in [roster.js](../roster.js).
 
 Until the sheet loads, or if it fails to load, the stick figure is drawn instead.
@@ -16,19 +20,24 @@ Until the sheet loads, or if it fails to load, the stick figure is drawn instead
 ## The parts
 
 The athlete faces **right**, seen from the side. Each part is drawn in its
-**rest orientation** with a **pivot** at its joint; the game rotates it about the
-pivot.
+**rest orientation** and has a **pivot** (the joint it hangs from) and an **end**
+(the joint at its other end). The game turns and scales each part so pivot → end
+fits its bone, then rotates it about the pivot with the pose, so parts drawn a
+little long, short or tilted still line up.
 
-| Part | Rest orientation | Pivot | Joint to joint |
+| Part | Rest orientation | Pivot → end | Bone (1.8 m athlete) |
 |---|---|---|---|
-| `torso` (with shorts) | upright | hip, bottom centre | hip → neck 0.576 m |
-| `head` | upright, facing right | where the neck meets the torso | |
-| `upper` (upper arm) | hanging straight down | shoulder | 0.306 m |
-| `fore` (forearm) | hanging straight down | elbow | 0.288 m |
-| `hand` (fist) | hanging straight down | wrist | |
-| `thigh` (with shorts leg) | hanging straight down | hip | 0.45 m |
-| `shin` | hanging straight down | knee | 0.45 m |
-| `foot` (shoe) | flat, toes pointing right | ankle | |
+| `torso` (with shorts) | upright | hip → base of the neck | 0.576 m |
+| `head` | upright, facing right | base of the neck → top of the head | (turned only) |
+| `upper` (upper arm) | hanging straight down | shoulder → elbow | 0.306 m |
+| `fore` (forearm) | hanging straight down | elbow → wrist | 0.288 m |
+| `hand` (fist) | hanging straight down | wrist → knuckles | (turned only) |
+| `thigh` (with shorts leg) | hanging straight down | hip → knee | 0.45 m |
+| `shin` | hanging straight down | knee → ankle | 0.45 m |
+| `foot` (shoe) | flat, toes pointing right | ankle → toe tip | (turned only) |
+
+The head, hand and foot keep the sheet's scale (`ppm`, which rig.html measures
+from the torso) and are only turned upright by their end point.
 
 The shoulder sits 90% of the way up the torso (0.518 m above the hip). A 1.8 m
 athlete stands with the hip 0.9 m above the ground; the ankle is at ground level.
@@ -44,7 +53,8 @@ athlete stands with the hip 0.9 m above the ground; the ankle is at ground level
   `head.joy` (won) and `head.shock` (lost, clipped a hurdle) replace `head` when
   the sheet has them.
 - **Resolution:** athletes are up to about 200 device pixels tall on a phone, so
-  draw at about 240 px per meter (a 1.8 m athlete about 430 px tall).
+  sheets are kept at about 240 px per meter (a 1.8 m athlete about 430 px tall).
+  Draw bigger; rig.html shrinks it on export.
 
 ## The JSON
 
@@ -53,15 +63,16 @@ athlete stands with the hip 0.9 m above the ground; the ankle is at ground level
   "ppm": 240,
   "headFollow": 0.85,
   "parts": {
-    "torso": { "x": 0, "y": 0, "w": 120, "h": 190, "px": 55, "py": 170 },
-    "head": { "x": 130, "y": 0, "w": 150, "h": 160, "px": 60, "py": 150 },
-    "upper": { "x": 290, "y": 0, "w": 60, "h": 100, "px": 30, "py": 18 }
+    "torso": { "x": 0, "y": 0, "w": 120, "h": 190, "px": 55, "py": 170, "ex": 58, "ey": 32 },
+    "head": { "x": 130, "y": 0, "w": 150, "h": 160, "px": 60, "py": 150, "ex": 64, "ey": 4 },
+    "upper": { "x": 290, "y": 0, "w": 60, "h": 100, "px": 30, "py": 18, "ex": 31, "ey": 88 }
   }
 }
 ```
 
-- `ppm`: sheet pixels per meter (how the drawing's size maps onto the skeleton).
+- `ppm`: sheet pixels per meter, for parts without an end (and the head, hand, foot).
 - `headFollow` (optional, default 1): how much the head tilts with the torso lean.
 - `height` (optional, default 1.8): the athlete's height in meters at `ppm`.
-- Each part: its rectangle on the sheet (`x`, `y`, `w`, `h`) and its pivot
-  (`px`, `py`) in pixels from that rectangle's top-left corner.
+- Each part: its rectangle on the sheet (`x`, `y`, `w`, `h`), its pivot
+  (`px`, `py`) and, optionally, its end (`ex`, `ey`), in pixels from that
+  rectangle's top-left corner. Without an end, a part is drawn as is at `ppm`.

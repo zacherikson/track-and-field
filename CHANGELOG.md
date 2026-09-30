@@ -4,6 +4,14 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Sprite rigger for drawn athletes
+- tools/rig.html: drop in drawn body parts (one sheet or a file per part), click
+  each part's two joints, watch it run on the real skeleton, download the
+  sprite sheet. Clears a white, green or fake-checkerboard background.
+- Drawn parts are fitted between their two joints, so AI-drawn limbs that come
+  out a little long, short or tilted still line up.
+- tools/art-prompts.md: prompts for having an AI image generator draw Juno's parts.
+
 ## Ready for drawn athletes
 - Juno is a stick figure again (the Blender version is in commit c3d3986).
 - Lane races (100m, hurdles) can draw an athlete from a sheet of drawn body

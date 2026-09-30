@@ -17,6 +17,9 @@ const THIGH_L = 0.25; // limb lengths in figure heights (must match drawFigure)
 const SHIN_L = 0.25;
 const FOOT_L = 0.06;
 
+/** Bone lengths in figure heights, joint to joint: hip to neck, shoulder to elbow, ... (as drawFigure). */
+export const BONES = { torso: 0.32, upper: 0.17, fore: 0.16, thigh: THIGH_L, shin: SHIN_L };
+
 /**
  * Starting blocks, in figure heights relative to the athlete's feet origin (the
  * start position). Each foot's toes touch the track at the base of a footplate
@@ -744,12 +747,12 @@ export function headCircle(x, y, H, pose) {
 export function joints(x, y, H, pose) {
   const limb = (from, angle, len) => ({ x: from.x + Math.sin(angle) * len, y: from.y + Math.cos(angle) * len });
   const hip = { x: x + pose.hipX * H, y: y + pose.hipY * H };
-  const neck = { x: hip.x + Math.sin(pose.lean) * 0.32 * H, y: hip.y - Math.cos(pose.lean) * 0.32 * H };
+  const neck = { x: hip.x + Math.sin(pose.lean) * BONES.torso * H, y: hip.y - Math.cos(pose.lean) * BONES.torso * H };
   const shoulder = { x: lerp(hip.x, neck.x, 0.9), y: lerp(hip.y, neck.y, 0.9) };
-  const elbow = pose.arms.map((a) => limb(shoulder, a.upper, 0.17 * H));
-  const wrist = pose.arms.map((a, i) => limb(elbow[i], a.fore, 0.16 * H));
-  const knee = pose.legs.map((l) => limb(hip, l.thigh, THIGH_L * H));
-  const ankle = pose.legs.map((l, i) => limb(knee[i], l.shin, SHIN_L * H));
+  const elbow = pose.arms.map((a) => limb(shoulder, a.upper, BONES.upper * H));
+  const wrist = pose.arms.map((a, i) => limb(elbow[i], a.fore, BONES.fore * H));
+  const knee = pose.legs.map((l) => limb(hip, l.thigh, BONES.thigh * H));
+  const ankle = pose.legs.map((l, i) => limb(knee[i], l.shin, BONES.shin * H));
   return { hip, neck, shoulder, elbow, wrist, knee, ankle };
 }
 

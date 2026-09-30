@@ -1,13 +1,39 @@
-import { EVENTS } from '../events/registry.js';
+import { EVENTS, TOURNAMENT_BOARDS } from '../events/registry.js';
 import { points } from '../events/scoring.js';
-import { submitBest, getBestTournament, saveBestTournament } from '../core/storage.js';
+import { submitBest, getBestTournament, saveBestTournament, getPlayerName } from '../core/storage.js';
+import { useSolo, soloAthlete, lineupAthlete } from '../athletes/roster.js';
 import { counts } from '../online/bests.js';
+
+/** The live waiting room (online/live.js `kind`) for each kind of tournament. */
+export const TOUR_KINDS = { solo: 'tournament', team: 'teamtournament' };
+
+/** The tournament mode a live `kind` plays, or null if it's a single event. */
+export function tourModeOf(kind) {
+  return Object.keys(TOUR_KINDS).find((m) => TOUR_KINDS[m] === kind) ?? null;
+}
+
+/**
+ * Who you play as in a live waiting room of `kind` (online/live.js Lobby):
+ * { athlete }, plus the whole `lineup` for a team tournament.
+ */
+export function liveAthletes(kind) {
+  const mode = tourModeOf(kind);
+  if (mode === 'solo') return { athlete: soloAthlete().id };
+  if (!mode) return { athlete: lineupAthlete(kind).id };
+  const lineup = Object.fromEntries(ORDER.map((id) => [id, lineupAthlete(id).id]));
+  return { athlete: lineup[ORDER[0]], lineup };
+}
 
 /**
  * Tournament mode: the five events back to back, in this order, scored like a
  * real decathlon (see scoring.js). Points add up after each event; the most
- * points at the end is the champion. Your rivals are the same five athletes
- * throughout. State lives here for the length of one tournament.
+ * points at the end is the champion. State lives here for the length of one
+ * tournament.
+ *
+ * Two kinds (`mode`), each with its own leaderboard and best tournament:
+ * - solo: your solo athlete does all five, against the same five rivals;
+ * - team: your lineup, a different athlete per event if you like. Your rivals
+ *   are whoever isn't doing that event for you, and your total is your team's.
  *
  * A live tournament (`live` = the room, online/live.js) is the same five events
  * against the other players in the room, each event starting together (see
@@ -22,9 +48,12 @@ export const tournament = {
   totals: new Map(), // key or name -> { name, colors, isPlayer, total }
   history: [], // per event: { ev, rows: [{ name, colors, isPlayer, mark, status, pts }], ghost }
   live: null, // the room, for a live tournament
+  mode: 'solo', // 'solo' or 'team'
 
-  start(live = null) {
+  start(mode, live = null) {
     this.active = true;
+    this.mode = mode;
+    useSolo(mode === 'solo');
     this.live = live;
     this.index = 0;
     this.totals = new Map();
@@ -33,7 +62,13 @@ export const tournament = {
 
   end() {
     this.active = false;
+    useSolo(false);
     this.live = null;
+  },
+
+  /** This kind of tournament's leaderboard (registry.js TOURNAMENT_BOARDS). */
+  get board() {
+    return TOURNAMENT_BOARDS[this.mode];
   },
 
   get event() {
@@ -56,8 +91,10 @@ export const tournament = {
   record(ev, results, ghost = null) {
     const rows = results.map((r) => ({ ...r, pts: points(ev.id, r.mark, r.status) }));
     for (const r of rows) {
-      const key = r.key ?? r.name;
-      const t = this.totals.get(key) ?? { name: r.name, colors: r.colors, isPlayer: r.isPlayer, live: !!r.key, total: 0 };
+      // You're one row whoever did the event for you (a team tournament changes athletes).
+      const key = r.isPlayer ? 'you' : (r.key ?? r.name);
+      const name = r.isPlayer && this.mode === 'team' && !this.live ? `Team ${getPlayerName()}` : r.name;
+      const t = this.totals.get(key) ?? { name, colors: r.colors, isPlayer: r.isPlayer, live: !!r.key, total: 0 };
       t.total += r.pts;
       this.totals.set(key, t);
     }
@@ -65,11 +102,11 @@ export const tournament = {
     if (this.finished) {
       // Only with shipped tuning, like every best (online/bests.js).
       const me = counts() ? [...this.totals.values()].find((t) => t.isPlayer) : null;
-      this.newBest = !!me && submitBest('tournament', me.total, false);
+      this.newBest = !!me && submitBest(this.board.id, me.total, false);
       // Kept for its ghosts: your best recorded tournament (the first one
       // recorded counts even if an older, unrecorded score was higher).
-      const saved = getBestTournament();
-      if (me && (!saved || me.total > saved.total)) saveBestTournament(this.asBest(me.total));
+      const saved = getBestTournament(this.mode);
+      if (me && (!saved || me.total > saved.total)) saveBestTournament(this.mode, this.asBest(me.total));
     }
     return rows;
   },
@@ -86,7 +123,7 @@ export const tournament = {
 
   /** Your best tournament's points after its first `n` events, or null if there isn't one. */
   bestAfter(n) {
-    const best = getBestTournament();
+    const best = getBestTournament(this.mode);
     if (!best?.events) return null;
     return ORDER.slice(0, n).reduce((sum, id) => sum + (best.events[id]?.pts ?? 0), 0);
   },

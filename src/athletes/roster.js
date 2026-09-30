@@ -1,8 +1,9 @@
-import { getCharacter } from '../core/storage.js';
+import { getCharacter, getLineup } from '../core/storage.js';
 
 /**
- * The athletes (original characters). You pick one on the menu; the other
- * five are your rivals. Each has a kit, a skin tone and a hairstyle (`hair`
+ * The athletes (original characters). Your lineup (LineupScene) says who does
+ * each event, and your solo athlete does all five in a solo tournament; in each
+ * event the other five are your rivals. Each has a kit, a skin tone and a hairstyle (`hair`
  * color + `style`, drawn by drawFigure) so they read apart at a glance, and
  * Chonk has a heavier build (`girth`), Joey is two-thirds the height (`height`).
  * Looks only: everyone runs on the same physics.
@@ -16,9 +17,33 @@ export const CHARACTERS = [
   { id: 'chonk', name: 'Chonk', tagline: 'Built for comfort. Somehow still fast.', colors: { shirt: '#f5f5f5', shorts: '#3d3d3d', skin: '#f0b99a', hair: '#8a4b2a', style: 'bun', girth: 2.3 } },
 ];
 
-/** The athlete you play as (chosen on the menu, remembered on this device). */
-export function player() {
-  return CHARACTERS.find((c) => c.id === getCharacter()) ?? CHARACTERS[0];
+const byId = (id) => CHARACTERS.find((c) => c.id === id) ?? null;
+
+let solo = false; // a solo tournament is on: your solo athlete does every event
+
+/** Set by the tournament: while `on`, player() is your solo athlete in every event. */
+export function useSolo(on) {
+  solo = on;
+}
+
+/** Your solo athlete (chosen on the Lineup screen, remembered on this device). */
+export function soloAthlete() {
+  return byId(getCharacter()) ?? CHARACTERS[0];
+}
+
+/** Who does event `eventId` in your lineup (your solo athlete if that slot was never set). */
+export function lineupAthlete(eventId) {
+  return byId(getLineup()[eventId]) ?? soloAthlete();
+}
+
+/** The athlete you play event `eventId` as: your lineup's, or your solo athlete in a solo tournament. */
+export function player(eventId) {
+  return solo ? soloAthlete() : lineupAthlete(eventId);
+}
+
+/** Another player's athlete in event `eventId`, from what their phone sent: { athlete, lineup? } (tournament.js liveAthletes). */
+export function theirAthlete(p, eventId) {
+  return byId(p?.lineup?.[eventId]) ?? byId(p?.athlete) ?? CHARACTERS[0];
 }
 
 /** An athlete's height as a share of everyone else's (Joey: 2/3). */
@@ -26,9 +51,9 @@ export function heightOf(colors) {
   return colors?.height ?? 1;
 }
 
-/** Everyone else: your rivals. */
-export function rivals() {
-  const me = player();
+/** Everyone else in event `eventId`: your rivals. */
+export function rivals(eventId) {
+  const me = player(eventId);
   return CHARACTERS.filter((c) => c !== me);
 }
 

@@ -1,9 +1,10 @@
 import { CONFIG } from '../config.js';
 import { Button, text } from '../core/ui.js';
 import { drawFigure, runPose } from '../athletes/stickFigure.js';
-import { EVENTS, formatMark } from '../events/registry.js';
-import { getBest, getDifficulty, setDifficulty, getGhostOn, setGhostOn, getPlayerName } from '../core/storage.js';
-import { player, heightOf } from '../athletes/roster.js';
+import { EVENTS, TOURNAMENT_BOARDS, formatMark } from '../events/registry.js';
+import { getBest, getDifficulty, setDifficulty, getGhostOn, setGhostOn, getPlayerName, getTourMode, setTourMode } from '../core/storage.js';
+import { lineupAthlete, heightOf } from '../athletes/roster.js';
+import { TOUR_KINDS } from '../tournament/tournament.js';
 import { flow } from '../flow.js';
 import { chooseGhost } from '../online/ghost.js';
 import { syncBests } from '../online/bests.js';
@@ -13,14 +14,9 @@ export class MenuScene {
     chooseGhost(null); // back at the menu: events race your own best again
     this.demoX = 0;
     this.phase = 0;
-    // Tournament: all five events in a row, decathlon scoring.
-    const best = getBest('tournament');
-    this.tourButton = new Button({
-      label: '🏆 Tournament',
-      sub: best == null ? 'All 5 events' : `Best ${best} pts`,
-      color: '#c98a00',
-      onTap: () => flow.tournament(this.game),
-    });
+    // Tournament: all five events in a row, decathlon scoring; solo or team (the TOURNAMENT toggle).
+    this.mode = getTourMode();
+    this.tourButton = new Button({ label: '🏆 Tournament', color: '#c98a00', onTap: () => flow.tournament(this.game, this.mode) });
     this.buttons = EVENTS.map(
       (ev) =>
         new Button({
@@ -32,9 +28,23 @@ export class MenuScene {
     );
     // Online: the same, live against other people (a waiting room first, online/live.js).
     this.liveButtons = [
-      new Button({ label: '🏆 Tournament', sub: 'Live · all 5', color: '#1f8a58', onTap: () => flow.live(this.game, 'tournament') }),
+      new Button({ label: '🏆 Tournament', color: '#1f8a58', onTap: () => flow.live(this.game, TOUR_KINDS[this.mode]) }),
       ...EVENTS.map((ev) => new Button({ label: ev.name, sub: 'Live', color: '#2bb673', enabled: ev.available, onTap: () => flow.live(this.game, ev.id) })),
     ];
+    // Tournament: solo (one athlete does all five) or team (your lineup), remembered on this device.
+    this.modeButtons = ['solo', 'team'].map(
+      (mode) =>
+        new Button({
+          label: mode === 'team' ? 'Team' : 'Solo',
+          w: 90,
+          h: 44,
+          onTap: () => {
+            this.mode = mode;
+            setTourMode(mode);
+            this.styleModes();
+          },
+        }),
+    );
     // Rival difficulty: a two-way toggle, remembered on this device.
     this.level = getDifficulty();
     this.levelButtons = ['amateur', 'pro'].map(
@@ -51,6 +61,7 @@ export class MenuScene {
         }),
     );
     this.styleLevels();
+    this.styleModes();
     // Your ghost: race your best attempt in every event (remembered on this device).
     this.ghostButton = new Button({
       label: '',
@@ -62,9 +73,10 @@ export class MenuScene {
       },
     });
     this.styleGhost();
-    // Your athlete: opens the character picker.
-    this.me = player();
-    this.athleteButton = new Button({ label: `${this.me.name}  ›`, w: 200, h: 44, color: 'rgba(255,255,255,0.15)', onTap: () => flow.characters(this.game) });
+    // Your lineup: who does each event (and your solo athlete).
+    this.lineup = EVENTS.map((ev) => lineupAthlete(ev.id));
+    this.me = this.lineup[0]; // the menu's demo runner: your 100m runner
+    this.athleteButton = new Button({ label: '', w: 180, h: 44, color: 'rgba(255,255,255,0.15)', onTap: () => flow.lineup(this.game) });
     this.tuneButton = new Button({ label: '⚙ Tuning', w: 132, h: 44, color: 'rgba(255,255,255,0.15)', onTap: () => flow.tuning(this.game) });
     this.onlineButton = new Button({ label: '🌐 Leaderboard', w: 196, h: 44, color: 'rgba(255,255,255,0.15)', onTap: () => flow.leaderboard(this.game) });
     // Your profile (username for the online leaderboard), top right.
@@ -81,8 +93,7 @@ export class MenuScene {
 
   /** The Best lines under the buttons, from your saved bests. */
   showBests() {
-    const best = getBest('tournament');
-    this.tourButton.sub = best == null ? 'All 5 events' : `Best ${best} pts`;
+    this.styleModes();
     EVENTS.forEach((ev, i) => {
       if (ev.available) this.buttons[i].sub = `Best ${formatMark(ev, getBest(ev.id))}`;
     });
@@ -93,6 +104,14 @@ export class MenuScene {
       const on = (b.label === 'Pro') === (this.level === 'pro');
       b.color = on ? '#e4572e' : 'rgba(255,255,255,0.15)';
     }
+  }
+
+  styleModes() {
+    for (const b of this.modeButtons) b.color = (b.label === 'Team') === (this.mode === 'team') ? '#e4572e' : 'rgba(255,255,255,0.15)';
+    const name = this.mode === 'team' ? 'Team' : 'Solo';
+    const best = getBest(TOURNAMENT_BOARDS[this.mode].id);
+    this.tourButton.sub = best == null ? `${name} · all 5` : `${name} · Best ${best}`;
+    this.liveButtons[0].sub = `Live · ${name}`;
   }
 
   styleGhost() {
@@ -121,16 +140,25 @@ export class MenuScene {
         b.y = ROW_Y[r];
       }),
     );
-    // Bottom row: ATHLETE on the left, RIVALS in the middle, GHOST on the right.
-    const lw = this.levelButtons[0].w;
-    const aw = this.athleteButton.w;
-    const gw = this.ghostButton.w;
-    const row = aw + 40 + lw * 2 + 8 + 40 + gw;
+    // Bottom row: LINEUP, TOURNAMENT, RIVALS, GHOST.
+    // Narrower on a narrow (4:3) screen.
+    const k = Math.min(1, (view.w - 32) / (180 + 90 * 2 + 130 * 2 + 110 + 8 * 2 + 32 * 3));
+    const [aw, mw, lw, gw, sp] = [180, 90, 130, 110, 32].map((w) => Math.floor(w * k));
+    this.athleteButton.w = aw;
+    this.modeButtons.forEach((b) => (b.w = mw));
+    this.levelButtons.forEach((b) => (b.w = lw));
+    this.ghostButton.w = gw;
+    const row = aw + sp + mw * 2 + 8 + sp + lw * 2 + 8 + sp + gw;
     const x0 = view.w / 2 - row / 2;
     this.athleteButton.x = x0;
     this.athleteButton.y = SETTINGS_Y;
+    this.modeButtons.forEach((b, i) => {
+      b.x = x0 + aw + sp + i * (mw + 8);
+      b.y = SETTINGS_Y;
+    });
+    const lx = x0 + aw + sp + mw * 2 + 8 + sp;
     this.levelButtons.forEach((b, i) => {
-      b.x = x0 + aw + 40 + i * (lw + 8);
+      b.x = lx + i * (lw + 8);
       b.y = SETTINGS_Y;
     });
     this.ghostButton.x = x0 + row - gw;
@@ -156,6 +184,7 @@ export class MenuScene {
       if (this.liveButtons.some((b) => b.tap(ev.x, ev.y))) return;
       if (this.profileButton.tap(ev.x, ev.y)) return;
       if (this.levelButtons.some((b) => b.tap(ev.x, ev.y))) continue;
+      if (this.modeButtons.some((b) => b.tap(ev.x, ev.y))) continue;
       if (this.ghostButton.tap(ev.x, ev.y)) continue;
       if (this.athleteButton.tap(ev.x, ev.y)) return;
       if (this.tourButton.tap(ev.x, ev.y)) return;
@@ -169,6 +198,7 @@ export class MenuScene {
     this.onlineButton.update(dt);
     this.liveButtons.forEach((b) => b.update(dt));
     this.levelButtons.forEach((b) => b.update(dt));
+    this.modeButtons.forEach((b) => b.update(dt));
     this.ghostButton.update(dt);
     this.athleteButton.update(dt);
 
@@ -186,7 +216,7 @@ export class MenuScene {
     ctx.fillRect(0, 0, view.w, view.h);
 
     text(ctx, 'TRACK ROYALE', view.w / 2, 90, { size: 52, color: '#ffb400', shadow: true });
-    text(ctx, `Five events. Two thumbs. Starring ${this.me.name}.`, view.w / 2, 131, { size: 16, weight: 500, color: 'rgba(255,255,255,0.8)' });
+    text(ctx, `Five events. Two thumbs. Starring ${starring(this.lineup)}.`, view.w / 2, 131, { size: 16, weight: 500, color: 'rgba(255,255,255,0.8)', maxWidth: view.w - 40 });
     const label = (s, y) => text(ctx, s, this.tourButton.x, y, { size: 13, weight: 700, align: 'left', color: 'rgba(255,255,255,0.6)' });
     label('OFFLINE · VS THE COMPUTER', ROW_Y[0] - 11);
     label('ONLINE · LIVE VS PEOPLE', ROW_Y[1] - 11);
@@ -201,17 +231,24 @@ export class MenuScene {
     const ly = SETTINGS_Y - 14;
     text(ctx, 'RIVALS', (lb[0].x + lb[1].x + lb[1].w) / 2, ly, { size: 13, weight: 700, color: 'rgba(255,255,255,0.6)' });
     lb.forEach((b) => b.draw(ctx));
+    const mb = this.modeButtons;
+    text(ctx, 'TOURNAMENT', (mb[0].x + mb[1].x + mb[1].w) / 2, ly, { size: 13, weight: 700, color: 'rgba(255,255,255,0.6)' });
+    mb.forEach((b) => b.draw(ctx));
     const gb = this.ghostButton;
     text(ctx, 'GHOST', gb.x + gb.w / 2, ly, { size: 13, weight: 700, color: 'rgba(255,255,255,0.6)' });
     gb.draw(ctx);
     const ab = this.athleteButton;
-    text(ctx, 'ATHLETE', ab.x + ab.w / 2, ly, { size: 13, weight: 700, color: 'rgba(255,255,255,0.6)' });
+    text(ctx, 'LINEUP', ab.x + ab.w / 2, ly, { size: 13, weight: 700, color: 'rgba(255,255,255,0.6)' });
     ab.draw(ctx);
-    // Kit color chip on the athlete button.
-    ctx.fillStyle = this.me.colors.shirt;
-    ctx.beginPath();
-    ctx.arc(ab.x + 22, ab.y + ab.h / 2, 8, 0, Math.PI * 2);
-    ctx.fill();
+    // A kit color chip per event, then the label.
+    const inset = ab.pressT > 0 ? 3 : 0;
+    this.lineup.forEach((c, i) => {
+      ctx.fillStyle = c.colors.shirt;
+      ctx.beginPath();
+      ctx.arc(ab.x + inset + 20 + i * 12, ab.y + ab.h / 2, 5, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    text(ctx, 'Lineup  ›', ab.x + inset + 82, ab.y + ab.h / 2, { size: 20, align: 'left', maxWidth: ab.w - 90 });
 
     // Track strip + demo runner.
     const trackY = 470;
@@ -227,8 +264,14 @@ export class MenuScene {
   }
 }
 
+/** "Juno", or "Juno, Okoro and Chan": everyone in your lineup, once each. */
+function starring(lineup) {
+  const names = [...new Set(lineup.map((c) => c.name))];
+  return names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`;
+}
+
 const ROW_Y = [168, 256]; // tops of the OFFLINE and ONLINE rows
-const SETTINGS_Y = 350; // the athlete / rivals / ghost row
+const SETTINGS_Y = 350; // the lineup / tournament / rivals / ghost row
 
 function toggleFullscreen() {
   if (document.fullscreenElement) {

@@ -4,7 +4,7 @@ import { rand, shuffle, clamp } from '../core/math.js';
 import { text, roundRect } from '../core/ui.js';
 import { Runner } from '../athletes/runner.js';
 import { AIController } from '../athletes/ai.js';
-import { CHARACTERS, player as chosenPlayer, rivals as rivalRoster, heightOf } from '../athletes/roster.js';
+import { CHARACTERS, player as chosenPlayer, rivals as rivalRoster, theirAthlete, heightOf } from '../athletes/roster.js';
 import { drawFigure, runPose, lerpPose, leanPose, launchPose, handReach, POSES, LAUNCH } from '../athletes/stickFigure.js';
 import { TrackRenderer } from '../render/track.js';
 import { ORANGE, drawPad } from '../render/pads.js';
@@ -66,7 +66,7 @@ export class LaneRace {
     // there is one, takes the lane next to the player, or shares the player's).
     const spec = this.ghostSpec;
     const ghostLane = spec && !spec.overlay ? (cfg.playerLane < cfg.lanes ? cfg.playerLane + 1 : cfg.playerLane - 1) : null;
-    const rivals = shuffle(rivalRoster());
+    const rivals = shuffle(rivalRoster(this.ev.id));
     // Live: the other players in the lanes nearest yours, and nobody else (so every phone has the same results).
     const others = this.live ? this.live.others : [];
     if (this.live) this.stage = this.live.stage(this.ev.id);
@@ -83,7 +83,7 @@ export class LaneRace {
       }
       const isPlayer = lane === cfg.playerLane;
       if (this.live && !isPlayer) continue;
-      const who = isPlayer ? chosenPlayer() : rivals.pop();
+      const who = isPlayer ? chosenPlayer(this.ev.id) : rivals.pop();
       const runner = new Runner(this.runnerParams, undefined, cfg.startX); // event-specific physics, if any
       this.athletes.push({
         lane,
@@ -107,7 +107,7 @@ export class LaneRace {
         distance: cfg.distance,
         startX: cfg.startX,
         prompt: cfg.dipPromptDistance ?? CONFIG.dip.promptDistance,
-        athlete: chosenPlayer().id, // so the ghost looks like the athlete who ran it
+        athlete: chosenPlayer(this.ev.id).id, // so the ghost looks like the athlete who ran it
       });
     }
     this.exitBtn = { x: 0, y: 0, w: 44, h: 40 };
@@ -122,7 +122,7 @@ export class LaneRace {
    * replays their inputs (LiveRun), other races draw their frames (LiveTrace).
    */
   liveAthlete(lane, p) {
-    const who = CHARACTERS.find((c) => c.id === p.athlete) ?? chosenPlayer();
+    const who = theirAthlete(p, this.ev.id);
     const live = this.recordGhost ? new LiveRun(this.cfg.startX) : new LiveTrace(this.ev.id, this.traceProps, this.stage);
     const runner = live.runner ?? new TraceBody(this.cfg.startX);
     return { lane, isPlayer: false, name: p.name, uid: p.uid, colors: who.colors, runner, ai: null, live, mark: null, status: 'ok', idlePhase: rand(0, Math.PI * 2) };
@@ -170,7 +170,7 @@ export class LaneRace {
    */
   ghostAthlete(lane) {
     const spec = this.ghostSpec;
-    const who = CHARACTERS.find((c) => c.id === spec.data.athlete) ?? chosenPlayer();
+    const who = CHARACTERS.find((c) => c.id === spec.data.athlete) ?? chosenPlayer(this.ev.id);
     const trace = spec.data.kind === 'trace' ? new TracePlayer(spec.data) : null;
     const ghost = trace ? null : new GhostRun(spec.data);
     return {
@@ -489,7 +489,7 @@ export class LaneRace {
     // The player's run, for the ghost and the online leaderboard.
     if (stats && this.player.status === 'ok' && this.player.mark != null) {
       if (this.recorder) stats.run = this.recorder.data(this.player.mark);
-      else if (this.tracer) stats.run = this.tracer.data(this.player.mark, chosenPlayer().id);
+      else if (this.tracer) stats.run = this.tracer.data(this.player.mark, chosenPlayer(this.ev.id).id);
     }
     flow.results(this.game, this.ev, results, stats);
   }

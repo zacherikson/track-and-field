@@ -1,4 +1,4 @@
-import { BOARDS, TOURNAMENT_BOARD } from '../events/registry.js';
+import { BOARDS, TOURNAMENT_BOARDS } from '../events/registry.js';
 import { getBest, setBest, getGhost, setGhost, getBestTournament, saveBestTournament } from '../core/storage.js';
 import { changes } from '../tuning/store.js';
 import { myEntries, fetchGhost, isSignedIn, submitMark } from './firebase.js';
@@ -11,7 +11,7 @@ import { CONFIG } from '../config.js';
  * your best at it. The phone keeps a copy (core/storage.js) so the game works
  * offline and shows it at once; syncBests() brings that copy in line with the
  * boards whenever you're back at the menu. A board that's been reset (your
- * entry gone) clears your best, your ghost and, for the tournament, your best
+ * entry gone) clears your best, your ghost and, for the tournaments, your best
  * tournament.
  *
  * Only marks made with the shipped physics can go on a board, so only those
@@ -55,10 +55,10 @@ export async function syncBests() {
       setBest(board.id, mark);
       changed = true;
     }
-    if (board === TOURNAMENT_BOARD) {
+    if (board.tournament) {
       // Your best tournament (kept for its ghosts) can't be better than your board entry.
-      const best = getBestTournament();
-      if (best && (mark == null || beats(board, best.total, mark))) saveBestTournament(null);
+      const best = getBestTournament(board.tournament);
+      if (best && (mark == null || beats(board, best.total, mark))) saveBestTournament(board.tournament, null);
       continue;
     }
     await syncGhost(board, entry);
@@ -91,7 +91,7 @@ export function forgetBests() {
     setBest(board.id, null);
     setGhost(board.id, null);
   }
-  saveBestTournament(null);
+  for (const mode of Object.keys(TOURNAMENT_BOARDS)) saveBestTournament(mode, null);
 }
 
 /**
@@ -107,7 +107,7 @@ export async function postBests() {
   for (const board of BOARDS) {
     const mark = getBest(board.id);
     if (!board.online || mark == null) continue;
-    const saved = board === TOURNAMENT_BOARD ? null : getGhost(board.id);
+    const saved = board.tournament ? null : getGhost(board.id);
     let ghost = saved && same(saved.mark, mark) ? saved : null;
     if (board.ghosts) {
       if (!ghost || !isReplayable(ghost, { runner: CONFIG.runner, dip: CONFIG.dip })) continue; // the 100m goes up with its run or not at all

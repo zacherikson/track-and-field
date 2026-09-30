@@ -56,7 +56,7 @@ export function submitBest(eventId, value, lowerIsBetter = true) {
   return better;
 }
 
-/** The athlete you play as (a character id from roster.js), or null for the default. */
+/** Your solo athlete (a character id from roster.js), or null for the default: the one who does a solo tournament. */
 export function getCharacter() {
   return load().character ?? null;
 }
@@ -64,6 +64,32 @@ export function getCharacter() {
 export function setCharacter(id) {
   const data = load();
   data.character = id;
+  save(data);
+}
+
+/**
+ * Your lineup: who does each event, { [eventId]: character id }. An event
+ * missing from it is done by your solo athlete (getCharacter).
+ */
+export function getLineup() {
+  const l = load().lineup;
+  return l && typeof l === 'object' ? l : {};
+}
+
+export function setLineupSlot(eventId, id) {
+  const data = load();
+  data.lineup = { ...getLineup(), [eventId]: id };
+  save(data);
+}
+
+/** Which tournament the menu plays: 'solo' (one athlete, all five events) or 'team' (your lineup). */
+export function getTourMode() {
+  return load().tourMode === 'team' ? 'team' : 'solo';
+}
+
+export function setTourMode(mode) {
+  const data = load();
+  data.tourMode = mode;
   save(data);
 }
 
@@ -129,21 +155,22 @@ export function setGhost(eventId, run) {
   }
 }
 
-// Your best tournament, for its ghosts: { total, events: { [eventId]: { mark, pts, ghost } } }.
-const BEST_TOURNAMENT = 'trackroyale.besttournament.v1';
+// Your best tournament of each kind ('solo' or 'team'), for its ghosts:
+// { total, events: { [eventId]: { mark, pts, ghost } } }.
+const BEST_TOURNAMENT = { solo: 'trackroyale.besttournament.v1', team: 'trackroyale.bestteamtournament.v1' };
 
-export function getBestTournament() {
+export function getBestTournament(mode) {
   try {
-    return JSON.parse(localStorage.getItem(BEST_TOURNAMENT));
+    return JSON.parse(localStorage.getItem(BEST_TOURNAMENT[mode]));
   } catch {
     return null;
   }
 }
 
-export function saveBestTournament(best) {
+export function saveBestTournament(mode, best) {
   try {
-    if (best) localStorage.setItem(BEST_TOURNAMENT, JSON.stringify(best));
-    else localStorage.removeItem(BEST_TOURNAMENT);
+    if (best) localStorage.setItem(BEST_TOURNAMENT[mode], JSON.stringify(best));
+    else localStorage.removeItem(BEST_TOURNAMENT[mode]);
     return true;
   } catch {
     return false;

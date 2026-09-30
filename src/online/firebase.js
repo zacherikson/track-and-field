@@ -19,7 +19,7 @@ import { toWire, fromWire } from './trace.js';
  * 100m doc carries its recorded run (the ghost others can race: small). Other
  * events' recordings are frame by frame (online/trace.js) and much bigger, so
  * they sit in ghosts/, fetched only to race one; `traced: true` says there is
- * one for this mark. A board is an event from registry.js or TOURNAMENT_BOARD:
+ * one for this mark. A board is an event from registry.js or one of TOURNAMENT_BOARDS:
  * { id, lowerIsBetter }.
  * firestore.rules says who may write what.
  *
@@ -423,7 +423,7 @@ async function renameOnBoard(eventId, name) {
 }
 
 // Every board (registry.js BOARDS ids; firestore.rules lists the same).
-const ONLINE_EVENTS = ['sprint100', 'longjump', 'hurdles110', 'polevault', 'javelin', 'tournament'];
+const ONLINE_EVENTS = ['sprint100', 'longjump', 'hurdles110', 'polevault', 'javelin', 'tournament', 'teamtournament'];
 
 /** The key a name is claimed under: names are unique regardless of case. */
 export const nameKey = (name) => name.toLowerCase();

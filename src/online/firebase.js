@@ -415,11 +415,19 @@ export async function fetchGhost(board, row) {
   return d && d.mark === row.mark ? fromWire(d.ghost) : null;
 }
 
-/** Changes your name on your existing board entries. */
-async function renameOnBoard(eventId, name) {
+/** Changes your name on your existing board entries: every board read at once, then one batched write. */
+async function renameOnBoards(name) {
   const { fs, db, uid } = await connect();
-  const ref = fs.doc(runs(fs, db, eventId), uid);
-  if ((await fs.getDoc(ref)).exists()) await fs.updateDoc(ref, { name });
+  const refs = ONLINE_EVENTS.map((eventId) => fs.doc(runs(fs, db, eventId), uid));
+  const snaps = await Promise.all(refs.map((ref) => fs.getDoc(ref)));
+  const batch = fs.writeBatch(db);
+  let any = false;
+  snaps.forEach((snap, i) => {
+    if (!snap.exists()) return;
+    batch.update(refs[i], { name });
+    any = true;
+  });
+  if (any) await batch.commit();
 }
 
 // Every board (registry.js BOARDS ids; firestore.rules lists the same).
@@ -440,14 +448,13 @@ export async function setUsername(name) {
   const userRef = fs.doc(db, 'users', uid);
   const claimRef = fs.doc(db, 'usernames', key);
   await fs.runTransaction(db, async (tx) => {
-    const user = await tx.get(userRef);
-    const claim = await tx.get(claimRef);
+    const [user, claim] = await Promise.all([tx.get(userRef), tx.get(claimRef)]);
     if (claim.exists() && claim.data().uid !== uid) throw new Error('taken');
     const oldKey = user.exists() ? user.data().key : null;
     tx.set(claimRef, { uid });
     if (oldKey && oldKey !== key) tx.delete(fs.doc(db, 'usernames', oldKey));
     tx.set(userRef, { name, key, updatedAt: fs.serverTimestamp() });
   });
-  for (const eventId of ONLINE_EVENTS) await renameOnBoard(eventId, name);
+  await renameOnBoards(name);
   boards.clear(); // your name changed on them
 }

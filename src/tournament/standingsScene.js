@@ -7,6 +7,7 @@ import { counts } from '../online/bests.js';
 import { tournament, ORDER } from './tournament.js';
 import { flow } from '../flow.js';
 import { serverNow } from '../online/live.js';
+import { Aftermath } from '../brawl/aftermath.js';
 
 const TITLE_CARD = 8000; // ms before a live tournament's next event starts that its title card comes up
 
@@ -18,12 +19,17 @@ const TITLE_CARD = 8000; // ms before a live tournament's next event starts that
  * In a live tournament nobody taps Next: you're ready for the next event as
  * soon as you get here, and it comes up by itself once everyone is (a
  * countdown on the button; see online/live.js startOf).
+ *
+ * With a `venue` (where the event finished) the standings sit over the late
+ * hits, and fold away to let you at the others (brawl/aftermath.js).
  */
 export class StandingsScene {
-  constructor(ev, results, stats = null) {
+  constructor(ev, results, stats = null, venue = null) {
     this.ev = ev;
     this.results = results;
     this.stats = stats;
+    this.venue = venue;
+    this.wantsReleases = !!venue; // the late hits' stick is held
   }
 
   enter() {
@@ -70,6 +76,19 @@ export class StandingsScene {
           new Button({ label: 'Quit', color: 'rgba(255,255,255,0.18)', onTap: () => flow.menu(this.game) }),
         ];
     this.layout(this.game.view);
+    const live = tournament.live;
+    this.after = this.venue
+      ? new Aftermath(this, this.venue, this.results, {
+          live,
+          key: live ? live.stage(this.ev.id) : '',
+          bar: [this.buttons[0], this.buttons[this.buttons.length - 1]],
+          summary: () => `${ordinal(this.myPlace)} overall · ${this.table.find((t) => t.isPlayer)?.total ?? 0} pts`,
+        })
+      : null;
+  }
+
+  exit() {
+    this.after?.exit();
   }
 
   goNext() {
@@ -79,6 +98,7 @@ export class StandingsScene {
 
   onResize(view) {
     this.layout(view);
+    this.after?.layout(view);
   }
 
   layout(view) {
@@ -94,12 +114,14 @@ export class StandingsScene {
   update(dt, t) {
     this.age += dt;
     for (const e of this.game.input.consume(t + dt)) {
-      if (this.age < 0.6) continue; // don't let frantic event taps hit a button
+      if (this.age < 0.6 && e.type !== 'up' && e.type !== 'keyup') continue; // don't let frantic event taps hit a button
+      if (this.after?.handle(e)) continue;
       if (e.type === 'down') this.buttons.some((b) => b.tap(e.x, e.y));
       else if (e.code === 'Space' || e.code === 'Enter') this.buttons[0].onTap();
       else if (e.code === 'Escape') flow.menu(this.game);
     }
     this.buttons.forEach((b) => b.update(dt));
+    this.after?.update(dt, t);
     if (this.live) this.countDown();
   }
 
@@ -117,8 +139,14 @@ export class StandingsScene {
   }
 
   render(ctx, view) {
-    ctx.fillStyle = '#12203a';
-    ctx.fillRect(0, 0, view.w, view.h);
+    if (this.after) {
+      this.after.drawWorld(ctx, view);
+      if (!this.after.open) return this.after.drawHUD(ctx, view);
+      this.after.dim(ctx, view);
+    } else {
+      ctx.fillStyle = '#12203a';
+      ctx.fillRect(0, 0, view.w, view.h);
+    }
     const n = tournament.history.length;
     const cx = view.w / 2;
     if (this.final) {

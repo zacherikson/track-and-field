@@ -51,6 +51,30 @@
           "ready": {
             "$stage": { ".validate": "newData.isNumber()" }
           },
+          "b": {
+            ".validate": "newData.hasChildren(['k', 'x', 'd'])",
+            "k": { ".validate": "newData.isString() && newData.val().length <= 40" },
+            "x": { ".validate": "newData.isNumber()" },
+            "d": { ".validate": "newData.isNumber()" },
+            "f": { ".validate": "newData.isNumber()" },
+            "s": { ".validate": "newData.isString() && newData.val().length <= 8" },
+            "n": { ".validate": "newData.isNumber()" },
+            "e": { ".validate": "newData.isNumber() || (newData.isString() && newData.val().length <= 12)" },
+            "h": { ".validate": "newData.isString() && newData.val().length <= 128" },
+            "$other": { ".validate": false }
+          },
+          "h": {
+            "$n": {
+              ".validate": "$n.matches(/^[0-9]{1,6}$/) && newData.hasChildren(['k', 'to', 't', 'at'])",
+              "k": { ".validate": "newData.isString() && newData.val().length <= 40" },
+              "to": { ".validate": "newData.isString() && newData.val().length <= 128" },
+              "t": { ".validate": "newData.isString() && newData.val().length <= 8" },
+              "s": { ".validate": "newData.isNumber()" },
+              "f": { ".validate": "newData.isNumber()" },
+              "at": { ".validate": "newData.isNumber()" },
+              "$other": { ".validate": false }
+            }
+          },
           "$other": { ".validate": false }
         }
       }

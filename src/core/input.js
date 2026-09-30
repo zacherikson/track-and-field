@@ -27,6 +27,7 @@ export class Input {
     this.view = view;
     this.queue = []; // { type: 'down'|'up'|'key'|'keyup', x, y, id, code, wall }
     this.wantReleases = false; // set by scenes that need holds ('up' for fingers/mouse, 'keyup' for keys)
+    this.pointers = new Map(); // id -> { x, y }: where each finger (or the pressed mouse) is now, for drag controls
     this.wallRef = performance.now();
     this.simRef = 0;
     this.lastConsumed = 0;
@@ -34,7 +35,8 @@ export class Input {
 
     const opts = { passive: false, capture: true };
     window.addEventListener('touchstart', (e) => this.onTouchStart(e), opts);
-    window.addEventListener('touchmove', (e) => this.onGame(e) && e.preventDefault(), opts);
+    window.addEventListener('touchmove', (e) => this.onTouchMove(e), opts);
+    window.addEventListener('pointermove', (e) => this.onPointerMove(e), opts);
     window.addEventListener('touchend', (e) => this.onTouchEnd(e), opts);
     window.addEventListener('touchcancel', (e) => this.onTouchCancel(e), opts);
     window.addEventListener('pointerdown', (e) => this.onPointerDown(e), opts);
@@ -79,6 +81,20 @@ export class Input {
   push(clientX, clientY, id, wall) {
     const p = this.toLogical(clientX, clientY);
     this.queue.push({ type: 'down', x: p.x, y: p.y, id, wall });
+    this.pointers.set(id, p);
+  }
+
+  onTouchMove(e) {
+    if (this.onGame(e)) e.preventDefault();
+    for (const t of e.changedTouches) {
+      const id = 't' + t.identifier;
+      if (this.pointers.has(id)) this.pointers.set(id, this.toLogical(t.clientX, t.clientY));
+    }
+  }
+
+  onPointerMove(e) {
+    if (e.pointerType === 'touch' || !this.pointers.has(e.pointerId)) return;
+    this.pointers.set(e.pointerId, this.toLogical(e.clientX, e.clientY));
   }
 
   onTouchStart(e) {
@@ -107,6 +123,7 @@ export class Input {
 
   /** Finger lifts, for scenes that need holds. Lifts count wherever they happen. */
   pushUps(e) {
+    for (const t of e.changedTouches) this.pointers.delete('t' + t.identifier);
     if (!this.wantReleases) return;
     const wall = this.wallTime(e);
     for (const t of e.changedTouches) {
@@ -116,6 +133,7 @@ export class Input {
   }
 
   onPointerUp(e) {
+    if (e.pointerType !== 'touch') this.pointers.delete(e.pointerId);
     if (!this.wantReleases || e.pointerType === 'touch') return;
     const p = this.toLogical(e.clientX, e.clientY);
     this.queue.push({ type: 'up', x: p.x, y: p.y, id: e.pointerId, wall: this.wallTime(e) });

@@ -107,6 +107,7 @@ export class Brawl {
     let bestD = Infinity;
     for (const v of this.fighters) {
       if (v === a || !v.vulnerable(t)) continue;
+      if (a.brain && !v.isMe) continue; // a computer rival only ever hits you
       const dx = (v.x - a.x) * a.facing;
       const dd = Math.abs(v.d - a.d);
       if (dx < -0.15 || dx > reach + 0.1 || dd > DEPTH_REACH) continue;
@@ -167,6 +168,9 @@ export class Brawl {
     if (a.isMe || v.isMe) this.shake = Math.max(this.shake, kind === 'punch' ? 0.12 : 0.2);
     if (v.isMe) navigator.vibrate?.(kind === 'punch' ? 40 : 80);
     else if (a.isMe) navigator.vibrate?.(20);
+    // The computer rivals only fight once you've started it, and gloat when they put you down (bots.js).
+    if (a.isMe) v.brain?.provoked(a, t);
+    if (v.isMe && v.floored) a.brain?.beatYou();
     if (!a.remote) this.onHit?.(a, v, kind, seed);
   }
 

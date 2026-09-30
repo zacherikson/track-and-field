@@ -4,6 +4,12 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Late hits: rivals wait for you to start it
+- The computer rivals no longer brawl from the start, with you or each other:
+  they stand about and stroll. Hit one, or emote within about 2 m of one, and
+  that rival comes after you until they put you down; then they gloat with an
+  emote and calm down. Rivals never fight each other.
+
 ## Late hits
 - After every event (on its own or in a tournament) you stay where it finished,
   past the finish line or round the pit, with everyone who took part, and you
@@ -19,7 +25,7 @@ Gameplay and tuning changes, newest first. When you change a number in
 - Hits leave black eyes, bruises, a bloody nose, a cut or blood on the shirt,
   kept until you go back to the menu.
 - Offline, the computer rivals fight back (no more than two on you at once) and
-  brawl among themselves. Live, it's the other players.
+  brawl among themselves (changed since: see above). Live, it's the other players.
 - Live tournament: 22 s (was 14) from everyone finishing an event to the next
   one's start, so there's time for it. Publish the new `database.rules.json`
   (Realtime Database > Rules): live play sends where you are and who you hit.

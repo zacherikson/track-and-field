@@ -41,7 +41,8 @@ Left thumb: drag to walk. Right thumb: PUNCH, KICK, SLAM (grab, hoist overhead,
 slam down), and hold 😀 then drag to an emote on the wheel. Three punches in a
 row knock someone down. Hits leave bruises, black eyes and a bit of blood,
 which stay on everyone until you go back to the menu. Nothing counts: it's for
-fun. The computer rivals fight back (and each other); in live play it's the
+fun. The computer rivals leave you alone until you hit one or emote in their
+face; then they come after you, and gloat once they've put you down. In live play it's the
 other players, and each phone decides its own player's hits. Keyboard: arrows
 or WASD, J / K / L, 1-6 for emotes.
 

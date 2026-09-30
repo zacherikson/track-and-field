@@ -20,8 +20,9 @@ const TITLE_CARD = 8000; // ms before a live tournament's next event starts that
  * soon as you get here, and it comes up by itself once everyone is (a
  * countdown on the button; see online/live.js startOf).
  *
- * With a `venue` (where the event finished) the standings sit over the late
- * hits, and fold away to let you at the others (brawl/aftermath.js).
+ * With a `venue` (where the event finished) it's the late hits instead: the
+ * standings small in a corner, Next (or New tournament) and Quit (or Menu),
+ * and the others to fight (brawl/aftermath.js).
  */
 export class StandingsScene {
   constructor(ev, results, stats = null, venue = null) {
@@ -75,16 +76,32 @@ export class StandingsScene {
           new Button({ label: `Next: ${next.name}  ›`, color: '#2bb673', onTap: () => !this.live && this.goNext() }),
           new Button({ label: 'Quit', color: 'rgba(255,255,255,0.18)', onTap: () => flow.menu(this.game) }),
         ];
-    this.layout(this.game.view);
     const live = tournament.live;
-    this.after = this.venue
-      ? new Aftermath(this, this.venue, this.results, {
-          live,
-          key: live ? live.stage(this.ev.id) : '',
-          bar: [this.buttons[0], this.buttons[this.buttons.length - 1]],
-          summary: () => `${ordinal(this.myPlace)} overall · ${this.table.find((t) => t.isPlayer)?.total ?? 0} pts`,
-        })
-      : null;
+    if (this.venue) {
+      // Late hits: just the two buttons, and the standings small in a corner.
+      this.buttons = [this.buttons[0], this.buttons[this.buttons.length - 1]];
+      this.after = new Aftermath(this, this.venue, this.results, {
+        live,
+        key: live ? live.stage(this.ev.id) : '',
+        bar: this.buttons,
+        title: () => (this.final ? `🏆 ${this.table[0].name.toUpperCase()} WINS · FINAL STANDINGS` : `OVERALL AFTER ${tournament.history.length} OF ${ORDER.length} · ${this.ev.name.toUpperCase()}`),
+        table: () =>
+          this.table.map((t, i) => {
+            const pts = this.rows.find((r) => (r.isPlayer ? 'you' : r.key ?? r.name) === t.key)?.pts;
+            return {
+              place: String(i + 1),
+              name: t.name,
+              colors: t.colors,
+              value: this.final || pts == null ? String(t.total) : `+${pts} · ${t.total}`,
+              isPlayer: t.isPlayer,
+              gold: t.live,
+            };
+          }),
+      });
+    } else {
+      this.after = null;
+      this.layout(this.game.view);
+    }
   }
 
   exit() {
@@ -97,8 +114,8 @@ export class StandingsScene {
   }
 
   onResize(view) {
-    this.layout(view);
-    this.after?.layout(view);
+    if (this.after) this.after.layout(view);
+    else this.layout(view);
   }
 
   layout(view) {
@@ -139,14 +156,9 @@ export class StandingsScene {
   }
 
   render(ctx, view) {
-    if (this.after) {
-      this.after.drawWorld(ctx, view);
-      if (!this.after.open) return this.after.drawHUD(ctx, view);
-      this.after.dim(ctx, view);
-    } else {
-      ctx.fillStyle = '#12203a';
-      ctx.fillRect(0, 0, view.w, view.h);
-    }
+    if (this.after) return this.after.render(ctx, view);
+    ctx.fillStyle = '#12203a';
+    ctx.fillRect(0, 0, view.w, view.h);
     const n = tournament.history.length;
     const cx = view.w / 2;
     if (this.final) {

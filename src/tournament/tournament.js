@@ -94,7 +94,7 @@ export const tournament = {
       // You're one row whoever did the event for you (a team tournament changes athletes).
       const key = r.isPlayer ? 'you' : (r.key ?? r.name);
       const name = r.isPlayer && this.mode === 'team' && !this.live ? `Team ${getPlayerName()}` : r.name;
-      const t = this.totals.get(key) ?? { name, colors: r.colors, isPlayer: r.isPlayer, live: !!r.key, total: 0 };
+      const t = this.totals.get(key) ?? { key, name, colors: r.colors, isPlayer: r.isPlayer, live: !!r.key, total: 0 };
       t.total += r.pts;
       this.totals.set(key, t);
     }

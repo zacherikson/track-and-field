@@ -35,8 +35,9 @@ Open http://localhost:8000. To test on a phone on the same Wi-Fi, open `http://<
 
 Once an event is over, everyone who took part hangs around where it finished
 (past the finish line, round the pit) until the next one, and you can go and
-beat them up, NFL Blitz style. The results come up first; tap anywhere off
-their buttons (or wait a few seconds) and they fold into a bar at the top.
+beat them up, NFL Blitz style. The results (or tournament standings) sit
+small in the top left, with just Race again (or Next) and Menu (or Quit) in the
+top right, and the fight controls work from the start.
 Left thumb: drag to walk. Right thumb: PUNCH, KICK, SLAM (grab, hoist overhead,
 slam down), and hold 😀 then drag to an emote on the wheel. Three punches in a
 row knock someone down. Hits leave bruises, black eyes and a bit of blood,

@@ -9,6 +9,12 @@ Gameplay and tuning changes, newest first. When you change a number in
   they stand about and stroll. Hit one, or emote within about 2 m of one, and
   that rival comes after you until they put you down; then they gloat with an
   emote and calm down. Rivals never fight each other.
+- The screen after an event is just the venue now: no dark overlay, no big
+  results page to tap away. The results (or the tournament standings) sit
+  small in the top left on a light see-through panel, Race again (or Next, or
+  the live countdown) and Menu (or Quit) sit in the top right, and you can
+  walk and fight straight away. Your mark, best and stats, Leaderboard and
+  Tuning are gone from that screen; Leaderboard and Tuning are on the menu.
 
 ## Late hits
 - After every event (on its own or in a tournament) you stay where it finished,

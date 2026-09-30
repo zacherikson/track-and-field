@@ -1,4 +1,4 @@
-import { Button, text } from '../core/ui.js';
+import { text, roundRect } from '../core/ui.js';
 import { getDifficulty } from '../core/storage.js';
 import { Brawl } from './brawl.js';
 import { BrawlControls } from './controls.js';
@@ -6,35 +6,32 @@ import { BotBrain } from './bots.js';
 import { LiveBrawl } from './liveBrawl.js';
 import { woundsOf } from './wounds.js';
 
-const AUTO_CLOSE = 6; // s the results stay up before they fold away for the late hits
-const HINT = 5; // s the how-to line shows once they have
+const HINT = 6; // s the how-to line shows
 const BAR_H = 50;
+const ROW_H = 25;
 
 /**
  * The late hits on a results screen (ResultScene, StandingsScene): the event's
- * venue with everyone who took part standing about in it, your controls, and
- * the results as a panel over the top.
- *
- * The results come up first (dimmed venue behind, the rivals already going at
- * each other). Tap anywhere off their buttons, or wait a few seconds, and they
- * fold into a bar at the top (the results button, and the scene's main two
- * buttons) so you can get stuck in; the results button brings them back.
+ * venue with everyone who took part standing about in it, your controls from
+ * the first moment, a small see-through results table in the top left and the
+ * scene's two buttons (Race again / Next, and Menu / Quit) in the top right.
  *
  * The scene passes each input event to handle() first, calls update() each
- * step, draws with drawWorld() then (panel open) its own results over dim(),
- * or (panel closed) drawHUD(); and calls exit() when it leaves.
+ * step, draws with render(), and calls exit() when it leaves.
  */
 export class Aftermath {
   /**
-   * @param scene  the results scene (its `buttons` are the panel's)
+   * @param scene  the results scene
    * @param venue  where (venue.js), from the event scene
    * @param rows   the event's results rows ({ name, colors, isPlayer, key })
-   * @param opts   { live: the room when played live, key: which brawl (live), bar: [main, other] buttons, summary: () => string }
+   * @param opts   { live: the room when played live, key: which brawl (live), bar: [main, other] buttons,
+   *                 title: () => string, table: () => [{ place, name, colors, value, isPlayer, gold }] }
    */
-  constructor(scene, venue, rows, { live = null, key = '', bar, summary }) {
+  constructor(scene, venue, rows, { live = null, key = '', bar, title, table }) {
     this.scene = scene;
     this.venue = venue;
-    this.summary = summary;
+    this.title = title;
+    this.table = table;
     const view = scene.game.view;
     venue.view = view;
     let k = 0;
@@ -61,39 +58,25 @@ export class Aftermath {
     this.live = live ? new LiveBrawl(this.brawl, live, key) : null;
     if (this.brawl.me) venue.snap(this.brawl.me.x);
     this.controls = new BrawlControls(scene.game.input);
-    this.open = true;
-    this.openT = 0;
-    this.pinned = false; // opened by hand: stays until closed by hand
-    this.hintT = null;
-    this.pending = []; // moves pressed while busy: { move, t }
-    this.resultsBtn = new Button({ label: '📋 Results', size: 16, color: 'rgba(12,22,44,0.82)', onTap: () => this.show() });
-    this.bar = bar.filter(Boolean).map((src) => new BarButton(src));
+    this.age = 0;
+    this.pending = []; // moves pressed while busy: { m, t }
+    this.bar = bar.filter(Boolean);
     this.layout(view);
   }
 
   layout(view) {
     const s = view.safe;
     const y = 8 + s.t;
-    Object.assign(this.resultsBtn, { x: 10 + s.l, y, w: 190, h: BAR_H });
     let x = view.w - 10 - s.r;
     for (const b of this.bar) {
-      b.w = b === this.bar[0] ? 230 : 110;
+      b.w = b === this.bar[0] ? 220 : 110;
+      b.h = BAR_H;
+      b.size = 18;
       x -= b.w;
-      Object.assign(b, { x, y, h: BAR_H });
+      Object.assign(b, { x, y });
       x -= 10;
     }
     this.controls.layout(view, y + BAR_H + 6);
-  }
-
-  show() {
-    this.open = true;
-    this.pinned = true;
-    this.controls.release();
-  }
-
-  hide() {
-    this.open = false;
-    this.hintT ??= 0;
   }
 
   /** One input event: true if the late hits took it (else the scene handles it as before). */
@@ -102,38 +85,20 @@ export class Aftermath {
       this.controls.handle(e);
       return true;
     }
-    const passKey = e.type === 'key' && ['Enter', 'Space', 'Escape'].includes(e.code);
-    if (this.open) {
-      if (e.type === 'down') {
-        if (this.scene.buttons.some((b) => b.hit(e.x, e.y))) return false;
-        this.hide();
-        return true;
-      }
-      if (passKey || !this.controls.handle(e)) return false;
-      this.hide();
-      return true;
-    }
-    if (e.type === 'down') {
-      for (const b of [this.resultsBtn, ...this.bar]) if (b.tap(e.x, e.y)) return true;
-      this.controls.handle(e);
-      return true;
-    }
-    if (passKey) return false;
-    return this.controls.handle(e) || true;
+    if (e.type === 'key' && ['Enter', 'Space', 'Escape'].includes(e.code)) return false;
+    if (e.type === 'down' && this.bar.some((b) => b.hit(e.x, e.y))) return false; // the scene's buttons
+    this.controls.handle(e);
+    return true;
   }
 
   update(dt, t) {
-    if (this.open && !this.pinned) {
-      this.openT += dt;
-      if (this.openT > AUTO_CLOSE) this.hide();
-    }
-    if (this.hintT != null) this.hintT += dt;
+    this.age += dt;
     const me = this.brawl.me;
     const c = this.controls.read(dt);
     if (me) {
-      me.mx = this.open ? 0 : c.mx;
-      me.md = this.open ? 0 : c.md;
-      if (!this.open) for (const m of c.moves) this.pending.push({ m, t });
+      me.mx = c.mx;
+      me.md = c.md;
+      for (const m of c.moves) this.pending.push({ m, t });
       // A move pressed a moment before the last one finishes still happens.
       this.pending = this.pending.filter((p) => t - p.t < 0.25);
       while (this.pending.length) {
@@ -143,56 +108,52 @@ export class Aftermath {
         this.pending.shift();
       }
     }
-    for (const f of this.brawl.fighters) f.brain?.update(dt, t, this.brawl, this.open);
+    for (const f of this.brawl.fighters) f.brain?.update(dt, t, this.brawl, false);
     this.live?.update(dt);
     this.brawl.update(dt, t);
-    this.bar.forEach((b) => b.update(dt));
-    this.resultsBtn.update(dt);
   }
 
-  drawWorld(ctx, view) {
+  render(ctx, view) {
     this.brawl.render(ctx, view);
-  }
-
-  /** Under the results panel: the venue dimmed, and how to get to the late hits. */
-  dim(ctx, view) {
-    ctx.fillStyle = 'rgba(18,32,58,0.86)';
-    ctx.fillRect(0, 0, view.w, view.h);
-    const pulse = 0.55 + 0.45 * Math.sin(this.scene.age * 4);
-    text(ctx, 'Tap anywhere for some late hits 👊', view.w / 2, 13 + view.safe.t, { size: 13, weight: 700, color: `rgba(255,210,63,${pulse})` });
-  }
-
-  /** Panel folded away: the bar and the controls. */
-  drawHUD(ctx, view) {
-    this.resultsBtn.sub = this.summary();
-    this.resultsBtn.draw(ctx);
+    this.drawTable(ctx, view);
     this.bar.forEach((b) => b.draw(ctx));
     this.controls.draw(ctx, view);
-    if (this.hintT != null && this.hintT < HINT) {
-      ctx.globalAlpha = Math.min(1, (HINT - this.hintT) / 0.6);
-      text(ctx, 'LATE HITS! Drag on the left to walk · PUNCH, KICK, SLAM · hold 😀 to emote', view.w / 2, this.resultsBtn.y + BAR_H + 22, {
-        size: 14, color: '#fff', shadow: true, maxWidth: view.w - 40,
+    if (this.age < HINT) {
+      ctx.globalAlpha = Math.min(1, (HINT - this.age) / 0.6);
+      text(ctx, 'Drag on the left to walk · PUNCH, KICK, SLAM · hold 😀 to emote', view.w / 2, view.h - 24 - view.safe.b, {
+        size: 14, color: '#fff', shadow: true, maxWidth: view.w - 460,
       });
       ctx.globalAlpha = 1;
     }
   }
 
+  /** The results, small, top left, on a light see-through panel. */
+  drawTable(ctx, view) {
+    const rows = this.table();
+    const x = 10 + view.safe.l;
+    const y = 8 + view.safe.t;
+    const w = Math.min(290, view.w * 0.3);
+    const h = 30 + rows.length * ROW_H + 6;
+    roundRect(ctx, x, y, w, h, 12);
+    ctx.fillStyle = 'rgba(12,22,44,0.45)';
+    ctx.fill();
+    text(ctx, this.title(), x + 12, y + 16, { size: 12, align: 'left', weight: 800, color: 'rgba(255,255,255,0.8)', maxWidth: w - 24 });
+    rows.forEach((r, i) => {
+      const ry = y + 30 + i * ROW_H + ROW_H / 2;
+      if (r.isPlayer) {
+        roundRect(ctx, x + 4, ry - ROW_H / 2 + 1, w - 8, ROW_H - 2, 7);
+        ctx.fillStyle = 'rgba(255,180,0,0.25)';
+        ctx.fill();
+      }
+      text(ctx, r.place, x + 20, ry, { size: 14, shadow: true });
+      ctx.fillStyle = r.colors.shirt;
+      ctx.fillRect(x + 34, ry - 7, 4, 14);
+      text(ctx, r.name, x + 44, ry, { size: 14, align: 'left', weight: r.isPlayer ? 800 : 600, color: r.gold ? '#ffb400' : '#fff', shadow: true, maxWidth: w - 130 });
+      text(ctx, r.value, x + w - 12, ry, { size: 14, align: 'right', shadow: true });
+    });
+  }
+
   exit() {
     this.live?.close();
-  }
-}
-
-/** A scene's button in the bar: same label and action, its own place. */
-class BarButton extends Button {
-  constructor(src) {
-    super({ size: 17, onTap: () => src.onTap?.() });
-    this.src = src;
-  }
-
-  draw(ctx) {
-    this.label = this.src.label;
-    this.color = this.src.color;
-    this.enabled = this.src.enabled;
-    super.draw(ctx);
   }
 }

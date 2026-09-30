@@ -12,8 +12,9 @@ import { Aftermath } from '../brawl/aftermath.js';
  * Results: your mark, placing, personal best, and full standings.
  * `results` is a sorted array of { name, lane, mark, status: 'ok'|'dnf', isPlayer, colors }.
  *
- * With a `venue` (where the event finished) the results sit over the late
- * hits, and fold away to let you at the others (brawl/aftermath.js).
+ * With a `venue` (where the event finished) it's the late hits instead: the
+ * results small in a corner, Race again and Menu, and the others to fight
+ * (brawl/aftermath.js).
  */
 export class ResultScene {
   constructor(ev, results, stats = null, venue = null) {
@@ -48,16 +49,29 @@ export class ResultScene {
       new Button({ label: '⚙ Tuning', color: 'rgba(255,255,255,0.18)', onTap: () => flow.tuning(this.game) }),
     ];
     if (this.ev.online) this.buttons.splice(2, 0, new Button({ label: '🌐 Leaderboard', color: 'rgba(255,255,255,0.18)', onTap: () => flow.leaderboard(this.game, this.ev) }));
-    this.layout(this.game.view);
     const live = this.stats?.live ? currentLive() : null;
-    this.after = this.venue
-      ? new Aftermath(this, this.venue, this.results, {
-          live,
-          key: live ? live.stage(this.ev.id) : '',
-          bar: [this.buttons[0], this.buttons.find((b) => b.label === 'Menu')],
-          summary: () => (me.status === 'ok' ? `${ordinal(this.place)} · ${formatMark(this.ev, me.mark)}` : me.status === 'dnf' ? 'Did not finish' : 'No mark'),
-        })
-      : null;
+    if (this.venue) {
+      // Late hits: just the two buttons, and the results small in a corner.
+      this.buttons = this.buttons.slice(0, 2);
+      this.after = new Aftermath(this, this.venue, this.results, {
+        live,
+        key: live ? live.stage(this.ev.id) : '',
+        bar: this.buttons,
+        title: () => `RESULTS · ${this.ev.name.toUpperCase()}`,
+        table: () =>
+          this.results.map((r, i) => ({
+            place: r.status === 'ok' ? String(i + 1) : '–',
+            name: r.name,
+            colors: r.colors,
+            value: r.status === 'ok' ? formatMark(this.ev, r.mark) : r.status.toUpperCase(),
+            isPlayer: r.isPlayer,
+            gold: !!live && !r.isPlayer,
+          })),
+      });
+    } else {
+      this.after = null;
+      this.layout(this.game.view);
+    }
   }
 
   exit() {
@@ -65,8 +79,8 @@ export class ResultScene {
   }
 
   onResize(view) {
-    this.layout(view);
-    this.after?.layout(view);
+    if (this.after) this.after.layout(view);
+    else this.layout(view);
   }
 
   layout(view) {
@@ -91,14 +105,9 @@ export class ResultScene {
   }
 
   render(ctx, view) {
-    if (this.after) {
-      this.after.drawWorld(ctx, view);
-      if (!this.after.open) return this.after.drawHUD(ctx, view);
-      this.after.dim(ctx, view);
-    } else {
-      ctx.fillStyle = '#12203a';
-      ctx.fillRect(0, 0, view.w, view.h);
-    }
+    if (this.after) return this.after.render(ctx, view);
+    ctx.fillStyle = '#12203a';
+    ctx.fillRect(0, 0, view.w, view.h);
     const me = this.me;
     const colW = Math.min(360, (view.w - 60) / 2);
     const lx = view.w / 2 - colW - 10;

@@ -11,8 +11,9 @@ To give an athlete art:
    has prompts for an AI image generator.
 2. Open [tools/rig.html](../../../tools/rig.html) (serve the repo:
    `python3 -m http.server`, then `/tools/rig.html`), drop the art in, name the
-   parts, click each part's two joints, check the preview, and download
-   `<name>.png` + `<name>.json` into this folder.
+   parts, check each part's two joints (they're guessed), cut off anything that
+   shouldn't show past a joint, check the preview, and download `<name>.png` +
+   `<name>.json` into this folder. Keep the original art in `art/<name>/`.
 3. Add `sprite: '<name>'` to the athlete's colors in [roster.js](../roster.js).
 
 Until the sheet loads, or if it fails to load, the stick figure is drawn instead.

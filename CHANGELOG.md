@@ -4,6 +4,14 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Juno, drawn
+- Juno is a drawn cartoon sprinter in the 100m and hurdles (parts drawn by an AI
+  image generator from tools/art-prompts.md, originals in art/juno/, rigged with
+  tools/rig.html). Rivals, the other events and the menus are still stick figures.
+- rig.html takes several sheets at once (matching their scales), guesses each
+  part's joints, and can cut off what shouldn't show past a joint (the cut-off
+  ends of limbs, a second wristband).
+
 ## Sprite rigger for drawn athletes
 - tools/rig.html: drop in drawn body parts (one sheet or a file per part), click
   each part's two joints, watch it run on the real skeleton, download the

@@ -1,6 +1,7 @@
 import { CONFIG } from '../config.js';
 import { Button, text, roundRect } from '../core/ui.js';
 import { BOARDS, formatMark } from '../events/registry.js';
+import { getTopMarks, TOP_N, getBoardView, setBoardView } from '../core/storage.js';
 import { leaderboard, cachedLeaderboard, fetchGhost, learnUid, isSignedIn, startGoogleSignIn } from '../online/firebase.js';
 import { chooseGhost, isReplayable, GHOST_VERSION } from '../online/ghost.js';
 import { isTrace } from '../online/trace.js';
@@ -15,12 +16,17 @@ const TAB_LABELS = { sprint100: '100m', longjump: 'Long jump', hurdles110: 'Hurd
 let lastBoard = null; // the tab you looked at last, for the menu's Leaderboard button
 
 /**
- * The online leaderboards: a tab per event plus the solo and team tournament scores, each
- * with the best marks from every player. On the event boards each recorded
- * mark has a Race button that puts it next to you as a ghost.
+ * Leaderboards, two views (Mine | Global along the top, the last one used is remembered):
  *
- * Guests don't see the boards: the screen asks them to sign in with Google
- * first (the boards themselves are public, see firestore.rules).
+ * - Mine: your own top five on every board (storage.js getTopMarks), five
+ *   events across, the two tournament scores under them, each mark with who
+ *   set it, where (Amateur, Pro, Training, Live) and when. Kept on this phone,
+ *   so guests have it too. Tap a board to see it on Global.
+ * - Global: the online leaderboards, a tab per event plus the solo and team
+ *   tournament scores, each with the best marks from every player. On the event
+ *   boards each recorded mark has a Race button that puts it next to you as a
+ *   ghost. Guests don't see these: the screen asks them to sign in with Google
+ *   first (the boards themselves are public, see firestore.rules).
  */
 export class LeaderboardScene {
   constructor(board = null) {
@@ -30,6 +36,10 @@ export class LeaderboardScene {
   enter() {
     const dim = 'rgba(255,255,255,0.18)';
     this.backBtn = new Button({ label: 'Menu', w: 150, h: 50, color: dim, onTap: () => flow.menu(this.game) });
+    this.viewBtns = ['mine', 'global'].map((v) => new Button({ label: v === 'mine' ? '👤 Mine' : '🌐 Global', w: 140, h: 36, size: 17, onTap: () => this.setView(v) }));
+    this.mine = BOARDS.map((board) => ({ board, list: getTopMarks(board.id, board.lowerIsBetter) }));
+    this.view = getBoardView();
+    this.styleViews();
     this.retryBtn = new Button({ label: 'Try again', w: 180, h: 50, onTap: () => this.load() });
     this.tabs = BOARDS.map((b) => new Button({ label: TAB_LABELS[b.id] ?? b.name, h: 38, size: 16, onTap: () => this.show(b) }));
     this.age = 0; // s on this screen: animates the loading rows
@@ -41,11 +51,30 @@ export class LeaderboardScene {
       return;
     }
     this.layout(this.game.view); // before anything loads, so the buttons start in place
+    if (this.view === 'global') this.openGlobal();
+  }
+
+  /** Global, the first time it's shown: load the board, and learn your player id to find your row. */
+  openGlobal() {
+    if (this.guest || this.globalOpen) return;
+    this.globalOpen = true;
     this.show(this.board);
     // Your row is found by your player id; sign in to learn it if needed, then load again.
     learnUid()
       .then((learned) => learned && this.game.scene === this && this.load())
       .catch(() => {});
+  }
+
+  /** 'mine' or 'global' (remembered on this device). */
+  setView(view) {
+    this.view = view;
+    setBoardView(view);
+    this.styleViews();
+    if (view === 'global') this.openGlobal();
+  }
+
+  styleViews() {
+    this.viewBtns.forEach((b, i) => (b.color = ['mine', 'global'][i] === this.view ? '#e4572e' : 'rgba(255,255,255,0.12)'));
   }
 
   /** Off to Google's sign-in page; it comes back to the Profile screen (main.js). */
@@ -140,6 +169,14 @@ export class LeaderboardScene {
     const tw = (tabsW - gap * (this.tabs.length - 1)) / this.tabs.length;
     this.tabs.forEach((t, i) => Object.assign(t, { x: view.w / 2 - tabsW / 2 + i * (tw + gap), y: 52, w: tw }));
     Object.assign(this.backBtn, { x: view.w / 2 - 75, y: 472 });
+    this.viewBtns.forEach((b, i) => Object.assign(b, { x: view.w / 2 - b.w - 4 + i * (b.w + 8), y: 8 }));
+    // Mine: five event panels across, the two tournaments centred under them.
+    const pw = Math.min(176, (view.w - 32 - 4 * 8) / 5);
+    const events = this.mine.filter((m) => !m.board.tournament);
+    const tours = this.mine.filter((m) => m.board.tournament);
+    const place = (row, y) => row.forEach((m, i) => Object.assign(m, { x: view.w / 2 - (row.length * pw + (row.length - 1) * 8) / 2 + i * (pw + 8), y, w: pw, h: MINE_H }));
+    place(events, MINE_Y);
+    place(tours, MINE_Y + MINE_H + 10);
     Object.assign(this.retryBtn, { x: view.w / 2 - 90, y: 300 });
     if (this.signInBtn) Object.assign(this.signInBtn, { x: view.w / 2 - this.signInBtn.w / 2, y: 300 });
   }
@@ -150,8 +187,9 @@ export class LeaderboardScene {
   }
 
   buttons() {
-    if (this.guest) return [this.backBtn, this.signInBtn];
-    const list = [this.backBtn, ...this.tabs];
+    if (this.view === 'mine') return [this.backBtn, ...this.viewBtns];
+    if (this.guest) return [this.backBtn, ...this.viewBtns, this.signInBtn];
+    const list = [this.backBtn, ...this.viewBtns, ...this.tabs];
     if (this.state === 'error') list.push(this.retryBtn);
     if (this.state === 'ready') for (const r of this.rows) if (r.btn) list.push(r.btn);
     return list;
@@ -159,9 +197,18 @@ export class LeaderboardScene {
 
   update(dt, t) {
     for (const e of this.game.input.consume(t + dt)) {
-      if (e.type === 'down') this.buttons().some((b) => b.tap(e.x, e.y));
-      else if (e.code === 'Escape') flow.menu(this.game);
-      else if (this.guest) continue;
+      if (e.type === 'down') {
+        if (this.buttons().some((b) => b.tap(e.x, e.y))) continue;
+        // Mine: tap a board to see it on Global.
+        const m = this.view === 'mine' ? this.mine.find((p) => e.x >= p.x && e.x <= p.x + p.w && e.y >= p.y && e.y <= p.y + p.h) : null;
+        if (m) {
+          this.board = lastBoard = m.board;
+          this.setView('global');
+          if (!this.guest) this.show(m.board);
+        }
+      } else if (e.code === 'Escape') flow.menu(this.game);
+      else if (e.code === 'Tab' || e.code === 'KeyM') this.setView(this.view === 'mine' ? 'global' : 'mine');
+      else if (this.guest || this.view === 'mine') continue;
       else if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
         const i = BOARDS.indexOf(this.board) + (e.code === 'ArrowLeft' ? -1 : 1);
         this.show(BOARDS[(i + BOARDS.length) % BOARDS.length]);
@@ -174,7 +221,11 @@ export class LeaderboardScene {
   render(ctx, view) {
     ctx.fillStyle = '#12203a';
     ctx.fillRect(0, 0, view.w, view.h);
-    text(ctx, 'ONLINE LEADERBOARDS', view.w / 2, 28, { size: 24, color: '#ffb400', shadow: true });
+    if (this.view === 'mine') {
+      this.renderMine(ctx);
+      this.buttons().forEach((b) => b.draw(ctx));
+      return;
+    }
 
     const w = this.boxW;
     const x0 = view.w / 2 - w / 2;
@@ -207,6 +258,32 @@ export class LeaderboardScene {
     this.buttons().forEach((b) => b.draw(ctx));
   }
 
+  /** Mine: a panel per board, your top five on it. */
+  renderMine(ctx) {
+    for (const { board, list, x, y, w, h } of this.mine) {
+      roundRect(ctx, x, y, w, h, 12);
+      ctx.fillStyle = 'rgba(255,255,255,0.06)';
+      ctx.fill();
+      text(ctx, (TAB_LABELS[board.id] ?? board.name).toUpperCase(), x + w / 2, y + 16, { size: 13, weight: 800, color: '#ffb400', maxWidth: w - 12 });
+      if (!list.length) {
+        text(ctx, 'No marks yet', x + w / 2, y + h / 2 + 8, { size: 13, weight: 600, color: 'rgba(255,255,255,0.45)', maxWidth: w - 12 });
+        continue;
+      }
+      for (let i = 0; i < TOP_N; i++) {
+        const e = list[i];
+        const ry = y + 32 + i * MINE_ROW;
+        const top = i === 0;
+        text(ctx, String(i + 1), x + 14, ry + 8, { size: 14, weight: 800, color: top ? '#ffb400' : 'rgba(255,255,255,0.55)' });
+        if (!e) {
+          text(ctx, '—', x + 30, ry + 8, { size: 14, align: 'left', color: 'rgba(255,255,255,0.25)' });
+          continue;
+        }
+        text(ctx, formatMark(board, e.mark), x + 28, ry + 8, { size: 16, weight: 800, align: 'left', color: top ? '#ffd35c' : '#fff', maxWidth: w - 36 });
+        text(ctx, details(e), x + 28, ry + 24, { size: 11, weight: 600, align: 'left', color: 'rgba(255,255,255,0.55)', maxWidth: w - 34 });
+      }
+    }
+  }
+
   /** Placeholder rows where the marks will go, shimmering until they arrive. */
   drawLoading(ctx, x0, w) {
     for (let i = 0; i < 10; i++) {
@@ -222,4 +299,16 @@ export class LeaderboardScene {
     }
     text(ctx, 'Loading…', this.game.view.w / 2, TOP + 10 * ROW_H + 12, { size: 15, weight: 500, color: 'rgba(255,255,255,0.55)' });
   }
+}
+
+const MINE_Y = 52; // top of the first row of Mine panels
+const MINE_ROW = 33; // a mark and its details line
+const MINE_H = 32 + TOP_N * MINE_ROW + 2;
+const WHERE = { amateur: 'Amateur', pro: 'Pro', training: 'Training', live: 'Live' };
+
+/** "Okoro · Pro · Oct 1": who set a mark, where and when ("From before" for one kept before the list was). */
+function details(e) {
+  if (e.at == null) return 'From before';
+  const day = new Date(e.at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  return [e.who, WHERE[e.where], day].filter(Boolean).join(' · ');
 }

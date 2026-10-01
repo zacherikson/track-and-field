@@ -35,11 +35,14 @@ export function getBest(eventId) {
 }
 
 /** Sets (or with null, clears) a personal best outright: the online board's copy wins (online/bests.js). */
-export function setBest(eventId, value) {
+export function setBest(eventId, value, lowerIsBetter = true) {
   const data = load();
   data.best ??= {};
   if (value == null) delete data.best[eventId];
-  else data.best[eventId] = value;
+  else {
+    data.best[eventId] = value;
+    keepInTop(data, eventId, value, lowerIsBetter);
+  }
   save(data);
 }
 
@@ -50,10 +53,71 @@ export function submitBest(eventId, value, lowerIsBetter = true) {
   const prev = data.best[eventId];
   const better = prev == null || (lowerIsBetter ? value < prev : value > prev);
   if (better) {
+    if (prev != null) keepInTop(data, eventId, prev, lowerIsBetter); // the best it replaces stays on your top list
     data.best[eventId] = value;
     save(data);
   }
   return better;
+}
+
+// Your top marks per board, best first (the personal leaderboard).
+export const TOP_N = 5;
+
+/**
+ * Your best `TOP_N` marks on a board (an event or a tournament kind's id),
+ * best first: [{ mark, at, who, where }], where `at` is when (ms), `who` the
+ * athlete (or 'Team'), `where` 'amateur' | 'pro' | 'training' | 'live'.
+ * Only kept since this list was added: your personal best from before (or
+ * one synced from the online board) shows as an entry with no details.
+ */
+export function getTopMarks(boardId, lowerIsBetter = true) {
+  const list = Array.isArray(load().top?.[boardId]) ? load().top[boardId] : [];
+  const best = getBest(boardId);
+  const better = (a, b) => (lowerIsBetter ? a < b : a > b);
+  if (best != null && !list.some((e) => e.mark === best) && (!list.length || better(best, list[0].mark))) {
+    return [{ mark: best, at: null, who: null, where: null }, ...list].slice(0, TOP_N);
+  }
+  return list;
+}
+
+/** Puts a best with no details (from before the list, or synced) on `data`'s top list, if it isn't there and makes it. */
+function keepInTop(data, boardId, mark, lowerIsBetter) {
+  const list = Array.isArray(data.top?.[boardId]) ? data.top[boardId] : [];
+  if (list.some((e) => e.mark === mark)) return;
+  data.top ??= {};
+  data.top[boardId] = [...list, { mark, at: null, who: null, where: null }].sort((a, b) => (lowerIsBetter ? a.mark - b.mark : b.mark - a.mark)).slice(0, TOP_N);
+}
+
+/** Adds a mark to a board's top list if it makes it. Returns its place (1..TOP_N), or 0. */
+export function addTopMark(boardId, entry, lowerIsBetter = true) {
+  // (The personal best was saved just before: it's this mark, not an earlier one without details.)
+  const kept = getTopMarks(boardId, lowerIsBetter).filter((e) => !(e.at == null && e.mark === entry.mark));
+  const list = [...kept, entry].sort((a, b) => (lowerIsBetter ? a.mark - b.mark : b.mark - a.mark)).slice(0, TOP_N);
+  const place = list.indexOf(entry) + 1;
+  if (!place) return 0;
+  const data = load();
+  data.top ??= {};
+  data.top[boardId] = list;
+  save(data);
+  return place;
+}
+
+/** Forgets every top list (they belonged to the player you were: signed out, or someone else signed in). */
+export function forgetTopMarks() {
+  const data = load();
+  delete data.top;
+  save(data);
+}
+
+/** Whether the Leaderboard opens on your own marks ('mine') or the online boards ('global'). */
+export function getBoardView() {
+  return load().boardView === 'global' ? 'global' : 'mine';
+}
+
+export function setBoardView(view) {
+  const data = load();
+  data.boardView = view;
+  save(data);
 }
 
 /** Your solo athlete (a character id from roster.js), or null for the default: the one who does a solo tournament. */

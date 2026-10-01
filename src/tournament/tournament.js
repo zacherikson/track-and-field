@@ -2,7 +2,7 @@ import { EVENTS, TOURNAMENT_BOARDS } from '../events/registry.js';
 import { points } from '../events/scoring.js';
 import { submitBest, getBestTournament, saveBestTournament, getPlayerName } from '../core/storage.js';
 import { useSolo, soloAthlete, lineupAthlete } from '../athletes/roster.js';
-import { counts } from '../online/bests.js';
+import { counts, recordTopMark } from '../online/bests.js';
 
 /** The live waiting room (online/live.js `kind`) for each kind of tournament. */
 export const TOUR_KINDS = { solo: 'tournament', team: 'teamtournament' };
@@ -103,6 +103,7 @@ export const tournament = {
       // Only with shipped tuning, like every best (online/bests.js).
       const me = counts() ? [...this.totals.values()].find((t) => t.isPlayer) : null;
       this.newBest = !!me && submitBest(this.board.id, me.total, false);
+      if (me) recordTopMark(this.board, me.total, !!this.live);
       // Kept for its ghosts: your best recorded tournament (the first one
       // recorded counts even if an older, unrecorded score was higher).
       const saved = getBestTournament(this.mode);

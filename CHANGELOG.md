@@ -4,6 +4,16 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Leaderboard: your own top five
+- The Leaderboard opens on **Mine**: your five best marks on every board, the
+  five events across and the solo and team tournament scores under them. Each
+  mark says who set it, where (Amateur, Pro, Training, Live) and when.
+  **Global** is the online boards as before; the toggle is remembered.
+- Kept on this phone (`top` in the save), so guests have it too. It starts
+  now: your personal best from before shows as "From before". Marks count
+  like bests do (shipped tuning only); signing out forgets them with your bests.
+- Tap a board on Mine to see it on Global. The Leaderboard buttons are 📊 now.
+
 ## Tuning is the owner's only
 - The ⚙ Tuning buttons (menu and results) only show for the username
   **rawnald** (`canTune` in storage.js). Usernames are claimed on the server,

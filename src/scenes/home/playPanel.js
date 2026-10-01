@@ -109,7 +109,7 @@ export class PlayPanel {
     this.styleGhost();
     this.onShow();
     this.tuneButton = canTune() ? new Button({ label: '⚙ Tuning', w: 132, h: 44, color: PLAIN, onTap: () => flow.tuning(this.game) }) : null;
-    this.onlineButton = new Button({ label: '🌐 Leaderboard', w: 196, h: 44, color: PLAIN, onTap: () => flow.leaderboard(this.game) });
+    this.onlineButton = new Button({ label: '📊 Leaderboard', w: 196, h: 44, color: PLAIN, onTap: () => flow.leaderboard(this.game) });
     // Your profile (username for the online leaderboard), top right.
     this.profileButton = new Button({ label: `👤 ${getPlayerName()}`, w: 190, h: 44, color: PLAIN, onTap: () => flow.profile(this.game) });
     this.fsButton = document.fullscreenEnabled ? new Button({ label: '⛶', w: 48, h: 44, color: PLAIN, onTap: () => toggleFullscreen() }) : null;

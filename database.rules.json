@@ -3,17 +3,21 @@
     "lobby": {
       "$kind": {
         ".read": "auth != null && $kind.matches(/^(sprint100|longjump|hurdles110|polevault|javelin|tournament|teamtournament)$/)",
-        ".write": "auth != null && $kind.matches(/^(sprint100|longjump|hurdles110|polevault|javelin|tournament|teamtournament)$/)",
-        "room": { ".validate": "newData.isString() && newData.val().length <= 40" },
-        "startAt": { ".validate": "newData.isNumber()" },
+        // The waiting room is one node that every phone rewrites in a transaction (online/live.js Lobby), so the write has to be allowed here rather than per player. A write must leave a room id behind, which is what stops the node being wiped: a .validate rule can't, as none is run when the new data is null.
+        ".write": "auth != null && $kind.matches(/^(sprint100|longjump|hurdles110|polevault|javelin|tournament|teamtournament)$/) && newData.hasChild('room')",
+        // A room id only changes when live.js starts a new room (this one closed, or full), and a new room holds one player, so it has no start time yet.
+        "room": { ".validate": "newData.isString() && newData.val().length <= 40 && (newData.val() === data.val() || !newData.parent().child('startAt').exists())" },
+        // A start is always a few seconds out (START_DELAY), so one parked far ahead (a room that never closes) or in the past isn't one of ours.
+        "startAt": { ".validate": "newData.isNumber() && newData.val() > now - 30000 && newData.val() < now + 60000" },
         "setLen": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 5" },
+        // Your own entry is yours to write. Everyone else's has to come back exactly as it stands, which is what a transaction rewriting the node does anyway.
         "players": {
           "$uid": {
             ".validate": "newData.hasChildren(['name', 'at'])",
-            "name": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16" },
-            "athlete": { ".validate": "newData.isString() && newData.val().length <= 32" },
-            "lineup": { "$event": { ".validate": "$event.matches(/^(sprint100|longjump|hurdles110|polevault|javelin)$/) && newData.isString() && newData.val().length <= 32" } },
-            "at": { ".validate": "newData.isNumber()" },
+            "name": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16 && (auth.uid === $uid || newData.val() === data.val())" },
+            "athlete": { ".validate": "newData.isString() && newData.val().length <= 32 && (auth.uid === $uid || newData.val() === data.val())" },
+            "lineup": { "$event": { ".validate": "$event.matches(/^(sprint100|longjump|hurdles110|polevault|javelin)$/) && newData.isString() && newData.val().length <= 32 && (auth.uid === $uid || newData.val() === data.val())" } },
+            "at": { ".validate": "newData.isNumber() && (auth.uid === $uid || newData.val() === data.val())" },
             "$other": { ".validate": false }
           }
         },

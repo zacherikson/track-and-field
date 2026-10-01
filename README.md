@@ -90,8 +90,9 @@ there too. Keyboard: 1 / 2 / 3 or Q / E change tab, Esc goes back to Play.
 
 The **Squad** tab is for you and your friends: start a squad (pick a name), or
 find one by name (or in the list of the biggest) and join it. Up to 30 players
-per squad, one squad at a time. The player who started it leads it (👑); when
-they leave, whoever has been in it longest takes over, and the last one out
+per squad, one squad at a time. The player who started it leads it (👑) and can
+kick members out (tap one, then confirm; they can join again later); when the
+leader leaves, whoever has been in it longest takes over, and the last one out
 closes it. You need a username first (Profile), since the member list shows it.
 Guests can join too. For now a squad is just its name and members.
 

@@ -1,6 +1,6 @@
 import { Button, text, roundRect } from '../../core/ui.js';
 import { cleanName } from '../../core/storage.js';
-import { cachedSquad, loadMySquad, topSquads, searchSquads, createSquad, joinSquad, leaveSquad, SQUAD_MAX, inviteLink, getInvite, setInvite, squadInfo } from '../../online/squads.js';
+import { cachedSquad, loadMySquad, topSquads, searchSquads, createSquad, joinSquad, leaveSquad, kickFromSquad, SQUAD_MAX, inviteLink, getInvite, setInvite, squadInfo } from '../../online/squads.js';
 import { flow } from '../../flow.js';
 
 const WARN = '#ffb35c';
@@ -10,7 +10,8 @@ const PLAIN = 'rgba(255,255,255,0.15)';
 
 /**
  * The home screen's right tab: your squad (online/squads.js). In one: its name
- * and members, Invite (a link to send a friend) and Leave. Not in one: start a
+ * and members, Invite (a link to send a friend) and Leave; its leader can tap
+ * a member to kick them out. Not in one: start a
  * squad, or find one and join it; a squad you've been invited to comes first.
  */
 export class SquadPanel {
@@ -52,7 +53,9 @@ export class SquadPanel {
     this.loadedAt = performance.now();
     loadMySquad()
       .then((squad) => {
+        const was = this.mine;
         this.mine = squad;
+        if (was && !squad && !this.busy) this.status = { text: `You’re no longer in ${was.name}.`, color: WARN }; // kicked out
         if (squad && squad.key === this.invite?.key) this.dropInvite(); // in it already
         if (!squad && !this.list.rows) this.loadList(this.list.q);
       })
@@ -172,18 +175,32 @@ export class SquadPanel {
     const sure = window.confirm(`Leave ${this.mine.name}?${last ? ' You’re the last one in it, so it closes.' : ''}`);
     this.game.input.clear();
     if (!sure) return;
-    this.act('Leaving…', () => leaveSquad(), this.mine.name, true);
+    this.act('Leaving…', () => leaveSquad(), this.mine.name, `You left ${this.mine.name}.`);
   }
 
-  /** Runs a squad change, showing how it went. */
-  act(doing, run, name, leaving = false) {
+  /** The leader only: kick `m` out of the squad, once you've said you're sure. */
+  kick(m) {
+    if (this.busy || !this.mine) return;
+    const sure = window.confirm(`Kick ${m.name} out of ${this.mine.name}? They can join again later.`);
+    this.game.input.clear();
+    if (!sure) return;
+    this.act(`Kicking out ${m.name}…`, () => kickFromSquad(m.uid), this.mine.name, `${m.name} is out of the squad.`);
+  }
+
+  /** You're the leader of the squad you're in. */
+  get leading() {
+    return !!this.mine?.members.some((m) => m.me && m.leader);
+  }
+
+  /** Runs a squad change, showing how it went (`done`: what to say when it worked, if not a welcome). */
+  act(doing, run, name, done = null) {
     this.busy = true;
     this.status = { text: doing, color: 'rgba(255,255,255,0.7)' };
     run()
       .then((squad) => {
         this.mine = squad;
         if (squad) this.dropInvite(); // in a squad now
-        this.status = leaving ? { text: `You left ${name}.`, color: OK } : squad ? { text: `Welcome to ${squad.name}!`, color: OK } : null;
+        this.status = done ? { text: done, color: OK } : squad ? { text: `Welcome to ${squad.name}!`, color: OK } : null;
         if (!squad) this.loadList(this.list.q);
       })
       .catch((e) => {
@@ -262,7 +279,13 @@ export class SquadPanel {
     const btns = this.buttons;
     for (const e of events) {
       if (e.type !== 'down') continue;
-      if (btns.some((b) => b.tap(e.x, e.y)) && this.game.scene !== this.home) return;
+      if (btns.some((b) => b.tap(e.x, e.y))) {
+        if (this.game.scene !== this.home) return;
+        continue;
+      }
+      // The leader taps a member to kick them out.
+      const hit = this.leading && this.memberGrid(this.mine).boxes.find((k) => !k.m.me && e.x >= k.x && e.x <= k.x + k.w && e.y >= k.y && e.y <= k.y + k.h);
+      if (hit) this.kick(hit.m);
     }
     for (const b of [this.createBtn, this.findBtn, this.topBtn, this.profileBtn, this.retryBtn, this.leaveBtn, this.inviteBtn, this.inviteJoinBtn, this.dismissBtn, ...this.joinBtns]) b.update(dt);
     const busy = this.busy;
@@ -322,19 +345,9 @@ export class SquadPanel {
     this.inviteBtn.draw(ctx);
     this.leaveBtn.draw(ctx);
 
-    // The members, longest-standing first, in as many columns as fit.
-    const top = 96;
-    const gap = 8;
-    const h = 40;
-    const cols = Math.max(1, Math.min(5, Math.floor((this.contentW + gap) / (180 + gap))));
-    const w = (this.contentW - gap * (cols - 1)) / cols;
-    const hintY = this.bottom - 16;
-    const rows = Math.max(1, Math.floor((hintY - 18 - top + gap) / (h + gap)));
-    const fits = cols * rows;
-    const shown = s.members.length > fits ? s.members.slice(0, fits - 1) : s.members;
-    shown.forEach((m, i) => {
-      const x = this.x0 + (i % cols) * (w + gap);
-      const y = top + Math.floor(i / cols) * (h + gap);
+    const leading = this.leading;
+    const { boxes, more } = this.memberGrid(s);
+    boxes.forEach(({ m, x, y, w, h }) => {
       roundRect(ctx, x, y, w, h, 10);
       ctx.fillStyle = m.me ? 'rgba(255,180,0,0.18)' : 'rgba(255,255,255,0.07)';
       ctx.fill();
@@ -343,15 +356,34 @@ export class SquadPanel {
         ctx.strokeStyle = '#ffb400';
         ctx.stroke();
       }
-      text(ctx, `${m.leader ? '👑 ' : ''}${m.name}${m.me ? ' (you)' : ''}`, x + 12, y + h / 2, { size: 16, weight: m.me ? 800 : 600, align: 'left', color: m.me ? '#ffd35c' : '#fff', maxWidth: w - 20 });
+      const kickable = leading && !m.me;
+      text(ctx, `${m.leader ? '👑 ' : ''}${m.name}${m.me ? ' (you)' : ''}`, x + 12, y + h / 2, { size: 16, weight: m.me ? 800 : 600, align: 'left', color: m.me ? '#ffd35c' : '#fff', maxWidth: w - (kickable ? 44 : 20) });
+      if (kickable) text(ctx, '✕', x + w - 18, y + h / 2, { size: 15, color: DIM });
     });
-    if (shown.length < s.members.length) {
-      const i = shown.length;
-      text(ctx, `+${s.members.length - i} more`, this.x0 + (i % cols) * (w + gap) + 12, top + Math.floor(i / cols) * (h + gap) + h / 2, { size: 16, align: 'left', color: DIM });
-    }
+    if (more) text(ctx, `+${more.n} more`, more.x + 12, more.y + more.h / 2, { size: 16, align: 'left', color: DIM });
     const elsewhere = this.invite && this.invite.key !== s.key ? { text: `You’re invited to ${this.invite.name}. Leave ${s.name} to join it.`, color: WARN } : null;
-    const hint = this.status ?? elsewhere ?? { text: `Tap Invite to send a friend a link to join, or they can Find by name: “${s.name}”.`, color: DIM };
-    text(ctx, hint.text, view.w / 2, hintY, { size: 14, weight: 500, color: hint.color, maxWidth: view.w - 40 });
+    const tip = leading && s.members.length > 1 ? 'Tap Invite to send a friend a link to join. As leader, tap a member to kick them out.' : `Tap Invite to send a friend a link to join, or they can Find by name: “${s.name}”.`;
+    const hint = this.status ?? elsewhere ?? { text: tip, color: DIM };
+    text(ctx, hint.text, view.w / 2, this.bottom - 16, { size: 14, weight: 500, color: hint.color, maxWidth: view.w - 40 });
+  }
+
+  /**
+   * Where the members go, longest-standing first, in as many columns as fit:
+   * { boxes: [{ m, x, y, w, h }], more } (`more`: the "+N more" box, when they don't all fit).
+   */
+  memberGrid(s) {
+    const top = 96;
+    const gap = 8;
+    const h = 40;
+    const cols = Math.max(1, Math.min(5, Math.floor((this.contentW + gap) / (180 + gap))));
+    const w = (this.contentW - gap * (cols - 1)) / cols;
+    const rows = Math.max(1, Math.floor((this.bottom - 16 - 18 - top + gap) / (h + gap)));
+    const fits = cols * rows;
+    const shown = s.members.length > fits ? s.members.slice(0, fits - 1) : s.members;
+    const at = (i) => ({ x: this.x0 + (i % cols) * (w + gap), y: top + Math.floor(i / cols) * (h + gap), w, h });
+    const boxes = shown.map((m, i) => ({ m, ...at(i) }));
+    const more = shown.length < s.members.length ? { n: s.members.length - shown.length, ...at(shown.length) } : null;
+    return { boxes, more };
   }
 }
 
@@ -377,6 +409,8 @@ function actMessage(e, name) {
       return { text: `${name} has closed.`, color: WARN };
     case 'full':
       return { text: `${name} is full.`, color: WARN };
+    case 'not-leader':
+      return { text: 'Only the squad’s leader can do that.', color: WARN };
     case 'permission-denied':
       return { text: 'The server didn’t allow that. Squads may not be open yet.', color: WARN };
     default:

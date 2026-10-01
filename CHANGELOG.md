@@ -4,6 +4,14 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Squad leaders can kick members out
+- The leader taps a member on the squad's page (each shows a ✕), confirms, and
+  they're out. They can join again later. The kicked player's Squad tab says
+  "You're no longer in <squad>."
+- New rules in `firestore.rules` (publish them in the Firebase console): only
+  the leader, one member at a time, and the leader clears the kicked player's
+  squadmembers link in the same transaction.
+
 ## Squad invites
 - 📨 **Invite** on your squad's page: the phone's share sheet with a link to the
   game (`?squad=<name>`), or the link copied where there's no share sheet.

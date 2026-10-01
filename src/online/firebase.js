@@ -349,7 +349,8 @@ const REST = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.proj
 
 /** A Firestore REST call: GET `path`, or POST `body` to it. Null for a missing doc. */
 export async function rest(path, body = null) {
-  const res = await fetch(`${REST}${path.startsWith(':') ? '' : '/'}${path}${path.includes('?') ? '&' : '?'}key=${firebaseConfig.apiKey}`, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {});
+  // prettyPrint=false: the API indents its JSON by default, which is two thirds of a board's bytes.
+  const res = await fetch(`${REST}${path.startsWith(':') ? '' : '/'}${path}${path.includes('?') ? '&' : '?'}key=${firebaseConfig.apiKey}&prettyPrint=false`, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {});
   if (res.status === 404) return null;
   if (!res.ok) throw Object.assign(new Error(`firestore ${res.status}`), { status: res.status });
   return res.json();
@@ -398,6 +399,15 @@ export function cachedLeaderboard(board) {
 }
 
 /**
+ * What a board row needs to draw itself and offer Race. Not the recording:
+ * a 100m run is about 5KB of the row's 5.2KB, and it's only wanted when
+ * someone taps Race (fetchGhost reads it then). `ghost.v` is the recorded
+ * run's version, which says whether this build can play it at all.
+ */
+const ROW_FIELDS = ['name', 'mark', 'traced', 'ghost.v'];
+const ROW_MASK = ROW_FIELDS.map((f) => `mask.fieldPaths=${f}`).join('&');
+
+/**
  * The best `n` marks, plus yours if it isn't among them.
  * Resolves to { top: [{ uid, name, mark, ghost, traced, me, rank }], mine }.
  * The top list and your own entry are fetched together; your place is only
@@ -411,9 +421,10 @@ export async function leaderboard(board, n = 10) {
         from: [{ collectionId: 'runs' }],
         orderBy: [{ field: { fieldPath: 'mark' }, direction: board.lowerIsBetter ? 'ASCENDING' : 'DESCENDING' }],
         limit: n,
+        select: { fields: ROW_FIELDS.map((fieldPath) => ({ fieldPath })) },
       },
     }),
-    uid ? rest(`leaderboards/${board.id}/runs/${uid}`) : null,
+    uid ? rest(`leaderboards/${board.id}/runs/${uid}?${ROW_MASK}`) : null,
   ]);
   const top = (list ?? []).filter((r) => r.document).map((r, i) => ({ uid: docId(r.document), ...fields(r.document.fields), me: docId(r.document) === uid, rank: i + 1 }));
   let mine = top.find((r) => r.me) ?? null;
@@ -444,11 +455,19 @@ export async function myEntries(boardIds) {
   return out;
 }
 
-/** A player's recording for their mark on a board (a leaderboard row with `traced`), or null. */
+/**
+ * A player's recording for their mark on a board, or null if they've moved on
+ * since (their mark changed) or it isn't there.
+ *
+ * The 100m keeps its run with the board entry and everything else in ghosts/,
+ * so this reads whichever holds it. Either way it's read when someone taps
+ * Race: a run is most of a row's weight, and the board leaves them behind.
+ */
 export async function fetchGhost(board, row) {
-  const doc = await rest(`ghosts/${board.id}/runs/${row.uid}`);
+  const doc = await rest(`${board.ghosts ? 'leaderboards' : 'ghosts'}/${board.id}/runs/${row.uid}`);
   const d = doc?.fields ? fields(doc.fields) : null;
-  return d && d.mark === row.mark ? fromWire(d.ghost) : null;
+  if (!d || d.mark !== row.mark) return null;
+  return board.ghosts ? d.ghost : fromWire(d.ghost);
 }
 
 /**

@@ -2,7 +2,7 @@ import { CONFIG } from '../config.js';
 import { Button, text, roundRect } from '../core/ui.js';
 import { BOARDS, formatMark } from '../events/registry.js';
 import { leaderboard, cachedLeaderboard, fetchGhost, learnUid, isSignedIn, startGoogleSignIn } from '../online/firebase.js';
-import { chooseGhost, isReplayable } from '../online/ghost.js';
+import { chooseGhost, isReplayable, GHOST_VERSION } from '../online/ghost.js';
 import { isTrace } from '../online/trace.js';
 import { flow } from '../flow.js';
 
@@ -88,37 +88,37 @@ export class LeaderboardScene {
   }
 
   /**
-   * A Race button for a row with a recording this version can play: the 100m's
-   * comes with the row, the other events' is fetched when you tap.
+   * A Race button for a row whose recording this version can play, fetched
+   * when you tap it. The row itself doesn't carry the recording (a board of
+   * 100m runs would be 85KB of them): it says which version the run is, and
+   * whether a field event kept one, which is enough to offer the button.
    */
   raceButton(r) {
     const ev = this.board;
+    const kept = ev.ghosts ? r.ghost?.v === GHOST_VERSION : ev.traceProps != null && r.traced === true;
+    if (!kept) return null;
     const name = r.me ? 'Your online best' : r.name;
-    const race = (data) => {
-      chooseGhost({ name, data, ev: ev.id });
-      flow.play(this.game, ev);
-    };
+    const playable = (data) => (ev.ghosts ? isReplayable(data, { runner: CONFIG.runner, dip: CONFIG.dip }) : isTrace(data, ev.id, ev.traceProps));
     const btn = new Button({ label: 'Race', w: 84, h: ROW_H - 4, size: 18, color: '#2bb673' });
-    if (ev.ghosts) {
-      if (!isReplayable(r.ghost, { runner: CONFIG.runner, dip: CONFIG.dip })) return null;
-      btn.onTap = () => race(r.ghost);
-    } else if (ev.traceProps != null && r.traced === true) {
-      btn.onTap = () => {
-        if (!btn.enabled) return;
-        btn.enabled = false;
-        btn.label = '…';
-        fetchGhost(ev, r)
-          .then((data) => {
-            if (this.board !== ev || this.game.scene !== this) return; // moved on meanwhile
-            if (isTrace(data, ev.id, ev.traceProps)) return race(data);
-            btn.label = 'Gone';
-          })
-          .catch(() => {
-            btn.label = 'Retry';
-            btn.enabled = true;
-          });
-      };
-    } else return null;
+    btn.onTap = () => {
+      if (!btn.enabled) return;
+      btn.enabled = false;
+      btn.label = '…';
+      fetchGhost(ev, r)
+        .then((data) => {
+          if (this.board !== ev || this.game.scene !== this) return; // moved on meanwhile
+          if (!playable(data)) {
+            btn.label = 'Gone'; // their mark changed while the board was up, or this build can't play it
+            return;
+          }
+          chooseGhost({ name, data, ev: ev.id });
+          flow.play(this.game, ev);
+        })
+        .catch(() => {
+          btn.label = 'Retry';
+          btn.enabled = true;
+        });
+    };
     return btn;
   }
 

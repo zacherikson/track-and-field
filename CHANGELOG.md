@@ -4,6 +4,14 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Field-event ghosts set off with you
+- Long jump, pole vault and javelin: the ghost used to start its run the
+  moment the attempt began, and its recording kept however long its player
+  stood before their first stride, so it usually ran off before you. Now it
+  waits on its mark until you first move, then plays from the moment it first
+  moved. Works for ghosts already saved; the 100m and hurdles ghosts were
+  already timed from the gun.
+
 ## Leaderboard: your own top five
 - The Leaderboard opens on **Mine**: your five best marks on every board, the
   five events across and the solo and team tournament scores under them. Each

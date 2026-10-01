@@ -11,6 +11,10 @@ import { pickGhost } from './ghosts.js';
  * player frame by frame (online/trace.js) and keeps the best one; plays a
  * recorded attempt back from the start of each of your attempts.
  *
+ * The ghost sets off when you do: it waits on its mark until you first move
+ * (your first stride), then plays from the moment it first moved in its own
+ * recording, so neither your wait nor the recorded player's counts.
+ *
  * The event calls startAttempt() when an attempt begins, sample() each time it
  * draws the player, endAttempt() with the attempt's result, and figures() /
  * drawFigure() to show the ghost. `ev.traceProps` (registry.js) = the event
@@ -28,15 +32,20 @@ export class FieldGhost {
     this.tracer = new TraceRecorder(ev.id, props);
     this.takes = []; // each attempt's recording, null for a foul
     this.t0 = 0;
+    this.x0 = null; // where you stood at the start of this attempt
+    this.goT = null; // when you first moved this attempt (null: still on your mark)
     const spec = live ? null : pickGhost(ev, (d) => isTrace(d, ev.id, props));
     this.spec = spec;
     this.play = spec ? new TracePlayer(spec.data) : null;
     this.colors = spec ? (CHARACTERS.find((c) => c.id === spec.data.athlete) ?? chosenPlayer(this.ev.id)).colors : null;
     this.label = spec ? `${spec.name} · ${formatMark(ev, spec.data.mark)}` : '';
+    this.ghostGo = this.play ? firstMove(this.play) : 0; // when the ghost first moved in its recording
   }
 
   startAttempt(t) {
     this.t0 = t;
+    this.x0 = null;
+    this.goT = null;
     this.tracer.start();
   }
 
@@ -44,6 +53,8 @@ export class FieldGhost {
   sample(now, x, e, pose, props) {
     this.tracer.sample(now - this.t0, x, e, pose, props);
     this.live?.pump();
+    if (this.x0 == null) this.x0 = x;
+    else if (this.goT == null && Math.abs(x - this.x0) > MOVED) this.goT = now;
   }
 
   /** The attempt is over: `result` = { mark }, or { foul: true } / { fail: true }. */
@@ -57,9 +68,10 @@ export class FieldGhost {
     return ok.length ? ok.reduce((a, b) => (this.ev.lowerIsBetter ? (b.mark < a.mark ? b : a) : b.mark > a.mark ? b : a)) : null;
   }
 
-  /** The ghost's frame now, or null (no ghost, or its attempt is over). */
+  /** The ghost's frame now, or null (no ghost, or its attempt is over): on its mark until you move, then going with you. */
   frame(now) {
-    return this.play?.at(now - this.t0) ?? null;
+    if (!this.play) return null;
+    return this.play.at(this.goT == null ? 0 : now - this.goT + this.ghostGo);
   }
 
   /** Everyone to draw on your runway now: the ghost, or the other live players. [{ frame, colors, label, live }] */
@@ -80,4 +92,13 @@ export class FieldGhost {
     ctx.restore();
     if (groundY - y < 0.3 * H) text(ctx, fig.label, x, y - H * 1.05 - 8, { size: 14, color: fig.live ? '#ffb400' : 'rgba(255,255,255,0.8)', shadow: true });
   }
+}
+
+const MOVED = 0.02; // m along the runway: you (or the ghost) have set off
+
+/** When a recording first moves off its mark (s into it), the moment its player's first stride took. */
+function firstMove(play) {
+  const x0 = play.v(0, 1);
+  for (let i = 1; i < play.n; i++) if (Math.abs(play.v(i, 1) - x0) > MOVED) return play.v(i, 0);
+  return 0;
 }

@@ -4,6 +4,16 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Lineup slots: Info and Remove
+- Tap a slot: it lifts with **Info** and **Remove** under it, like a Clash
+  Royale deck card. Remove empties it (a dashed slot with a +); an empty event
+  slot is done by your solo athlete until you fill it, so every event stays
+  playable. The Solo slot has Info only.
+- Athlete cards get **Info** next to Use: the athlete running, their tagline,
+  height and which slots they're in.
+- An emptied slot is saved as empty (null in the lineup), so it isn't filled
+  back in the next time you open the tab.
+
 ## Lineup like a Clash Royale deck
 - Tap an athlete card (it lifts, with **Use** under it), tap Use, then pick the
   slot to put them in: the slots wiggle while you pick, the athlete you're

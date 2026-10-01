@@ -69,7 +69,8 @@ export function setCharacter(id) {
 
 /**
  * Your lineup: who does each event, { [eventId]: character id }. An event
- * missing from it is done by your solo athlete (getCharacter).
+ * missing from it (never set) or null (emptied with Remove) is done by your
+ * solo athlete (getCharacter).
  */
 export function getLineup() {
   const l = load().lineup;

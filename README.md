@@ -118,7 +118,10 @@ join, leave and new squad.
 **Lineup** (the home screen's left tab) works like Clash Royale's deck: a slot
 per event along the top, your athletes below. Tap an athlete, then **Use**, then
 the slot to put them in (the slots wiggle while you pick; Cancel or Esc calls it
-off). It can be the same athlete in every slot or a different one in each.
+off). Tap a slot for **Info** or **Remove**: an emptied event slot is done by
+your solo athlete until you fill it again. Info shows an athlete running, their
+height and where they are in your lineup. It can be the same athlete in every
+slot or a different one in each.
 There's also a **Solo** slot: the athlete who does all five in a solo
 tournament. The athletes
 only look different for now; they all run on the same physics.

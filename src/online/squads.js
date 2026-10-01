@@ -21,7 +21,11 @@ import { cleanName } from '../core/storage.js';
  *
  * Joining, leaving and starting a squad are transactions over both docs, so
  * they always agree. Reads are public and go through the REST API like the
- * leaderboards (no SDK download just to look).
+ * leaderboards (no SDK download just to look), and the SDK is fetched as the
+ * Squad tab opens (firebase.js prewarmSDK) rather than when a button waits on
+ * it. A change doesn't read the squad back afterwards: the transaction read it
+ * and the commit matches what it read, so the new member list is worked out
+ * here, saving two round trips on a phone.
  */
 
 export const SQUAD_MAX = 30; // firestore.rules has the same cap
@@ -33,7 +37,7 @@ const err = (code) => Object.assign(new Error(code), { code });
 /** A squad as the game uses it: { key, name, leader, size, members: [{ uid, name, at, me, leader }] }, longest-standing first. */
 function squadOf(key, d) {
   const uid = knownUid();
-  const ms = (t) => (typeof t === 'string' ? Date.parse(t) : (t?.toMillis?.() ?? 0)) || 0;
+  const ms = (t) => (typeof t === 'number' ? t : typeof t === 'string' ? Date.parse(t) : (t?.toMillis?.() ?? 0)) || 0;
   const members = Object.entries(d.members ?? {})
     .map(([id, m]) => ({ uid: id, name: m?.name ?? '?', at: ms(m?.at), me: id === uid, leader: id === d.leader }))
     .sort((a, b) => a.at - b.at || a.name.localeCompare(b.name));
@@ -41,6 +45,12 @@ function squadOf(key, d) {
 }
 
 const path = (...parts) => parts.map(encodeURIComponent).join('/');
+
+/** `squad` with `uid` taken off its member list, or null if that was the last member. */
+function without(squad, uid) {
+  const members = (squad?.members ?? []).filter((m) => m.uid !== uid);
+  return members.length ? { ...squad, members, size: members.length } : null;
+}
 
 // Your squad as last loaded this session (undefined: not yet), so the Squad tab shows at once.
 let mine;
@@ -128,9 +138,11 @@ export async function createSquad(name) {
   const { fs, db, uid } = await connectSDK();
   const key = nameKey(name);
   const ref = fs.doc(db, 'squads', key);
+  let started = null;
   await fs.runTransaction(db, async (tx) => {
-    const myName = await readMe(tx, fs, db, uid);
-    if ((await tx.get(ref)).exists()) throw err('taken');
+    // Who you are, that you're free to start one, and whether the name is taken: one round trip.
+    const [myName, taken] = await Promise.all([readMe(tx, fs, db, uid), tx.get(ref)]);
+    if (taken.exists()) throw err('taken');
     tx.set(ref, {
       name,
       key,
@@ -141,24 +153,29 @@ export async function createSquad(name) {
       v: DOC_VERSION,
     });
     tx.set(fs.doc(db, 'squadmembers', uid), { squad: key });
+    started = squadOf(key, { name, key, leader: uid, members: { [uid]: { name: myName, at: Date.now() } } });
   });
-  return loadMySquad();
+  return (mine = started);
 }
 
 /** Joins the squad with this key. Errors: 'gone' (it closed), 'full'. */
 export async function joinSquad(key) {
   const { fs, db, uid } = await connectSDK();
   const ref = fs.doc(db, 'squads', key);
+  let joined = null;
   await fs.runTransaction(db, async (tx) => {
-    const myName = await readMe(tx, fs, db, uid);
-    const squad = await tx.get(ref);
+    // Who you are, that you're free to join, and the squad itself: one round trip.
+    const [myName, squad] = await Promise.all([readMe(tx, fs, db, uid), tx.get(ref)]);
     if (!squad.exists()) throw err('gone');
-    const size = Object.keys(squad.data().members ?? {}).length;
+    const d = squad.data();
+    const members = d.members ?? {};
+    const size = Object.keys(members).length;
     if (size >= SQUAD_MAX) throw err('full');
     tx.update(ref, new fs.FieldPath('members', uid), { name: myName, at: fs.serverTimestamp() }, 'size', size + 1);
     tx.set(fs.doc(db, 'squadmembers', uid), { squad: key });
+    joined = squadOf(key, { ...d, members: { ...members, [uid]: { name: myName, at: Date.now() } } });
   });
-  return loadMySquad();
+  return (mine = joined);
 }
 
 /** Leaves your squad (passing on the lead if it was yours, closing it if you were the last one). */
@@ -185,15 +202,20 @@ export async function leaveSquad() {
   return null;
 }
 
-/** The leader only: takes a member out of your squad. Error 'not-leader' if you're not its leader (any more). */
+/**
+ * The leader only: takes a member out of your squad. Error 'not-leader' if
+ * you're not its leader (any more).
+ *
+ * The squad's own doc says who leads it, so this doesn't look up which squad
+ * you're in first: it goes straight at the one you're looking at.
+ */
 export async function kickFromSquad(memberUid) {
   const { fs, db, uid } = await connectSDK();
+  const key = mine?.key;
+  if (!key) throw err('not-leader');
+  const ref = fs.doc(db, 'squads', key);
+  const theirRef = fs.doc(db, 'squadmembers', memberUid);
   await fs.runTransaction(db, async (tx) => {
-    const link = await tx.get(fs.doc(db, 'squadmembers', uid));
-    if (!link.exists()) throw err('not-leader');
-    const key = link.data().squad;
-    const ref = fs.doc(db, 'squads', key);
-    const theirRef = fs.doc(db, 'squadmembers', memberUid);
     const [squad, theirs] = await Promise.all([tx.get(ref), tx.get(theirRef)]);
     const d = squad.exists() ? squad.data() : null;
     if (d?.leader !== uid) throw err('not-leader');
@@ -201,7 +223,7 @@ export async function kickFromSquad(memberUid) {
     tx.update(ref, new fs.FieldPath('members', memberUid), fs.deleteField(), 'size', Object.keys(d.members).length - 1);
     if (theirs.exists() && theirs.data().squad === key) tx.delete(theirRef);
   });
-  return loadMySquad();
+  return (mine = without(mine, memberUid));
 }
 
 /** After a username change: your name in your squad's member list too (if you're in one). */

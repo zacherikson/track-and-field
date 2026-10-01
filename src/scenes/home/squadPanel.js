@@ -1,6 +1,7 @@
 import { Button, text, roundRect } from '../../core/ui.js';
 import { cleanName, getPlayerName } from '../../core/storage.js';
 import { cachedSquad, loadMySquad, topSquads, searchSquads, createSquad, joinSquad, leaveSquad, kickFromSquad, SQUAD_MAX, inviteLink, getInvite, setInvite, squadInfo } from '../../online/squads.js';
+import { prewarmSDK } from '../../online/firebase.js';
 import { flow } from '../../flow.js';
 import { openInvite } from '../inviteScreen.js';
 
@@ -42,10 +43,16 @@ export class SquadPanel {
     this.dismissBtn = new Button({ label: '✕', w: 36, h: 32, size: 16, color: PLAIN, onTap: () => this.dropInvite() });
     this.refresh();
     this.loadInvite();
+    if (this.home.panels[this.home.tab] === this) prewarmSDK(); // the game opened on this tab
   }
 
-  /** Coming to this tab: catch up with your squad (someone may have joined). */
+  /**
+   * Coming to this tab: catch up with your squad (someone may have joined),
+   * and start loading the Firebase SDK, which every button here needs and
+   * nothing else on the home screen does.
+   */
   onShow() {
+    prewarmSDK();
     if (performance.now() - this.loadedAt > 10000) this.refresh();
   }
 
@@ -185,7 +192,15 @@ export class SquadPanel {
     const sure = window.confirm(`Kick ${m.name} out of ${this.mine.name}? They can join again later.`);
     this.game.input.clear();
     if (!sure) return;
-    this.act(`Kicking out ${m.name}…`, () => kickFromSquad(m.uid), this.mine.name, `${m.name} is out of the squad.`);
+    const was = this.mine;
+    // Off the list as you tap, rather than a round trip later; back on it if the server says no.
+    this.mine = { ...was, members: was.members.filter((x) => x.uid !== m.uid), size: was.size - 1 };
+    const kick = () =>
+      kickFromSquad(m.uid).catch((e) => {
+        this.mine = was;
+        throw e;
+      });
+    this.act(`Kicking out ${m.name}…`, kick, was.name, `${m.name} is out of the squad.`);
   }
 
   /** You're the leader of the squad you're in. */

@@ -47,6 +47,35 @@ const firebaseConfig = {
 const SDK = 'https://www.gstatic.com/firebasejs/12.19.0';
 
 let connecting = null;
+let loading = null;
+
+/**
+ * The SDK's three modules, downloaded once (about 245KB from Google's CDN,
+ * cached for a year after that). Kept apart from connect() so the download can
+ * be started before a button waits on it (prewarmSDK).
+ */
+function loadSDK() {
+  loading ??= Promise.all([
+    import(`${SDK}/firebase-app.js`),
+    import(`${SDK}/firebase-auth.js`),
+    import(`${SDK}/firebase-firestore.js`),
+  ]);
+  loading.catch(() => {
+    loading = null; // try again next time
+  });
+  return loading;
+}
+
+/**
+ * Gets the SDK ready before something needs it (opening the Squad tab), so the
+ * first write there doesn't pay for the download. A player who has been online
+ * before already has an id, so their whole connection is warmed up, sign-in
+ * included; one who hasn't only gets the download, since signing in would make
+ * them a player just for looking at a tab.
+ */
+export function prewarmSDK() {
+  (knownUid() ? connect() : loadSDK()).catch(() => {}); // it's tried again for real when it's needed
+}
 
 /**
  * Loads the SDK and signs in. Resolves to { app, fs, db, uid, auth, A } (A = the
@@ -57,11 +86,7 @@ let connecting = null;
  */
 function connect() {
   connecting ??= (async () => {
-    const [app, auth, fs] = await Promise.all([
-      import(`${SDK}/firebase-app.js`),
-      import(`${SDK}/firebase-auth.js`),
-      import(`${SDK}/firebase-firestore.js`),
-    ]);
+    const [app, auth, fs] = await loadSDK();
     const fbApp = app.initializeApp(firebaseConfig);
     const a = auth.getAuth(fbApp);
     await a.authStateReady(); // a returning player is still signed in from last time
@@ -460,6 +485,8 @@ export const nameKey = (name) => name.toLowerCase();
  * Renaming your leaderboard entries comes after, and can't fail the change:
  * the name is yours once the transaction commits. Resolves to true if those
  * entries were renamed too, false if they (or some of them) have to catch up.
+ * A guest has none to rename (firestore.rules only lets a player signed in
+ * with Google post a mark), so their name change doesn't go near the boards.
  */
 export async function setUsername(name) {
   const { fs, db, uid } = await connect();
@@ -474,7 +501,7 @@ export async function setUsername(name) {
     if (oldKey && oldKey !== key) tx.delete(fs.doc(db, 'usernames', oldKey));
     tx.set(userRef, { name, key, updatedAt: fs.serverTimestamp() });
   });
-  const renamed = await renameOnBoards(name).catch(() => false);
+  const renamed = isSignedIn() ? await renameOnBoards(name).catch(() => false) : true;
   boards.clear(); // your name changed on them
   return renamed;
 }

@@ -34,9 +34,14 @@ export function soloAthlete() {
   return byId(getCharacter()) ?? CHARACTERS[0];
 }
 
-/** Who does event `eventId` in your lineup (your solo athlete if that slot was never set). */
+/** Who does event `eventId` in your lineup (your solo athlete if that slot is empty or was never set). */
 export function lineupAthlete(eventId) {
   return byId(getLineup()[eventId]) ?? soloAthlete();
+}
+
+/** True if you emptied event `eventId`'s lineup slot (Remove): your solo athlete fills in. */
+export function lineupSlotEmpty(eventId) {
+  return getLineup()[eventId] === null;
 }
 
 /** The athlete you play event `eventId` as: your lineup's, or your solo athlete in a solo tournament. */

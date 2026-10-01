@@ -4,6 +4,29 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Lineup slots: Info and Remove
+- Tap a slot: it lifts with **Info** and **Remove** under it, like a Clash
+  Royale deck card. Remove empties it (a dashed slot with a +). The Solo slot
+  has Info only.
+- Like Clash Royale's "You need to have 8 cards in your Battle Deck!": with an
+  empty slot, the Team tournament (vs Computer and Live) is greyed out ("Team ·
+  Lineup not full"), and tapping it says "You need a full lineup for a Team
+  tournament!" with a **Fill your lineup ›** button. Single events still play
+  (your solo athlete does an empty event), and so does a Solo tournament.
+- Athlete cards get **Info** next to Use: the athlete running, their tagline,
+  height and which slots they're in.
+- An emptied slot is saved as empty (null in the lineup), so it isn't filled
+  back in the next time you open the tab.
+
+## Lineup like a Clash Royale deck
+- Tap an athlete card (it lifts, with **Use** under it), tap Use, then pick the
+  slot to put them in: the slots wiggle while you pick, the athlete you're
+  placing shows big below, and Cancel (or Esc, or a tap elsewhere) calls it
+  off. Tapping a slot picks whoever's in it.
+- The "<name> in every slot" button is gone.
+- Esc steps back within a tab first (out of picking a slot, or a Play list),
+  then goes to Play.
+
 ## Leaderboards need Google sign-in
 - A guest who opens 🌐 Leaderboard (from the menu, results or tournament
   standings) sees "Connect your account to Google to see the global

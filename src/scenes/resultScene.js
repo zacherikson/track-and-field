@@ -1,7 +1,7 @@
 import { Button, text, roundRect } from '../core/ui.js';
 import { ordinal } from '../core/math.js';
 import { formatMark } from '../events/registry.js';
-import { getBest, submitBest, getDifficulty, saveGhostIfBetter } from '../core/storage.js';
+import { getBest, submitBest, getCampaign, getBeaten, saveGhostIfBetter } from '../core/storage.js';
 import { postMark } from '../online/post.js';
 import { counts } from '../online/bests.js';
 import { flow } from '../flow.js';
@@ -29,6 +29,9 @@ export class ResultScene {
     const me = this.results.find((r) => r.isPlayer);
     this.me = me;
     this.place = this.results.indexOf(me) + 1;
+    // Won in a campaign: this event is ticked off (flow.results did the ticking).
+    const level = getCampaign();
+    this.beaten = !!level && !this.stats?.live && this.results.find((r) => !r.ghost) === me && getBeaten(level)[this.ev.id];
     const prevBest = getBest(this.ev.id);
     // Only runs that could go on the online board count as a best (online/bests.js).
     this.newPB = me.status === 'ok' && counts() && submitBest(this.ev.id, me.mark, this.ev.lowerIsBetter);
@@ -52,7 +55,7 @@ export class ResultScene {
     if (this.backdrop) {
       // Over the late hits: just the results and the two buttons.
       this.buttons = this.buttons.slice(0, 2);
-      this.panel = new ResultsPanel(this.buttons, () => `RESULTS · ${this.ev.name.toUpperCase()}`, () =>
+      this.panel = new ResultsPanel(this.buttons, () => `RESULTS · ${this.ev.name.toUpperCase()}${this.beaten ? ` · ${getCampaign().toUpperCase()} BEATEN!` : ''}`, () =>
         this.results.map((r, i) => ({
           place: r.status === 'ok' ? String(i + 1) : '–',
           name: r.name,
@@ -125,9 +128,10 @@ export class ResultScene {
     else if (me.status === 'nm') headline = 'NO MARK';
     else headline = formatMark(this.ev, me.mark);
     const cx = lx + colW / 2;
-    text(ctx, `${this.ev.name.toUpperCase()} · ${getDifficulty() === 'pro' ? 'PRO' : 'AMATEUR'}`, cx, 52, { size: 20, color: 'rgba(255,255,255,0.7)' });
+    const where = this.stats?.live ? 'LIVE' : getCampaign() ? getCampaign().toUpperCase() : 'TRAINING';
+    text(ctx, `${this.ev.name.toUpperCase()} · ${where}${this.beaten ? ' · BEATEN!' : ''}`, cx, 52, { size: 20, color: 'rgba(255,255,255,0.7)' });
     text(ctx, headline, cx, 118, { size: me.status === 'ok' ? 72 : 38, color: '#fff', shadow: true });
-    if (me.status === 'ok') text(ctx, `${ordinal(this.place)} place`, cx, 178, { size: 32, color: this.place === 1 ? '#ffb400' : '#fff' });
+    if (me.status === 'ok' && this.results.length > 1) text(ctx, `${ordinal(this.place)} place`, cx, 178, { size: 32, color: this.place === 1 ? '#ffb400' : '#fff' });
 
     const flash = 0.65 + 0.35 * Math.sin(this.age * 8);
     let y = 236;

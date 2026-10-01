@@ -11,7 +11,7 @@ import { flightPath, rivalJump } from './longJumpRules.js';
 import { RunwayRenderer } from '../render/runway.js';
 import { ORANGE, drawPad, drawX } from '../render/pads.js';
 import { drawDrop, drawHitRing } from '../render/targetPads.js';
-import { getDifficulty } from '../core/storage.js';
+import { getDifficulty, hasRivals } from '../core/storage.js';
 import { flow } from '../flow.js';
 import { Venue, FIELD_DEPTH } from '../brawl/venue.js';
 import { startFieldLateHits, fieldLateStep, fieldLateRender } from '../brawl/fieldLateHits.js';
@@ -66,6 +66,7 @@ export class LongJump {
     this.round = 0;
     this.liveField = this.live ? new LiveField(this) : null;
     if (this.liveField) this.rivals = this.liveField.people; // live: just the other players, so every phone has the same results
+    else if (!hasRivals()) this.rivals = []; // Training: just you (and your ghost)
     this.ghost = new FieldGhost(this.ev, this.liveField);
     this.onResize(this.game.view);
     this.startRound();

@@ -191,7 +191,7 @@ export const CONFIG = {
     // Rivals read a new set in `setReact` s, then tap `tapGap` s apart (their
     // reaction to the gun, miss chance, jitter and lean timing come from CONFIG.ai).
     ai: {
-      amateur: { setReact: [0.45, 0.62], tapGap: [0.18, 0.25] }, // typical rival about 13.2s
+      amateur: { setReact: [0.55, 0.78], tapGap: [0.21, 0.3] }, // typical rival about 14.3s
       pro: { setReact: [0.42, 0.56], tapGap: [0.16, 0.22] }, // typical rival about 12.5s
     },
   },
@@ -258,7 +258,7 @@ export const CONFIG = {
     // Rivals: run-up pace from CONFIG.ai, plus where they take off relative to
     // the line (negative = over it: foul) and how late they stretch.
     ai: {
-      amateur: { cadence: [3.0, 3.8], takeoffGap: [-0.1, 0.45], stretchDelay: [0.06, 0.3] },
+      amateur: { cadence: [2.7, 3.4], takeoffGap: [-0.12, 0.65], stretchDelay: [0.1, 0.4] },
       pro: { cadence: [3.7, 4.5], takeoffGap: [-0.03, 0.22], stretchDelay: [0.06, 0.2] },
     },
     markHold: 2.2, // s after landing before the mark banner
@@ -302,7 +302,7 @@ export const CONFIG = {
     landHold: 2.2, // s showing where it landed before the banner
     overrun: 0.3, // m past the line still holding: foul
     ai: {
-      amateur: { cadence: [3.0, 3.8], gap: [-0.25, 2.2], angleErr: 14 },
+      amateur: { cadence: [2.7, 3.4], gap: [-0.3, 3.0], angleErr: 18 },
       pro: { cadence: [3.7, 4.5], gap: [-0.1, 1.1], angleErr: 7 },
     },
   },
@@ -349,14 +349,14 @@ export const CONFIG = {
     markHold: 2.4, // s after landing before the result banner
     camera: { topFrac: 0.3 }, // the camera rises to keep the vaulter at least this far down the screen
     ai: {
-      amateur: { cadence: [3.0, 3.8], pressErr: 0.14, releaseErr: 0.16, missChance: 0.07 },
+      amateur: { cadence: [2.7, 3.4], pressErr: 0.18, releaseErr: 0.2, missChance: 0.07 },
       pro: { cadence: [3.7, 4.5], pressErr: 0.08, releaseErr: 0.1, missChance: 0.03 },
     },
   },
 
   ai: {
     amateur: {
-      cadence: [2.6, 3.4], // strides/s range across the field (median time about 10.4s)
+      cadence: [2.3, 3.1], // strides/s range across the field (median time about 10.8s)
       reaction: [0.2, 0.35], // s from GO to first stride
       jitter: 0.3, // +/- fraction of randomness on each stride interval (reaction variance)
       fatigue: 0.05, // cadence lost by the finish (fades in over the last 40%)

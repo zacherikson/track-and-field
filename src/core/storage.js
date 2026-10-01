@@ -96,6 +96,8 @@ export function setTourMode(mode) {
 
 // The campaign you're playing ('amateur' or 'pro'), or null for Training. Set
 // by the menu for this session; it decides the rivals and what a win counts for.
+// Training (and a race from the leaderboard) has no computer rivals, just you
+// and your ghost; a campaign has rivals and no ghost.
 let campaign = null;
 
 export function setCampaign(level) {
@@ -106,20 +108,14 @@ export function getCampaign() {
   return campaign;
 }
 
-/**
- * Rival difficulty: the campaign's, or in Training the one chosen on the menu
- * ('amateur' or 'pro').
- */
-export function getDifficulty() {
-  if (campaign) return campaign;
-  const d = load().difficulty;
-  return d === 'pro' ? 'pro' : 'amateur';
+/** Whether computer rivals race: only in a campaign. */
+export function hasRivals() {
+  return campaign != null;
 }
 
-export function setDifficulty(level) {
-  const data = load();
-  data.difficulty = level;
-  save(data);
+/** Rival difficulty, 'amateur' or 'pro': the campaign's. */
+export function getDifficulty() {
+  return campaign ?? 'amateur';
 }
 
 /**
@@ -153,7 +149,7 @@ export function takeFreshBeaten() {
   return f;
 }
 
-/** Whether your own best run races as a ghost (menu toggle; off unless turned on). */
+/** Whether your own best run races as a ghost in Training (menu toggle; off unless turned on). */
 export function getGhostOn() {
   return load().ghost === true;
 }

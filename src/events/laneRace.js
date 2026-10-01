@@ -10,7 +10,7 @@ import { drawAthleteFigure } from '../athletes/sprites.js';
 import { TrackRenderer } from '../render/track.js';
 import { ORANGE, drawPad } from '../render/pads.js';
 import { flow } from '../flow.js';
-import { getDifficulty } from '../core/storage.js';
+import { getDifficulty, hasRivals } from '../core/storage.js';
 import { GhostRecorder, GhostRun } from '../online/ghost.js';
 import { TraceRecorder, TracePlayer } from '../online/trace.js';
 import { serverNow } from '../online/live.js';
@@ -60,7 +60,7 @@ export class LaneRace {
   constructor(ev, cfg) {
     this.ev = ev;
     this.cfg = cfg;
-    this.level = getDifficulty(); // 'amateur' | 'pro', chosen on the menu
+    this.level = getDifficulty(); // 'amateur' | 'pro': the campaign's
     this.difficulty = CONFIG.ai[this.level];
   }
 
@@ -90,7 +90,7 @@ export class LaneRace {
         continue;
       }
       const isPlayer = lane === cfg.playerLane;
-      if (this.live && !isPlayer) continue;
+      if ((this.live || !hasRivals()) && !isPlayer) continue; // Training: just you (and your ghost)
       const who = isPlayer ? chosenPlayer(this.ev.id) : rivals.pop();
       const runner = new Runner(this.runnerParams, undefined, cfg.startX); // event-specific physics, if any
       this.athletes.push({

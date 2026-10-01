@@ -4,6 +4,15 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Training is just you
+- Training has no computer rivals: every event (and its tournament) is you on
+  your own, plus your ghost if **Training ghost** is on.
+- Campaigns (Amateur, Pro) never have a ghost, not even your best tournament's.
+- The Amateur/Pro rivals toggle is gone: a campaign plays its own rivals.
+- A race picked from the leaderboard is training too: you and that ghost.
+- Training results show no placing (there's no one to place against, unless
+  your ghost raced).
+
 ## vs Computer: Amateur and Pro campaigns, plus Training
 - vs Computer is now three rows of cards, each the five events then the
   tournament (🏆): **Amateur**, **Pro** and **Training**.

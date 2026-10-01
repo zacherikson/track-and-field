@@ -1,9 +1,10 @@
-import { getGhost, getGhostOn, getBestTournament } from '../core/storage.js';
+import { getGhost, getGhostOn, getBestTournament, getCampaign } from '../core/storage.js';
 import { tournament } from '../tournament/tournament.js';
 import { chosenGhost } from './ghost.js';
 
 /**
  * Which recording races as a ghost in event `ev`, as { name, data, overlay }, or null:
+ * - in a campaign: none, it's you against the rivals;
  * - in a tournament, with GHOST on: your best tournament's attempt at this
  *   event. It shares your lane (`overlay`) so the same five rivals stay in;
  * - otherwise one picked with Race on the online leaderboard;
@@ -12,6 +13,7 @@ import { chosenGhost } from './ghost.js';
  * old, or from the network).
  */
 export function pickGhost(ev, valid) {
+  if (getCampaign()) return null;
   if (tournament.active) {
     const g = getGhostOn() ? getBestTournament(tournament.mode)?.events?.[ev.id]?.ghost : null;
     return valid(g) ? { name: 'Best tournament', data: g, overlay: true } : null;

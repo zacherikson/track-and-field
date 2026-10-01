@@ -2,7 +2,7 @@ import { CONFIG } from '../../config.js';
 import { Button, text, roundRect } from '../../core/ui.js';
 import { drawFigure, runPose } from '../../athletes/stickFigure.js';
 import { EVENTS, TOURNAMENT_BOARDS, formatMark } from '../../events/registry.js';
-import { getBest, getDifficulty, setDifficulty, getGhostOn, setGhostOn, getPlayerName, getTourMode, setTourMode, setCampaign, getBeaten, takeFreshBeaten } from '../../core/storage.js';
+import { getBest, getGhostOn, setGhostOn, getPlayerName, getTourMode, setTourMode, setCampaign, getBeaten, takeFreshBeaten } from '../../core/storage.js';
 import { lineupAthlete, lineupSlotEmpty, heightOf } from '../../athletes/roster.js';
 import { TOUR_KINDS } from '../../tournament/tournament.js';
 import { flow } from '../../flow.js';
@@ -25,7 +25,8 @@ let lastList = null;
  * vs Computer is three rows of cards, the five events then the tournament:
  * - Amateur and Pro, a mini campaign each: win an event (in any order) and its
  *   card is stamped BEATEN!; beat all five and the tournament opens; win that too.
- * - Training: play anything against the rivals you pick (RIVALS), nothing ticked off.
+ * - Training: play anything on your own, no rivals (your ghost if GHOST is on), nothing ticked off.
+ *   Campaigns never have a ghost.
  * Live is the tournament and the five events against other people.
  */
 export class PlayPanel {
@@ -91,22 +92,7 @@ export class PlayPanel {
           },
         }),
     );
-    // Rival difficulty (vs Computer only): a two-way toggle, remembered on this device.
-    this.level = getDifficulty();
-    this.levelButtons = ['amateur', 'pro'].map(
-      (level) =>
-        new Button({
-          label: level === 'pro' ? 'Pro' : 'Amateur',
-          w: 110,
-          h: 44,
-          onTap: () => {
-            this.level = level;
-            setDifficulty(level);
-            this.styleLevels();
-          },
-        }),
-    );
-    // Your ghost (vs Computer only): race your best attempt in every event (remembered on this device).
+    // Your ghost (Training only): race your best attempt in every event (remembered on this device).
     this.ghostButton = new Button({
       label: '',
       w: 110,
@@ -116,7 +102,6 @@ export class PlayPanel {
         this.styleGhost();
       },
     });
-    this.styleLevels();
     this.styleModes();
     this.styleGhost();
     this.onShow();
@@ -215,10 +200,6 @@ export class PlayPanel {
     this.offlineBig.sub = `Amateur ${done('amateur')}/6 · Pro ${done('pro')}/6 · Training`;
   }
 
-  styleLevels() {
-    for (const b of this.levelButtons) b.color = (b.label === 'Pro') === (this.level === 'pro') ? '#e4572e' : PLAIN;
-  }
-
   styleModes() {
     for (const b of this.modeButtons) b.color = (b.label === 'Team') === (this.mode === 'team') ? '#e4572e' : PLAIN;
     const name = this.mode === 'team' ? 'Team' : 'Solo';
@@ -276,16 +257,12 @@ export class PlayPanel {
       sec.labelX = rx + labelW / 2;
       sec.tiles.forEach((t, i) => Object.assign(t, { w: tw, h: TILE_H, x: rx + labelW + 10 + i * (tw + TILE_GAP), y: sec.y }));
     });
-    // Its settings: TOURNAMENT (both), RIVALS and GHOST (vs Computer). Narrower on a narrow (4:3) screen.
-    const k = Math.min(1, (view.w - 32) / (90 * 2 + 130 * 2 + 110 + 8 * 2 + 32 * 2));
-    const [mw, lw, gw, sp] = [90, 130, 110, 32].map((v) => Math.floor(v * k));
+    // Its settings: TOURNAMENT (both), and GHOST (vs Computer, for Training).
+    const [mw, gw, sp] = [90, 110, 48];
     this.modeButtons.forEach((b) => (b.w = mw));
-    this.levelButtons.forEach((b) => (b.w = lw));
     this.ghostButton.w = gw;
-    const row = mw * 2 + 8 + sp + lw * 2 + 8 + sp + gw;
+    const row = mw * 2 + 8 + sp + gw;
     this.settingsX = { offline: view.w / 2 - row / 2, live: view.w / 2 - (mw * 2 + 8) / 2 };
-    const lx = this.settingsX.offline + mw * 2 + 8 + sp;
-    this.levelButtons.forEach((b, i) => Object.assign(b, { x: lx + i * (lw + 8), y: OFFLINE_SETTINGS_Y }));
     Object.assign(this.ghostButton, { x: this.settingsX.offline + row - gw, y: OFFLINE_SETTINGS_Y });
     this.placeModes();
 
@@ -316,7 +293,7 @@ export class PlayPanel {
 
   get allButtons() {
     const fill = this.warnT > 0 && this.warnFill ? [this.fillBtn] : [];
-    if (this.list === 'offline') return [...fill, this.backBtn, ...this.tiles, ...this.modeButtons, ...this.levelButtons, this.ghostButton];
+    if (this.list === 'offline') return [...fill, this.backBtn, ...this.tiles, ...this.modeButtons, this.ghostButton];
     if (this.list === 'live') return [...fill, this.backBtn, ...this.liveButtons, ...this.modeButtons];
     return [this.fsButton, this.tuneButton, this.onlineButton, this.profileButton, this.offlineBig, this.liveBig].filter(Boolean);
   }
@@ -408,9 +385,7 @@ export class PlayPanel {
     label('TOURNAMENT', m0, m1);
     this.modeButtons.forEach((b) => b.draw(ctx));
     if (!offline) return;
-    label('TRAINING RIVALS', ...this.levelButtons);
-    this.levelButtons.forEach((b) => b.draw(ctx));
-    label('GHOST', this.ghostButton, this.ghostButton);
+    label('TRAINING GHOST', this.ghostButton, this.ghostButton);
     this.ghostButton.draw(ctx);
   }
 
@@ -420,7 +395,7 @@ export class PlayPanel {
       const cy = sec.y + TILE_H / 2;
       const complete = sec.level && sec.done === sec.tiles.length;
       text(ctx, sec.title, sec.labelX, cy - 10, { size: 20, weight: 900, color: sec.label, shadow: true, maxWidth: 116 });
-      const sub = !sec.level ? 'Free play' : complete ? '★ Complete' : `${sec.done} / ${sec.tiles.length} beaten`;
+      const sub = !sec.level ? 'Just you' : complete ? '★ Complete' : `${sec.done} / ${sec.tiles.length} beaten`;
       text(ctx, sub, sec.labelX, cy + 14, { size: 13, weight: 700, color: complete ? '#ffd35c' : DIM, maxWidth: 116 });
       sec.tiles.forEach((t) => t.draw(ctx));
     }

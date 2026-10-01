@@ -15,6 +15,11 @@ Gameplay and tuning changes, newest first. When you change a number in
   `firestore.rules` (publish them in the Firebase console).
 - Profile's Menu button is now Back, and returns to the tab you came from.
 
+## Juno a stick figure again, for now
+- Juno is a stick figure like everyone else, so the athletes all match. Her
+  drawn art stays (src/athletes/sprites/juno.png + .json, art/juno/, rig.html):
+  add `sprite: 'juno'` back to her colors in roster.js to bring it back.
+
 ## Juno, drawn
 - Juno is a drawn cartoon sprinter in the 100m and hurdles (parts drawn by an AI
   image generator from tools/art-prompts.md, originals in art/juno/, rigged with

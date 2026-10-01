@@ -1,8 +1,8 @@
 # Track Royale
 
 A touch-first, mobile-browser track & field game: five events, two thumbs.
-Starring **Juno**, an original cartoon sprinter: drawn art in the 100m and hurdles, a
-stick figure elsewhere for now (see [src/athletes/sprites/](src/athletes/sprites/README.md)).
+Starring **Juno**, an original sprinter. Everyone's a stick figure for now; Juno's
+drawn art is ready to switch back on (see [src/athletes/sprites/](src/athletes/sprites/README.md)).
 Plain HTML5 Canvas + vanilla ES modules. No framework, no build step.
 
 **Status:** all five events playable (100m Dash, 110m Hurdles, Long Jump, Pole

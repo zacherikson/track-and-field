@@ -1,7 +1,8 @@
 import { Button, text, roundRect } from '../../core/ui.js';
-import { cleanName } from '../../core/storage.js';
+import { cleanName, getPlayerName } from '../../core/storage.js';
 import { cachedSquad, loadMySquad, topSquads, searchSquads, createSquad, joinSquad, leaveSquad, kickFromSquad, SQUAD_MAX, inviteLink, getInvite, setInvite, squadInfo } from '../../online/squads.js';
 import { flow } from '../../flow.js';
+import { openInvite } from '../inviteScreen.js';
 
 const WARN = '#ffb35c';
 const OK = '#59cd90';
@@ -37,7 +38,7 @@ export class SquadPanel {
     this.joinBtns = [];
     // The squad you've been invited to, offered at the top: { key, name, size }.
     this.invite = null;
-    this.inviteJoinBtn = new Button({ label: 'Join', w: 84, h: 32, size: 17, color: '#2bb673', onTap: () => this.invite && this.join(this.invite) });
+    this.inviteJoinBtn = new Button({ label: 'Join', w: 84, h: 32, size: 17, color: '#2bb673', onTap: () => this.invite && openInvite(this.game, { key: this.invite.key }) });
     this.dismissBtn = new Button({ label: '✕', w: 36, h: 32, size: 16, color: PLAIN, onTap: () => this.dropInvite() });
     this.refresh();
     this.loadInvite();
@@ -96,7 +97,7 @@ export class SquadPanel {
   async share() {
     const s = this.mine;
     if (!s || this.busy) return;
-    const url = inviteLink(s);
+    const url = inviteLink(s, getPlayerName());
     const message = `Join my squad ${s.name} in Track Royale!`;
     if (navigator.share) {
       try {

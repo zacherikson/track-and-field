@@ -250,6 +250,14 @@ export function knownUid() {
   }
 }
 
+/** Your username as saved on the server (users/{uid}), or null if you haven't picked one yet. */
+export async function claimedUsername() {
+  const uid = knownUid();
+  if (!uid) return null;
+  const doc = await rest(`users/${uid}`);
+  return doc?.fields ? fields(doc.fields).name ?? null : null;
+}
+
 /**
  * Signs in if this phone's player id isn't remembered yet (a player from
  * before it was). Resolves true once it is known, false if it already was.

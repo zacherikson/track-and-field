@@ -4,6 +4,17 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Joining from an invite in two steps
+- An invite link now opens an invite screen: "Zach invited you to join
+  Speedsters", who's in it, a box for your username and one **Join** button,
+  which saves the name and joins. Then "You're in Speedsters!" and **Let's go**.
+  No more going to Profile first.
+- Already have a username: it's filled in. In another squad: it says you'll
+  leave it, and Join does both. A taken name or a full or closed squad is
+  explained right there.
+- Invite links say who sent them (`&from=`). The Squad tab's invite card opens
+  the same screen.
+
 ## Squad leaders can kick members out
 - The leader taps a member on the squad's page (each shows a ✕), confirms, and
   they're out. They can join again later. The kicked player's Squad tab says

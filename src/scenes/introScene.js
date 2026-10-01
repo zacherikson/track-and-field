@@ -4,6 +4,8 @@ import { formatMark } from '../events/registry.js';
 import { flow } from '../flow.js';
 import { tournament, ORDER } from '../tournament/tournament.js';
 import { serverNow } from '../online/live.js';
+import { prewarmSDK, isSignedIn } from '../online/firebase.js';
+import { counts } from '../online/bests.js';
 
 const ON_TRACK = 4000; // ms before a live event starts that it's shown (the gun's READY / GET SET, or a round's countdown)
 
@@ -23,6 +25,12 @@ export class IntroScene {
     this.live = tournament.active ? tournament.live : null;
     this.stage = this.live?.eventStage(this.ev.id);
     this.live?.ready(this.stage); // already, from the standings
+    // Your mark goes up the moment this event ends (online/post.js), which is
+    // the first write of most sessions and so pays for the Firebase SDK. Fetch
+    // it while this card is up and the race is on, so the results screen shows
+    // your place without waiting for a download. Only when the mark will go up:
+    // guests and changed tuning don't post one.
+    if (this.ev.online && isSignedIn() && counts()) prewarmSDK();
   }
 
   update(dt, t) {

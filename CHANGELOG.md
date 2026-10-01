@@ -4,6 +4,14 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Event card: Back, and your athlete
+- The card before an event (name, records, how to play) has **‹ Back** top
+  left, to the menu (**‹ Quit** in a tournament; none in a live one).
+- Top right, the athlete doing this event for you, warming up. Tap them to
+  pick someone else from all six: it changes this event's lineup slot, the
+  same as the Lineup tab. In a solo tournament it shows your solo athlete
+  ("Does all five") and can't be swapped; in a live tournament it can't either.
+
 ## Pro unlocks after Amateur
 - Pro is locked until all of Amateur is beaten, the tournament included. Its
   cards are dimmed with a 🔒, and the row says "🔒 Beat Amateur".

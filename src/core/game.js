@@ -33,7 +33,20 @@ export class Game {
     this.debug = new URLSearchParams(location.search).has('debug');
     this.cssW = 0;
     this.cssH = 0;
+    this.safeKey = '';
     this.frame = this.frame.bind(this);
+    // iOS settles the screen size and the notch insets a beat after a launch,
+    // a rotation or coming back to the app (the insets after the size), so a
+    // single measurement can catch it half-way: the game drawn short, or the
+    // top bar pushed down for a notch that's now at the side. Look again a few
+    // times after each, and put back any scroll the page picked up meanwhile.
+    const settle = () => {
+      for (const ms of [0, 100, 300, 700, 1500]) setTimeout(() => this.remeasure(), ms);
+    };
+    for (const type of ['resize', 'orientationchange', 'pageshow']) window.addEventListener(type, settle);
+    window.visualViewport?.addEventListener('resize', settle);
+    document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && settle());
+    settle();
   }
 
   setScene(scene) {
@@ -50,11 +63,23 @@ export class Game {
     requestAnimationFrame(this.frame);
   }
 
+  /** Measure the screen again next frame, even if the canvas looks the same size (the insets may have moved). */
+  remeasure() {
+    if (window.scrollX || window.scrollY) window.scrollTo(0, 0);
+    this.forceMeasure = true;
+  }
+
   resizeIfNeeded() {
     const cssW = this.canvas.clientWidth;
     const cssH = this.canvas.clientHeight;
     const dpr = Math.min(window.devicePixelRatio || 1, CONFIG.view.maxDpr);
-    if (cssW === this.cssW && cssH === this.cssH && dpr === this.view.dpr) return;
+    const forced = this.forceMeasure;
+    this.forceMeasure = false;
+    if (cssW === this.cssW && cssH === this.cssH && dpr === this.view.dpr && !forced) return;
+    const probe = getComputedStyle(document.getElementById('safe-probe'));
+    const safeKey = [probe.paddingTop, probe.paddingRight, probe.paddingBottom, probe.paddingLeft].join();
+    if (cssW === this.cssW && cssH === this.cssH && dpr === this.view.dpr && safeKey === this.safeKey) return; // nothing moved
+    this.safeKey = safeKey;
     this.cssW = cssW;
     this.cssH = cssH;
     this.canvas.width = Math.round(cssW * dpr);
@@ -69,7 +94,6 @@ export class Game {
     v.w = cssW / v.scale;
     v.h = CONFIG.view.logicalHeight;
 
-    const probe = getComputedStyle(document.getElementById('safe-probe'));
     const px = (s) => (parseFloat(s) || 0) / v.scale;
     v.safe = { t: px(probe.paddingTop), r: px(probe.paddingRight), b: px(probe.paddingBottom), l: px(probe.paddingLeft) };
     this.scene?.onResize?.(v);

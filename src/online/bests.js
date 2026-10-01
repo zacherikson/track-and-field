@@ -1,5 +1,6 @@
 import { BOARDS, TOURNAMENT_BOARDS } from '../events/registry.js';
-import { getBest, setBest, getGhost, setGhost, getBestTournament, saveBestTournament } from '../core/storage.js';
+import { getBest, setBest, getGhost, setGhost, getBestTournament, saveBestTournament, addTopMark, forgetTopMarks, getCampaign } from '../core/storage.js';
+import { player, soloAthlete } from '../athletes/roster.js';
 import { changes } from '../tuning/store.js';
 import { myEntries, fetchGhost, isSignedIn, submitMark } from './firebase.js';
 import { isReplayable } from './ghost.js';
@@ -27,6 +28,18 @@ export function counts() {
   return changes().length === 0;
 }
 
+/**
+ * Puts a mark on your own top list for `board` (an event, or a tournament
+ * kind's board), if it counts like a best does and makes the top five: who
+ * set it, where (a campaign, Training or live) and when. Returns its place, or 0.
+ */
+export function recordTopMark(board, mark, live = false) {
+  if (!counts() || mark == null || !Number.isFinite(mark)) return 0;
+  const who = board.tournament === 'team' ? 'Team' : board.tournament === 'solo' ? soloAthlete().name : player(board.id).name;
+  const where = live ? 'live' : (getCampaign() ?? 'training');
+  return addTopMark(board.id, { mark, at: Date.now(), who, where }, board.lowerIsBetter);
+}
+
 // Bumped by every post, so a sync that started before it doesn't undo it.
 let posts = 0;
 export function posted() {
@@ -52,7 +65,7 @@ export async function syncBests() {
     const mark = entry?.mark ?? null;
     const saved = getBest(board.id);
     if ((saved != null || mark != null) && !same(saved, mark)) {
-      setBest(board.id, mark);
+      setBest(board.id, mark, board.lowerIsBetter);
       changed = true;
     }
     if (board.tournament) {
@@ -92,6 +105,7 @@ export function forgetBests() {
     setGhost(board.id, null);
   }
   for (const mode of Object.keys(TOURNAMENT_BOARDS)) saveBestTournament(mode, null);
+  forgetTopMarks();
 }
 
 /**

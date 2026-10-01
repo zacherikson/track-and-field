@@ -1,9 +1,9 @@
 import { Button, text, roundRect } from '../core/ui.js';
 import { ordinal } from '../core/math.js';
 import { formatMark } from '../events/registry.js';
-import { getBest, submitBest, getCampaign, getBeaten, saveGhostIfBetter } from '../core/storage.js';
+import { getBest, submitBest, getCampaign, getBeaten, saveGhostIfBetter, canTune } from '../core/storage.js';
 import { postMark } from '../online/post.js';
-import { counts } from '../online/bests.js';
+import { counts, recordTopMark } from '../online/bests.js';
 import { flow } from '../flow.js';
 import { ResultsPanel } from '../brawl/aftermath.js';
 
@@ -35,6 +35,7 @@ export class ResultScene {
     const prevBest = getBest(this.ev.id);
     // Only runs that could go on the online board count as a best (online/bests.js).
     this.newPB = me.status === 'ok' && counts() && submitBest(this.ev.id, me.mark, this.ev.lowerIsBetter);
+    if (me.status === 'ok') recordTopMark(this.ev, me.mark, !!this.stats?.live);
     this.best = getBest(this.ev.id);
     this.hadBest = prevBest != null;
     this.beatWR = me.status === 'ok' && (this.ev.lowerIsBetter ? me.mark < this.ev.record : me.mark > this.ev.record);
@@ -48,9 +49,9 @@ export class ResultScene {
         ? new Button({ label: `${(this.ev.againLabel ?? 'Race again').replace(' again', '')} live again`, color: '#2bb673', onTap: () => flow.live(this.game, this.ev.id) })
         : new Button({ label: this.ev.againLabel ?? 'Race again', color: '#2bb673', onTap: () => flow.play(this.game, this.ev) }),
       new Button({ label: 'Menu', color: 'rgba(255,255,255,0.18)', onTap: () => flow.menu(this.game) }),
-      new Button({ label: '⚙ Tuning', color: 'rgba(255,255,255,0.18)', onTap: () => flow.tuning(this.game) }),
     ];
-    if (this.ev.online) this.buttons.splice(2, 0, new Button({ label: '🌐 Leaderboard', color: 'rgba(255,255,255,0.18)', onTap: () => flow.leaderboard(this.game, this.ev) }));
+    if (canTune()) this.buttons.push(new Button({ label: '⚙ Tuning', color: 'rgba(255,255,255,0.18)', onTap: () => flow.tuning(this.game) }));
+    if (this.ev.online) this.buttons.splice(2, 0, new Button({ label: '📊 Leaderboard', color: 'rgba(255,255,255,0.18)', onTap: () => flow.leaderboard(this.game, this.ev) }));
     const live = !!this.stats?.live;
     if (this.backdrop) {
       // Over the late hits: just the results and the two buttons.

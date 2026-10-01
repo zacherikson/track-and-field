@@ -3,7 +3,7 @@ import { ordinal } from '../core/math.js';
 import { formatMark } from '../events/registry.js';
 import { submitBest, saveGhostIfBetter, getCampaign, markBeaten } from '../core/storage.js';
 import { postMark } from '../online/post.js';
-import { counts } from '../online/bests.js';
+import { counts, recordTopMark } from '../online/bests.js';
 import { tournament, ORDER, TOUR_KINDS } from './tournament.js';
 import { flow } from '../flow.js';
 import { serverNow } from '../online/live.js';
@@ -41,6 +41,7 @@ export class StandingsScene {
     const run = this.stats?.run ?? null;
     if (run && counts()) saveGhostIfBetter(this.ev, run);
     if (me?.status === 'ok' && counts()) submitBest(this.ev.id, me.mark, this.ev.lowerIsBetter);
+    if (me?.status === 'ok') recordTopMark(this.ev, me.mark, !!tournament.live);
     this.rows = tournament.record(this.ev, this.results, run);
     this.table = tournament.standings();
     this.final = tournament.finished;
@@ -72,7 +73,7 @@ export class StandingsScene {
           tournament.live
             ? new Button({ label: 'Play live again', color: '#2bb673', onTap: () => flow.live(this.game, TOUR_KINDS[tournament.mode]) })
             : new Button({ label: 'New tournament', color: '#2bb673', onTap: () => flow.tournament(this.game, tournament.mode) }),
-          new Button({ label: '🌐 Leaderboard', color: 'rgba(255,255,255,0.18)', onTap: () => flow.leaderboard(this.game, tournament.board) }),
+          new Button({ label: '📊 Leaderboard', color: 'rgba(255,255,255,0.18)', onTap: () => flow.leaderboard(this.game, tournament.board) }),
           new Button({ label: 'Menu', color: 'rgba(255,255,255,0.18)', onTap: () => flow.menu(this.game) }),
         ]
       : [

@@ -4,6 +4,16 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Play tab: vs Computer and Live
+- The Play tab is two big buttons, **🤖 vs Computer** and **🌐 Live**, over
+  your lineup warming up on the track (tap it to go to the Lineup tab), instead
+  of two rows of twelve event buttons.
+- Each opens its list: the tournament and the five events, three to a row, with
+  that mode's settings. Rivals and Ghost are only in vs Computer (live races
+  have neither); the Solo/Team tournament toggle is in both.
+- ‹ Back or Esc returns to the buttons; Menu after a race comes back to the
+  list you raced from.
+
 ## Joining from an invite in two steps
 - An invite link now opens an invite screen: "Zach invited you to join
   Speedsters", who's in it, a box for your username and one **Join** button,

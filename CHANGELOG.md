@@ -4,6 +4,11 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Juno a stick figure again, for now
+- Juno is a stick figure like everyone else, so the athletes all match. Her
+  drawn art stays (src/athletes/sprites/juno.png + .json, art/juno/, rig.html):
+  add `sprite: 'juno'` back to her colors in roster.js to bring it back.
+
 ## Juno, drawn
 - Juno is a drawn cartoon sprinter in the 100m and hurdles (parts drawn by an AI
   image generator from tools/art-prompts.md, originals in art/juno/, rigged with

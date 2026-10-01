@@ -118,8 +118,11 @@ join, leave and new squad.
 **Lineup** (the home screen's left tab) works like Clash Royale's deck: a slot
 per event along the top, your athletes below. Tap an athlete, then **Use**, then
 the slot to put them in (the slots wiggle while you pick; Cancel or Esc calls it
-off). Tap a slot for **Info** or **Remove**: an emptied event slot is done by
-your solo athlete until you fill it again. Info shows an athlete running, their
+off). Tap a slot for **Info** or **Remove**. Like a Clash Royale deck missing
+a card, a lineup with an empty slot can't play a **Team** tournament (offline
+or live): the Tournament button greys out and says so, with a button to fill
+your lineup. Single events still play, with your solo athlete in an empty
+event, and so does a Solo tournament. Info shows an athlete running, their
 height and where they are in your lineup. It can be the same athlete in every
 slot or a different one in each.
 There's also a **Solo** slot: the athlete who does all five in a solo

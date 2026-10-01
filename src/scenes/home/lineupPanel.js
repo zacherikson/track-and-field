@@ -16,7 +16,8 @@ const DIM = 'rgba(255,255,255,0.6)';
  * - Tap an athlete: Info, or Use, then the slot to put them in (the slots
  *   wiggle while you pick). The same athlete can fill any number of slots.
  * - Tap a slot: Info, or Remove to empty it. An empty event slot is done by
- *   your solo athlete until you fill it; the solo slot can't be emptied.
+ *   your solo athlete in single events, but a team tournament can't start
+ *   until it's filled (playPanel.js); the solo slot can't be emptied.
  * Remembered on this device.
  */
 export class LineupPanel {
@@ -159,7 +160,7 @@ export class LineupPanel {
     this.note = { text: slot.event ? `${c.name} does the ${slot.label.toLowerCase()} now.` : `${c.name} is your solo athlete now.`, t: 3 };
   }
 
-  /** Remove: empties an event slot (your solo athlete fills in until you pick someone). */
+  /** Remove: empties an event slot (your solo athlete fills in for single events; no team tournament until it's filled). */
   remove(slot) {
     if (!slot?.event) return;
     const was = this.who(slot);
@@ -167,7 +168,7 @@ export class LineupPanel {
     setLineupSlot(slot.event, null);
     this.slotMenu = null;
     const out = was === solo ? `The ${slot.label.toLowerCase()} slot is empty.` : `${was.name} is out of the ${slot.label.toLowerCase()}.`;
-    this.note = { text: `${out} ${solo.name}, your solo athlete, fills in until you pick someone.`, t: 4, plain: true };
+    this.note = { text: `${out} ${solo.name} fills in for single events; a Team tournament needs a full lineup.`, t: 4, plain: true };
   }
 
   /** `events`: this tab's taps and keys (the home screen has sorted out swipes). */

@@ -6,9 +6,13 @@ Gameplay and tuning changes, newest first. When you change a number in
 
 ## Lineup slots: Info and Remove
 - Tap a slot: it lifts with **Info** and **Remove** under it, like a Clash
-  Royale deck card. Remove empties it (a dashed slot with a +); an empty event
-  slot is done by your solo athlete until you fill it, so every event stays
-  playable. The Solo slot has Info only.
+  Royale deck card. Remove empties it (a dashed slot with a +). The Solo slot
+  has Info only.
+- Like Clash Royale's "You need to have 8 cards in your Battle Deck!": with an
+  empty slot, the Team tournament (vs Computer and Live) is greyed out ("Team ·
+  Lineup not full"), and tapping it says "You need a full lineup for a Team
+  tournament!" with a **Fill your lineup ›** button. Single events still play
+  (your solo athlete does an empty event), and so does a Solo tournament.
 - Athlete cards get **Info** next to Use: the athlete running, their tagline,
   height and which slots they're in.
 - An emptied slot is saved as empty (null in the lineup), so it isn't filled

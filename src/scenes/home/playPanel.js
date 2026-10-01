@@ -3,7 +3,7 @@ import { Button, text, roundRect } from '../../core/ui.js';
 import { drawFigure, runPose } from '../../athletes/stickFigure.js';
 import { EVENTS, TOURNAMENT_BOARDS, formatMark } from '../../events/registry.js';
 import { getBest, getDifficulty, setDifficulty, getGhostOn, setGhostOn, getPlayerName, getTourMode, setTourMode } from '../../core/storage.js';
-import { lineupAthlete, heightOf } from '../../athletes/roster.js';
+import { lineupAthlete, lineupSlotEmpty, heightOf } from '../../athletes/roster.js';
 import { TOUR_KINDS } from '../../tournament/tournament.js';
 import { flow } from '../../flow.js';
 import { syncBests } from '../../online/bests.js';
@@ -36,10 +36,13 @@ export class PlayPanel {
     // The two big buttons.
     this.offlineBig = new BigButton({ label: '🤖 vs Computer', sub: 'Tournament + 5 events', color: '#e4572e', onTap: () => this.open('offline') });
     this.liveBig = new BigButton({ label: '🌐 Live', sub: 'Race people right now', color: '#1f8a58', onTap: () => this.open('live') });
+    // A team tournament needs every lineup slot filled (Lineup tab); trying one without says so.
+    this.warnT = 0;
+    this.fillBtn = new Button({ label: 'Fill your lineup ›', w: 230, h: 42, size: 19, color: '#3a6fd8', onTap: () => this.home.show(0) });
     this.backBtn = new Button({ label: '‹ Back', w: 120, h: 44, size: 20, color: PLAIN, onTap: () => this.back() });
     // Tournament: all five events in a row, decathlon scoring; solo or team (the TOURNAMENT toggle).
     this.mode = getTourMode();
-    this.tourButton = new Button({ label: '🏆 Tournament', color: '#c98a00', onTap: () => flow.tournament(this.game, this.mode) });
+    this.tourButton = new Button({ label: '🏆 Tournament', color: TOUR_COLOR.offline, onTap: () => this.tournament(() => flow.tournament(this.game, this.mode)) });
     this.buttons = EVENTS.map(
       (ev) =>
         new Button({
@@ -51,7 +54,7 @@ export class PlayPanel {
     );
     // Live: the same, against other people (a waiting room first, online/live.js).
     this.liveButtons = [
-      new Button({ label: '🏆 Tournament', color: '#1f8a58', onTap: () => flow.live(this.game, TOUR_KINDS[this.mode]) }),
+      new Button({ label: '🏆 Tournament', color: TOUR_COLOR.live, onTap: () => this.tournament(() => flow.live(this.game, TOUR_KINDS[this.mode])) }),
       ...EVENTS.map((ev) => new Button({ label: ev.name, sub: 'Live', color: '#2bb673', enabled: ev.available, onTap: () => flow.live(this.game, ev.id) })),
     ];
     // Tournament: solo (one athlete does all five) or team (your lineup), remembered on this device.
@@ -111,6 +114,19 @@ export class PlayPanel {
   /** Coming to this tab: your lineup may have changed on the Lineup tab. */
   onShow() {
     this.lineup = EVENTS.map((ev) => ({ ev, c: lineupAthlete(ev.id) }));
+    this.warnT = 0;
+    if (this.modeButtons) this.styleModes(); // a slot may have been emptied or filled
+  }
+
+  /** A team tournament with an empty lineup slot: it can't start (single events and solo tournaments can). */
+  get teamBlocked() {
+    return this.mode === 'team' && EVENTS.some((ev) => lineupSlotEmpty(ev.id));
+  }
+
+  /** Starts a tournament (`go`), unless it's a team one and your lineup isn't full. */
+  tournament(go) {
+    if (this.teamBlocked) this.warnT = 4;
+    else go();
   }
 
   /** Opens a list: 'offline' (vs Computer) or 'live'. */
@@ -150,8 +166,13 @@ export class PlayPanel {
     for (const b of this.modeButtons) b.color = (b.label === 'Team') === (this.mode === 'team') ? '#e4572e' : PLAIN;
     const name = this.mode === 'team' ? 'Team' : 'Solo';
     const best = getBest(TOURNAMENT_BOARDS[this.mode].id);
-    this.tourButton.sub = best == null ? `${name} · all 5` : `${name} · Best ${best}`;
-    this.liveButtons[0].sub = `Live · ${name}`;
+    const blocked = this.teamBlocked;
+    this.tourButton.sub = blocked ? 'Team · Lineup not full' : best == null ? `${name} · all 5` : `${name} · Best ${best}`;
+    this.liveButtons[0].sub = blocked ? 'Team · Lineup not full' : `Live · ${name}`;
+    // Greyed out (but still tappable, to say why) while it can't start.
+    this.tourButton.color = blocked ? 'rgba(201,138,0,0.4)' : TOUR_COLOR.offline;
+    this.liveButtons[0].color = blocked ? 'rgba(31,138,88,0.45)' : TOUR_COLOR.live;
+    if (!blocked) this.warnT = 0;
   }
 
   styleGhost() {
@@ -205,6 +226,7 @@ export class PlayPanel {
     // The track along the bottom: your lineup on the buttons screen, a runner under a list.
     this.trackTop = this.list ? SETTINGS_Y + 44 + 18 : 286;
     this.trackBottom = bottom - 6;
+    Object.assign(this.fillBtn, { x: view.w / 2 - this.fillBtn.w / 2, y: Math.min(this.trackTop + 58, this.trackBottom - this.fillBtn.h - 6) });
     this.view = view;
     this.bottom = bottom;
   }
@@ -216,8 +238,9 @@ export class PlayPanel {
   }
 
   get allButtons() {
-    if (this.list === 'offline') return [this.backBtn, this.tourButton, ...this.buttons, ...this.modeButtons, ...this.levelButtons, this.ghostButton];
-    if (this.list === 'live') return [this.backBtn, ...this.liveButtons, ...this.modeButtons];
+    const fill = this.warnT > 0 ? [this.fillBtn] : [];
+    if (this.list === 'offline') return [...fill, this.backBtn, this.tourButton, ...this.buttons, ...this.modeButtons, ...this.levelButtons, this.ghostButton];
+    if (this.list === 'live') return [...fill, this.backBtn, ...this.liveButtons, ...this.modeButtons];
     return [this.fsButton, this.tuneButton, this.onlineButton, this.profileButton, this.offlineBig, this.liveBig].filter(Boolean);
   }
 
@@ -235,6 +258,7 @@ export class PlayPanel {
     }
     this.allButtons.forEach((b) => b.update(dt));
     this.fade = Math.min(1, this.fade + dt * 6);
+    this.warnT = Math.max(0, this.warnT - dt);
     this.phase += dt * 5; // the lineup warming up
     // The runner under a list goes along the track.
     const speed = 9;
@@ -289,6 +313,14 @@ export class PlayPanel {
     });
     this.drawTrack(ctx, view, this.trackTop, this.trackBottom - this.trackTop, true);
     for (const b of offline ? [this.tourButton, ...this.buttons] : this.liveButtons) b.draw(ctx);
+    if (this.warnT > 0) {
+      // Clash Royale style: say what's missing, right over the track.
+      ctx.save();
+      ctx.globalAlpha *= Math.min(1, this.warnT * 2);
+      text(ctx, 'You need a full lineup for a Team tournament!', view.w / 2, this.trackTop + 28, { size: 24, weight: 800, color: '#fff', shadow: true, maxWidth: view.w - 40 });
+      this.fillBtn.draw(ctx);
+      ctx.restore();
+    }
     const ly = SETTINGS_Y - 14;
     const label = (s, a, b) => text(ctx, s, (a.x + b.x + b.w) / 2, ly, { size: 13, weight: 700, color: DIM });
     const [m0, m1] = this.modeButtons;
@@ -341,6 +373,7 @@ function starring(lineup) {
   return names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`;
 }
 
+const TOUR_COLOR = { offline: '#c98a00', live: '#1f8a58' };
 const LIST_Y = 100; // top of a list's first row of buttons
 const SETTINGS_Y = 270; // a list's settings row
 

@@ -27,6 +27,12 @@ Gameplay and tuning changes, newest first. When you change a number in
 - Esc steps back within a tab first (out of picking a slot, or a Play list),
   then goes to Play.
 
+## Leaderboards need Google sign-in
+- A guest who opens 🌐 Leaderboard (from the menu, results or tournament
+  standings) sees "Connect your account to Google to see the global
+  leaderboard" and a **Sign in with Google** button instead of the boards.
+  Signing in comes back to the Profile screen, as it does from there.
+
 ## Play tab: vs Computer and Live
 - The Play tab is two big buttons, **🤖 vs Computer** and **🌐 Live**, over
   your lineup warming up on the track (tap it to go to the Lineup tab), instead

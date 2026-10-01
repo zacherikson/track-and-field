@@ -4,6 +4,13 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Pro unlocks after Amateur
+- Pro is locked until all of Amateur is beaten, the tournament included. Its
+  cards are dimmed with a 🔒, and the row says "🔒 Beat Amateur".
+- Tap a locked card and a pop-up says what's left, e.g. "🔒 Pro is locked ·
+  Beat the rest of Amateur first: Long jump, Pole vault and the tournament."
+  A locked tournament names the events still to beat in the same way.
+
 ## Training is just you
 - Training has no computer rivals: every event (and its tournament) is you on
   your own, plus your ghost if **Training ghost** is on.

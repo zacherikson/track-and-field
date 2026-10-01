@@ -25,6 +25,7 @@ let lastList = null;
  * vs Computer is three rows of cards, the five events then the tournament:
  * - Amateur and Pro, a mini campaign each: win an event (in any order) and its
  *   card is stamped BEATEN!; beat all five and the tournament opens; win that too.
+ *   Pro stays locked until all of Amateur (tournament too) is beaten.
  * - Training: play anything on your own, no rivals (your ghost if GHOST is on), nothing ticked off.
  *   Campaigns never have a ghost.
  * Live is the tournament and the five events against other people.
@@ -50,9 +51,9 @@ export class PlayPanel {
     // Tournament: all five events in a row, decathlon scoring; solo or team (the TOURNAMENT toggle).
     this.mode = getTourMode();
     // vs Computer: a row of cards per section, the five events then the tournament.
-    this.sections = SECTIONS.map((sec) => ({
-      ...sec,
-      tiles: [
+    this.sections = SECTIONS.map((spec) => {
+      const sec = { ...spec };
+      sec.tiles = [
         ...EVENTS.map(
           (ev) =>
             new EventTile({
@@ -61,14 +62,16 @@ export class PlayPanel {
               color: sec.color,
               enabled: ev.available,
               onTap: () => {
+                if (this.refuse(sec, ev.id)) return;
                 setCampaign(sec.level);
                 flow.intro(this.game, ev);
               },
             }),
         ),
         new EventTile({ id: 'tournament', name: 'Tournament', color: sec.level ? sec.color : TOUR_COLOR.offline, onTap: () => this.campaignTournament(sec) }),
-      ],
-    }));
+      ];
+      return sec;
+    });
     this.training = this.sections.find((sec) => !sec.level);
     this.tourButton = this.training.tiles.at(-1);
     this.buttons = this.training.tiles.slice(0, -1);
@@ -136,21 +139,45 @@ export class PlayPanel {
 
   /** A section's tournament card: Training's, or a campaign's once its five events are beaten. */
   campaignTournament(sec) {
-    if (sec.level && EVENTS.some((ev) => !getBeaten(sec.level)[ev.id])) {
-      this.warn(`Beat all five ${sec.title[0]}${sec.title.slice(1).toLowerCase()} events to unlock the tournament!`);
-      return;
-    }
+    if (this.refuse(sec, 'tournament')) return;
     this.tournament(() => {
       setCampaign(sec.level);
       flow.tournament(this.game, this.mode);
     });
   }
 
-  /** A line over the track for a few seconds; `fill`: with the Fill your lineup button. */
-  warn(msg, fill = false) {
+  /**
+   * Why card `id` in section `sec` is locked, as { title, detail }, or null if it isn't:
+   * a section with `after` waits for all of that one, and a campaign's tournament for its five events.
+   */
+  lockOf(sec, id) {
+    if (sec.after) {
+      const prev = this.sections.find((s) => s.level === sec.after);
+      const beaten = getBeaten(prev.level);
+      const left = prev.tiles.filter((t) => !beaten[t.id]);
+      if (left.length) return { title: `🔒 ${titleCase(sec.title)} is locked`, detail: `Beat the rest of ${titleCase(prev.title)} first: ${listOf(left)}.` };
+    }
+    if (sec.level && id === 'tournament') {
+      const beaten = getBeaten(sec.level);
+      const left = sec.tiles.filter((t) => t.id !== 'tournament' && !beaten[t.id]);
+      if (left.length) return { title: '🔒 Tournament locked', detail: `Beat ${listOf(left)} in ${titleCase(sec.title)} to unlock it.` };
+    }
+    return null;
+  }
+
+  /** Tapped a locked card: says why (and true). */
+  refuse(sec, id) {
+    const lock = this.lockOf(sec, id);
+    if (lock) this.warn(lock.title, false, lock.detail);
+    return !!lock;
+  }
+
+  /** A line over the track for a few seconds; `fill`: with the Fill your lineup button; `detail`: a second, smaller line. */
+  warn(msg, fill = false, detail = '') {
     this.warnMsg = msg;
     this.warnFill = fill;
-    this.warnT = 4;
+    this.warnDetail = detail;
+    this.warnT = detail ? 5 : 4;
   }
 
   /** Opens a list: 'offline' (vs Computer) or 'live'. */
@@ -190,14 +217,16 @@ export class PlayPanel {
       if (!sec.level) continue;
       const beaten = getBeaten(sec.level);
       sec.done = sec.tiles.filter((t) => beaten[t.id]).length;
+      sec.locked = !!(sec.after && this.lockOf(sec, sec.tiles[0].id));
       for (const t of sec.tiles) {
         t.beaten = !!beaten[t.id];
-        t.locked = t.id === 'tournament' && EVENTS.some((ev) => !beaten[ev.id]);
+        t.locked = !!this.lockOf(sec, t.id);
         t.stampAge = fresh && fresh.level === sec.level && fresh.id === t.id ? 0 : null;
       }
     }
     const done = (level) => this.sections.find((sec) => sec.level === level).done;
-    this.offlineBig.sub = `Amateur ${done('amateur')}/6 · Pro ${done('pro')}/6 · Training`;
+    const pro = this.sections.find((sec) => sec.level === 'pro');
+    this.offlineBig.sub = `Amateur ${done('amateur')}/6 · Pro ${pro.locked ? '🔒' : `${done('pro')}/6`} · Training`;
   }
 
   styleModes() {
@@ -371,11 +400,15 @@ export class PlayPanel {
       ctx.globalAlpha *= Math.min(1, this.warnT * 2);
       const pw = Math.min(view.w - 40, 640);
       if (offline) {
-        roundRect(ctx, view.w / 2 - pw / 2, this.warnY - 32, pw, this.warnFill ? 108 : 64, 16);
+        roundRect(ctx, view.w / 2 - pw / 2, this.warnY - 32, pw, this.warnFill ? 108 : this.warnDetail ? 92 : 64, 16);
         ctx.fillStyle = 'rgba(10,18,36,0.94)';
         ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
       }
       text(ctx, this.warnMsg, view.w / 2, this.warnY, { size: 22, weight: 800, color: '#fff', shadow: true, maxWidth: pw - 32 });
+      if (this.warnDetail) text(ctx, this.warnDetail, view.w / 2, this.warnY + 32, { size: 16, weight: 600, color: 'rgba(255,255,255,0.85)', maxWidth: pw - 32 });
       if (this.warnFill) this.fillBtn.draw(ctx);
       ctx.restore();
     }
@@ -394,8 +427,8 @@ export class PlayPanel {
     for (const sec of this.sections) {
       const cy = sec.y + TILE_H / 2;
       const complete = sec.level && sec.done === sec.tiles.length;
-      text(ctx, sec.title, sec.labelX, cy - 10, { size: 20, weight: 900, color: sec.label, shadow: true, maxWidth: 116 });
-      const sub = !sec.level ? 'Just you' : complete ? '★ Complete' : `${sec.done} / ${sec.tiles.length} beaten`;
+      text(ctx, sec.title, sec.labelX, cy - 10, { size: 20, weight: 900, color: sec.locked ? DIM : sec.label, shadow: true, maxWidth: 116 });
+      const sub = !sec.level ? 'Just you' : sec.locked ? `🔒 Beat ${titleCase(sec.after)}` : complete ? '★ Complete' : `${sec.done} / ${sec.tiles.length} beaten`;
       text(ctx, sub, sec.labelX, cy + 14, { size: 13, weight: 700, color: complete ? '#ffd35c' : DIM, maxWidth: 116 });
       sec.tiles.forEach((t) => t.draw(ctx));
     }
@@ -435,6 +468,17 @@ class BigButton extends Button {
   }
 }
 
+/** "AMATEUR" -> "Amateur". */
+function titleCase(s) {
+  return s[0].toUpperCase() + s.slice(1).toLowerCase();
+}
+
+/** "100m", "100m and Hurdles", "100m, Hurdles and the tournament": cards by name. */
+function listOf(tiles) {
+  const names = tiles.map((t) => (t.id === 'tournament' ? 'the tournament' : t.name));
+  return names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`;
+}
+
 /** "Juno", or "Juno, Okoro and Chan": everyone in your lineup, once each. */
 function starring(lineup) {
   const names = [...new Set(lineup.map(({ c }) => c.name))];
@@ -447,7 +491,7 @@ const SETTINGS_Y = 270; // the Live list's settings row
 // vs Computer: the sections (level null: Training), top to bottom.
 const SECTIONS = [
   { level: 'amateur', title: 'AMATEUR', color: '#e4352a', label: '#ff7a5c' },
-  { level: 'pro', title: 'PRO', color: '#7b2fbf', label: '#c08cff' },
+  { level: 'pro', title: 'PRO', color: '#7b2fbf', label: '#c08cff', after: 'amateur' }, // locked until all of Amateur is beaten
   { level: null, title: 'TRAINING', color: '#2d6fa8', label: '#7cc4ff' },
 ];
 const SECTION_Y = 66; // top of the first row of cards

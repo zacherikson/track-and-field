@@ -4,6 +4,25 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Easier Amateur rivals
+- Amateur rivals were about as good as a good player in the field events
+  (Amateur winner 8.25m long jump vs a good player's 7.97m). Now a good player
+  beats them everywhere and a casual player is in with a shout. Pro unchanged.
+- 100m: `ai.amateur.cadence` [2.6, 3.4] → [2.3, 3.1]: winner median 9.91 → 10.33s
+  (casual player 9.72s, novice 10.67s).
+- 110m hurdles: `hurdles110.ai.amateur.setReact` [0.45, 0.62] → [0.55, 0.78],
+  `tapGap` [0.18, 0.25] → [0.21, 0.3]: winner median 12.65 → 13.54s (casual
+  14.41s, good 12.34s).
+- Long jump: `longJump.ai.amateur.cadence` [3.0, 3.8] → [2.7, 3.4], `takeoffGap`
+  [−0.1, 0.45] → [−0.12, 0.65], `stretchDelay` [0.06, 0.3] → [0.1, 0.4]: winner
+  median 8.25 → 7.46m (casual 6.69m, good 7.97m).
+- Pole vault: `poleVault.ai.amateur.cadence` [3.0, 3.8] → [2.7, 3.4], `pressErr`
+  0.14 → 0.18, `releaseErr` 0.16 → 0.2: winner median 5.30 → 4.98m (casual
+  4.52m, good 5.35m).
+- Javelin: `javelin.ai.amateur.cadence` [3.0, 3.8] → [2.7, 3.4], `gap`
+  [−0.25, 2.2] → [−0.3, 3.0], `angleErr` 14 → 18: winner median 84.2 → 79.6m
+  (casual 75.3m, good 83.6m).
+
 ## Lineup slots: Info and Remove
 - Tap a slot: it lifts with **Info** and **Remove** under it, like a Clash
   Royale deck card. Remove empties it (a dashed slot with a +). The Solo slot

@@ -1,14 +1,13 @@
 // Top-level scene transitions in one place:
-// menu -> event intro -> event (countdown/play inside) -> result -> retry | menu
+// home (Lineup | Play | Squad tabs) -> event intro -> event (countdown/play inside) -> result -> retry | menu
 // tournament: intro -> event -> standings -> next intro ... -> champion
 // live: waiting room -> event (or a tournament's events) with the others in it
-import { MenuScene } from './scenes/menuScene.js';
+import { HomeScene } from './scenes/homeScene.js';
 import { IntroScene } from './scenes/introScene.js';
 import { ResultScene } from './scenes/resultScene.js';
 import { LeaderboardScene } from './scenes/leaderboardScene.js';
 import { ProfileScene } from './scenes/profileScene.js';
 import { LobbyScene } from './scenes/lobbyScene.js';
-import { LineupScene } from './scenes/lineupScene.js';
 import { StandingsScene } from './tournament/standingsScene.js';
 import { tournament } from './tournament/tournament.js';
 import { openTuning } from './tuning/panel.js';
@@ -18,11 +17,12 @@ import { startLive, endLive, currentLive } from './online/live.js';
 import { resetScars } from './brawl/wounds.js';
 
 export const flow = {
-  menu: (game) => {
+  // The home screen, on its Play tab (or `tab`: homeScene.js TABS).
+  menu: (game, tab = 'play') => {
     resetScars(); // the late hits' wounds heal
     endLive(); // and leaves a live room
     tournament.end(); // leaving to the menu ends a tournament in progress
-    game.setScene(new MenuScene());
+    game.setScene(new HomeScene(tab));
   },
   // Tournament: the five events in a row, decathlon points, a champion at the end.
   // `mode`: 'solo' (one athlete) or 'team' (your lineup).
@@ -32,7 +32,6 @@ export const flow = {
     tournament.start(mode);
     game.setScene(new IntroScene(tournament.event));
   },
-  lineup: (game) => game.setScene(new LineupScene()),
   intro: (game, ev) => game.setScene(new IntroScene(ev)),
   play: (game, ev) => {
     const scene = ev.create();
@@ -60,7 +59,8 @@ export const flow = {
     tournament.end(); // a Race from the board is a normal race
     game.setScene(new LeaderboardScene(board));
   },
-  profile: (game) => game.setScene(new ProfileScene()),
+  // Your profile; Back returns to the home screen's `tab`.
+  profile: (game, tab = 'play') => game.setScene(new ProfileScene(null, tab)),
   // Live: the waiting room for an event or the tournament (`kind`), then play with everyone in it (online/live.js).
   live: (game, kind) => {
     endLive();

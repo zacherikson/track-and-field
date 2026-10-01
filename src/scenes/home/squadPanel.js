@@ -1,0 +1,292 @@
+import { Button, text, roundRect } from '../../core/ui.js';
+import { cleanName } from '../../core/storage.js';
+import { cachedSquad, loadMySquad, topSquads, searchSquads, createSquad, joinSquad, leaveSquad, SQUAD_MAX } from '../../online/squads.js';
+import { flow } from '../../flow.js';
+
+const WARN = '#ffb35c';
+const OK = '#59cd90';
+const DIM = 'rgba(255,255,255,0.6)';
+const PLAIN = 'rgba(255,255,255,0.15)';
+
+/**
+ * The home screen's right tab: your squad (online/squads.js). In one: its name
+ * and members, and Leave. Not in one: start a squad, or find one and join it.
+ */
+export class SquadPanel {
+  constructor(home) {
+    this.home = home;
+    this.game = home.game;
+  }
+
+  enter() {
+    this.mine = cachedSquad(); // undefined until loaded
+    this.loadError = null;
+    this.list = { title: 'BIGGEST SQUADS', q: null, rows: null, error: null };
+    this.status = null; // { text, color, profile } (profile: offer the Profile button)
+    this.busy = false;
+    this.loadedAt = -Infinity;
+    this.createBtn = new Button({ label: '＋ Start a squad', w: 210, h: 44, size: 19, onTap: () => this.create() });
+    this.findBtn = new Button({ label: '🔍 Find by name', w: 200, h: 44, size: 19, color: '#3a6fd8', onTap: () => this.find() });
+    this.topBtn = new Button({ label: 'Biggest', w: 120, h: 44, size: 19, color: PLAIN, onTap: () => this.loadList(null) });
+    this.profileBtn = new Button({ label: '👤 Pick a username', w: 220, h: 44, size: 19, color: PLAIN, onTap: () => flow.profile(this.game, 'squad') });
+    this.retryBtn = new Button({ label: 'Try again', w: 160, h: 44, size: 19, color: PLAIN, onTap: () => this.refresh() });
+    this.leaveBtn = new Button({ label: 'Leave', w: 110, h: 40, size: 18, color: PLAIN, onTap: () => this.leave() });
+    this.joinBtns = [];
+    this.refresh();
+  }
+
+  /** Coming to this tab: catch up with your squad (someone may have joined). */
+  onShow() {
+    if (performance.now() - this.loadedAt > 10000) this.refresh();
+  }
+
+  refresh() {
+    this.loadError = null;
+    this.loadedAt = performance.now();
+    loadMySquad()
+      .then((squad) => {
+        this.mine = squad;
+        if (!squad && !this.list.rows) this.loadList(this.list.q);
+      })
+      .catch((e) => {
+        this.loadError = loadMessage(e);
+      })
+      .finally(() => this.relayout());
+  }
+
+  /** The squads to join: the biggest, or those whose name starts with `q`. */
+  loadList(q) {
+    this.list = { title: q ? `NAMES STARTING “${q.toUpperCase()}”` : 'BIGGEST SQUADS', q, rows: null, error: null };
+    this.joinBtns = [];
+    (q ? searchSquads(q) : topSquads())
+      .then((rows) => {
+        if (this.list.q !== q) return; // another list was asked for since
+        this.list.rows = rows;
+        this.joinBtns = rows.map(
+          (r) => new Button({ label: r.size >= SQUAD_MAX ? 'Full' : 'Join', w: 84, h: 32, size: 17, enabled: r.size < SQUAD_MAX, color: '#2bb673', onTap: () => this.join(r) }),
+        );
+      })
+      .catch((e) => {
+        if (this.list.q === q) this.list.error = loadMessage(e);
+      })
+      .finally(() => this.relayout());
+  }
+
+  ask(question, typed = '') {
+    const answer = window.prompt(question, typed);
+    this.game.input.clear(); // the dialog swallowed the rest of that tap
+    return answer;
+  }
+
+  find() {
+    if (this.busy) return;
+    const typed = this.ask('Find a squad: type the start of its name');
+    if (typed == null) return;
+    const q = typed.replace(/\s+/g, ' ').trim().slice(0, 16);
+    this.loadList(q || null);
+  }
+
+  create() {
+    if (this.busy) return;
+    const typed = this.ask('Name your squad (up to 16 letters or numbers)');
+    if (typed == null) return;
+    const name = cleanName(typed);
+    if (!name) {
+      this.status = { text: "Use letters and numbers (spaces and _ . ' - are fine inside)", color: WARN };
+      return;
+    }
+    this.act(`Starting ${name}…`, () => createSquad(name), name);
+  }
+
+  join(row) {
+    if (this.busy) return;
+    this.act(`Joining ${row.name}…`, () => joinSquad(row.key), row.name);
+  }
+
+  leave() {
+    if (this.busy || !this.mine) return;
+    const last = this.mine.members.length === 1;
+    const sure = window.confirm(`Leave ${this.mine.name}?${last ? ' You’re the last one in it, so it closes.' : ''}`);
+    this.game.input.clear();
+    if (!sure) return;
+    this.act('Leaving…', () => leaveSquad(), this.mine.name, true);
+  }
+
+  /** Runs a squad change, showing how it went. */
+  act(doing, run, name, leaving = false) {
+    this.busy = true;
+    this.status = { text: doing, color: 'rgba(255,255,255,0.7)' };
+    run()
+      .then((squad) => {
+        this.mine = squad;
+        this.status = leaving ? { text: `You left ${name}.`, color: OK } : squad ? { text: `Welcome to ${squad.name}!`, color: OK } : null;
+        if (!squad) this.loadList(this.list.q);
+      })
+      .catch((e) => {
+        this.status = actMessage(e, name);
+        if (e?.code === 'in-squad') this.refresh();
+        if (e?.code === 'gone' || e?.code === 'full') this.loadList(this.list.q);
+      })
+      .finally(() => {
+        this.busy = false;
+        this.relayout();
+      });
+  }
+
+  relayout() {
+    if (this.view) this.layout(this.view, this.bottom);
+  }
+
+  /** `bottom`: the top of the tab bar. */
+  layout(view, bottom) {
+    this.view = view;
+    this.bottom = bottom;
+    const margin = 20 + Math.max(view.safe.l, view.safe.r);
+    this.contentW = Math.min(880, view.w - margin * 2);
+    this.x0 = (view.w - this.contentW) / 2;
+    if (this.mine) {
+      this.leaveBtn.x = view.w - 14 - view.safe.r - this.leaveBtn.w;
+      this.leaveBtn.y = 14 + view.safe.t;
+      return;
+    }
+    // Not in a squad: the buttons in a row, then the list in one or two columns.
+    const btns = this.buttonRow();
+    const gap = 12;
+    let x = view.w / 2 - (btns.reduce((s, b) => s + b.w, 0) + gap * (btns.length - 1)) / 2;
+    for (const b of btns) {
+      Object.assign(b, { x, y: 82 });
+      x += b.w + gap;
+    }
+    const cols = this.contentW >= 700 ? 2 : 1;
+    const colGap = 16;
+    const rowW = (this.contentW - colGap * (cols - 1)) / cols;
+    const perCol = Math.max(1, Math.floor((bottom - 8 - LIST_Y + ROW_GAP) / (ROW_H + ROW_GAP)));
+    this.rowBoxes = (this.list.rows ?? []).slice(0, perCol * cols).map((r, i) => ({
+      r,
+      x: this.x0 + Math.floor(i / perCol) * (rowW + colGap),
+      y: LIST_Y + (i % perCol) * (ROW_H + ROW_GAP),
+      w: rowW,
+      h: ROW_H,
+    }));
+    this.rowBoxes.forEach((k, i) => Object.assign(this.joinBtns[i], { x: k.x + k.w - 84 - 6, y: k.y + 6 }));
+  }
+
+  /** The buttons along the top when you're not in a squad. */
+  buttonRow() {
+    if (this.loadError) return [this.retryBtn];
+    return [this.createBtn, this.findBtn, ...(this.list.q ? [this.topBtn] : []), ...(this.status?.profile ? [this.profileBtn] : [])];
+  }
+
+  get buttons() {
+    if (this.mine) return [this.leaveBtn];
+    if (this.mine === undefined && !this.loadError) return [];
+    return [...this.buttonRow(), ...(this.loadError ? [] : this.joinBtns.slice(0, this.rowBoxes?.length ?? 0))];
+  }
+
+  /** `events`: this tab's taps (the home screen has sorted out swipes). */
+  update(dt, events) {
+    const btns = this.buttons;
+    for (const e of events) {
+      if (e.type !== 'down') continue;
+      if (btns.some((b) => b.tap(e.x, e.y)) && this.game.scene !== this.home) return;
+    }
+    for (const b of [this.createBtn, this.findBtn, this.topBtn, this.profileBtn, this.retryBtn, this.leaveBtn, ...this.joinBtns]) b.update(dt);
+    const busy = this.busy;
+    for (const b of [this.createBtn, this.findBtn, this.topBtn, this.leaveBtn]) b.enabled = !busy;
+    this.joinBtns.forEach((b, i) => (b.enabled = !busy && this.list.rows?.[i]?.size < SQUAD_MAX));
+  }
+
+  render(ctx, view) {
+    if (this.mine) return this.renderSquad(ctx, view, this.mine);
+    text(ctx, 'SQUADS', view.w / 2, 34, { size: 30, color: '#ffb400', shadow: true });
+    const sub = this.status ?? { text: 'Team up with your friends: start a squad, or find theirs and join it.', color: 'rgba(255,255,255,0.75)' };
+    text(ctx, sub.text, view.w / 2, 62, { size: 15, weight: sub === this.status ? 600 : 500, color: sub.color, maxWidth: view.w - 40 });
+    if (this.mine === undefined && !this.loadError) {
+      text(ctx, 'Loading…', view.w / 2, 200, { size: 18, weight: 600, color: DIM });
+      return;
+    }
+    this.buttonRow().forEach((b) => b.draw(ctx));
+    if (this.loadError) {
+      text(ctx, this.loadError, view.w / 2, 200, { size: 18, weight: 600, color: WARN, maxWidth: view.w - 40 });
+      return;
+    }
+    text(ctx, this.list.title, this.x0, LIST_Y - 14, { size: 13, weight: 700, align: 'left', color: DIM, maxWidth: this.contentW });
+    const { rows, error } = this.list;
+    const msg = error ?? (!rows ? 'Loading…' : !rows.length ? (this.list.q ? 'No squads by that name yet. Start it yourself!' : 'No squads yet. Start the first one!') : null);
+    if (msg) text(ctx, msg, view.w / 2, LIST_Y + 40, { size: 17, weight: 600, color: error ? WARN : DIM, maxWidth: view.w - 40 });
+    this.rowBoxes?.forEach((k, i) => {
+      roundRect(ctx, k.x, k.y, k.w, k.h, 10);
+      ctx.fillStyle = 'rgba(255,255,255,0.07)';
+      ctx.fill();
+      text(ctx, k.r.name, k.x + 14, k.y + k.h / 2, { size: 18, align: 'left', maxWidth: k.w - 190 });
+      text(ctx, `👥 ${k.r.size}/${SQUAD_MAX}`, k.x + k.w - 100, k.y + k.h / 2, { size: 14, weight: 600, align: 'right', color: DIM });
+      this.joinBtns[i].draw(ctx);
+    });
+  }
+
+  renderSquad(ctx, view, s) {
+    text(ctx, s.name, view.w / 2, 40, { size: 34, color: '#ffb400', shadow: true, maxWidth: view.w - 2 * (this.leaveBtn.w + 40) });
+    const leader = s.members.find((m) => m.leader);
+    text(ctx, `${s.size}/${SQUAD_MAX} members${leader ? ` · led by ${leader.name}` : ''}`, view.w / 2, 72, { size: 15, weight: 600, color: DIM, maxWidth: view.w - 40 });
+    this.leaveBtn.draw(ctx);
+
+    // The members, longest-standing first, in as many columns as fit.
+    const top = 96;
+    const gap = 8;
+    const h = 40;
+    const cols = Math.max(1, Math.min(5, Math.floor((this.contentW + gap) / (180 + gap))));
+    const w = (this.contentW - gap * (cols - 1)) / cols;
+    const hintY = this.bottom - 16;
+    const rows = Math.max(1, Math.floor((hintY - 18 - top + gap) / (h + gap)));
+    const fits = cols * rows;
+    const shown = s.members.length > fits ? s.members.slice(0, fits - 1) : s.members;
+    shown.forEach((m, i) => {
+      const x = this.x0 + (i % cols) * (w + gap);
+      const y = top + Math.floor(i / cols) * (h + gap);
+      roundRect(ctx, x, y, w, h, 10);
+      ctx.fillStyle = m.me ? 'rgba(255,180,0,0.18)' : 'rgba(255,255,255,0.07)';
+      ctx.fill();
+      if (m.me) {
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#ffb400';
+        ctx.stroke();
+      }
+      text(ctx, `${m.leader ? '👑 ' : ''}${m.name}${m.me ? ' (you)' : ''}`, x + 12, y + h / 2, { size: 16, weight: m.me ? 800 : 600, align: 'left', color: m.me ? '#ffd35c' : '#fff', maxWidth: w - 20 });
+    });
+    if (shown.length < s.members.length) {
+      const i = shown.length;
+      text(ctx, `+${s.members.length - i} more`, this.x0 + (i % cols) * (w + gap) + 12, top + Math.floor(i / cols) * (h + gap) + h / 2, { size: 16, align: 'left', color: DIM });
+    }
+    const hint = this.status ?? { text: `Friends join from their Squad tab: Find by name, “${s.name}”.`, color: DIM };
+    text(ctx, hint.text, view.w / 2, hintY, { size: 14, weight: 500, color: hint.color, maxWidth: view.w - 40 });
+  }
+}
+
+const LIST_Y = 160; // top of the list of squads
+const ROW_H = 44;
+const ROW_GAP = 8;
+
+/** What to say when a squad or the list can't be loaded. */
+function loadMessage(e) {
+  return e?.status === 403 ? 'Squads aren’t open yet.' : 'Couldn’t reach the server. Check your connection.';
+}
+
+/** What to say when starting, joining or leaving a squad didn't work. */
+function actMessage(e, name) {
+  switch (e?.code ?? e?.message) {
+    case 'no-name':
+      return { text: 'Pick a username first: your squad shows it.', color: WARN, profile: true };
+    case 'in-squad':
+      return { text: 'You’re in a squad already.', color: WARN };
+    case 'taken':
+      return { text: `There’s already a squad called “${name}”. Find it by name to join it.`, color: WARN };
+    case 'gone':
+      return { text: `${name} has closed.`, color: WARN };
+    case 'full':
+      return { text: `${name} is full.`, color: WARN };
+    case 'permission-denied':
+      return { text: 'The server didn’t allow that. Squads may not be open yet.', color: WARN };
+    default:
+      return { text: 'Couldn’t reach the server. Try again.', color: WARN };
+  }
+}

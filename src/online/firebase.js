@@ -241,7 +241,8 @@ export async function signOut() {
   setPlayerName(null);
 }
 
-function knownUid() {
+/** This phone's player id, if it has one yet (no SDK needed). */
+export function knownUid() {
   try {
     return localStorage.getItem(UID_KEY);
   } catch {
@@ -313,10 +314,11 @@ export async function submitMark(board, mark, ghost = null) {
 
 const REST = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents`;
 
-async function rest(path, body = null) {
+/** A Firestore REST call: GET `path`, or POST `body` to it. Null for a missing doc. */
+export async function rest(path, body = null) {
   const res = await fetch(`${REST}${path.startsWith(':') ? '' : '/'}${path}${path.includes('?') ? '&' : '?'}key=${firebaseConfig.apiKey}`, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {});
   if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`firestore ${res.status}`);
+  if (!res.ok) throw Object.assign(new Error(`firestore ${res.status}`), { status: res.status });
   return res.json();
 }
 
@@ -333,11 +335,12 @@ function plain(v) {
   return null;
 }
 
-function fields(f = {}) {
+/** A REST doc's fields as a plain object. */
+export function fields(f = {}) {
   return Object.fromEntries(Object.entries(f).map(([k, v]) => [k, plain(v)]));
 }
 
-const docId = (doc) => doc.name.slice(doc.name.lastIndexOf('/') + 1);
+export const docId = (doc) => doc.name.slice(doc.name.lastIndexOf('/') + 1);
 
 /** Your place on the board for a mark (1 = best), by counting the better ones. */
 async function restRank(board, mark) {

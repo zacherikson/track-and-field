@@ -2,6 +2,7 @@ import { Button, text, roundRect } from '../core/ui.js';
 import { getPlayerName, setPlayerName, cleanName } from '../core/storage.js';
 import { setUsername, accountInfo, startGoogleSignIn, signOut } from '../online/firebase.js';
 import { forgetBests, postBests } from '../online/bests.js';
+import { renameInSquad } from '../online/squads.js';
 import { flow } from '../flow.js';
 
 const WARN = '#ffb35c';
@@ -20,16 +21,20 @@ const DIM = 'rgba(255,255,255,0.6)';
  * up on any phone by signing in there too.
  */
 export class ProfileScene {
-  /** `signingIn`: finishGoogleSignIn()'s promise, when the page has just come back from Google's sign-in. */
-  constructor(signingIn = null) {
+  /**
+   * `signingIn`: finishGoogleSignIn()'s promise, when the page has just come back from Google's sign-in.
+   * `backTab`: the home screen tab Back returns to.
+   */
+  constructor(signingIn = null, backTab = 'play') {
     this.signingIn = signingIn;
+    this.backTab = backTab;
   }
 
   enter() {
     const dim = 'rgba(255,255,255,0.18)';
     this.changeBtn = new Button({ label: 'Change name', w: 200, h: 56, onTap: () => this.change() });
     this.accountBtn = new Button({ label: 'Sign in with Google', w: 250, h: 56, color: '#3a6fd8', enabled: false, onTap: () => this.accountTap() });
-    this.backBtn = new Button({ label: 'Menu', w: 130, h: 56, color: dim, onTap: () => flow.menu(this.game) });
+    this.backBtn = new Button({ label: 'Back', w: 130, h: 56, color: dim, onTap: () => flow.menu(this.game, this.backTab) });
     this.status = null; // { text, color }
     this.saving = false;
     this.busy = false; // signing in or out
@@ -63,8 +68,10 @@ export class ProfileScene {
     this.saving = true;
     this.status = { text: 'Saving…', color: 'rgba(255,255,255,0.7)' };
     setUsername(name)
-      .then((renamedBoards) => {
+      .then(async (renamedBoards) => {
         setPlayerName(name);
+        // Your squad's member list too (if you're in one); if that fails it keeps the old name for now.
+        await renameInSquad(name).catch((e) => console.warn('name not changed in your squad', e));
         // The name is saved either way; your board rows may still show the old one.
         this.status = renamedBoards
           ? { text: 'Saved', color: OK }
@@ -171,7 +178,7 @@ export class ProfileScene {
   update(dt, t) {
     for (const e of this.game.input.consume(t + dt)) {
       if (e.type === 'down') [this.changeBtn, this.accountBtn, this.backBtn].some((b) => b.tap(e.x, e.y));
-      else if (e.code === 'Escape') flow.menu(this.game);
+      else if (e.code === 'Escape') flow.menu(this.game, this.backTab);
       else if (e.code === 'Enter') this.change();
     }
     this.changeBtn.update(dt);

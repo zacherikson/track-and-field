@@ -79,14 +79,34 @@ reference photos. `tools/sprites.html` draws Juno's long jump keyframes as a spr
 the repo and open it) so poses can be checked side by side. `tools/rig.html` turns drawn
 body parts into an athlete's sprite sheet (see [src/athletes/sprites/](src/athletes/sprites/README.md)).
 
+## The home screen
+
+Like Clash Royale: three tabs along the bottom, **Lineup | Play | Squad**. Tap
+one or swipe sideways to slide between them. The game opens on **Play** (the
+events, the tournament and their settings), and coming back from a race lands
+there too. Keyboard: 1 / 2 / 3 or Q / E change tab, Esc goes back to Play.
+
+## Squads
+
+The **Squad** tab is for you and your friends: start a squad (pick a name), or
+find one by name (or in the list of the biggest) and join it. Up to 30 players
+per squad, one squad at a time. The player who started it leads it (👑); when
+they leave, whoever has been in it longest takes over, and the last one out
+closes it. You need a username first (Profile), since the member list shows it.
+Guests can join too. For now a squad is just its name and members.
+
+Squads live in Firestore (`squads/` and `squadmembers/`, see
+[src/online/squads.js](src/online/squads.js)); `firestore.rules` checks every
+join, leave and new squad.
+
 ## Lineup and tournaments
 
-**Lineup** (on the menu) has a slot per event: pick who does each one. It can
+**Lineup** (the home screen's left tab) has a slot per event: pick who does each one. It can
 be the same athlete in every slot or a different one in each. There's also a
 **Solo** slot: the athlete who does all five in a solo tournament. The athletes
 only look different for now; they all run on the same physics.
 
-The menu's **TOURNAMENT** toggle picks the kind of tournament, offline and live:
+The Play tab's **TOURNAMENT** toggle picks the kind of tournament, offline and live:
 - **Solo**: your solo athlete does all five events, like a pentathlon.
 - **Team**: your lineup, one athlete per event. Your rivals in each event are
   the athletes who aren't doing it for you, and your total is your team's.
@@ -193,9 +213,9 @@ cheater could post a fake time.
 
 ```
 index.html            canvas + mobile gesture blocking
-src/main.js           boots the Game with the menu scene
+src/main.js           boots the Game with the home screen
 src/config.js         ALL tuning numbers
-src/flow.js           scene transitions: menu → intro → event → result
+src/flow.js           scene transitions: home → intro → event → result
 src/core/
   game.js             game loop (fixed timestep), view scaling, scene switching
   input.js            raw multi-touch + mouse + keyboard queue with precise timestamps
@@ -227,7 +247,6 @@ src/brawl/            late hits after each event: the fight (brawl.js, fighter.j
                       (liveBrawl.js), the event's venue (venue.js), the late hits run inside the event
                       (aftermath.js, fieldLateHits.js) and the results panel over them (aftermath.js)
 src/events/scoring.js decathlon points (official World Athletics tables)
-src/scenes/lineupScene.js     your lineup: who does each event, and your solo athlete
 src/render/track.js   stadium with one-point perspective (camera 1m ahead of the player), parallax crowd
 src/render/pads.js    glossy tap targets, numbered buttons and the red ✕
 src/render/targetPads.js  falling target + hit ring animations (100m, long jump run-up)
@@ -237,6 +256,7 @@ src/render/vaultArena.js  pole vault runway, plant box, landing mat, uprights wi
 src/online/
   ghost.js            records a run's inputs and replays them as a ghost (pure)
   firebase.js         online leaderboards: lazy-loaded Firebase SDK, anonymous and Google sign-in, Firestore
+  squads.js           squads: start, find, join and leave one; your squad and its members
   post.js             posts a finished mark to its board and reports how it went
   bests.js            personal bests: your board entries, synced to the phone's copy
   live.js             live play: the waiting rooms, shared start times, sending and receiving players
@@ -246,6 +266,9 @@ src/online/
   trace.js            records an attempt frame by frame and plays it back (every event but the 100m)
   fieldGhost.js       records and draws ghosts in the long jump, pole vault and javelin
   ghosts.js           picks which ghost races: best tournament, a leaderboard pick, or your best
+src/scenes/homeScene.js         the home screen: Lineup | Play | Squad tabs, swipes, the tab bar
+src/scenes/home/                its panels: lineupPanel.js (who does each event, and your solo athlete),
+                                playPanel.js (the events, tournament and settings), squadPanel.js
 src/scenes/leaderboardScene.js  online leaderboards, a tab per event, with Race buttons
 src/scenes/profileScene.js      your username (unique, saved in Firebase) and Google sign-in
 src/scenes/lobbyScene.js        the live waiting room (any event, or a solo or team tournament)

@@ -1,6 +1,7 @@
 rules_version = '2';
 
-// Security rules for the online leaderboard and usernames (see src/online/firebase.js).
+// Security rules for the online leaderboard, usernames (see src/online/firebase.js)
+// and squads (src/online/squads.js).
 // Paste into Firebase console > Firestore Database > Rules, then Publish.
 //
 // Anyone can read. Every player is signed in, as a guest (anonymous sign-in)
@@ -53,6 +54,91 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/leaderboards/$(event)/runs/$(uid)).data.mark == request.resource.data.mark
         && getAfter(/databases/$(database)/documents/leaderboards/$(event)/runs/$(uid)).data.traced == true;
       allow delete: if false;
+    }
+
+    // Squads (online/squads.js): a name and a member list. Anyone with a
+    // username can start one or join one with room; you're in one at a time
+    // (squadmembers/{uid} says which). Joining, leaving and starting write both
+    // docs in one transaction, and each doc's rule checks the other.
+    match /squads/{key} {
+      allow read: if true;
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['name', 'key', 'leader', 'size', 'members', 'createdAt', 'v'])
+        && validName(request.resource.data.name)
+        && request.resource.data.key == request.resource.data.name.lower()
+        && request.resource.data.key == key
+        && request.resource.data.leader == request.auth.uid
+        && request.resource.data.members.size() == 1
+        && request.resource.data.size == 1
+        && newMember(request.resource.data.members[request.auth.uid])
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.v == 1
+        && getAfter(/databases/$(database)/documents/squadmembers/$(request.auth.uid)).data.squad == key;
+      allow update: if request.auth != null
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members', 'size', 'leader'])
+        && request.resource.data.size == request.resource.data.members.size()
+        && request.resource.data.size <= 30
+        && (joiningSquad(key) || leavingSquad() || renamingInSquad());
+      // The last member out closes it.
+      allow delete: if request.auth != null
+        && resource.data.members.keys().hasOnly([request.auth.uid])
+        && !existsAfter(/databases/$(database)/documents/squadmembers/$(request.auth.uid));
+    }
+
+    // Which squad you're in. Set as you join (the squad must have you after the
+    // write), cleared as you leave (it mustn't); never changed in between.
+    match /squadmembers/{uid} {
+      allow read: if true;
+      allow create: if isMe(uid)
+        && request.resource.data.keys().hasOnly(['squad'])
+        && request.resource.data.squad is string
+        && uid in getAfter(/databases/$(database)/documents/squads/$(request.resource.data.squad)).data.members;
+      allow update: if false;
+      allow delete: if isMe(uid)
+        && (!existsAfter(/databases/$(database)/documents/squads/$(resource.data.squad))
+            || !(uid in getAfter(/databases/$(database)/documents/squads/$(resource.data.squad)).data.members));
+    }
+
+    // Your entry in a squad's member list as you join or start it: your username, and when.
+    function newMember(m) {
+      return m.keys().hasOnly(['name', 'at'])
+        && m.at == request.time
+        && m.name == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.name;
+    }
+
+    // You, added to the member list (and nothing else changed in it).
+    function joiningSquad(key) {
+      let d = request.resource.data.members.diff(resource.data.members);
+      return d.addedKeys() == [request.auth.uid].toSet()
+        && d.removedKeys().size() == 0
+        && d.changedKeys().size() == 0
+        && request.resource.data.leader == resource.data.leader
+        && newMember(request.resource.data.members[request.auth.uid])
+        && getAfter(/databases/$(database)/documents/squadmembers/$(request.auth.uid)).data.squad == key;
+    }
+
+    // You, taken off the member list; the lead passes to someone still in it if it was yours.
+    function leavingSquad() {
+      let me = request.auth.uid;
+      let d = request.resource.data.members.diff(resource.data.members);
+      return d.removedKeys() == [me].toSet()
+        && d.addedKeys().size() == 0
+        && d.changedKeys().size() == 0
+        && ((resource.data.leader == me && request.resource.data.leader in request.resource.data.members)
+            || (resource.data.leader != me && request.resource.data.leader == resource.data.leader))
+        && !existsAfter(/databases/$(database)/documents/squadmembers/$(me));
+    }
+
+    // Your name in the member list, after you change your username.
+    function renamingInSquad() {
+      let me = request.auth.uid;
+      let d = request.resource.data.members.diff(resource.data.members);
+      let m = request.resource.data.members[me];
+      return d.affectedKeys() == [me].toSet()
+        && request.resource.data.leader == resource.data.leader
+        && m.keys().hasOnly(['name', 'at'])
+        && m.at == resource.data.members[me].at
+        && m.name == get(/databases/$(database)/documents/users/$(me)).data.name;
     }
 
     function isMe(uid) {

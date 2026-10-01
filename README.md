@@ -98,9 +98,12 @@ Guests can join too. For now a squad is just its name and members.
 
 📨 **Invite** (on your squad's page) sends a friend a link through the phone's
 share sheet (or copies it, where there isn't one): the game's address with
-`?squad=<name>` on the end. Opening it starts the game on the Squad tab with
-that squad at the top, ready to join. The invite is kept until they join a
-squad or dismiss it (✕), so it's still there after picking a username first.
+`?squad=<name>&from=<your name>` on the end. Opening it shows the invite
+screen: who invited them, the squad and who's in it, a box for their username
+(already filled in if they have one) and **Join**, which saves the name and
+joins in one go. Then "You're in" and **Let's go** to the squad. **Not now**
+leaves the invite at the top of the Squad tab (its Join opens the same screen)
+until they join a squad or dismiss it (✕).
 
 Squads live in Firestore (`squads/` and `squadmembers/`, see
 [src/online/squads.js](src/online/squads.js)); `firestore.rules` checks every
@@ -273,6 +276,7 @@ src/online/
   trace.js            records an attempt frame by frame and plays it back (every event but the 100m)
   fieldGhost.js       records and draws ghosts in the long jump, pole vault and javelin
   ghosts.js           picks which ghost races: best tournament, a leaderboard pick, or your best
+src/scenes/inviteScreen.js      the invite screen a squad invite link opens: pick a username, join
 src/scenes/homeScene.js         the home screen: Lineup | Play | Squad tabs, swipes, the tab bar
 src/scenes/home/                its panels: lineupPanel.js (who does each event, and your solo athlete),
                                 playPanel.js (the events, tournament and settings), squadPanel.js

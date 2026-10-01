@@ -1,4 +1,5 @@
 import { connectSDK, knownUid, rest, fields, docId, nameKey } from './firebase.js';
+import { cleanName } from '../core/storage.js';
 
 /**
  * SQUADS: you and your friends in a named group (like a clan). For now a squad
@@ -14,8 +15,9 @@ import { connectSDK, knownUid, rest, fields, docId, nameKey } from './firebase.j
  * been in it longest takes over, and the last one out closes it. A member's `name` is their username
  * (users/{uid}), so you need one before joining (Profile).
  *
- * An invite is a link to the game with the squad in it (inviteLink); opening it
- * offers that squad, to join, on the Squad tab.
+ * An invite is a link to the game with the squad (and who sent it) in it
+ * (inviteLink); opening it shows the invite screen (scenes/inviteScreen.js),
+ * and the squad is offered on the Squad tab until you join one.
  *
  * Joining, leaving and starting a squad are transactions over both docs, so
  * they always agree. Reads are public and go through the REST API like the
@@ -215,24 +217,30 @@ export async function renameInSquad(name) {
 
 const INVITE_KEY = 'trackroyale.invite';
 
-/** The game's address with an invite to `squad` in it (?squad=key): opening it offers that squad on the Squad tab. */
-export function inviteLink(squad) {
-  return `${location.origin}${location.pathname.replace(/index\.html$/, '')}?squad=${encodeURIComponent(squad.key)}`;
+/** The game's address with an invite to `squad` from `from` (your name) in it: ?squad=key&from=name. */
+export function inviteLink(squad, from) {
+  const q = new URLSearchParams({ squad: squad.key });
+  if (from) q.set('from', from);
+  return `${location.origin}${location.pathname.replace(/index\.html$/, '')}?${q}`;
 }
 
 /**
  * Call once as the page loads. If it was opened from an invite link, keeps the
- * invite (until you join a squad or turn it down, so it survives picking a
- * username or signing in first), tidies the address and returns true.
+ * invite (until you join a squad or turn it down, so it survives closing the
+ * game first), tidies the address and returns { key, from } (`from`: who sent
+ * it, as the link says, or null). Null if it wasn't.
  */
 export function takeInviteLink() {
   const q = new URLSearchParams(location.search);
   const key = q.get('squad');
-  if (!key) return false;
+  if (!key) return null;
+  const from = cleanName(q.get('from')) || null;
   q.delete('squad');
+  q.delete('from');
   history.replaceState(null, '', location.pathname + (q.size ? `?${q}` : '') + location.hash);
-  setInvite(nameKey(key.slice(0, 16)));
-  return true;
+  const invite = { key: nameKey(key.slice(0, 16)), from };
+  setInvite(invite.key);
+  return invite;
 }
 
 /** The squad you've been invited to (its key), or null. */
@@ -252,10 +260,14 @@ export function setInvite(key) {
   } catch {}
 }
 
+/** A squad with its members (as loadMySquad gives yours), or null if there's no squad with this key. */
+export async function loadSquad(key) {
+  const doc = await rest(path('squads', key));
+  return doc?.fields ? squadOf(key, fields(doc.fields)) : null;
+}
+
 /** A squad's row ({ key, name, size }), or null if there's no squad with this key. */
 export async function squadInfo(key) {
-  const doc = await rest(path('squads', key));
-  if (!doc?.fields) return null;
-  const s = squadOf(key, fields(doc.fields));
-  return { key, name: s.name, size: s.size };
+  const s = await loadSquad(key);
+  return s && { key, name: s.name, size: s.size };
 }

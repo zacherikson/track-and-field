@@ -65,5 +65,8 @@ export function rivals(eventId) {
   return CHARACTERS.filter((c) => c !== me);
 }
 
+/** The official at the foul line (long jump, javelin): white uniform, red cap. Fights back in the late hits. */
+export const REFEREE = { id: 'referee', name: 'Referee', colors: { shirt: '#f2f2f2', shorts: '#f2f2f2', skin: '#f1c9a5', hair: '#d32020', style: 'refcap' } };
+
 /** The default athlete (tools and sprite sheets draw Juno). */
 export const HERO = CHARACTERS[0];

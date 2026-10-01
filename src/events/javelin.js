@@ -4,8 +4,8 @@ import { clamp, rand, shuffle } from '../core/math.js';
 import { text, roundRect } from '../core/ui.js';
 import { Runner } from '../athletes/runner.js';
 import { AIController } from '../athletes/ai.js';
-import { player as chosenPlayer, rivals as rivalRoster, heightOf } from '../athletes/roster.js';
-import { drawFigure, runPose, lerpPose, sampleTrack, handPos, headCircle, JAVELIN_POSES, POSES } from '../athletes/stickFigure.js';
+import { player as chosenPlayer, rivals as rivalRoster, heightOf, REFEREE } from '../athletes/roster.js';
+import { drawFigure, runPose, lerpPose, sampleTrack, handPos, JAVELIN_POSES, POSES } from '../athletes/stickFigure.js';
 import { StrideTargets } from './strideTargets.js';
 import { angleAt, flightRange, rivalThrow } from './javelinRules.js';
 import { JavelinRenderer, drawJavelin } from '../render/javelinField.js';
@@ -385,7 +385,7 @@ export class Javelin {
       camera: this.camera,
       draw: (ctx, view, camera) => {
         this.track.draw(ctx, view, camera);
-        this.drawReferee(ctx, view, camera.ppm * this.track.figureScale(1));
+        if (!this.refereeFights) this.drawReferee(ctx, view, camera.ppm * this.track.figureScale(1)); // offline he's in the late hits instead
       },
       x: [-14, 16],
       depth: FIELD_DEPTH,
@@ -647,6 +647,11 @@ export class Javelin {
     }
   }
 
+  /** Where the referee stands, as the late hits measure it (brawl/venue.js): 1.4 m past the line, on the far side. */
+  refereeSpot() {
+    return { x: 1.4, d: 0.9 * FIELD_DEPTH, facing: 1 };
+  }
+
   /**
    * The official just past the foul line, on the far side (as in the
    * original): white uniform, red cap; raises a white flag for a fair throw,
@@ -665,13 +670,7 @@ export class Javelin {
     const pose = up
       ? { ...POSES.stand, arms: [{ upper: 2.9, fore: 3.05 }, { upper: -0.1, fore: 0.05 }] }
       : { ...POSES.stand, arms: [{ upper: -0.15, fore: 0.35 }, { upper: -0.2, fore: 0.3 }] };
-    drawFigure(ctx, p.x, y, H, pose, { shirt: '#f2f2f2', shorts: '#f2f2f2', skin: '#f1c9a5' });
-    const h = headCircle(p.x, y, H, pose);
-    ctx.fillStyle = '#d32020';
-    ctx.beginPath();
-    ctx.arc(h.x, h.y - h.r * 0.15, h.r * 1.05, Math.PI, 0);
-    ctx.fill();
-    ctx.fillRect(h.x, h.y - h.r * 0.3, h.r * 1.4, h.r * 0.28);
+    drawFigure(ctx, p.x, y, H, pose, REFEREE.colors);
     if (up) {
       const hand = handPos(p.x, y, H, pose, 0);
       ctx.strokeStyle = '#6b5a3a';

@@ -4,6 +4,16 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Fight the referee
+- Long jump and javelin: after your last attempt the referee joins the late
+  hits from their spot at the foul line (white uniform, red cap). Leave them be
+  and they stay at their post; hit them, or emote in their face, and they come
+  after you like a rival, then walk back to their post once they've put you
+  down. Works in Training too, where they're the only one to fight.
+- Live, they stay painted at the line (every phone would have its own).
+- The red cap is a hair style now (`refcap`), so the referee draws the same
+  in the event and in a fight.
+
 ## Screen fits after launching or rotating
 - Opening the home-screen app (or rotating, or coming back to it) could leave
   the game drawn short with a band of background under it, and the top bar

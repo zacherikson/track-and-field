@@ -25,6 +25,7 @@ export class BotBrain {
     this.nextStroll = rand(1, 4);
     this.wander = null; // { x, d, pace?, facing? } to stroll to (and which way to face there)
     this.tauntSeq = -1; // your emote they've already reacted to
+    this.post = null; // { x, d, facing }: somewhere they keep to when at peace (the referee)
   }
 
   /** You started it: `me` hit this rival. */
@@ -85,9 +86,13 @@ export class BotBrain {
     this.steer(me.x + side * 0.7 - f.x, dd);
   }
 
-  /** At peace: now and then wander somewhere nearby, or show off a little. */
+  /** At peace: now and then wander somewhere nearby, or show off a little (or, with a post, go back to it and stay). */
   stroll(t, brawl) {
     const f = this.f;
+    if (this.post && !this.wander) {
+      if (Math.hypot(this.post.x - f.x, this.post.d - f.d) > 0.3) this.wander = { ...this.post, pace: 0.6 };
+      else return;
+    }
     if (this.wander) {
       const dx = this.wander.x - f.x;
       const dd = this.wander.d - f.d;

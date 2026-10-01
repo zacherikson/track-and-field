@@ -15,6 +15,7 @@ import { roundMark, EVENTS } from './events/registry.js';
 import { ORDER, tourModeOf } from './tournament/tournament.js';
 import { startLive, endLive, currentLive } from './online/live.js';
 import { resetScars } from './brawl/wounds.js';
+import { getCampaign, setCampaign, markBeaten } from './core/storage.js';
 
 export const flow = {
   // The home screen, on its Play tab (or `tab`: homeScene.js TABS).
@@ -45,6 +46,9 @@ export const flow = {
     if (stats?.run) stats = { ...stats, run: { ...stats.run, mark: roundMark(ev, stats.run.mark) } };
     // A live event played to the end: going on from here isn't leaving early (a tournament's is at the end).
     if (stats?.live && !tournament.active && currentLive()) currentLive().done = true;
+    // A campaign event won (first place, ghosts aside) is ticked off.
+    const winner = results.find((r) => !r.ghost);
+    if (getCampaign() && !stats?.live && winner?.isPlayer && winner.status === 'ok') markBeaten(getCampaign(), ev.id);
     // The event carries on under the results with its late hits (brawl/aftermath.js).
     const backdrop = game.scene?.lateRender ? game.scene : null;
     if (backdrop) backdrop.handedOver = true; // it stays open until the results scene leaves it
@@ -55,6 +59,7 @@ export const flow = {
     );
   },
   leaderboard: (game, board) => {
+    setCampaign(null); // a Race from the board is training
     endLive();
     tournament.end(); // a Race from the board is a normal race
     game.setScene(new LeaderboardScene(board));
@@ -63,6 +68,7 @@ export const flow = {
   profile: (game, tab = 'play') => game.setScene(new ProfileScene(null, tab)),
   // Live: the waiting room for an event or the tournament (`kind`), then play with everyone in it (online/live.js).
   live: (game, kind) => {
+    setCampaign(null);
     endLive();
     tournament.end();
     game.setScene(new LobbyScene(kind));

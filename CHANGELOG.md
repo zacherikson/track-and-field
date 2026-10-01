@@ -4,6 +4,18 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## vs Computer: Amateur and Pro campaigns, plus Training
+- vs Computer is now three rows of cards, each the five events then the
+  tournament (🏆): **Amateur**, **Pro** and **Training**.
+- Amateur and Pro are mini campaigns: win an event (first place) and its card
+  is stamped **BEATEN!**, in any order. The tournament stays locked (🔒) until
+  all five are beaten; win it too and the row reads ★ Complete. A new stamp
+  thumps down when you come back to the menu, and the results say BEATEN!.
+- A campaign always plays its own rivals; the Amateur/Pro toggle is now
+  **Training rivals**, for Training only. Training ticks nothing off.
+- Progress is saved on this device (`beaten` in the save). Live races and
+  races from the leaderboard never count.
+
 ## Easier Amateur rivals
 - Amateur rivals were about as good as a good player in the field events
   (Amateur winner 8.25m long jump vs a good player's 7.97m). Now a good player

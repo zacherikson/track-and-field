@@ -2,11 +2,12 @@ import { CONFIG } from '../../config.js';
 import { Button, text, roundRect } from '../../core/ui.js';
 import { drawFigure, runPose } from '../../athletes/stickFigure.js';
 import { EVENTS, TOURNAMENT_BOARDS, formatMark } from '../../events/registry.js';
-import { getBest, getDifficulty, setDifficulty, getGhostOn, setGhostOn, getPlayerName, getTourMode, setTourMode } from '../../core/storage.js';
+import { getBest, getDifficulty, setDifficulty, getGhostOn, setGhostOn, getPlayerName, getTourMode, setTourMode, setCampaign, getBeaten, takeFreshBeaten } from '../../core/storage.js';
 import { lineupAthlete, lineupSlotEmpty, heightOf } from '../../athletes/roster.js';
 import { TOUR_KINDS } from '../../tournament/tournament.js';
 import { flow } from '../../flow.js';
 import { syncBests } from '../../online/bests.js';
+import { EventTile } from './eventTile.js';
 
 const SHORT = { sprint100: '100m', longjump: 'Long jump', hurdles110: 'Hurdles', polevault: 'Pole vault', javelin: 'Javelin' };
 const DIM = 'rgba(255,255,255,0.6)';
@@ -18,9 +19,14 @@ let lastList = null;
 
 /**
  * The home screen's middle tab: where you play. Two big buttons, vs Computer
- * and Live, over your lineup standing on the track; each opens its list (the
- * tournament and the five events, with that mode's settings). Tuning,
- * Leaderboard and Profile along the top.
+ * and Live, over your lineup standing on the track; each opens its list.
+ * Tuning, Leaderboard and Profile along the top.
+ *
+ * vs Computer is three rows of cards, the five events then the tournament:
+ * - Amateur and Pro, a mini campaign each: win an event (in any order) and its
+ *   card is stamped BEATEN!; beat all five and the tournament opens; win that too.
+ * - Training: play anything against the rivals you pick (RIVALS), nothing ticked off.
+ * Live is the tournament and the five events against other people.
  */
 export class PlayPanel {
   constructor(home) {
@@ -42,16 +48,30 @@ export class PlayPanel {
     this.backBtn = new Button({ label: '‹ Back', w: 120, h: 44, size: 20, color: PLAIN, onTap: () => this.back() });
     // Tournament: all five events in a row, decathlon scoring; solo or team (the TOURNAMENT toggle).
     this.mode = getTourMode();
-    this.tourButton = new Button({ label: '🏆 Tournament', color: TOUR_COLOR.offline, onTap: () => this.tournament(() => flow.tournament(this.game, this.mode)) });
-    this.buttons = EVENTS.map(
-      (ev) =>
-        new Button({
-          label: ev.name,
-          sub: ev.available ? `Best ${formatMark(ev, getBest(ev.id))}` : 'Coming soon',
-          enabled: ev.available,
-          onTap: () => flow.intro(this.game, ev),
-        }),
-    );
+    // vs Computer: a row of cards per section, the five events then the tournament.
+    this.sections = SECTIONS.map((sec) => ({
+      ...sec,
+      tiles: [
+        ...EVENTS.map(
+          (ev) =>
+            new EventTile({
+              id: ev.id,
+              name: SHORT[ev.id] ?? ev.name,
+              color: sec.color,
+              enabled: ev.available,
+              onTap: () => {
+                setCampaign(sec.level);
+                flow.intro(this.game, ev);
+              },
+            }),
+        ),
+        new EventTile({ id: 'tournament', name: 'Tournament', color: sec.level ? sec.color : TOUR_COLOR.offline, onTap: () => this.campaignTournament(sec) }),
+      ],
+    }));
+    this.training = this.sections.find((sec) => !sec.level);
+    this.tourButton = this.training.tiles.at(-1);
+    this.buttons = this.training.tiles.slice(0, -1);
+    this.styleSections(takeFreshBeaten());
     // Live: the same, against other people (a waiting room first, online/live.js).
     this.liveButtons = [
       new Button({ label: '🏆 Tournament', color: TOUR_COLOR.live, onTap: () => this.tournament(() => flow.live(this.game, TOUR_KINDS[this.mode])) }),
@@ -77,7 +97,7 @@ export class PlayPanel {
       (level) =>
         new Button({
           label: level === 'pro' ? 'Pro' : 'Amateur',
-          w: 130,
+          w: 110,
           h: 44,
           onTap: () => {
             this.level = level;
@@ -125,14 +145,36 @@ export class PlayPanel {
 
   /** Starts a tournament (`go`), unless it's a team one and your lineup isn't full. */
   tournament(go) {
-    if (this.teamBlocked) this.warnT = 4;
+    if (this.teamBlocked) this.warn('You need a full lineup for a Team tournament!', true);
     else go();
+  }
+
+  /** A section's tournament card: Training's, or a campaign's once its five events are beaten. */
+  campaignTournament(sec) {
+    if (sec.level && EVENTS.some((ev) => !getBeaten(sec.level)[ev.id])) {
+      this.warn(`Beat all five ${sec.title[0]}${sec.title.slice(1).toLowerCase()} events to unlock the tournament!`);
+      return;
+    }
+    this.tournament(() => {
+      setCampaign(sec.level);
+      flow.tournament(this.game, this.mode);
+    });
+  }
+
+  /** A line over the track for a few seconds; `fill`: with the Fill your lineup button. */
+  warn(msg, fill = false) {
+    this.warnMsg = msg;
+    this.warnFill = fill;
+    this.warnT = 4;
   }
 
   /** Opens a list: 'offline' (vs Computer) or 'live'. */
   open(list) {
     this.list = lastList = list;
     this.fade = 0;
+    this.warnT = 0;
+    // A card beaten since you were last here thumps its stamp down as the list comes in.
+    for (const sec of this.sections) for (const t of sec.tiles) if (t.stampAge != null) t.stampAge = 0;
     this.relayout();
   }
 
@@ -149,17 +191,32 @@ export class PlayPanel {
     if (this.view) this.layout(this.view, this.bottom);
   }
 
-  /** The Best lines under the buttons, from your saved bests. */
+  /** The Best lines under the Training cards, from your saved bests. */
   showBests() {
     this.styleModes();
     EVENTS.forEach((ev, i) => {
-      if (ev.available) this.buttons[i].sub = `Best ${formatMark(ev, getBest(ev.id))}`;
+      this.buttons[i].sub = ev.available ? `Best ${formatMark(ev, getBest(ev.id))}` : 'Coming soon';
     });
+  }
+
+  /** The campaign cards: BEATEN! stamps, the locked tournaments; `fresh` ({ level, id }) is stamped in. */
+  styleSections(fresh = null) {
+    for (const sec of this.sections) {
+      if (!sec.level) continue;
+      const beaten = getBeaten(sec.level);
+      sec.done = sec.tiles.filter((t) => beaten[t.id]).length;
+      for (const t of sec.tiles) {
+        t.beaten = !!beaten[t.id];
+        t.locked = t.id === 'tournament' && EVENTS.some((ev) => !beaten[ev.id]);
+        t.stampAge = fresh && fresh.level === sec.level && fresh.id === t.id ? 0 : null;
+      }
+    }
+    const done = (level) => this.sections.find((sec) => sec.level === level).done;
+    this.offlineBig.sub = `Amateur ${done('amateur')}/6 · Pro ${done('pro')}/6 · Training`;
   }
 
   styleLevels() {
     for (const b of this.levelButtons) b.color = (b.label === 'Pro') === (this.level === 'pro') ? '#e4572e' : PLAIN;
-    this.offlineBig.sub = `Tournament + 5 events · ${this.level === 'pro' ? 'Pro' : 'Amateur'} rivals`;
   }
 
   styleModes() {
@@ -167,12 +224,13 @@ export class PlayPanel {
     const name = this.mode === 'team' ? 'Team' : 'Solo';
     const best = getBest(TOURNAMENT_BOARDS[this.mode].id);
     const blocked = this.teamBlocked;
-    this.tourButton.sub = blocked ? 'Team · Lineup not full' : best == null ? `${name} · all 5` : `${name} · Best ${best}`;
+    this.tourButton.sub = blocked ? 'Lineup not full' : best == null ? name : `${name} · ${best}`;
     this.liveButtons[0].sub = blocked ? 'Team · Lineup not full' : `Live · ${name}`;
     // Greyed out (but still tappable, to say why) while it can't start.
     this.tourButton.color = blocked ? 'rgba(201,138,0,0.4)' : TOUR_COLOR.offline;
+    for (const sec of this.sections) if (sec.level) sec.tiles.at(-1).sub = blocked && !sec.tiles.at(-1).locked ? 'Lineup not full' : name;
     this.liveButtons[0].color = blocked ? 'rgba(31,138,88,0.45)' : TOUR_COLOR.live;
-    if (!blocked) this.warnT = 0;
+    if (!blocked && this.warnFill) this.warnT = 0;
   }
 
   styleGhost() {
@@ -202,14 +260,22 @@ export class PlayPanel {
     this.liveBig.x = view.w / 2 + 12;
     this.offlineBig.y = this.liveBig.y = 150;
 
-    // A list: the tournament and the five events, three to a row.
+    // Live: the tournament and the five events, three to a row.
     const gap = 12;
     const w = Math.min(260, (view.w - margin * 2 - gap * 2) / 3);
     const x0 = (view.w - (w * 3 + gap * 2)) / 2;
-    for (const row of [[this.tourButton, ...this.buttons], this.liveButtons]) {
-      row.forEach((b, i) => Object.assign(b, { w, h: 66, x: x0 + (i % 3) * (w + gap), y: LIST_Y + Math.floor(i / 3) * (66 + gap) }));
-    }
-    this.listLeft = x0;
+    this.liveButtons.forEach((b, i) => Object.assign(b, { w, h: 66, x: x0 + (i % 3) * (w + gap), y: LIST_Y + Math.floor(i / 3) * (66 + gap) }));
+    // vs Computer: a row of six cards per section, its name to the left.
+    const n = 6;
+    const labelW = Math.min(120, Math.floor((view.w - margin * 2) * 0.16));
+    const tw = Math.min(TILE_H + 30, (view.w - margin * 2 - labelW - 10 - (n - 1) * TILE_GAP) / n);
+    const rowW = labelW + 10 + n * tw + (n - 1) * TILE_GAP;
+    const rx = (view.w - rowW) / 2;
+    this.sections.forEach((sec, r) => {
+      sec.y = SECTION_Y + r * (TILE_H + 12);
+      sec.labelX = rx + labelW / 2;
+      sec.tiles.forEach((t, i) => Object.assign(t, { w: tw, h: TILE_H, x: rx + labelW + 10 + i * (tw + TILE_GAP), y: sec.y }));
+    });
     // Its settings: TOURNAMENT (both), RIVALS and GHOST (vs Computer). Narrower on a narrow (4:3) screen.
     const k = Math.min(1, (view.w - 32) / (90 * 2 + 130 * 2 + 110 + 8 * 2 + 32 * 2));
     const [mw, lw, gw, sp] = [90, 130, 110, 32].map((v) => Math.floor(v * k));
@@ -219,14 +285,16 @@ export class PlayPanel {
     const row = mw * 2 + 8 + sp + lw * 2 + 8 + sp + gw;
     this.settingsX = { offline: view.w / 2 - row / 2, live: view.w / 2 - (mw * 2 + 8) / 2 };
     const lx = this.settingsX.offline + mw * 2 + 8 + sp;
-    this.levelButtons.forEach((b, i) => Object.assign(b, { x: lx + i * (lw + 8), y: SETTINGS_Y }));
-    Object.assign(this.ghostButton, { x: this.settingsX.offline + row - gw, y: SETTINGS_Y });
+    this.levelButtons.forEach((b, i) => Object.assign(b, { x: lx + i * (lw + 8), y: OFFLINE_SETTINGS_Y }));
+    Object.assign(this.ghostButton, { x: this.settingsX.offline + row - gw, y: OFFLINE_SETTINGS_Y });
     this.placeModes();
 
     // The track along the bottom: your lineup on the buttons screen, a runner under a list.
-    this.trackTop = this.list ? SETTINGS_Y + 44 + 18 : 286;
+    this.trackTop = this.list ? this.settingsY + 44 + 14 : 286;
     this.trackBottom = bottom - 6;
-    Object.assign(this.fillBtn, { x: view.w / 2 - this.fillBtn.w / 2, y: Math.min(this.trackTop + 58, this.trackBottom - this.fillBtn.h - 6) });
+    // The warning line (and Fill your lineup): over the track, or on vs Computer (its track is short) a card over the cards.
+    this.warnY = this.list === 'offline' ? POPUP_Y : this.trackTop + 28;
+    Object.assign(this.fillBtn, { x: view.w / 2 - this.fillBtn.w / 2, y: this.list === 'offline' ? POPUP_Y + 26 : Math.min(this.trackTop + 58, this.trackBottom - this.fillBtn.h - 6) });
     this.view = view;
     this.bottom = bottom;
   }
@@ -234,12 +302,21 @@ export class PlayPanel {
   /** The Solo / Team toggle sits in a different place in each list. */
   placeModes() {
     const x = this.settingsX?.[this.list ?? 'offline'] ?? 0;
-    this.modeButtons.forEach((b, i) => Object.assign(b, { x: x + i * (b.w + 8), y: SETTINGS_Y }));
+    this.modeButtons.forEach((b, i) => Object.assign(b, { x: x + i * (b.w + 8), y: this.settingsY }));
+  }
+
+  /** Top of the open list's settings row. */
+  get settingsY() {
+    return this.list === 'live' ? SETTINGS_Y : OFFLINE_SETTINGS_Y;
+  }
+
+  get tiles() {
+    return this.sections.flatMap((sec) => sec.tiles);
   }
 
   get allButtons() {
-    const fill = this.warnT > 0 ? [this.fillBtn] : [];
-    if (this.list === 'offline') return [...fill, this.backBtn, this.tourButton, ...this.buttons, ...this.modeButtons, ...this.levelButtons, this.ghostButton];
+    const fill = this.warnT > 0 && this.warnFill ? [this.fillBtn] : [];
+    if (this.list === 'offline') return [...fill, this.backBtn, ...this.tiles, ...this.modeButtons, ...this.levelButtons, this.ghostButton];
     if (this.list === 'live') return [...fill, this.backBtn, ...this.liveButtons, ...this.modeButtons];
     return [this.fsButton, this.tuneButton, this.onlineButton, this.profileButton, this.offlineBig, this.liveBig].filter(Boolean);
   }
@@ -304,33 +381,49 @@ export class PlayPanel {
   renderList(ctx, view) {
     const offline = this.list === 'offline';
     this.backBtn.draw(ctx);
-    text(ctx, offline ? 'VS COMPUTER' : 'LIVE', view.w / 2, 40, { size: 32, color: offline ? '#ffb400' : '#59cd90', shadow: true });
-    text(ctx, offline ? 'Race the computer. Your best marks are saved.' : 'Race people right now: a waiting room first, then everyone goes together.', view.w / 2, 72, {
-      size: 15,
-      weight: 500,
-      color: 'rgba(255,255,255,0.8)',
-      maxWidth: view.w - 40,
-    });
+    text(ctx, offline ? 'VS COMPUTER' : 'LIVE', view.w / 2, 36, { size: 30, color: offline ? '#ffb400' : '#59cd90', shadow: true });
+    if (!offline) {
+      text(ctx, 'Race people right now: a waiting room first, then everyone goes together.', view.w / 2, 72, { size: 15, weight: 500, color: 'rgba(255,255,255,0.8)', maxWidth: view.w - 40 });
+    }
     this.drawTrack(ctx, view, this.trackTop, this.trackBottom - this.trackTop, true);
-    for (const b of offline ? [this.tourButton, ...this.buttons] : this.liveButtons) b.draw(ctx);
+    if (offline) this.renderSections(ctx);
+    else this.liveButtons.forEach((b) => b.draw(ctx));
     if (this.warnT > 0) {
       // Clash Royale style: say what's missing, right over the track.
       ctx.save();
       ctx.globalAlpha *= Math.min(1, this.warnT * 2);
-      text(ctx, 'You need a full lineup for a Team tournament!', view.w / 2, this.trackTop + 28, { size: 24, weight: 800, color: '#fff', shadow: true, maxWidth: view.w - 40 });
-      this.fillBtn.draw(ctx);
+      const pw = Math.min(view.w - 40, 640);
+      if (offline) {
+        roundRect(ctx, view.w / 2 - pw / 2, this.warnY - 32, pw, this.warnFill ? 108 : 64, 16);
+        ctx.fillStyle = 'rgba(10,18,36,0.94)';
+        ctx.fill();
+      }
+      text(ctx, this.warnMsg, view.w / 2, this.warnY, { size: 22, weight: 800, color: '#fff', shadow: true, maxWidth: pw - 32 });
+      if (this.warnFill) this.fillBtn.draw(ctx);
       ctx.restore();
     }
-    const ly = SETTINGS_Y - 14;
+    const ly = this.settingsY - 14;
     const label = (s, a, b) => text(ctx, s, (a.x + b.x + b.w) / 2, ly, { size: 13, weight: 700, color: DIM });
     const [m0, m1] = this.modeButtons;
     label('TOURNAMENT', m0, m1);
     this.modeButtons.forEach((b) => b.draw(ctx));
     if (!offline) return;
-    label('RIVALS', ...this.levelButtons);
+    label('TRAINING RIVALS', ...this.levelButtons);
     this.levelButtons.forEach((b) => b.draw(ctx));
     label('GHOST', this.ghostButton, this.ghostButton);
     this.ghostButton.draw(ctx);
+  }
+
+  /** vs Computer: each section's name and progress, then its cards. */
+  renderSections(ctx) {
+    for (const sec of this.sections) {
+      const cy = sec.y + TILE_H / 2;
+      const complete = sec.level && sec.done === sec.tiles.length;
+      text(ctx, sec.title, sec.labelX, cy - 10, { size: 20, weight: 900, color: sec.label, shadow: true, maxWidth: 116 });
+      const sub = !sec.level ? 'Free play' : complete ? '★ Complete' : `${sec.done} / ${sec.tiles.length} beaten`;
+      text(ctx, sub, sec.labelX, cy + 14, { size: 13, weight: 700, color: complete ? '#ffd35c' : DIM, maxWidth: 116 });
+      sec.tiles.forEach((t) => t.draw(ctx));
+    }
   }
 
   /** A strip of track; `runner`: with your 100m runner going along it. */
@@ -374,8 +467,19 @@ function starring(lineup) {
 }
 
 const TOUR_COLOR = { offline: '#c98a00', live: '#1f8a58' };
-const LIST_Y = 100; // top of a list's first row of buttons
-const SETTINGS_Y = 270; // a list's settings row
+const LIST_Y = 100; // top of the Live list's first row of buttons
+const SETTINGS_Y = 270; // the Live list's settings row
+// vs Computer: the sections (level null: Training), top to bottom.
+const SECTIONS = [
+  { level: 'amateur', title: 'AMATEUR', color: '#e4352a', label: '#ff7a5c' },
+  { level: 'pro', title: 'PRO', color: '#7b2fbf', label: '#c08cff' },
+  { level: null, title: 'TRAINING', color: '#2d6fa8', label: '#7cc4ff' },
+];
+const SECTION_Y = 66; // top of the first row of cards
+const TILE_H = 82;
+const TILE_GAP = 8;
+const OFFLINE_SETTINGS_Y = SECTION_Y + 3 * (TILE_H + 12) + 16; // the vs Computer settings row
+const POPUP_Y = SECTION_Y + 1.5 * (TILE_H + 12) - 22; // vs Computer: the warning card's line
 
 function toggleFullscreen() {
   if (document.fullscreenElement) {

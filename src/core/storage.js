@@ -94,8 +94,24 @@ export function setTourMode(mode) {
   save(data);
 }
 
-/** Rival difficulty chosen on the menu: 'amateur' or 'pro'. */
+// The campaign you're playing ('amateur' or 'pro'), or null for Training. Set
+// by the menu for this session; it decides the rivals and what a win counts for.
+let campaign = null;
+
+export function setCampaign(level) {
+  campaign = level === 'amateur' || level === 'pro' ? level : null;
+}
+
+export function getCampaign() {
+  return campaign;
+}
+
+/**
+ * Rival difficulty: the campaign's, or in Training the one chosen on the menu
+ * ('amateur' or 'pro').
+ */
 export function getDifficulty() {
+  if (campaign) return campaign;
   const d = load().difficulty;
   return d === 'pro' ? 'pro' : 'amateur';
 }
@@ -104,6 +120,37 @@ export function setDifficulty(level) {
   const data = load();
   data.difficulty = level;
   save(data);
+}
+
+/**
+ * What you've beaten in a campaign ('amateur' or 'pro'): { [eventId | 'tournament']: true }.
+ * Win an event (first place) to tick it off, in any order; the tournament opens once all five are.
+ */
+export function getBeaten(level) {
+  const b = load().beaten?.[level];
+  return b && typeof b === 'object' ? b : {};
+}
+
+// The tick most recently earned, { level, id }, for the menu to stamp in.
+let fresh = null;
+
+/** Ticks `id` off in campaign `level`. Returns true if it's new. */
+export function markBeaten(level, id) {
+  const data = load();
+  data.beaten ??= {};
+  data.beaten[level] ??= {};
+  if (data.beaten[level][id]) return false;
+  data.beaten[level][id] = true;
+  save(data);
+  fresh = { level, id };
+  return true;
+}
+
+/** The tick earned since the menu last asked, once: { level, id } or null. */
+export function takeFreshBeaten() {
+  const f = fresh;
+  fresh = null;
+  return f;
 }
 
 /** Whether your own best run races as a ghost (menu toggle; off unless turned on). */

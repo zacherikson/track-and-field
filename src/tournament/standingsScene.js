@@ -1,7 +1,7 @@
 import { Button, text, roundRect } from '../core/ui.js';
 import { ordinal } from '../core/math.js';
 import { formatMark } from '../events/registry.js';
-import { submitBest, saveGhostIfBetter } from '../core/storage.js';
+import { submitBest, saveGhostIfBetter, getCampaign, markBeaten } from '../core/storage.js';
 import { postMark } from '../online/post.js';
 import { counts } from '../online/bests.js';
 import { tournament, ORDER, TOUR_KINDS } from './tournament.js';
@@ -54,6 +54,9 @@ export class StandingsScene {
     } else if (me?.status === 'ok') postMark(this.ev, me.mark, run, (s) => (this.online = s));
     this.myPts = this.rows.find((r) => r.isPlayer)?.pts ?? 0;
     this.myPlace = this.table.findIndex((t) => t.isPlayer) + 1;
+    // Champion of a campaign tournament: ticked off.
+    this.campaignWin = this.final && !tournament.live && this.myPlace === 1 && !!getCampaign();
+    if (this.campaignWin) markBeaten(getCampaign(), 'tournament');
     // How you stand against your best recorded tournament after as many events.
     const best = this.final ? null : tournament.bestAfter(tournament.history.length);
     const mine = this.table.find((t) => t.isPlayer)?.total ?? 0;
@@ -81,7 +84,7 @@ export class StandingsScene {
       this.buttons = [this.buttons[0], this.buttons[this.buttons.length - 1]];
       this.panel = new ResultsPanel(
         this.buttons,
-        () => (this.final ? `🏆 ${this.table[0].name.toUpperCase()} WINS · FINAL STANDINGS` : `OVERALL AFTER ${tournament.history.length} OF ${ORDER.length} · ${this.ev.name.toUpperCase()}`),
+        () => (this.final ? `🏆 ${this.table[0].name.toUpperCase()} WINS · ${this.campaignWin ? `${getCampaign().toUpperCase()} TOURNAMENT BEATEN!` : 'FINAL STANDINGS'}` : `OVERALL AFTER ${tournament.history.length} OF ${ORDER.length} · ${this.ev.name.toUpperCase()}`),
         () =>
           this.table.map((t, i) => {
             const pts = this.rows.find((r) => (r.isPlayer ? 'you' : r.key ?? r.name) === t.key)?.pts;
@@ -177,7 +180,7 @@ export class StandingsScene {
       text(ctx, `🏆 ${champ.name}`, cx, 76, { size: 44, color: champ.isPlayer ? `rgba(255,180,0,${flash})` : '#fff', shadow: true });
       const me = this.table.find((t) => t.isPlayer);
       const line = champ.isPlayer
-        ? `You win with ${me.total} points!${tournament.newBest ? ' New best score!' : ''}`
+        ? `You win with ${me.total} points!${this.campaignWin ? ` ${getCampaign() === 'pro' ? 'Pro' : 'Amateur'} tournament beaten!` : ''}${tournament.newBest ? ' New best score!' : ''}`
         : `You finished ${ordinal(this.myPlace)} with ${me.total} points${tournament.newBest ? ' · new best score!' : ''}`;
       text(ctx, line, cx, 114, { size: 18, weight: 600, color: champ.isPlayer ? '#ffd35c' : 'rgba(255,255,255,0.85)' });
     } else {

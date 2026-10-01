@@ -10,8 +10,8 @@ import { connectSDK, knownUid, rest, fields, docId, nameKey } from './firebase.j
  *   squadmembers/{uid}   = { squad: key }   which squad you're in (at most one)
  * `key` is the name lowercased, so no two squads share a name. `size` is the
  * number of members (kept so squads can be listed biggest first). `leader`
- * started the squad; when they leave, whoever has been in it longest takes
- * over, and the last one out closes it. A member's `name` is their username
+ * started the squad and can kick members out; when they leave, whoever has
+ * been in it longest takes over, and the last one out closes it. A member's `name` is their username
  * (users/{uid}), so you need one before joining (Profile).
  *
  * An invite is a link to the game with the squad in it (inviteLink); opening it
@@ -55,7 +55,24 @@ export async function loadMySquad() {
   if (!key) return (mine = null);
   const doc = await rest(path('squads', key));
   const squad = doc?.fields ? squadOf(key, fields(doc.fields)) : null;
-  return (mine = squad?.members.some((m) => m.me) ? squad : null);
+  if (squad?.members.some((m) => m.me)) return (mine = squad);
+  forgetStaleLink(uid, key);
+  return (mine = null);
+}
+
+/**
+ * Your squadmembers link says a squad that no longer has you (you were kicked
+ * out, and the leader's phone didn't clear it): clear it, so you can join
+ * another. Nothing waits for it; if it doesn't go through, it's tried again.
+ */
+function forgetStaleLink(uid, key) {
+  connectSDK()
+    .then(async ({ fs, db }) => {
+      const ref = fs.doc(db, 'squadmembers', uid);
+      const link = await fs.getDoc(ref);
+      if (link.exists() && link.data().squad === key) await fs.deleteDoc(ref);
+    })
+    .catch((e) => console.warn('old squad link not cleared', e));
 }
 
 /** Squad rows from a REST query: [{ key, name, size }]. */
@@ -164,6 +181,25 @@ export async function leaveSquad() {
   });
   mine = null;
   return null;
+}
+
+/** The leader only: takes a member out of your squad. Error 'not-leader' if you're not its leader (any more). */
+export async function kickFromSquad(memberUid) {
+  const { fs, db, uid } = await connectSDK();
+  await fs.runTransaction(db, async (tx) => {
+    const link = await tx.get(fs.doc(db, 'squadmembers', uid));
+    if (!link.exists()) throw err('not-leader');
+    const key = link.data().squad;
+    const ref = fs.doc(db, 'squads', key);
+    const theirRef = fs.doc(db, 'squadmembers', memberUid);
+    const [squad, theirs] = await Promise.all([tx.get(ref), tx.get(theirRef)]);
+    const d = squad.exists() ? squad.data() : null;
+    if (d?.leader !== uid) throw err('not-leader');
+    if (!d.members?.[memberUid]) return; // gone already
+    tx.update(ref, new fs.FieldPath('members', memberUid), fs.deleteField(), 'size', Object.keys(d.members).length - 1);
+    if (theirs.exists() && theirs.data().squad === key) tx.delete(theirRef);
+  });
+  return loadMySquad();
 }
 
 /** After a username change: your name in your squad's member list too (if you're in one). */

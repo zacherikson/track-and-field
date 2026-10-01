@@ -58,8 +58,9 @@ service cloud.firestore {
 
     // Squads (online/squads.js): a name and a member list. Anyone with a
     // username can start one or join one with room; you're in one at a time
-    // (squadmembers/{uid} says which). Joining, leaving and starting write both
-    // docs in one transaction, and each doc's rule checks the other.
+    // (squadmembers/{uid} says which), and the leader can kick members out.
+    // Joining, leaving, starting and kicking write both docs in one
+    // transaction, and each doc's rule checks the other.
     match /squads/{key} {
       allow read: if true;
       allow create: if request.auth != null
@@ -78,7 +79,7 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members', 'size', 'leader'])
         && request.resource.data.size == request.resource.data.members.size()
         && request.resource.data.size <= 30
-        && (joiningSquad(key) || leavingSquad() || renamingInSquad());
+        && (joiningSquad(key) || leavingSquad() || kickingFromSquad() || renamingInSquad());
       // The last member out closes it.
       allow delete: if request.auth != null
         && resource.data.members.keys().hasOnly([request.auth.uid])
@@ -86,7 +87,8 @@ service cloud.firestore {
     }
 
     // Which squad you're in. Set as you join (the squad must have you after the
-    // write), cleared as you leave (it mustn't); never changed in between.
+    // write), cleared as you leave (it mustn't); never changed in between. The
+    // leader clears it as they kick you out (the squad mustn't have you after).
     match /squadmembers/{uid} {
       allow read: if true;
       allow create: if isMe(uid)
@@ -94,9 +96,12 @@ service cloud.firestore {
         && request.resource.data.squad is string
         && uid in getAfter(/databases/$(database)/documents/squads/$(request.resource.data.squad)).data.members;
       allow update: if false;
-      allow delete: if isMe(uid)
-        && (!existsAfter(/databases/$(database)/documents/squads/$(resource.data.squad))
-            || !(uid in getAfter(/databases/$(database)/documents/squads/$(resource.data.squad)).data.members));
+      allow delete: if (isMe(uid)
+          && (!existsAfter(/databases/$(database)/documents/squads/$(resource.data.squad))
+              || !(uid in getAfter(/databases/$(database)/documents/squads/$(resource.data.squad)).data.members)))
+        || (request.auth != null
+          && get(/databases/$(database)/documents/squads/$(resource.data.squad)).data.leader == request.auth.uid
+          && !(uid in getAfter(/databases/$(database)/documents/squads/$(resource.data.squad)).data.members));
     }
 
     // Your entry in a squad's member list as you join or start it: your username, and when.
@@ -127,6 +132,17 @@ service cloud.firestore {
         && ((resource.data.leader == me && request.resource.data.leader in request.resource.data.members)
             || (resource.data.leader != me && request.resource.data.leader == resource.data.leader))
         && !existsAfter(/databases/$(database)/documents/squadmembers/$(me));
+    }
+
+    // The leader taking one other member off the member list.
+    function kickingFromSquad() {
+      let d = request.resource.data.members.diff(resource.data.members);
+      return resource.data.leader == request.auth.uid
+        && d.removedKeys().size() == 1
+        && !d.removedKeys().hasAny([request.auth.uid])
+        && d.addedKeys().size() == 0
+        && d.changedKeys().size() == 0
+        && request.resource.data.leader == resource.data.leader;
     }
 
     // Your name in the member list, after you change your username.

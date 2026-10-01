@@ -4,6 +4,13 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Squad invites
+- 📨 **Invite** on your squad's page: the phone's share sheet with a link to the
+  game (`?squad=<name>`), or the link copied where there's no share sheet.
+- Opening an invite link starts on the Squad tab with that squad at the top
+  (YOU'RE INVITED), with Join and ✕. It's remembered until you join a squad or
+  dismiss it. No rules change: joining works as before.
+
 ## Home screen tabs and squads
 - The menu is now a Clash Royale style home screen with three tabs along the
   bottom: **Lineup | Play | Squad**. Tap a tab or swipe sideways; the panels

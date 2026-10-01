@@ -1,5 +1,5 @@
 import { Game } from './core/game.js';
-import { MenuScene } from './scenes/menuScene.js';
+import { HomeScene } from './scenes/homeScene.js';
 import { ProfileScene } from './scenes/profileScene.js';
 import { loadOverrides } from './tuning/store.js';
 import { finishGoogleSignIn } from './online/firebase.js';
@@ -14,7 +14,7 @@ preloadSprites(CHARACTERS);
 const signingIn = finishGoogleSignIn();
 
 const game = new Game(document.getElementById('game'));
-game.start(signingIn ? new ProfileScene(signingIn) : new MenuScene());
+game.start(signingIn ? new ProfileScene(signingIn) : new HomeScene());
 
 // Handy from the desktop devtools console.
 window.game = game;

@@ -4,6 +4,17 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Home screen tabs and squads
+- The menu is now a Clash Royale style home screen with three tabs along the
+  bottom: **Lineup | Play | Squad**. Tap a tab or swipe sideways; the panels
+  slide. Play is the old menu (minus the Lineup button); Lineup is the old
+  lineup screen, now one swipe to the left.
+- **Squads** (the right tab): start one, find one by name or in the list of the
+  biggest, join it, leave it. Up to 30 players, one squad at a time; needs a
+  username. Firestore `squads/` and `squadmembers/`, with new rules in
+  `firestore.rules` (publish them in the Firebase console).
+- Profile's Menu button is now Back, and returns to the tab you came from.
+
 ## Juno, drawn
 - Juno is a drawn cartoon sprinter in the 100m and hurdles (parts drawn by an AI
   image generator from tools/art-prompts.md, originals in art/juno/, rigged with

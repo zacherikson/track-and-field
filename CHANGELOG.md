@@ -4,6 +4,15 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Lineup like a Clash Royale deck
+- Tap an athlete card (it lifts, with **Use** under it), tap Use, then pick the
+  slot to put them in: the slots wiggle while you pick, the athlete you're
+  placing shows big below, and Cancel (or Esc, or a tap elsewhere) calls it
+  off. Tapping a slot picks whoever's in it.
+- The "<name> in every slot" button is gone.
+- Esc steps back within a tab first (out of picking a slot, or a Play list),
+  then goes to Play.
+
 ## Play tab: vs Computer and Live
 - The Play tab is two big buttons, **🤖 vs Computer** and **🌐 Live**, over
   your lineup warming up on the track (tap it to go to the Lineup tab), instead

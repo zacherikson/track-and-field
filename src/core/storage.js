@@ -231,6 +231,15 @@ export function getPlayerName() {
   return data.name;
 }
 
+// The username that gets the tuning panel (the game's owner). Usernames are
+// claimed on the server (firebase.js setUsername), so no one else can take it.
+const TUNER = 'rawnald';
+
+/** Whether this player gets the tuning panel (and their saved tuning): only the owner. */
+export function canTune() {
+  return getPlayerName().toLowerCase() === TUNER;
+}
+
 /**
  * Tidies a typed username: single spaces, 16 characters at most, letters,
  * digits, spaces and _ . ' - only, starting with a letter or digit. Returns ''

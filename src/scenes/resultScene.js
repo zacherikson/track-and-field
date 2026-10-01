@@ -1,7 +1,7 @@
 import { Button, text, roundRect } from '../core/ui.js';
 import { ordinal } from '../core/math.js';
 import { formatMark } from '../events/registry.js';
-import { getBest, submitBest, getCampaign, getBeaten, saveGhostIfBetter } from '../core/storage.js';
+import { getBest, submitBest, getCampaign, getBeaten, saveGhostIfBetter, canTune } from '../core/storage.js';
 import { postMark } from '../online/post.js';
 import { counts } from '../online/bests.js';
 import { flow } from '../flow.js';
@@ -48,8 +48,8 @@ export class ResultScene {
         ? new Button({ label: `${(this.ev.againLabel ?? 'Race again').replace(' again', '')} live again`, color: '#2bb673', onTap: () => flow.live(this.game, this.ev.id) })
         : new Button({ label: this.ev.againLabel ?? 'Race again', color: '#2bb673', onTap: () => flow.play(this.game, this.ev) }),
       new Button({ label: 'Menu', color: 'rgba(255,255,255,0.18)', onTap: () => flow.menu(this.game) }),
-      new Button({ label: '⚙ Tuning', color: 'rgba(255,255,255,0.18)', onTap: () => flow.tuning(this.game) }),
     ];
+    if (canTune()) this.buttons.push(new Button({ label: '⚙ Tuning', color: 'rgba(255,255,255,0.18)', onTap: () => flow.tuning(this.game) }));
     if (this.ev.online) this.buttons.splice(2, 0, new Button({ label: '🌐 Leaderboard', color: 'rgba(255,255,255,0.18)', onTap: () => flow.leaderboard(this.game, this.ev) }));
     const live = !!this.stats?.live;
     if (this.backdrop) {

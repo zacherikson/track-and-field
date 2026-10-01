@@ -2,7 +2,7 @@ import { CONFIG } from '../../config.js';
 import { Button, text, roundRect } from '../../core/ui.js';
 import { drawFigure, runPose } from '../../athletes/stickFigure.js';
 import { EVENTS, TOURNAMENT_BOARDS, formatMark } from '../../events/registry.js';
-import { getBest, getGhostOn, setGhostOn, getPlayerName, getTourMode, setTourMode, setCampaign, getBeaten, takeFreshBeaten } from '../../core/storage.js';
+import { canTune, getBest, getGhostOn, setGhostOn, getPlayerName, getTourMode, setTourMode, setCampaign, getBeaten, takeFreshBeaten } from '../../core/storage.js';
 import { lineupAthlete, lineupSlotEmpty, heightOf } from '../../athletes/roster.js';
 import { TOUR_KINDS } from '../../tournament/tournament.js';
 import { flow } from '../../flow.js';
@@ -20,7 +20,7 @@ let lastList = null;
 /**
  * The home screen's middle tab: where you play. Two big buttons, vs Computer
  * and Live, over your lineup standing on the track; each opens its list.
- * Tuning, Leaderboard and Profile along the top.
+ * Tuning (the owner only, storage.js canTune), Leaderboard and Profile along the top.
  *
  * vs Computer is three rows of cards, the five events then the tournament:
  * - Amateur and Pro, a mini campaign each: win an event (in any order) and its
@@ -108,7 +108,7 @@ export class PlayPanel {
     this.styleModes();
     this.styleGhost();
     this.onShow();
-    this.tuneButton = new Button({ label: '⚙ Tuning', w: 132, h: 44, color: PLAIN, onTap: () => flow.tuning(this.game) });
+    this.tuneButton = canTune() ? new Button({ label: '⚙ Tuning', w: 132, h: 44, color: PLAIN, onTap: () => flow.tuning(this.game) }) : null;
     this.onlineButton = new Button({ label: '🌐 Leaderboard', w: 196, h: 44, color: PLAIN, onTap: () => flow.leaderboard(this.game) });
     // Your profile (username for the online leaderboard), top right.
     this.profileButton = new Button({ label: `👤 ${getPlayerName()}`, w: 190, h: 44, color: PLAIN, onTap: () => flow.profile(this.game) });
@@ -255,8 +255,8 @@ export class PlayPanel {
     const top = 14 + view.safe.t;
 
     // Top bar: Tuning, Leaderboard ... Profile, fullscreen (the buttons); Back (a list).
-    this.tuneButton.x = 14 + view.safe.l;
-    this.onlineButton.x = this.tuneButton.x + this.tuneButton.w + 10;
+    if (this.tuneButton) this.tuneButton.x = 14 + view.safe.l;
+    this.onlineButton.x = this.tuneButton ? this.tuneButton.x + this.tuneButton.w + 10 : 14 + view.safe.l;
     this.backBtn.x = 14 + view.safe.l;
     if (this.fsButton) this.fsButton.x = view.w - 48 - 14 - view.safe.r;
     this.profileButton.x = (this.fsButton ? this.fsButton.x - 10 : view.w - 14 - view.safe.r) - this.profileButton.w;

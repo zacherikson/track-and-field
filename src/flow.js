@@ -15,7 +15,7 @@ import { roundMark, EVENTS } from './events/registry.js';
 import { ORDER, tourModeOf } from './tournament/tournament.js';
 import { startLive, endLive, currentLive } from './online/live.js';
 import { resetScars } from './brawl/wounds.js';
-import { getCampaign, setCampaign, markBeaten } from './core/storage.js';
+import { getCampaign, setCampaign, markBeaten, canTune } from './core/storage.js';
 
 export const flow = {
   // The home screen, on its Play tab (or `tab`: homeScene.js TABS).
@@ -85,5 +85,5 @@ export const flow = {
     game.setScene(scene);
   },
   // Tuning panel overlay; the canvas scene underneath stays as it was.
-  tuning: (game) => openTuning(() => game.input.clear()),
+  tuning: (game) => canTune() && openTuning(() => game.input.clear()), // the owner's only
 };

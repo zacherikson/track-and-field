@@ -4,6 +4,13 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Tuning is the owner's only
+- The ⚙ Tuning buttons (menu and results) only show for the username
+  **rawnald** (`canTune` in storage.js). Usernames are claimed on the server,
+  so no one else can take it.
+- Everyone else plays the shipped numbers: tuning a tester saved before is
+  ignored (and left alone in their storage).
+
 ## Event card: Back, and your athlete
 - The card before an event (name, records, how to play) has **‹ Back** top
   left, to the menu (**‹ Quit** in a tournament; none in a live one).

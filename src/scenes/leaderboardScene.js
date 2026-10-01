@@ -1,7 +1,7 @@
 import { CONFIG } from '../config.js';
 import { Button, text, roundRect } from '../core/ui.js';
 import { BOARDS, formatMark } from '../events/registry.js';
-import { leaderboard, cachedLeaderboard, fetchGhost, learnUid } from '../online/firebase.js';
+import { leaderboard, cachedLeaderboard, fetchGhost, learnUid, isSignedIn, startGoogleSignIn } from '../online/firebase.js';
 import { chooseGhost, isReplayable } from '../online/ghost.js';
 import { isTrace } from '../online/trace.js';
 import { flow } from '../flow.js';
@@ -18,6 +18,9 @@ let lastBoard = null; // the tab you looked at last, for the menu's Leaderboard 
  * The online leaderboards: a tab per event plus the solo and team tournament scores, each
  * with the best marks from every player. On the event boards each recorded
  * mark has a Race button that puts it next to you as a ghost.
+ *
+ * Guests don't see the boards: the screen asks them to sign in with Google
+ * first (the boards themselves are public, see firestore.rules).
  */
 export class LeaderboardScene {
   constructor(board = null) {
@@ -30,12 +33,28 @@ export class LeaderboardScene {
     this.retryBtn = new Button({ label: 'Try again', w: 180, h: 50, onTap: () => this.load() });
     this.tabs = BOARDS.map((b) => new Button({ label: TAB_LABELS[b.id] ?? b.name, h: 38, size: 16, onTap: () => this.show(b) }));
     this.age = 0; // s on this screen: animates the loading rows
+    this.guest = !isSignedIn();
+    if (this.guest) {
+      this.signInBtn = new Button({ label: 'Sign in with Google', w: 250, h: 56, color: '#3a6fd8', onTap: () => this.signIn() });
+      this.signInError = null;
+      this.layout(this.game.view);
+      return;
+    }
     this.layout(this.game.view); // before anything loads, so the buttons start in place
     this.show(this.board);
     // Your row is found by your player id; sign in to learn it if needed, then load again.
     learnUid()
       .then((learned) => learned && this.game.scene === this && this.load())
       .catch(() => {});
+  }
+
+  /** Off to Google's sign-in page; it comes back to the Profile screen (main.js). */
+  signIn() {
+    try {
+      startGoogleSignIn();
+    } catch {
+      this.signInError = 'Couldn’t open Google’s sign-in page.';
+    }
   }
 
   show(board) {
@@ -122,6 +141,7 @@ export class LeaderboardScene {
     this.tabs.forEach((t, i) => Object.assign(t, { x: view.w / 2 - tabsW / 2 + i * (tw + gap), y: 52, w: tw }));
     Object.assign(this.backBtn, { x: view.w / 2 - 75, y: 472 });
     Object.assign(this.retryBtn, { x: view.w / 2 - 90, y: 300 });
+    if (this.signInBtn) Object.assign(this.signInBtn, { x: view.w / 2 - this.signInBtn.w / 2, y: 300 });
   }
 
   rowY(i) {
@@ -130,6 +150,7 @@ export class LeaderboardScene {
   }
 
   buttons() {
+    if (this.guest) return [this.backBtn, this.signInBtn];
     const list = [this.backBtn, ...this.tabs];
     if (this.state === 'error') list.push(this.retryBtn);
     if (this.state === 'ready') for (const r of this.rows) if (r.btn) list.push(r.btn);
@@ -140,6 +161,7 @@ export class LeaderboardScene {
     for (const e of this.game.input.consume(t + dt)) {
       if (e.type === 'down') this.buttons().some((b) => b.tap(e.x, e.y));
       else if (e.code === 'Escape') flow.menu(this.game);
+      else if (this.guest) continue;
       else if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
         const i = BOARDS.indexOf(this.board) + (e.code === 'ArrowLeft' ? -1 : 1);
         this.show(BOARDS[(i + BOARDS.length) % BOARDS.length]);
@@ -161,7 +183,11 @@ export class LeaderboardScene {
     ctx.fill();
 
     const mid = (s) => text(ctx, s, view.w / 2, 250, { size: 18, weight: 500, color: 'rgba(255,255,255,0.75)', maxWidth: w - 30 });
-    if (this.state === 'loading') this.drawLoading(ctx, x0, w);
+    if (this.guest) {
+      text(ctx, 'Connect your account to Google', view.w / 2, 210, { size: 22, weight: 700, color: '#fff', maxWidth: w - 30 });
+      mid('to see the global leaderboard.');
+      if (this.signInError) text(ctx, this.signInError, view.w / 2, 390, { size: 16, weight: 600, color: '#ffb35c', maxWidth: w - 30 });
+    } else if (this.state === 'loading') this.drawLoading(ctx, x0, w);
     else if (this.state === 'error') mid('Can’t reach the online leaderboard right now.');
     else if (!this.rows.length) mid(this.board.tournament ? `No scores yet. Finish a ${this.board.name.toLowerCase()} to be first!` : `No marks yet. Finish a ${this.board.name} to be first!`);
     else {

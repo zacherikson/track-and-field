@@ -1,6 +1,6 @@
 import { Button, text, roundRect } from '../../core/ui.js';
 import { cleanName } from '../../core/storage.js';
-import { cachedSquad, loadMySquad, topSquads, searchSquads, createSquad, joinSquad, leaveSquad, SQUAD_MAX } from '../../online/squads.js';
+import { cachedSquad, loadMySquad, topSquads, searchSquads, createSquad, joinSquad, leaveSquad, SQUAD_MAX, inviteLink, getInvite, setInvite, squadInfo } from '../../online/squads.js';
 import { flow } from '../../flow.js';
 
 const WARN = '#ffb35c';
@@ -10,7 +10,8 @@ const PLAIN = 'rgba(255,255,255,0.15)';
 
 /**
  * The home screen's right tab: your squad (online/squads.js). In one: its name
- * and members, and Leave. Not in one: start a squad, or find one and join it.
+ * and members, Invite (a link to send a friend) and Leave. Not in one: start a
+ * squad, or find one and join it; a squad you've been invited to comes first.
  */
 export class SquadPanel {
   constructor(home) {
@@ -31,8 +32,14 @@ export class SquadPanel {
     this.profileBtn = new Button({ label: '👤 Pick a username', w: 220, h: 44, size: 19, color: PLAIN, onTap: () => flow.profile(this.game, 'squad') });
     this.retryBtn = new Button({ label: 'Try again', w: 160, h: 44, size: 19, color: PLAIN, onTap: () => this.refresh() });
     this.leaveBtn = new Button({ label: 'Leave', w: 110, h: 40, size: 18, color: PLAIN, onTap: () => this.leave() });
+    this.inviteBtn = new Button({ label: '📨 Invite', w: 140, h: 40, size: 18, color: '#2bb673', onTap: () => this.share() });
     this.joinBtns = [];
+    // The squad you've been invited to, offered at the top: { key, name, size }.
+    this.invite = null;
+    this.inviteJoinBtn = new Button({ label: 'Join', w: 84, h: 32, size: 17, color: '#2bb673', onTap: () => this.invite && this.join(this.invite) });
+    this.dismissBtn = new Button({ label: '✕', w: 36, h: 32, size: 16, color: PLAIN, onTap: () => this.dropInvite() });
     this.refresh();
+    this.loadInvite();
   }
 
   /** Coming to this tab: catch up with your squad (someone may have joined). */
@@ -46,12 +53,63 @@ export class SquadPanel {
     loadMySquad()
       .then((squad) => {
         this.mine = squad;
+        if (squad && squad.key === this.invite?.key) this.dropInvite(); // in it already
         if (!squad && !this.list.rows) this.loadList(this.list.q);
       })
       .catch((e) => {
         this.loadError = loadMessage(e);
       })
       .finally(() => this.relayout());
+  }
+
+  /** The squad you've been invited to (an invite link: squads.js takeInviteLink), if any. */
+  loadInvite() {
+    const key = getInvite();
+    if (!key) return;
+    squadInfo(key)
+      .then((info) => {
+        if (getInvite() !== key) return; // dealt with since
+        if (!info) {
+          setInvite(null);
+          this.status = { text: 'The squad you were invited to has closed.', color: WARN };
+        } else if (this.mine?.key === key) setInvite(null);
+        else this.invite = info;
+      })
+      .catch(() => {}) // offered next time
+      .finally(() => this.relayout());
+  }
+
+  /** Forgets the invite (joined a squad, or turned it down). */
+  dropInvite() {
+    setInvite(null);
+    this.invite = null;
+    this.relayout();
+  }
+
+  /**
+   * Invite: the phone's share sheet (Messages, WhatsApp...) with a link to the
+   * game that offers your squad; where there's no share sheet, the link copied.
+   */
+  async share() {
+    const s = this.mine;
+    if (!s || this.busy) return;
+    const url = inviteLink(s);
+    const message = `Join my squad ${s.name} in Track Royale!`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: 'Track Royale', text: message, url });
+        this.status = { text: 'Invite shared. The link takes them straight to your squad.', color: OK };
+        return;
+      } catch (e) {
+        if (e?.name === 'AbortError') return; // closed the share sheet
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(`${message} ${url}`);
+      this.status = { text: 'Invite link copied. Paste it to a friend.', color: OK };
+    } catch {
+      this.ask('Copy this link and send it to a friend:', url);
+    }
   }
 
   /** The squads to join: the biggest, or those whose name starts with `q`. */
@@ -100,7 +158,12 @@ export class SquadPanel {
 
   join(row) {
     if (this.busy) return;
-    this.act(`Joining ${row.name}…`, () => joinSquad(row.key), row.name);
+    const run = () =>
+      joinSquad(row.key).catch((e) => {
+        if (e?.code === 'gone' && this.invite?.key === row.key) this.dropInvite();
+        throw e;
+      });
+    this.act(`Joining ${row.name}…`, run, row.name);
   }
 
   leave() {
@@ -119,6 +182,7 @@ export class SquadPanel {
     run()
       .then((squad) => {
         this.mine = squad;
+        if (squad) this.dropInvite(); // in a squad now
         this.status = leaving ? { text: `You left ${name}.`, color: OK } : squad ? { text: `Welcome to ${squad.name}!`, color: OK } : null;
         if (!squad) this.loadList(this.list.q);
       })
@@ -145,8 +209,9 @@ export class SquadPanel {
     this.contentW = Math.min(880, view.w - margin * 2);
     this.x0 = (view.w - this.contentW) / 2;
     if (this.mine) {
+      this.inviteBtn.x = 14 + view.safe.l;
       this.leaveBtn.x = view.w - 14 - view.safe.r - this.leaveBtn.w;
-      this.leaveBtn.y = 14 + view.safe.t;
+      this.inviteBtn.y = this.leaveBtn.y = 14 + view.safe.t;
       return;
     }
     // Not in a squad: the buttons in a row, then the list in one or two columns.
@@ -160,11 +225,19 @@ export class SquadPanel {
     const cols = this.contentW >= 700 ? 2 : 1;
     const colGap = 16;
     const rowW = (this.contentW - colGap * (cols - 1)) / cols;
-    const perCol = Math.max(1, Math.floor((bottom - 8 - LIST_Y + ROW_GAP) / (ROW_H + ROW_GAP)));
+    // The squad you've been invited to, across the top, then the rest.
+    this.inviteBox = this.invite ? { x: this.x0, y: LIST_Y, w: this.contentW, h: ROW_H } : null;
+    if (this.inviteBox) {
+      const k = this.inviteBox;
+      Object.assign(this.dismissBtn, { x: k.x + k.w - this.dismissBtn.w - 6, y: k.y + 6 });
+      Object.assign(this.inviteJoinBtn, { x: this.dismissBtn.x - 84 - 8, y: k.y + 6 });
+    }
+    this.listY = LIST_Y + (this.invite ? ROW_H + 38 : 0);
+    const perCol = Math.max(1, Math.floor((bottom - 8 - this.listY + ROW_GAP) / (ROW_H + ROW_GAP)));
     this.rowBoxes = (this.list.rows ?? []).slice(0, perCol * cols).map((r, i) => ({
       r,
       x: this.x0 + Math.floor(i / perCol) * (rowW + colGap),
-      y: LIST_Y + (i % perCol) * (ROW_H + ROW_GAP),
+      y: this.listY + (i % perCol) * (ROW_H + ROW_GAP),
       w: rowW,
       h: ROW_H,
     }));
@@ -178,9 +251,10 @@ export class SquadPanel {
   }
 
   get buttons() {
-    if (this.mine) return [this.leaveBtn];
+    if (this.mine) return [this.inviteBtn, this.leaveBtn];
     if (this.mine === undefined && !this.loadError) return [];
-    return [...this.buttonRow(), ...(this.loadError ? [] : this.joinBtns.slice(0, this.rowBoxes?.length ?? 0))];
+    if (this.loadError) return this.buttonRow();
+    return [...this.buttonRow(), ...(this.inviteBox ? [this.inviteJoinBtn, this.dismissBtn] : []), ...this.joinBtns.slice(0, this.rowBoxes?.length ?? 0)];
   }
 
   /** `events`: this tab's taps (the home screen has sorted out swipes). */
@@ -190,9 +264,12 @@ export class SquadPanel {
       if (e.type !== 'down') continue;
       if (btns.some((b) => b.tap(e.x, e.y)) && this.game.scene !== this.home) return;
     }
-    for (const b of [this.createBtn, this.findBtn, this.topBtn, this.profileBtn, this.retryBtn, this.leaveBtn, ...this.joinBtns]) b.update(dt);
+    for (const b of [this.createBtn, this.findBtn, this.topBtn, this.profileBtn, this.retryBtn, this.leaveBtn, this.inviteBtn, this.inviteJoinBtn, this.dismissBtn, ...this.joinBtns]) b.update(dt);
     const busy = this.busy;
-    for (const b of [this.createBtn, this.findBtn, this.topBtn, this.leaveBtn]) b.enabled = !busy;
+    for (const b of [this.createBtn, this.findBtn, this.topBtn, this.leaveBtn, this.inviteBtn, this.dismissBtn]) b.enabled = !busy;
+    const full = this.invite?.size >= SQUAD_MAX;
+    this.inviteJoinBtn.label = full ? 'Full' : 'Join';
+    this.inviteJoinBtn.enabled = !busy && !full;
     this.joinBtns.forEach((b, i) => (b.enabled = !busy && this.list.rows?.[i]?.size < SQUAD_MAX));
   }
 
@@ -210,10 +287,24 @@ export class SquadPanel {
       text(ctx, this.loadError, view.w / 2, 200, { size: 18, weight: 600, color: WARN, maxWidth: view.w - 40 });
       return;
     }
-    text(ctx, this.list.title, this.x0, LIST_Y - 14, { size: 13, weight: 700, align: 'left', color: DIM, maxWidth: this.contentW });
+    if (this.inviteBox) {
+      const k = this.inviteBox;
+      text(ctx, 'YOU’RE INVITED', k.x, k.y - 14, { size: 13, weight: 800, align: 'left', color: '#ffd35c' });
+      roundRect(ctx, k.x, k.y, k.w, k.h, 10);
+      ctx.fillStyle = 'rgba(255,180,0,0.18)';
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#ffb400';
+      ctx.stroke();
+      text(ctx, `📨 ${this.invite.name}`, k.x + 14, k.y + k.h / 2, { size: 18, align: 'left', color: '#ffd35c', maxWidth: k.w - 260 });
+      text(ctx, `👥 ${this.invite.size}/${SQUAD_MAX}`, this.inviteJoinBtn.x - 14, k.y + k.h / 2, { size: 14, weight: 600, align: 'right', color: DIM });
+      this.inviteJoinBtn.draw(ctx);
+      this.dismissBtn.draw(ctx);
+    }
+    text(ctx, this.list.title, this.x0, this.listY - 14, { size: 13, weight: 700, align: 'left', color: DIM, maxWidth: this.contentW });
     const { rows, error } = this.list;
     const msg = error ?? (!rows ? 'Loading…' : !rows.length ? (this.list.q ? 'No squads by that name yet. Start it yourself!' : 'No squads yet. Start the first one!') : null);
-    if (msg) text(ctx, msg, view.w / 2, LIST_Y + 40, { size: 17, weight: 600, color: error ? WARN : DIM, maxWidth: view.w - 40 });
+    if (msg) text(ctx, msg, view.w / 2, this.listY + 40, { size: 17, weight: 600, color: error ? WARN : DIM, maxWidth: view.w - 40 });
     this.rowBoxes?.forEach((k, i) => {
       roundRect(ctx, k.x, k.y, k.w, k.h, 10);
       ctx.fillStyle = 'rgba(255,255,255,0.07)';
@@ -225,9 +316,10 @@ export class SquadPanel {
   }
 
   renderSquad(ctx, view, s) {
-    text(ctx, s.name, view.w / 2, 40, { size: 34, color: '#ffb400', shadow: true, maxWidth: view.w - 2 * (this.leaveBtn.w + 40) });
+    text(ctx, s.name, view.w / 2, 40, { size: 34, color: '#ffb400', shadow: true, maxWidth: view.w - 2 * (Math.max(this.inviteBtn.w, this.leaveBtn.w) + 40) });
     const leader = s.members.find((m) => m.leader);
     text(ctx, `${s.size}/${SQUAD_MAX} members${leader ? ` · led by ${leader.name}` : ''}`, view.w / 2, 72, { size: 15, weight: 600, color: DIM, maxWidth: view.w - 40 });
+    this.inviteBtn.draw(ctx);
     this.leaveBtn.draw(ctx);
 
     // The members, longest-standing first, in as many columns as fit.
@@ -257,7 +349,8 @@ export class SquadPanel {
       const i = shown.length;
       text(ctx, `+${s.members.length - i} more`, this.x0 + (i % cols) * (w + gap) + 12, top + Math.floor(i / cols) * (h + gap) + h / 2, { size: 16, align: 'left', color: DIM });
     }
-    const hint = this.status ?? { text: `Friends join from their Squad tab: Find by name, “${s.name}”.`, color: DIM };
+    const elsewhere = this.invite && this.invite.key !== s.key ? { text: `You’re invited to ${this.invite.name}. Leave ${s.name} to join it.`, color: WARN } : null;
+    const hint = this.status ?? elsewhere ?? { text: `Tap Invite to send a friend a link to join, or they can Find by name: “${s.name}”.`, color: DIM };
     text(ctx, hint.text, view.w / 2, hintY, { size: 14, weight: 500, color: hint.color, maxWidth: view.w - 40 });
   }
 }

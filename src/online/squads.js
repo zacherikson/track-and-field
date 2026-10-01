@@ -14,6 +14,9 @@ import { connectSDK, knownUid, rest, fields, docId, nameKey } from './firebase.j
  * over, and the last one out closes it. A member's `name` is their username
  * (users/{uid}), so you need one before joining (Profile).
  *
+ * An invite is a link to the game with the squad in it (inviteLink); opening it
+ * offers that squad, to join, on the Squad tab.
+ *
  * Joining, leaving and starting a squad are transactions over both docs, so
  * they always agree. Reads are public and go through the REST API like the
  * leaderboards (no SDK download just to look).
@@ -170,4 +173,53 @@ export async function renameInSquad(name) {
   if (!link.exists()) return;
   await fs.updateDoc(fs.doc(db, 'squads', link.data().squad), new fs.FieldPath('members', uid, 'name'), name);
   if (mine) mine = { ...mine, members: mine.members.map((m) => (m.me ? { ...m, name } : m)) };
+}
+
+// ------------------------------------------------------------------ invites
+
+const INVITE_KEY = 'trackroyale.invite';
+
+/** The game's address with an invite to `squad` in it (?squad=key): opening it offers that squad on the Squad tab. */
+export function inviteLink(squad) {
+  return `${location.origin}${location.pathname.replace(/index\.html$/, '')}?squad=${encodeURIComponent(squad.key)}`;
+}
+
+/**
+ * Call once as the page loads. If it was opened from an invite link, keeps the
+ * invite (until you join a squad or turn it down, so it survives picking a
+ * username or signing in first), tidies the address and returns true.
+ */
+export function takeInviteLink() {
+  const q = new URLSearchParams(location.search);
+  const key = q.get('squad');
+  if (!key) return false;
+  q.delete('squad');
+  history.replaceState(null, '', location.pathname + (q.size ? `?${q}` : '') + location.hash);
+  setInvite(nameKey(key.slice(0, 16)));
+  return true;
+}
+
+/** The squad you've been invited to (its key), or null. */
+export function getInvite() {
+  try {
+    return localStorage.getItem(INVITE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+/** Remembers an invite (a squad key), or with null forgets it. */
+export function setInvite(key) {
+  try {
+    if (key) localStorage.setItem(INVITE_KEY, key);
+    else localStorage.removeItem(INVITE_KEY);
+  } catch {}
+}
+
+/** A squad's row ({ key, name, size }), or null if there's no squad with this key. */
+export async function squadInfo(key) {
+  const doc = await rest(path('squads', key));
+  if (!doc?.fields) return null;
+  const s = squadOf(key, fields(doc.fields));
+  return { key, name: s.name, size: s.size };
 }

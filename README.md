@@ -95,6 +95,12 @@ they leave, whoever has been in it longest takes over, and the last one out
 closes it. You need a username first (Profile), since the member list shows it.
 Guests can join too. For now a squad is just its name and members.
 
+📨 **Invite** (on your squad's page) sends a friend a link through the phone's
+share sheet (or copies it, where there isn't one): the game's address with
+`?squad=<name>` on the end. Opening it starts the game on the Squad tab with
+that squad at the top, ready to join. The invite is kept until they join a
+squad or dismiss it (✕), so it's still there after picking a username first.
+
 Squads live in Firestore (`squads/` and `squadmembers/`, see
 [src/online/squads.js](src/online/squads.js)); `firestore.rules` checks every
 join, leave and new squad.

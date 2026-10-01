@@ -82,9 +82,13 @@ body parts into an athlete's sprite sheet (see [src/athletes/sprites/](src/athle
 ## The home screen
 
 Like Clash Royale: three tabs along the bottom, **Lineup | Play | Squad**. Tap
-one or swipe sideways to slide between them. The game opens on **Play** (the
-events, the tournament and their settings), and coming back from a race lands
-there too. Keyboard: 1 / 2 / 3 or Q / E change tab, Esc goes back to Play.
+one or swipe sideways to slide between them. The game opens on **Play**: two
+big buttons, **🤖 vs Computer** and **🌐 Live**, over your lineup warming up on
+the track (tap it to change it). Each button opens its list: the tournament and
+the five events, with that mode's settings (Solo/Team tournament for both;
+Rivals and Ghost only against the computer). ‹ Back (or Esc) returns to the
+buttons, and Menu after a race comes back to the list you raced from.
+Keyboard: 1 / 2 / 3 or Q / E change tab, Esc goes back to Play.
 
 ## Squads
 
@@ -116,7 +120,7 @@ be the same athlete in every slot or a different one in each. There's also a
 **Solo** slot: the athlete who does all five in a solo tournament. The athletes
 only look different for now; they all run on the same physics.
 
-The Play tab's **TOURNAMENT** toggle picks the kind of tournament, offline and live:
+The **TOURNAMENT** toggle (in both lists) picks the kind of tournament, offline and live:
 - **Solo**: your solo athlete does all five events, like a pentathlon.
 - **Team**: your lineup, one athlete per event. Your rivals in each event are
   the athletes who aren't doing it for you, and your total is your team's.
@@ -133,9 +137,9 @@ total. Marks made with changed tuning aren't posted, and don't count as a
 personal best either. Set your username with the 👤 button at the top right of
 the menu; names are unique.
 
-**Live play**: the menu has two rows of events. OFFLINE is against the
-computer; ONLINE is live against other people, for every event and the
-tournament. You wait in a waiting room for that event until someone else joins;
+**Live play**: **🌐 Live** on the Play tab lists every event and the
+tournament, live against other people (**🤖 vs Computer** is against the
+computer). You wait in a waiting room for that event until someone else joins;
 then a countdown starts, more can join (up to 4), and everyone starts at the
 same moment (each phone reads the server's clock). There are no computer rivals
 in live play, so every phone shows the same results.
@@ -169,7 +173,7 @@ Firebase console resets everyone's bests on it. Marks are kept to the
 hundredth, as they're shown (`roundMark` in `registry.js`), and tournament
 scores in whole points.
 
-Every attempt is also recorded. Turn **GHOST** on in the menu (it starts off)
+Every attempt is also recorded. Turn **GHOST** on in the vs Computer list (it starts off)
 and your best one on the phone comes back as a see-through **ghost** ("Your
 best"): in the lane next to you in the 100m and hurdles, and on your runway,
 starting when your attempt starts, in the long jump, pole vault and javelin. In

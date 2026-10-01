@@ -26,7 +26,7 @@ const TAP = 24; // a touch that ends within this of where it started is a tap
  * get the same calls as a scene, except that input comes sorted: taps go to
  * the panel showing (as a 'down' at the touch's start, sent once the finger
  * lifts, so a swipe that starts on a button doesn't press it), and keys too.
- * Keyboard: 1 / 2 / 3 or Q / E change tab, Esc goes back to Play.
+ * Keyboard: 1 / 2 / 3 or Q / E change tab, Esc goes back to Play (and out of a list there).
  */
 export class HomeScene {
   constructor(tab = 'play') {
@@ -71,7 +71,10 @@ export class HomeScene {
         const digit = ['Digit1', 'Digit2', 'Digit3'].indexOf(e.code);
         if (digit >= 0) this.show(digit);
         else if (e.code === 'KeyQ' || e.code === 'KeyE') this.show(this.tab + (e.code === 'KeyE' ? 1 : -1));
-        else if (e.code === 'Escape') this.show(TABS.indexOf('play'));
+        else if (e.code === 'Escape') {
+          if (this.tab !== TABS.indexOf('play')) this.show(TABS.indexOf('play'));
+          else this.panels[this.tab].back?.(); // out of a list on the Play tab
+        }
         else events.push(e);
         continue;
       }

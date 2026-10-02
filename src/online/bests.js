@@ -1,5 +1,5 @@
 import { BOARDS, TOURNAMENT_BOARDS } from '../events/registry.js';
-import { getBest, setBest, getGhost, setGhost, getBestTournament, saveBestTournament, addTopMark, forgetTopMarks, getCampaign } from '../core/storage.js';
+import { getBest, setBest, getGhost, setGhost, getBestTournament, saveBestTournament, addTopMark, forgetTopMarks, getCampaign, getSpecialLevel } from '../core/storage.js';
 import { player, soloAthlete } from '../athletes/roster.js';
 import { changes } from '../tuning/store.js';
 import { myEntries, fetchGhost, isSignedIn, submitMark } from './firebase.js';
@@ -36,7 +36,7 @@ export function counts() {
 export function recordTopMark(board, mark, live = false) {
   if (!counts() || mark == null || !Number.isFinite(mark)) return 0;
   const who = board.tournament === 'team' ? 'Team' : board.tournament === 'solo' ? soloAthlete().name : player(board.id).name;
-  const where = live ? 'live' : (getCampaign() ?? 'training');
+  const where = live ? 'live' : board.special ? getSpecialLevel() : (getCampaign() ?? 'training'); // special events always have rivals
   return addTopMark(board.id, { mark, at: Date.now(), who, where }, board.lowerIsBetter);
 }
 

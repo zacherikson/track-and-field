@@ -1,7 +1,7 @@
 import { Button, text, roundRect } from '../core/ui.js';
 import { ordinal } from '../core/math.js';
 import { formatMark } from '../events/registry.js';
-import { getBest, submitBest, getCampaign, getBeaten, saveGhostIfBetter, canTune } from '../core/storage.js';
+import { getBest, submitBest, getCampaign, getBeaten, saveGhostIfBetter, canTune, getSpecialLevel } from '../core/storage.js';
 import { postMark } from '../online/post.js';
 import { counts, recordTopMark } from '../online/bests.js';
 import { flow } from '../flow.js';
@@ -129,7 +129,7 @@ export class ResultScene {
     else if (me.status === 'nm') headline = 'NO MARK';
     else headline = formatMark(this.ev, me.mark);
     const cx = lx + colW / 2;
-    const where = this.stats?.live ? 'LIVE' : getCampaign() ? getCampaign().toUpperCase() : 'TRAINING';
+    const where = this.stats?.live ? 'LIVE' : this.ev.special ? getSpecialLevel().toUpperCase() : getCampaign() ? getCampaign().toUpperCase() : 'TRAINING';
     text(ctx, `${this.ev.name.toUpperCase()} · ${where}${this.beaten ? ' · BEATEN!' : ''}`, cx, 52, { size: 20, color: 'rgba(255,255,255,0.7)' });
     text(ctx, headline, cx, 118, { size: me.status === 'ok' ? 72 : 38, color: '#fff', shadow: true });
     if (me.status === 'ok' && this.results.length > 1) text(ctx, `${ordinal(this.place)} place`, cx, 178, { size: 32, color: this.place === 1 ? '#ffb400' : '#fff' });
@@ -150,7 +150,7 @@ export class ResultScene {
       // Numbers to talk about when tuning.
       const s = this.stats;
       const pace = s.hits / me.mark;
-      text(ctx, `${s.hits} hits · ${s.misses} ${s.misses === 1 ? 'miss' : 'misses'}${s.extra ? ` · ${s.extra}` : ''} · ${s.paceText ?? `${pace.toFixed(1)} hits/s`} · top ${(s.topSpeed * 3.6).toFixed(0)} km/h`, cx, y + 72, {
+      text(ctx, `${s.hits} ${s.hitWord ?? 'hits'} · ${s.misses} ${s.misses === 1 ? 'miss' : 'misses'}${s.extra ? ` · ${s.extra}` : ''} · ${s.paceText ?? `${pace.toFixed(1)} hits/s`} · top ${(s.topSpeed * 3.6).toFixed(0)} km/h`, cx, y + 72, {
         size: 15, weight: 500, color: 'rgba(255,255,255,0.65)', maxWidth: colW,
       });
     }

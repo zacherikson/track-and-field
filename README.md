@@ -6,8 +6,8 @@ drawn art is ready to switch back on (see [src/athletes/sprites/](src/athletes/s
 Plain HTML5 Canvas + vanilla ES modules. No framework, no build step.
 
 **Status:** all five events playable (100m Dash, 110m Hurdles, Long Jump, Pole
-Vault, Javelin), against Amateur or Pro rivals, plus a 4×100m relay under
-Special Events.
+Vault, Javelin), against Amateur or Pro rivals, plus a 4×100m relay and a
+cycling time trial under Special Events.
 
 ## Play on your phone
 
@@ -111,8 +111,8 @@ big buttons, **🤖 vs Computer**, **🌐 Live** and **⭐ Special Events**, ove
 lineup warming up on the track (tap it to change it). vs Computer and Live open
 the tournament and the five events, with that mode's settings (Solo/Team
 tournament for both; Rivals and Ghost only against the computer). Special
-Events opens the events that aren't part of the five (the 4×100m relay), with
-a RIVALS toggle, Amateur or Pro. ‹ Back (or Esc) returns to the
+Events opens the events that aren't part of the five (the 4×100m relay and the
+time trial), with a RIVALS toggle, Amateur or Pro. ‹ Back (or Esc) returns to the
 buttons, and Menu after a race comes back to the list you raced from.
 Keyboard: 1 / 2 / 3 or Q / E change tab, Esc goes back to Play.
 
@@ -143,6 +143,33 @@ Rivals race in the venue for their level: the high school for Amateur, the big
 stadium for Pro. The relay isn't on the online leaderboards yet. Tuning:
 `CONFIG.relay` in [`src/config.js`](src/config.js); `node tools/simulate.mjs`
 shows what a change does to team times and exchange grades.
+
+## Time trial
+
+Under **Special Events**: 620 m of hilly road on a bike, against the clock,
+with your five rivals riding it alongside you as see-through ghosts. A flat
+start, an 8% climb, an 11% descent, a flat and a short kick to the line,
+drawn side on with the hills exaggerated so you can see them coming (the
+profile along the top shows the whole course).
+
+- **Pedal** with the two big pads, left and right in turn: the green one is
+  next (the same foot twice is a missed stroke).
+- **Shift** with the small blue buttons above them: − easier, + harder (↑ ↓
+  on a keyboard). The PEDALS meter shows how fast the pedals go round (the
+  needle) against your rhythm (the yellow tick): keep the needle in the green.
+  Your legs push hardest slowly and give out fast, so power peaks in the
+  middle: too big a gear on the climb and you grind, too small on the flat and
+  you're spinning as fast as your thumbs go. SHIFT UP / SHIFT DOWN prompts help.
+- **Tuck**: hold both pads (or Space). No pedalling, much less drag: once the
+  descent spins you out in top gear, it's quicker than pedalling.
+- **Bike throw**: in the last 20 m both pads turn orange; press both to shove
+  the front wheel at the line.
+
+Time checks at the top of the climb and the bottom of the descent say how you
+stand against the fastest rival through there so far. There are no late hits
+after this one. Tuning: `CONFIG.cycling` in [`src/config.js`](src/config.js);
+`node tools/simulate.mjs` shows what each gear choice, the tuck and the rivals
+come to.
 
 ## Squads
 
@@ -325,6 +352,8 @@ src/events/
   hurdles110.js       110m hurdles: button sets along the top, hurdles in every lane, hurdling pose
   relayRules.js       4x100m relay: the exchange zone, the outgoing runner, PASS / TAKE judging, rival timing (pure)
   relay4x100.js       4x100m relay: teams of four, every runner on the track, the blue button, the baton
+  cyclingRules.js     time trial: the course, bike physics (gears, legs, hills, drag, tuck, throw), rival riders (pure)
+  timeTrial.js        time trial: pedal pads, shifters, tuck, time checks, the pedal meter and course profile
   longJumpRules.js    long jump: flight physics, marks from the foul line, stretch, rival jumps (pure)
   longJump.js         long jump: 3 rounds, run-up, blinking takeoff pads, flight, stretch, sand, marks
   poleVaultRules.js   pole vault: plant and release quality, height, rival vaults (pure)
@@ -343,6 +372,7 @@ src/render/targetPads.js  falling target + hit ring animations (100m, long jump 
 src/render/runway.js  long jump runway, board and sand pit (on the stadium renderer)
 src/render/javelinField.js  javelin runway, foul line and sector; the flight shot (sky, hills, sea) down to where it sticks in the grass
 src/render/vaultArena.js  pole vault runway, plant box, landing mat, uprights with height marks, tall sky
+src/render/road.js    time trial road side on (real hills, exaggerated), scenery, arches; the rider on a TT bike
 src/online/
   ghost.js            records a run's inputs and replays them as a ghost (pure)
   firebase.js         online leaderboards: lazy-loaded Firebase SDK, anonymous and Google sign-in, Firestore

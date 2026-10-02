@@ -8,6 +8,9 @@ import { TrackRenderer } from '../src/render/track.js';
 import { RunwayRenderer } from '../src/render/runway.js';
 import { VaultRenderer } from '../src/render/vaultArena.js';
 import { JavelinRenderer } from '../src/render/javelinField.js';
+import { RoadRenderer, drawCyclist } from '../src/render/road.js';
+import { buildCourse } from '../src/events/cyclingRules.js';
+import { CHARACTERS } from '../src/athletes/roster.js';
 import { Camera } from '../src/core/camera.js';
 import { CONFIG } from '../src/config.js';
 
@@ -98,7 +101,16 @@ for (const [id, venue] of Object.entries(VENUES)) {
   });
   if (!jvFills.has(venue.sector.base)) throw new Error(`${id}: javelin sector never painted`);
 
-  const all = new Set([...raceFills, ...ljFills, ...pvFills, ...jvFills]);
+  // Time trial: the road at the start, a time check and the finish, and a rider on it.
+  const road = new RoadRenderer(buildCourse(CONFIG.cycling.course), venue);
+  const roadFills = run('road', (ctx) => {
+    for (const x of [0, CONFIG.cycling.course.checks[0], CONFIG.cycling.course.length]) road.draw(ctx, view, { x, h: road.road.heightAt(x) });
+    drawCyclist(ctx, 300, 300, 80, -0.1, { crank: 1, wheel: 1, tuck: false, reach: 0.3 }, CHARACTERS[0].colors);
+  });
+  if (!roadFills.has(venue.road.asphalt)) throw new Error(`${id}: road never painted`);
+  if (!roadFills.has(venue.road.banner)) throw new Error(`${id}: road banners never painted`);
+
+  const all = new Set([...raceFills, ...ljFills, ...pvFills, ...jvFills, ...roadFills]);
   console.log(`${id.padEnd(9)} ok — ${all.size} distinct colors, sky ${venue.sky.top} → ${venue.sky.bottom}, track ${venue.track.surface}`);
 }
 

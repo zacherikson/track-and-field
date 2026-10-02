@@ -4,6 +4,21 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Time trial (Special Events)
+- A cycling time trial: 620 m of road (flat, 8% climb, 11% descent, flat, a
+  5.5% kick), you against the clock with the rivals as ghosts. Each tap is a
+  pedal stroke, left and right in turn; 8 gears (1.9 to 4.0 m a stroke).
+- The legs push hardest slowly and give out at `cMax` 8 strokes/s, so power
+  (`power` 9 W/kg) peaks at 4 strokes/s whatever the gear: the gear decides
+  what road speed that is. Your taps cap how fast the pedals can turn. Hold
+  both to tuck (`tuckAero` 0.001 against 0.002 sitting up); both in the last
+  20 m throws the bike.
+- From the simulator: tapping 4/s with every shift and the tuck right, 50.3 s;
+  never tucking 51.4 s; stuck in gear 5 54.7 s, in gear 3 58.2 s. Rivals:
+  Amateur median 58.5 s, Pro 51.8 s. Record 49.9 s (the 100m record's pace).
+- Special events now say their rival level (AMATEUR / PRO) on the results and
+  in your top marks, not TRAINING.
+
 ## Progress follows your account
 - Signed in with Google, your campaign progress (BEATEN! stamps, Pro
   unlocked), your top five marks on every board and your lineup and solo

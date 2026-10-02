@@ -4,6 +4,7 @@ import { LongJump } from './longJump.js';
 import { PoleVault } from './poleVault.js';
 import { Javelin } from './javelin.js';
 import { Relay4x100 } from './relay4x100.js';
+import { TimeTrial } from './timeTrial.js';
 
 // The list of events shown on the menu, in tournament order. Each available
 // event provides `create()` returning its play scene.
@@ -115,11 +116,13 @@ export const EVENTS = [
 ];
 
 // Special events: on their own list (home screen, Special Events), never in a
-// tournament, and not on the online leaderboards (yet). Always against rivals.
+// tournament, and not on the online leaderboards (yet). Always against rivals,
+// at Special Events' RIVALS level (`special`: results say that level, not Training).
 export const SPECIAL_EVENTS = [
   {
     id: 'relay4x100',
     name: '4×100m Relay',
+    special: true,
     record: 33.8, // what the 100m record's pace runs with three perfect exchanges (tools/simulate.mjs)
     unit: 's',
     lowerIsBetter: true,
@@ -134,6 +137,27 @@ export const SPECIAL_EVENTS = [
     ],
     create() {
       return new Relay4x100(this);
+    },
+  },
+  {
+    id: 'timetrial',
+    name: 'Time Trial',
+    special: true,
+    record: 49.9, // the 100m record's pace (4.15 taps/s) with every shift, the tuck and the throw right (tools/simulate.mjs)
+    unit: 's',
+    lowerIsBetter: true,
+    available: true,
+    againLabel: 'Ride again',
+    howTo: [
+      'Pedal with the two big pads, LEFT, RIGHT, LEFT…: the green one is next.',
+      'Shift with the blue buttons: − easier for the climb, + harder for the flat.',
+      'Keep the PEDALS needle in the green. Too slow? Shift down. Spinning? Shift up.',
+      'Downhill, HOLD both pads to tuck. In the last stretch, press both to throw the bike.',
+      'Your rivals ride with you as ghosts. Time checks at the top and the bottom.',
+      'Desktop: ← → to pedal, ↑ ↓ to shift, hold Space to tuck.',
+    ],
+    create() {
+      return new TimeTrial(this);
     },
   },
 ];

@@ -32,6 +32,8 @@ import { getCampaign } from '../core/storage.js';
  *   upright    vault posts { post, shade }
  *   zone       relay exchange zone { fill, line } — stays blue (it matches the
  *              PASS button) but has to read against this venue's surface
+ *   road       the time trial's road out in the country (render/road.js):
+ *              { asphalt, edge, verge, earth, hillFar, hillNear, tree, post, banner, bannerText }
  *   signs      distance signs { post, plate, text }
  *   finish     finish post { post, sign, text }
  *   lights     floodlight towers over the stand
@@ -72,6 +74,7 @@ const AMATEUR = {
     tick: '#9a9a9a',
   },
   zone: { fill: 'rgba(64,140,255,0.2)', line: '#3d86ff' },
+  road: { asphalt: '#4a4d52', edge: '#f2f2f2', verge: '#5fae4a', earth: '#7a5a3c', hillFar: '#9cc3a0', hillNear: '#6aa25a', tree: '#2f6b3a', post: '#ffffff', banner: '#e4572e', bannerText: '#fff' },
   blocks: { rail: '#3b4250', railTop: '#9aa3b2', plate: '#b3172b', plateFace: '#ef4f5f' },
   sand: { sand: '#e6cf95', rim: '#d9d2c3' },
   board: { face: '#f7f7f2', foul: '#e8281e' },
@@ -103,6 +106,7 @@ const TRAINING = {
     tick: '#8d8778',
   },
   zone: { fill: 'rgba(64,140,255,0.22)', line: '#4f82c8' }, // faded paint, like the rest of it
+  road: { asphalt: '#5a5752', edge: 'rgba(240,238,228,0.6)', verge: '#6f8b48', earth: '#6b5a44', hillFar: '#7d9471', hillNear: '#5c7a52', tree: '#2f5436', post: '#c8c2b4', banner: '#6e8a63', bannerText: '#f2efe6' },
   blocks: { rail: '#4a4a46', railTop: '#8c8a80', plate: '#8c4a3a', plateFace: '#a9614c' }, // rusted
   sand: { sand: '#cdbd93', rim: '#b8b2a4' },
   board: { face: '#e4e0d2', foul: '#b4443a' },
@@ -148,6 +152,7 @@ const PRO = {
     tick: '#c6ccd2',
   },
   zone: { fill: 'rgba(150,215,255,0.34)', line: '#a5deff' }, // pale: a blue zone on a blue track
+  road: { asphalt: '#2e3138', edge: '#ffffff', verge: '#3a8a3e', earth: '#5a4632', hillFar: '#4a5a8a', hillNear: '#2e5a3e', tree: '#1f3d2a', post: '#f0f4f8', banner: '#d92b1f', bannerText: '#fff' }, // evening, under the lights
   blocks: { rail: '#2b3140', railTop: '#cfd6e2', plate: '#d81f3c', plateFace: '#ff5a6e' },
   sand: { sand: '#efdca6', rim: '#eceade' },
   board: { face: '#ffffff', foul: '#ff2a1e' },

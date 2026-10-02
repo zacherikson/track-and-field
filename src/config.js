@@ -237,6 +237,54 @@ export const CONFIG = {
   },
 
   /**
+   * TIME TRIAL (special event; see cyclingRules.js). One hilly road, you
+   * against the clock, rivals as see-through ghosts. Each tap is a pedal
+   * stroke, left and right in turn; the gear turns pedal speed into road
+   * speed. The legs push hardest slowly and give out at `cMax` strokes/s, so
+   * power peaks halfway, at cMax / 2: too big a gear on a climb and you grind,
+   * too small on the flat and you spin out. Your taps cap how fast the pedals
+   * can go round. Downhill, hold both thumbs to tuck.
+   */
+  cycling: {
+    // Gradient (rise / run) at distances along the road (m), eased between the points.
+    course: {
+      grade: [
+        [0, 0], [70, 0], [100, 0.08], [200, 0.08], [225, 0], [250, -0.11], [390, -0.11],
+        [420, 0], [490, 0], [510, 0.055], [550, 0.055], [565, 0], [620, 0],
+      ],
+      length: 620, // m to the finish
+      checks: [225, 430], // time checks: the top of the climb, and the bottom of the descent
+    },
+    gears: [1.9, 2.2, 2.5, 2.8, 3.1, 3.4, 3.7, 4.0], // m the bike goes per pedal stroke, easiest first
+    startGear: 0, // index into gears: what you start in (off the ramp in the easiest)
+    power: 9, // W/kg at the best pedal speed (cMax / 2)
+    cMax: 8, // strokes/s at which the legs have nothing left to push with
+    band: [3.3, 4.7], // strokes/s: the green part of the pedal meter (within 3% of best power)
+    maxAccel: 3, // m/s^2 at most from pedalling
+    soft: 0.35, // strokes/s: pushing fades out as the pedals catch up with your taps
+    crawl: 1.6, // m/s: standing on the pedals, you never quite stop on a climb
+    gravity: 9.81,
+    roll: 0.004, // rolling resistance
+    aero: 0.002, // per m: air drag, sitting up
+    tuckAero: 0.001, // ...tucked
+    tuckHold: 0.12, // s both thumbs down before it's a tuck (not two pedal strokes)
+    // Your pedalling rhythm from the taps, as the runner's cadence works.
+    pace: { first: 0.3, smoothing: 0.3, idleGrace: 1.3, maxInterval: 0.7 },
+    // Bike throw at the line: press both in the last `zone` m.
+    throw: { zone: 20, reach: 0.5, rise: 0.22, hold: 0.12, recover: 0.3 },
+    wheelFront: 0.84, // m from the bike's middle to the front of the front tyre: what crosses the line
+    countdown: 3, // s of 3, 2, 1 on the start ramp
+    finishHold: 2.6, // s after you cross before the results
+    maxTime: 120, // s; give up after this
+    // Rivals: tapping rate, how long they take to see they need a gear, how
+    // often they bother to tuck, and how far off their bike throw is (m).
+    ai: {
+      amateur: { cadence: [3.1, 3.7], react: [1.0, 1.6], tuck: 0.4, throwErr: [-0.6, 1.5], jitter: 0.25 },
+      pro: { cadence: [3.8, 4.4], react: [0.3, 0.55], tuck: 0.95, throwErr: [-0.2, 0.5], jitter: 0.15 },
+    },
+  },
+
+  /**
    * LONG JUMP, from footage of the original plus real rules (see
    * longJumpRules.js). The run-up uses the 100m's targets and runner physics.
    */

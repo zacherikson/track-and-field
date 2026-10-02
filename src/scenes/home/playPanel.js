@@ -34,7 +34,8 @@ let lastList = null;
  * - Training: play anything on your own, no rivals (your ghost if GHOST is on), nothing ticked off.
  *   Campaigns never have a ghost.
  * Live is the tournament and the five events against other people.
- * Special Events is what doesn't fit the five (the 4x100m relay), always
+ * Special Events is what doesn't fit the five (the 4x100m relay, the cycling
+ * time trial), always
  * against computer rivals at the level its RIVALS toggle says.
  */
 export class PlayPanel {
@@ -51,7 +52,7 @@ export class PlayPanel {
     // The two big buttons.
     this.offlineBig = new BigButton({ label: '🤖 vs Computer', sub: 'Tournament + 5 events', color: '#e4572e', onTap: () => this.open('offline') });
     this.liveBig = new BigButton({ label: '🌐 Live', sub: 'Race people right now', color: '#1f8a58', onTap: () => this.open('live') });
-    this.specialBig = new BigButton({ label: '⭐ Special Events', sub: '4×100m Relay', color: '#c2337a', onTap: () => this.open('special') });
+    this.specialBig = new BigButton({ label: '⭐ Special Events', sub: 'Relay · Time Trial', color: '#c2337a', onTap: () => this.open('special') });
     // Special Events: a card each, and who you race (remembered for the session).
     this.specialButtons = SPECIAL_EVENTS.map(
       (ev) =>

@@ -13,6 +13,7 @@ import { jumpMark, rivalJump } from '../src/events/longJumpRules.js';
 import { pressQuality, releaseQuality, releaseTarget, vaultHeight, rivalVault } from '../src/events/poleVaultRules.js';
 import { throwMark, rivalThrow } from '../src/events/javelinRules.js';
 import { Exchange, exchangeSpot, LEG } from '../src/events/relayRules.js';
+import { Bike, BikeAI, buildCourse, gearFor, idealThrow } from '../src/events/cyclingRules.js';
 
 const STEP = CONFIG.loop.fixedStep;
 const D = CONFIG.sprint100.distance;
@@ -535,4 +536,56 @@ for (const level of ['amateur', 'pro']) {
   const times = runs.map((r) => r.time).sort((a, b) => a - b);
   const share = Object.entries(grades).map(([g, n]) => `${g} ${Math.round((100 * n) / (runs.length * 3))}%`).join(', ');
   console.log(`${level.padEnd(8)} team median ${times[100].toFixed(2)}s, best ${times[0].toFixed(2)}s; exchanges: ${share}`);
+}
+
+// ---------------------------------------------------------------- time trial
+const CC = CONFIG.cycling;
+const ttRoad = buildCourse(CC.course);
+
+/**
+ * A steady rider tapping at `rate`: `shift` 'ideal' keeps the pedals near
+ * their best (or as fast as `rate` allows), a number stays in that gear;
+ * `tuck` tucks once a descent spins them out in top gear.
+ */
+function ttRide(rate, shift, tuck) {
+  const b = new Bike(CC, ttRoad);
+  b.start(0);
+  let next = 0.2;
+  let side = 'L';
+  for (let t = 0; t < CC.maxTime; t += STEP) {
+    b.tuck = tuck && b.grade < -0.03 && b.gear === CC.gears.length - 1 && b.v / CC.gears.at(-1) > rate * 0.97;
+    for (; next < t + STEP; next += 1 / rate) {
+      if (b.tuck) continue;
+      b.stroke(side, next);
+      side = side === 'L' ? 'R' : 'L';
+    }
+    const want = shift === 'ideal' ? gearFor(CC.gears, b.v, Math.min(CC.cMax / 2, rate * 0.9)) : shift;
+    if (want !== b.gear && !b.tuck) b.shift(Math.sign(want - b.gear));
+    if (ttRoad.length - b.front <= idealThrow(b)) b.throwBike();
+    b.update(STEP, t);
+    const cross = b.crossing(ttRoad.length, t, STEP);
+    if (cross != null) return cross;
+  }
+  return null;
+}
+
+console.log(`\nTIME TRIAL (${CC.course.length}m; steady tapping; ideal = shifting to keep the pedals at their best)`);
+for (const rate of [3.4, 4.0, 4.6]) {
+  const r = (shift, tuck) => ttRide(rate, shift, tuck).toFixed(2);
+  console.log(`${rate}/s: ideal + tuck ${r('ideal', true)}s   no tuck ${r('ideal', false)}s   stuck in gear 3 ${r(2, true)}s, gear 5 ${r(4, true)}s, gear 8 ${r(7, true)}s`);
+}
+for (const level of ['amateur', 'pro']) {
+  const times = Array.from({ length: 200 }, () => {
+    const b = new Bike(CC, ttRoad);
+    const ai = new BikeAI(b, CC.ai[level]);
+    ai.go(0);
+    for (let t = 0; t < CC.maxTime; t += STEP) {
+      ai.update(t, STEP);
+      b.update(STEP, t);
+      const cross = b.crossing(ttRoad.length, t, STEP);
+      if (cross != null) return cross;
+    }
+    return CC.maxTime;
+  }).sort((a, b) => a - b);
+  console.log(`${level.padEnd(8)} rival median ${times[100].toFixed(2)}s, best ${times[0].toFixed(2)}s`);
 }

@@ -531,8 +531,8 @@ export class PlayPanel {
   }
 }
 
-/** One of the two big buttons: a big label with a line under it, and a bottom edge so it stands up. */
-class BigButton extends Button {
+/** One of the big buttons (here, and the Squad tab's Practice): a big label with a line under it, and a bottom edge so it stands up. */
+export class BigButton extends Button {
   draw(ctx) {
     const inset = this.pressT > 0 ? 3 : 0;
     const { x, y, w, h } = this;

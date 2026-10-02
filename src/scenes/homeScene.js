@@ -49,6 +49,10 @@ export class HomeScene {
     this.layout(view);
   }
 
+  exit() {
+    this.panels.forEach((p) => p.exit?.());
+  }
+
   layout(view) {
     this.barTop = view.h - BAR_H - view.safe.b;
     const w = Math.min(210, (view.w - 2 * (14 + Math.max(view.safe.l, view.safe.r))) / TABS.length);

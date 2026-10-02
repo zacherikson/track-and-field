@@ -1,7 +1,7 @@
 // Top-level scene transitions in one place:
 // home (Lineup | Play | Squad tabs) -> event intro -> event (countdown/play inside) -> result -> retry | menu
 // tournament: intro -> event -> standings -> next intro ... -> champion
-// live: waiting room -> event (or a tournament's events) with the others in it
+// live: waiting room -> event (or a tournament's events) with the others in it (a squad's practice too)
 import { HomeScene } from './scenes/homeScene.js';
 import { IntroScene } from './scenes/introScene.js';
 import { ResultScene } from './scenes/resultScene.js';
@@ -11,7 +11,7 @@ import { LobbyScene } from './scenes/lobbyScene.js';
 import { StandingsScene } from './tournament/standingsScene.js';
 import { tournament } from './tournament/tournament.js';
 import { openTuning } from './tuning/panel.js';
-import { roundMark, EVENTS } from './events/registry.js';
+import { roundMark, eventById } from './events/registry.js';
 import { ORDER, tourModeOf } from './tournament/tournament.js';
 import { startLive, endLive, currentLive } from './online/live.js';
 import { resetScars } from './brawl/wounds.js';
@@ -46,6 +46,8 @@ export const flow = {
     if (stats?.run) stats = { ...stats, run: { ...stats.run, mark: roundMark(ev, stats.run.mark) } };
     // A live event played to the end: going on from here isn't leaving early (a tournament's is at the end).
     if (stats?.live && !tournament.active && currentLive()) currentLive().done = true;
+    // A squad's practice: Race again goes back to its waiting room, Menu to the Squad tab.
+    if (stats?.live && currentLive()?.squad) stats = { ...stats, squad: currentLive().squad };
     // A campaign event won (first place, ghosts aside) is ticked off.
     const winner = results.find((r) => !r.ghost);
     if (getCampaign() && !stats?.live && winner?.isPlayer && winner.status === 'ok') markBeaten(getCampaign(), ev.id);
@@ -67,20 +69,21 @@ export const flow = {
   // Your profile; Back returns to the home screen's `tab`.
   profile: (game, tab = 'play') => game.setScene(new ProfileScene(null, tab)),
   // Live: the waiting room for an event or the tournament (`kind`), then play with everyone in it (online/live.js).
-  live: (game, kind) => {
+  // `squad` ({ key, name }): that squad's practice room, which only its members see (Squad tab).
+  live: (game, kind, squad = null) => {
     setCampaign(null);
     endLive();
     tournament.end();
-    game.setScene(new LobbyScene(kind));
+    game.setScene(new LobbyScene(kind, squad));
   },
-  // The waiting room has closed: `info` = { kind, room, uid, name, players, startAt, setLen }.
+  // The waiting room has closed: `info` = { kind, room, uid, name, players, startAt, setLen, squad }.
   liveStart: (game, info) => {
     resetScars();
     const mode = tourModeOf(info.kind);
     const first = mode ? ORDER[0] : info.kind;
     const session = startLive(info, first);
     if (mode) tournament.start(mode, session);
-    const scene = EVENTS.find((e) => e.id === first).create();
+    const scene = eventById(first).create();
     scene.live = session;
     game.setScene(scene);
   },

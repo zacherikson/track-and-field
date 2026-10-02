@@ -11,9 +11,12 @@ import { getPlayerName } from '../core/storage.js';
  * database.rules.json says who may write what.
  *
  *   lobby/{kind}               = { room, startAt, setLen, players: { uid: { name, athlete, at } } }
+ *   squadlobby/{squad}/{kind}  = the same, for one squad's practice (squadRoomKey)
  *   live/{room}/{uid}          = { v, name, athlete, left, s, t0, run, n, done, f, res, ready, b, h }
  *
- * `kind` is an event id, 'tournament' (solo) or 'teamtournament' (tournament.js TOUR_KINDS). The lobby node IS the waiting room:
+ * `kind` is an event id, 'tournament' (solo) or 'teamtournament' (tournament.js TOUR_KINDS).
+ * PRACTICE is a squad's own waiting rooms: started from the Squad tab, and only
+ * listed there, on its members' Squad tabs (watchSquadRooms). The lobby node IS the waiting room:
  * whoever is in `players` plays together. When a second player arrives it gets
  * a start time (`startAt`, server clock, ms) a few seconds ahead; everyone
  * starts then. Shortly before, the room closes: the next player to arrive
@@ -82,23 +85,34 @@ function withStart(d, now) {
 }
 
 /**
+ * A squad's key as a database key: squad names may have a '.' in them, which
+ * the Realtime Database doesn't allow in a key (nor # $ [ ] /).
+ */
+export const squadRoomKey = (squadKey) => encodeURIComponent(squadKey).replace(/\./g, '%2E');
+
+/** Where the waiting room for `kind` lives: the public one, or squad `squad`'s practice ({ key }). */
+const lobbyPath = (kind, squad) => (squad ? `squadlobby/${squadRoomKey(squad.key)}/${kind}` : `lobby/${kind}`);
+
+/**
  * The waiting room for one event, or a tournament (`kind`). `onChange(view)` gets
  * { room, players: [{ uid, name, athlete, lineup, me }], startAt, setLen, closed, uid } whenever it changes.
  * `who` = the athletes you play as: { athlete } (a character id), plus a team
- * tournament's `lineup` ({ [eventId]: character id }).
+ * tournament's `lineup` ({ [eventId]: character id }). `squad` ({ key }): that
+ * squad's practice room instead of the public one.
  */
 export class Lobby {
-  constructor(kind, onChange, who) {
+  constructor(kind, onChange, who, squad = null) {
     this.kind = kind;
     this.onChange = onChange;
     this.who = who;
+    this.path = lobbyPath(kind, squad);
     this.data = null;
   }
 
   async join() {
     const { rt, db, uid } = await connectRT();
     Object.assign(this, { rt, db, uid });
-    this.ref = rt.ref(db, `lobby/${this.kind}`);
+    this.ref = rt.ref(db, this.path);
     const me = { name: getPlayerName(), ...this.who };
     await this.update((d, now) => {
       // Join the room in the node unless it's closed or full; otherwise start a new one.
@@ -109,7 +123,7 @@ export class Lobby {
       return withStart(next, now);
     });
     // Your phone drops off: the server takes you out of the room.
-    this.gone = rt.onDisconnect(rt.ref(db, `lobby/${this.kind}/players/${uid}`));
+    this.gone = rt.onDisconnect(rt.ref(db, `${this.path}/players/${uid}`));
     this.gone.remove();
     this.stop = rt.onValue(this.ref, (snap) => {
       this.data = snap.val();
@@ -147,6 +161,29 @@ export class Lobby {
   }
 }
 
+/**
+ * Follows squad `squadKey`'s practice rooms: `onChange(rooms)` gets the ones
+ * that are open, now and on every change, oldest first:
+ * [{ kind, host, players: [{ uid, name, me }], full, mine }] (`host`: the name
+ * of whoever started it, `mine`: you're in it). Resolves to a function that stops it.
+ */
+export async function watchSquadRooms(squadKey, onChange) {
+  const { rt, db, uid } = await connectRT();
+  return rt.onValue(rt.ref(db, `squadlobby/${squadRoomKey(squadKey)}`), (snap) => {
+    const now = serverNow();
+    const rooms = [];
+    for (const [kind, d] of Object.entries(snap.val() ?? {})) {
+      if (!d || typeof d !== 'object' || closed(d, now)) continue;
+      const players = Object.entries(d.players ?? {})
+        .map(([id, p]) => ({ uid: id, name: p?.name ?? '?', at: p?.at ?? 0, me: id === uid }))
+        .sort((a, b) => a.at - b.at);
+      if (!players.length) continue;
+      rooms.push({ kind, host: players[0].name, players, full: players.length >= MAX_PLAYERS, mine: players.some((p) => p.me), at: players[0].at });
+    }
+    onChange(rooms.sort((a, b) => a.at - b.at));
+  });
+}
+
 /** The field events: three rounds, each its own stage. */
 export const FIELD = new Set(['longjump', 'polevault', 'javelin']);
 
@@ -156,8 +193,8 @@ const clash = (a, b) => a !== b && (a.startsWith(`${b}/`) || b.startsWith(`${a}/
 /**
  * One room's play, from the waiting room closing to the end of the event or
  * tournament: your updates out, everyone else's in, and when each stage starts.
- * `info` = { kind, room, uid, name, players, startAt, setLen } from the waiting
- * room, and `first` = the event it starts with.
+ * `info` = { kind, room, uid, name, players, startAt, setLen, squad } from the waiting
+ * room (`squad`: { key, name } for a squad's practice), and `first` = the event it starts with.
  */
 export class LiveSession {
   constructor(info, first) {

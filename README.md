@@ -112,7 +112,8 @@ lineup warming up on the track (tap it to change it). vs Computer and Live open
 the tournament and the five events, with that mode's settings (Solo/Team
 tournament for both; Rivals and Ghost only against the computer). Special
 Events opens the events that aren't part of the five (the 4×100m relay and the
-time trial), with a RIVALS toggle, Amateur or Pro. ‹ Back (or Esc) returns to the
+time trial), with a RIVALS toggle, Amateur or Pro. The Squad tab has ⚔ Practice:
+live events with just your squad (see Squads). ‹ Back (or Esc) returns to the
 buttons, and Menu after a race comes back to the list you raced from.
 Keyboard: 1 / 2 / 3 or Q / E change tab, Esc goes back to Play.
 
@@ -140,7 +141,10 @@ the button closes in as you catch them; tap when it meets the button.
 
 The results show each of your exchanges and the baton's time through the zone.
 Rivals race in the venue for their level: the high school for Amateur, the big
-stadium for Pro. The relay isn't on the online leaderboards yet. Tuning:
+stadium for Pro. The relay isn't on the online leaderboards yet. It plays
+live as a squad Practice (Squad tab): each other player's team runs in the
+lane next to yours, drawn from what their phone sends (every runner and the
+baton, 20 times a second). Tuning:
 `CONFIG.relay` in [`src/config.js`](src/config.js); `node tools/simulate.mjs`
 shows what a change does to team times and exchange grades.
 
@@ -189,6 +193,17 @@ screen: who invited them, the squad and who's in it, a box for their username
 joins in one go. Then "You're in" and **Let's go** to the squad. **Not now**
 leaves the invite at the top of the Squad tab (its Join opens the same screen)
 until they join a squad or dismiss it (✕).
+
+⚔ **Practice** (on your squad's page) is a friendly battle with your squad,
+like Clash Royale's: tap it, pick an event (the five, the **4×100m relay**, or
+the tournament as the Play tab's Solo/Team toggle has it), and you're in a live
+waiting room that only your squad sees. While it's open it shows next to the
+Practice button on every member's Squad tab, with **Join**; it plays like any
+live event (below), up to 4 players, and Race again or Menu bring you back to
+the squad. Squad rooms are `squadlobby/{squad}/{kind}` in the Realtime
+Database, next to the public `lobby/{kind}` (`src/online/live.js`); the
+database can't see squads (they're in Firestore), so its rules don't check
+who joins: only members are shown the room.
 
 Squads live in Firestore (`squads/` and `squadmembers/`, see
 [src/online/squads.js](src/online/squads.js)); `firestore.rules` checks every
@@ -380,7 +395,7 @@ src/online/
   post.js             posts a finished mark to its board and reports how it went
   bests.js            personal bests: your board entries, synced to the phone's copy
   progress.js         campaign progress, top five marks and lineup, synced to your account (merged)
-  live.js             live play: the waiting rooms, shared start times, sending and receiving players
+  live.js             live play: the waiting rooms (public, and each squad's Practice), shared start times, sending and receiving players
   liveRun.js          another player's runner in a live 100m, replayed as their taps arrive
   liveTrace.js        sends your athlete frame by frame in live play, and draws the others' (all but the 100m)
   liveField.js        a field event played live: rounds together, the others on your runway
@@ -390,7 +405,7 @@ src/online/
 src/scenes/inviteScreen.js      the invite screen a squad invite link opens: pick a username, join
 src/scenes/homeScene.js         the home screen: Lineup | Play | Squad tabs, swipes, the tab bar
 src/scenes/home/                its panels: lineupPanel.js (who does each event, and your solo athlete),
-                                playPanel.js (the events, tournament and settings), squadPanel.js
+                                playPanel.js (the events, tournament and settings), squadPanel.js (your squad, Practice)
 src/scenes/leaderboardScene.js  online leaderboards, a tab per event, with Race buttons
 src/scenes/profileScene.js      your username (unique, saved in Firebase) and Google sign-in
 src/scenes/lobbyScene.js        the live waiting room (any event, or a solo or team tournament)

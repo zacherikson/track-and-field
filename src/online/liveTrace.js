@@ -55,8 +55,9 @@ export class TraceStream {
  * left, done, dx).
  */
 export class LiveTrace {
-  constructor(evId, props, stage) {
+  constructor(evId, props, stage, maxFrames = MAX_FRAMES) {
     this.stage = stage;
+    this.maxFrames = maxFrames; // as their TraceRecorder keeps
     this.data = { v: TRACE_VERSION, kind: 'trace', ev: evId, props, mark: null, f: [] };
     this.stride = HEAD + props;
     this.taken = 0; // chunks read so far
@@ -96,7 +97,7 @@ export class LiveTrace {
     let got = false;
     while (f && typeof f === 'object' && typeof f[this.taken] === 'string') {
       const nums = f[this.taken++].split(',').map(Number);
-      if (nums.length % this.stride || !nums.every(Number.isFinite) || this.frames + nums.length / this.stride > MAX_FRAMES) continue;
+      if (nums.length % this.stride || !nums.every(Number.isFinite) || this.frames + nums.length / this.stride > this.maxFrames) continue;
       for (const v of nums) this.data.f.push(v);
       got = true;
     }

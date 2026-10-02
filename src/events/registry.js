@@ -171,6 +171,11 @@ export const TOURNAMENT_BOARDS = {
   team: { id: 'teamtournament', name: 'Team Tournament', unit: 'pts', lowerIsBetter: false, online: true, tournament: 'team' },
 };
 
+/** Any playable event (the five, or a special one) by id. */
+export function eventById(id) {
+  return EVENTS.find((e) => e.id === id) ?? SPECIAL_EVENTS.find((e) => e.id === id);
+}
+
 /** Every online leaderboard, in menu order. */
 export const BOARDS = [...EVENTS, TOURNAMENT_BOARDS.solo, TOURNAMENT_BOARDS.team];
 

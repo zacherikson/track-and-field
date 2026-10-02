@@ -73,7 +73,7 @@ export class LaneRace {
     if (this.live) this.stage = this.live.stage(this.ev.id);
     this.athletes = this.buildField();
     this.player = this.athletes.find((a) => a.isPlayer);
-    if (this.traceProps != null) this.tracer = new TraceRecorder(this.ev.id, this.traceProps);
+    if (this.traceProps != null) this.tracer = new TraceRecorder(this.ev.id, this.traceProps, this.traceOpts);
     if (this.recordGhost) {
       this.recorder = new GhostRecorder(this.player.runner, {
         step: CONFIG.loop.fixedStep,
@@ -332,7 +332,7 @@ export class LaneRace {
       this.setState('finished', t);
     }
     // Live: wait for the others to finish (or give up on them). Everyone else crosses the line in the race itself.
-    const waitLive = this.athletes.some((a) => a.live && a.mark == null && !a.live.left) && end - this.stateT < this.cfg.finishHold + LIVE_WAIT;
+    const waitLive = this.athletes.some((a) => a.live && a.mark == null && !a.live.left) && end - this.stateT < this.cfg.finishHold + (this.cfg.liveWait ?? LIVE_WAIT);
     const waitRivals = this.athletes.some((a) => a.ai && a.mark == null) && end - this.goT < this.cfg.maxRaceTime + RIVAL_WAIT;
     if (this.state === 'finished' && end - this.stateT >= this.cfg.finishHold && !waitLive && !waitRivals) return this.finish();
 
@@ -589,7 +589,7 @@ export class LaneRace {
     // The player's run, for the ghost and the online leaderboard.
     if (stats && this.player.status === 'ok' && this.player.mark != null) {
       if (this.recorder) stats.run = this.recorder.data(this.player.mark);
-      else if (this.tracer) stats.run = this.tracer.data(this.player.mark, chosenPlayer(this.ev.id).id);
+      else if (this.tracer && !this.ev.special) stats.run = this.tracer.data(this.player.mark, chosenPlayer(this.ev.id).id); // a special event's frames are only for live play
     }
     flow.results(this.game, this.ev, results, stats);
   }
@@ -837,7 +837,7 @@ const RIVAL_WAIT = 10; // s past maxRaceTime a computer rival gets to finish bef
 const LANE_WIDTH = 1.22; // m
 
 /** Lanes from nearest to `lane` outwards (not `lane` itself). */
-function nearestLanes(lane, lanes) {
+export function nearestLanes(lane, lanes) {
   const out = [];
   for (let d = 1; out.length < lanes - 1; d++) {
     if (lane + d <= lanes) out.push(lane + d);

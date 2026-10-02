@@ -71,10 +71,10 @@ export class StandingsScene {
     this.buttons = this.final
       ? [
           tournament.live
-            ? new Button({ label: 'Play live again', color: '#2bb673', onTap: () => flow.live(this.game, TOUR_KINDS[tournament.mode]) })
+            ? new Button({ label: 'Play live again', color: '#2bb673', onTap: () => flow.live(this.game, TOUR_KINDS[tournament.mode], tournament.live.squad) })
             : new Button({ label: 'New tournament', color: '#2bb673', onTap: () => flow.tournament(this.game, tournament.mode) }),
           new Button({ label: '📊 Leaderboard', color: 'rgba(255,255,255,0.18)', onTap: () => flow.leaderboard(this.game, tournament.board) }),
-          new Button({ label: 'Menu', color: 'rgba(255,255,255,0.18)', onTap: () => flow.menu(this.game) }),
+          new Button({ label: 'Menu', color: 'rgba(255,255,255,0.18)', onTap: () => flow.menu(this.game, tournament.live?.squad ? 'squad' : 'play') }),
         ]
       : [
           new Button({ label: `Next: ${next.name}  ›`, color: '#2bb673', onTap: () => !this.live && this.goNext() }),

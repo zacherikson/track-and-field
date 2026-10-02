@@ -1,20 +1,33 @@
 import { Button, text, roundRect } from '../../core/ui.js';
-import { cleanName, getPlayerName } from '../../core/storage.js';
+import { cleanName, getPlayerName, getTourMode } from '../../core/storage.js';
 import { cachedSquad, loadMySquad, topSquads, searchSquads, createSquad, joinSquad, leaveSquad, kickFromSquad, SQUAD_MAX, inviteLink, getInvite, setInvite, squadInfo } from '../../online/squads.js';
 import { prewarmSDK } from '../../online/firebase.js';
+import { watchSquadRooms, MAX_PLAYERS, FIELD } from '../../online/live.js';
+import { EVENTS, eventById } from '../../events/registry.js';
+import { lineupSlotEmpty } from '../../athletes/roster.js';
+import { TOUR_KINDS, tourModeOf } from '../../tournament/tournament.js';
 import { flow } from '../../flow.js';
 import { openInvite } from '../inviteScreen.js';
+import { BigButton } from './playPanel.js';
 
 const WARN = '#ffb35c';
 const OK = '#59cd90';
 const DIM = 'rgba(255,255,255,0.6)';
 const PLAIN = 'rgba(255,255,255,0.15)';
 
+const GOLD = '#ffb400';
+
 /**
  * The home screen's right tab: your squad (online/squads.js). In one: its name
  * and members, Invite (a link to send a friend) and Leave; its leader can tap
  * a member to kick them out. Not in one: start a
  * squad, or find one and join it; a squad you've been invited to comes first.
+ *
+ * PRACTICE (in a squad), like a Clash Royale friendly battle: the big ⚔
+ * Practice button opens the events to pick from (the five, the 4x100m relay,
+ * the tournament), and picking one opens a live waiting room only your squad
+ * sees (online/live.js, squadlobby/). While it's open it's on every member's
+ * Squad tab, next to the button, with Join.
  */
 export class SquadPanel {
   constructor(home) {
@@ -41,6 +54,17 @@ export class SquadPanel {
     this.invite = null;
     this.inviteJoinBtn = new Button({ label: 'Join', w: 84, h: 32, size: 17, color: '#2bb673', onTap: () => this.invite && openInvite(this.game, { key: this.invite.key }) });
     this.dismissBtn = new Button({ label: '✕', w: 36, h: 32, size: 16, color: PLAIN, onTap: () => this.dropInvite() });
+    // Practice: the big button, the events it offers, and your squadmates' open rooms.
+    this.practiceBtn = new BigButton({ label: '⚔ Practice', sub: 'Race your squad live', color: '#d98a00', onTap: () => this.openPicker() });
+    this.picking = false;
+    this.pickBtns = PRACTICE_KINDS.map(
+      (k) => new Button({ label: k.label, sub: k.sub, w: 160, h: 70, size: 20, color: k.color, onTap: () => this.practice(k.kind ?? TOUR_KINDS[getTourMode()]) }),
+    );
+    this.cancelBtn = new Button({ label: 'Cancel', w: 140, h: 44, size: 19, color: PLAIN, onTap: () => this.back() });
+    this.rooms = []; // open practice rooms (watchSquadRooms)
+    this.roomBoxes = [];
+    this.roomBtns = [];
+    this.watching = null; // the squad whose rooms are followed
     this.refresh();
     this.loadInvite();
     if (this.home.panels[this.home.tab] === this) prewarmSDK(); // the game opened on this tab
@@ -71,6 +95,63 @@ export class SquadPanel {
         this.loadError = loadMessage(e);
       })
       .finally(() => this.relayout());
+  }
+
+  exit() {
+    this.watchRooms(null);
+  }
+
+  /**
+   * Follows squad `key`'s open practice rooms (null: stops). Only while the
+   * Squad tab is showing: it needs the Realtime Database, which nothing else
+   * on the home screen does.
+   */
+  watchRooms(key) {
+    if (key === this.watching) return;
+    this.unwatch?.();
+    this.unwatch = null;
+    this.watching = key;
+    this.rooms = [];
+    this.relayout();
+    if (!key) return;
+    watchSquadRooms(key, (rooms) => {
+      if (this.watching !== key) return;
+      this.rooms = rooms;
+      this.relayout();
+    })
+      .then((stop) => {
+        if (this.watching === key) this.unwatch = stop;
+        else stop();
+      })
+      .catch((e) => console.warn('squad practice rooms unavailable', e));
+  }
+
+  /** Practice: the events to pick from. */
+  openPicker() {
+    if (!this.mine || this.busy) return;
+    this.picking = true;
+    this.status = null;
+    for (const [i, k] of PRACTICE_KINDS.entries()) if (!k.kind) this.pickBtns[i].sub = getTourMode() === 'team' ? 'Team · 5 events' : 'Solo · 5 events';
+    this.relayout();
+  }
+
+  /** A step back (Esc): closes the event picker. True if it was open. */
+  back() {
+    if (!this.picking) return false;
+    this.picking = false;
+    return true;
+  }
+
+  /** Starts, or joins, your squad's practice room for `kind` (an event, or a tournament's). */
+  practice(kind) {
+    const s = this.mine;
+    if (!s) return;
+    this.picking = false;
+    if (tourModeOf(kind) === 'team' && EVENTS.some((ev) => lineupSlotEmpty(ev.id))) {
+      this.status = { text: 'A Team tournament needs a full lineup (Lineup tab), or switch to Solo on the Play tab.', color: WARN };
+      return;
+    }
+    flow.live(this.game, kind, { key: s.key, name: s.name });
   }
 
   /** The squad you've been invited to (an invite link: squads.js takeInviteLink), if any. */
@@ -245,6 +326,7 @@ export class SquadPanel {
       this.inviteBtn.x = 14 + view.safe.l;
       this.leaveBtn.x = view.w - 14 - view.safe.r - this.leaveBtn.w;
       this.inviteBtn.y = this.leaveBtn.y = 14 + view.safe.t;
+      this.layoutPractice(view, bottom);
       return;
     }
     // Not in a squad: the buttons in a row, then the list in one or two columns.
@@ -277,6 +359,49 @@ export class SquadPanel {
     this.rowBoxes.forEach((k, i) => Object.assign(this.joinBtns[i], { x: k.x + k.w - 84 - 6, y: k.y + 6 }));
   }
 
+  /**
+   * Practice along the bottom: the big button, then your squadmates' open
+   * rooms beside it, as many as fit. And the event picker over everything.
+   */
+  layoutPractice(view, bottom) {
+    this.practiceY = bottom - 30 - PRACTICE_H;
+    const b = this.practiceBtn;
+    Object.assign(b, { x: this.x0, y: this.practiceY, w: Math.min(260, Math.max(200, this.contentW * 0.3)), h: PRACTICE_H });
+    const gap = 12;
+    const left = b.x + b.w + 16;
+    const w = Math.min(280, this.contentW - (left - this.x0));
+    const fits = Math.max(1, Math.floor((this.x0 + this.contentW - left + gap) / (w + gap)));
+    this.roomBoxes = this.rooms.slice(0, fits).map((r, i) => ({ r, x: left + i * (w + gap), y: this.practiceY, w, h: PRACTICE_H }));
+    this.roomsLeft = { x: left, w: this.x0 + this.contentW - left };
+    this.roomBtns = this.roomBoxes.map(
+      (k) =>
+        new Button({
+          label: k.r.full && !k.r.mine ? 'Full' : 'Join',
+          w: 76,
+          h: 36,
+          size: 18,
+          color: '#2bb673',
+          enabled: !k.r.full || k.r.mine,
+          x: k.x + k.w - 76 - 10,
+          y: k.y + (k.h - 36) / 2,
+          onTap: () => this.practice(k.r.kind),
+        }),
+    );
+    // The picker: a card over the tab, four events to a row.
+    const cw = Math.min(this.contentW, 760);
+    const cols = 4;
+    const bw = (cw - 40 - (cols - 1) * 12) / cols;
+    this.pickCard = { x: view.w / 2 - cw / 2, y: 64, w: cw, h: 332 };
+    const rows = Math.ceil(this.pickBtns.length / cols);
+    this.pickBtns.forEach((btn, i) => {
+      const row = Math.floor(i / cols);
+      const inRow = row < rows - 1 ? cols : this.pickBtns.length - row * cols;
+      const rx = view.w / 2 - (inRow * bw + (inRow - 1) * 12) / 2;
+      Object.assign(btn, { w: bw, x: rx + (i % cols) * (bw + 12), y: this.pickCard.y + 84 + row * (btn.h + 12) });
+    });
+    Object.assign(this.cancelBtn, { x: view.w / 2 - this.cancelBtn.w / 2, y: this.pickCard.y + this.pickCard.h - this.cancelBtn.h - 14 });
+  }
+
   /** The buttons along the top when you're not in a squad. */
   buttonRow() {
     if (this.loadError) return [this.retryBtn];
@@ -284,7 +409,8 @@ export class SquadPanel {
   }
 
   get buttons() {
-    if (this.mine) return [this.inviteBtn, this.leaveBtn];
+    if (this.mine && this.picking) return [...this.pickBtns, this.cancelBtn];
+    if (this.mine) return [this.inviteBtn, this.leaveBtn, this.practiceBtn, ...this.roomBtns];
     if (this.mine === undefined && !this.loadError) return [];
     if (this.loadError) return this.buttonRow();
     return [...this.buttonRow(), ...(this.inviteBox ? [this.inviteJoinBtn, this.dismissBtn] : []), ...this.joinBtns.slice(0, this.rowBoxes?.length ?? 0)];
@@ -292,6 +418,8 @@ export class SquadPanel {
 
   /** `events`: this tab's taps (the home screen has sorted out swipes). */
   update(dt, events) {
+    this.watchRooms(this.mine && this.home.panels[this.home.tab] === this ? this.mine.key : null);
+    if (!this.mine) this.picking = false;
     const btns = this.buttons;
     for (const e of events) {
       if (e.type !== 'down') continue;
@@ -299,13 +427,20 @@ export class SquadPanel {
         if (this.game.scene !== this.home) return;
         continue;
       }
+      // A tap off the picker's card closes it.
+      if (this.picking) {
+        const k = this.pickCard;
+        if (!(e.x >= k.x && e.x <= k.x + k.w && e.y >= k.y && e.y <= k.y + k.h)) this.back();
+        continue;
+      }
       // The leader taps a member to kick them out.
       const hit = this.leading && this.memberGrid(this.mine).boxes.find((k) => !k.m.me && e.x >= k.x && e.x <= k.x + k.w && e.y >= k.y && e.y <= k.y + k.h);
       if (hit) this.kick(hit.m);
     }
-    for (const b of [this.createBtn, this.findBtn, this.topBtn, this.profileBtn, this.retryBtn, this.leaveBtn, this.inviteBtn, this.inviteJoinBtn, this.dismissBtn, ...this.joinBtns]) b.update(dt);
+    for (const b of [this.createBtn, this.findBtn, this.topBtn, this.profileBtn, this.retryBtn, this.leaveBtn, this.inviteBtn, this.inviteJoinBtn, this.dismissBtn, this.practiceBtn, this.cancelBtn, ...this.pickBtns, ...this.roomBtns, ...this.joinBtns]) b.update(dt);
     const busy = this.busy;
-    for (const b of [this.createBtn, this.findBtn, this.topBtn, this.leaveBtn, this.inviteBtn, this.dismissBtn]) b.enabled = !busy;
+    for (const b of [this.createBtn, this.findBtn, this.topBtn, this.leaveBtn, this.inviteBtn, this.dismissBtn, this.practiceBtn]) b.enabled = !busy;
+    this.age = (this.age ?? 0) + dt;
     const full = this.invite?.size >= SQUAD_MAX;
     this.inviteJoinBtn.label = full ? 'Full' : 'Join';
     this.inviteJoinBtn.enabled = !busy && !full;
@@ -377,10 +512,56 @@ export class SquadPanel {
       if (kickable) text(ctx, '✕', x + w - 18, y + h / 2, { size: 15, color: DIM });
     });
     if (more) text(ctx, `+${more.n} more`, more.x + 12, more.y + more.h / 2, { size: 16, align: 'left', color: DIM });
+    this.renderPractice(ctx, view);
     const elsewhere = this.invite && this.invite.key !== s.key ? { text: `You’re invited to ${this.invite.name}. Leave ${s.name} to join it.`, color: WARN } : null;
     const tip = leading && s.members.length > 1 ? 'Tap Invite to send a friend a link to join. As leader, tap a member to kick them out.' : `Tap Invite to send a friend a link to join, or they can Find by name: “${s.name}”.`;
     const hint = this.status ?? elsewhere ?? { text: tip, color: DIM };
     text(ctx, hint.text, view.w / 2, this.bottom - 16, { size: 14, weight: 500, color: hint.color, maxWidth: view.w - 40 });
+    if (this.picking) this.renderPicker(ctx, view);
+  }
+
+  /** The Practice button and, beside it, the rooms your squadmates have open. */
+  renderPractice(ctx, view) {
+    this.practiceBtn.draw(ctx);
+    if (!this.roomBoxes.length) {
+      const k = this.roomsLeft;
+      text(ctx, 'No practice going. Start one: your squad sees it here and joins you live.', k.x + 4, this.practiceY + PRACTICE_H / 2, { size: 15, weight: 500, align: 'left', color: DIM, maxWidth: k.w - 8 });
+      return;
+    }
+    const pulse = 0.55 + 0.45 * Math.sin(this.age * 4);
+    this.roomBoxes.forEach((k, i) => {
+      const r = k.r;
+      roundRect(ctx, k.x, k.y, k.w, k.h, 12);
+      ctx.fillStyle = 'rgba(255,180,0,0.16)';
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = r.full && !r.mine ? 'rgba(255,180,0,0.4)' : `rgba(255,180,0,${pulse.toFixed(2)})`;
+      ctx.stroke();
+      const tw = k.w - 76 - 30;
+      const who = r.mine ? 'You’re in' : r.players.length > 1 ? `${r.host} +${r.players.length - 1}` : r.host;
+      text(ctx, `⚔ ${who}`, k.x + 12, k.y + 24, { size: 17, align: 'left', color: '#ffd35c', maxWidth: tw });
+      text(ctx, `${kindName(r.kind)} · ${r.players.length}/${MAX_PLAYERS}`, k.x + 12, k.y + 50, { size: 14, weight: 600, align: 'left', color: 'rgba(255,255,255,0.8)', maxWidth: tw });
+      this.roomBtns[i].draw(ctx);
+    });
+    const more = this.rooms.length - this.roomBoxes.length;
+    if (more > 0) text(ctx, `+${more} more`, this.x0 + this.contentW, this.practiceY - 10, { size: 13, weight: 700, align: 'right', color: DIM });
+  }
+
+  /** Practice's events, over the tab. */
+  renderPicker(ctx, view) {
+    ctx.fillStyle = 'rgba(4,8,20,0.72)';
+    ctx.fillRect(0, 0, view.w, this.bottom);
+    const k = this.pickCard;
+    roundRect(ctx, k.x, k.y, k.w, k.h, 18);
+    ctx.fillStyle = 'rgba(14,26,52,0.98)';
+    ctx.fill();
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = GOLD;
+    ctx.stroke();
+    text(ctx, '⚔ PRACTICE', view.w / 2, k.y + 30, { size: 26, color: GOLD, shadow: true });
+    text(ctx, `Pick an event. Only ${this.mine.name} sees it: they tap Join, and you race live.`, view.w / 2, k.y + 60, { size: 15, weight: 500, color: 'rgba(255,255,255,0.8)', maxWidth: k.w - 32 });
+    this.pickBtns.forEach((b) => b.draw(ctx));
+    this.cancelBtn.draw(ctx);
   }
 
   /**
@@ -393,7 +574,7 @@ export class SquadPanel {
     const h = 40;
     const cols = Math.max(1, Math.min(5, Math.floor((this.contentW + gap) / (180 + gap))));
     const w = (this.contentW - gap * (cols - 1)) / cols;
-    const rows = Math.max(1, Math.floor((this.bottom - 16 - 18 - top + gap) / (h + gap)));
+    const rows = Math.max(1, Math.floor((this.practiceY - 12 - top + gap) / (h + gap))); // above Practice
     const fits = cols * rows;
     const shown = s.members.length > fits ? s.members.slice(0, fits - 1) : s.members;
     const at = (i) => ({ x: this.x0 + (i % cols) * (w + gap), y: top + Math.floor(i / cols) * (h + gap), w, h });
@@ -406,6 +587,20 @@ export class SquadPanel {
 const LIST_Y = 160; // top of the list of squads
 const ROW_H = 44;
 const ROW_GAP = 8;
+const PRACTICE_H = 72; // the Practice button and the open rooms beside it
+
+/** What Practice offers: the five events, the 4x100m relay, and the tournament (no `kind`: Solo or Team, as the Play tab has it). */
+const PRACTICE_KINDS = [
+  ...EVENTS.map((ev) => ({ kind: ev.id, label: ev.name, sub: FIELD.has(ev.id) ? 'Three rounds' : 'Race', color: '#2bb673' })),
+  { kind: 'relay4x100', label: '4×100m Relay', sub: 'Four legs, one baton', color: '#c2337a' },
+  { kind: null, label: '🏆 Tournament', sub: 'Solo · 5 events', color: '#1f8a58' },
+];
+
+/** A practice room's event, by name. */
+function kindName(kind) {
+  const mode = tourModeOf(kind);
+  return mode ? `${mode === 'team' ? 'Team' : 'Solo'} Tournament` : (eventById(kind)?.name ?? kind);
+}
 
 /** What to say when a squad or the list can't be loaded. */
 function loadMessage(e) {

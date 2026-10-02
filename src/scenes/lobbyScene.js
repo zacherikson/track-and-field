@@ -1,6 +1,6 @@
 import { Button, text, roundRect } from '../core/ui.js';
 import { CHARACTERS } from '../athletes/roster.js';
-import { EVENTS } from '../events/registry.js';
+import { eventById } from '../events/registry.js';
 import { Lobby, MAX_PLAYERS, CLOSE_BEFORE, serverNow } from '../online/live.js';
 import { flow } from '../flow.js';
 import { tourModeOf, liveAthletes } from '../tournament/tournament.js';
@@ -10,16 +10,21 @@ import { tourModeOf, liveAthletes } from '../tournament/tournament.js';
  * tournament's, online/live.js). You join as soon as you arrive; once someone
  * else is here a countdown starts, more players can still join (up to
  * MAX_PLAYERS), and everyone goes to the event together.
+ *
+ * With `squad` ({ key, name }) it's that squad's practice room: only its
+ * members see it (on their Squad tab, where they tap Join), and leaving goes
+ * back there.
  */
 export class LobbyScene {
-  constructor(kind) {
+  constructor(kind, squad = null) {
     this.kind = kind;
+    this.squad = squad;
     const mode = tourModeOf(kind);
-    this.title = mode ? `${mode === 'team' ? 'Team' : 'Solo'} Tournament` : EVENTS.find((e) => e.id === kind).name;
+    this.title = mode ? `${mode === 'team' ? 'Team' : 'Solo'} Tournament` : eventById(kind).name;
   }
 
   enter() {
-    this.backBtn = new Button({ label: 'Leave', w: 160, h: 50, color: 'rgba(255,255,255,0.18)', onTap: () => flow.menu(this.game) });
+    this.backBtn = new Button({ label: 'Leave', w: 160, h: 50, color: 'rgba(255,255,255,0.18)', onTap: () => this.leave() });
     this.retryBtn = new Button({ label: 'Try again', w: 180, h: 50, onTap: () => this.join() });
     this.view = null;
     this.age = 0;
@@ -30,11 +35,16 @@ export class LobbyScene {
   join() {
     this.state = 'joining';
     this.lobby?.close(false);
-    this.lobby = new Lobby(this.kind, (v) => this.onLobby(v), liveAthletes(this.kind));
+    this.lobby = new Lobby(this.kind, (v) => this.onLobby(v), liveAthletes(this.kind), this.squad);
     this.lobby.join().catch((err) => {
       console.warn('waiting room unavailable', err);
       if (this.game.scene === this) this.state = 'error';
     });
+  }
+
+  /** Back to where you came from: the Squad tab for a practice, else Play. */
+  leave() {
+    flow.menu(this.game, this.squad ? 'squad' : 'play');
   }
 
   onLobby(v) {
@@ -65,7 +75,7 @@ export class LobbyScene {
     this.age += dt;
     for (const e of this.game.input.consume(t + dt)) {
       if (e.type === 'down') this.buttons().some((b) => b.tap(e.x, e.y));
-      else if (e.code === 'Escape') flow.menu(this.game);
+      else if (e.code === 'Escape') this.leave();
     }
     this.buttons().forEach((b) => b.update(dt));
     // The room has closed with you in it: to the event.
@@ -73,7 +83,7 @@ export class LobbyScene {
     const me = v?.players.find((p) => p.me);
     if (v?.startAt != null && me && v.players.length > 1 && serverNow() >= v.startAt - CLOSE_BEFORE) {
       this.racing = true;
-      flow.liveStart(this.game, { kind: this.kind, room: v.room, uid: v.uid, name: me.name, players: v.players, startAt: v.startAt, setLen: v.setLen });
+      flow.liveStart(this.game, { kind: this.kind, room: v.room, uid: v.uid, name: me.name, players: v.players, startAt: v.startAt, setLen: v.setLen, squad: this.squad });
     } else if (v && !me && this.state === 'waiting') {
       this.join(); // dropped from the room (went quiet too long): back in
     }
@@ -82,7 +92,8 @@ export class LobbyScene {
   render(ctx, view) {
     ctx.fillStyle = '#12203a';
     ctx.fillRect(0, 0, view.w, view.h);
-    text(ctx, `LIVE · ${this.title.toUpperCase()}`, view.w / 2, 40, { size: 28, color: '#ffb400', shadow: true });
+    text(ctx, `${this.squad ? '⚔ PRACTICE' : 'LIVE'} · ${this.title.toUpperCase()}`, view.w / 2, 40, { size: 28, color: '#ffb400', shadow: true });
+    if (this.squad) text(ctx, `${this.squad.name} only`, view.w / 2, 66, { size: 14, weight: 700, color: 'rgba(255,255,255,0.6)' });
     const w = Math.min(520, view.w - 40);
     const x0 = view.w / 2 - w / 2;
     roundRect(ctx, x0, 80, w, 340, 16);
@@ -102,7 +113,7 @@ export class LobbyScene {
 
     const v = this.view;
     const left = v.startAt == null ? null : Math.max(0, Math.ceil((v.startAt - CLOSE_BEFORE - serverNow()) / 1000));
-    if (left == null) line('Waiting for another player to join…', 118, { size: 20, color: '#fff' });
+    if (left == null) line(this.squad ? 'Waiting for a squadmate to join…' : 'Waiting for another player to join…', 118, { size: 20, color: '#fff' });
     else line(`Starts in ${left}`, 118, { size: 30, color: '#59cd90', weight: 800 });
     line(`${v.players.length} of ${MAX_PLAYERS} players`, 150, { size: 15, color: 'rgba(255,255,255,0.55)' });
 
@@ -123,7 +134,8 @@ export class LobbyScene {
     // A gentle pulse while it's just you.
     if (v.players.length < 2) {
       const k = 0.5 + 0.5 * Math.sin(this.age * 3);
-      line(`Tell a friend to tap ${this.title} in the Online row`, 390, { size: 15, color: `rgba(255,255,255,${(0.35 + 0.3 * k).toFixed(2)})` });
+      const tip = this.squad ? `Your squadmates see it on their Squad tab: they tap Join` : `Tell a friend to tap ${this.title} in the Online row`;
+      line(tip, 390, { size: 15, color: `rgba(255,255,255,${(0.35 + 0.3 * k).toFixed(2)})` });
     }
     this.backBtn.draw(ctx);
   }

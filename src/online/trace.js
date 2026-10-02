@@ -52,11 +52,16 @@ function unpackPose(v) {
   };
 }
 
-/** Collects frames of the player's attempt. `props` = how many event numbers each frame carries. */
+/**
+ * Collects frames of the player's attempt. `props` = how many event numbers each frame carries.
+ * `hz` and `maxFrames`: a longer event can take fewer frames a second, and more of them.
+ */
 export class TraceRecorder {
-  constructor(evId, props = 0) {
+  constructor(evId, props = 0, { hz = TRACE_HZ, maxFrames = MAX_FRAMES } = {}) {
     this.evId = evId;
     this.props = props;
+    this.hz = hz;
+    this.maxFrames = maxFrames;
     this.start();
   }
 
@@ -71,7 +76,7 @@ export class TraceRecorder {
 
   /** Adds a frame at `t` s unless one was taken very recently. */
   sample(t, x, e, pose, props = []) {
-    if (t - this.lastT < 1 / TRACE_HZ - 0.004 || this.frames >= MAX_FRAMES) return;
+    if (t - this.lastT < 1 / this.hz - 0.004 || this.frames >= this.maxFrames) return;
     if (![t, x, e].every(Number.isFinite)) return;
     this.lastT = t;
     const extra = Array.from({ length: this.props }, (_, i) => props[i] ?? 0);

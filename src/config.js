@@ -206,6 +206,7 @@ export const CONFIG = {
   relay: {
     distance: 400,
     maxRaceTime: 70, // s; give up and DNF after this
+    liveWait: 25, // s after you finish to wait for the other teams in a live relay (a missed exchange or two spreads them out)
     zone: { before: 10, after: 10 }, // m either side of each 100 m line: the baton changes hands in here
     waitBack: 20, // m before the line where the outgoing runner waits (they may start before the zone)
     checkTime: 1.2, // s: the outgoing runner takes off when the incoming runner is this far behind them (their check mark)

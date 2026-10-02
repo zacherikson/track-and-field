@@ -2,7 +2,7 @@ import { CONFIG } from '../config.js';
 import { Sprint100 } from './sprint100.js';
 import { Exchange, exchangeSpot, LEG } from './relayRules.js';
 import { Runner } from '../athletes/runner.js';
-import { CHARACTERS, player as chosenPlayer, heightOf } from '../athletes/roster.js';
+import { CHARACTERS, player as chosenPlayer, theirAthlete, heightOf } from '../athletes/roster.js';
 import { POSES, lerpPose, runPose, leanPose, handPos } from '../athletes/stickFigure.js';
 import { rand, shuffle, clamp } from '../core/math.js';
 import { text, roundRect } from '../core/ui.js';
@@ -10,6 +10,8 @@ import { drawPad } from '../render/pads.js';
 import { LAYOUT } from '../render/track.js';
 import { VENUES } from '../render/venues.js';
 import { getSpecialLevel } from '../core/storage.js';
+import { nearestLanes } from './laneRace.js';
+import { LiveTrace } from '../online/liveTrace.js';
 
 const BLUE = { hi: '#bfe0ff', mid: '#2f80ff', lo: '#1347b8' };
 const GRADES = {
@@ -20,6 +22,15 @@ const GRADES = {
 };
 const REACH_ARM = { upper: 1.45, fore: 1.55 }; // incoming: baton held out in front
 const BACK_ARM = { upper: -1.2, fore: -1.4 }; // outgoing: hand back for it
+
+// Live: what each frame of your team carries for the others (online/liveTrace.js),
+// besides the baton carrier's own body: every runner as LEG_PROPS numbers
+// (x, speed, stride phase, lean reach, mode), which leg has the baton, and
+// whether each exchange's baton is held out.
+const MODES = ['run', 'carry', 'lean'];
+const LEG_PROPS = 5;
+const TEAM_PROPS = 4 * LEG_PROPS + 1 + 3;
+const LIVE_TRACE = { hz: 20, maxFrames: 1500 }; // the longest relay (maxRaceTime) at 20 frames a second
 
 /**
  * 4x100m RELAY: six teams of four, one long straight, the baton changing hands
@@ -40,6 +51,12 @@ const BACK_ARM = { upper: -1.2, fore: -1.4 }; // outgoing: hand back for it
  * `colors` pointing at that leg's, so LaneRace's start, finish line, late hits
  * and results all work on the baton carrier. Each leg's `view` is what the
  * race draws: every runner on the track, waiting, running or pulled up.
+ *
+ * LIVE (a squad's practice, online/live.js): each other player's team takes
+ * a lane next to yours, and nobody else runs. Every phone sends its own team
+ * frame by frame (where each of the four is, how fast, their stride, which leg
+ * has the baton: traceFrameProps), and the others' teams are drawn from that
+ * with the same poses as yours (stepLiveTeam). Their times come from their phones.
  */
 export class Relay4x100 extends Sprint100 {
   constructor(ev) {
@@ -51,15 +68,28 @@ export class Relay4x100 extends Sprint100 {
   }
 
   enter() {
+    if (this.live) {
+      // Your team goes out to the others frame by frame (LaneRace.openLive streams it).
+      this.traceProps = TEAM_PROPS;
+      this.traceOpts = LIVE_TRACE;
+    }
     super.enter();
     this.track.zones = [0, 1, 2].map((k) => exchangeSpot(this.cfg, k));
-    this.track.venue = VENUES[this.level]; // raced where its rivals race: the high school, or the big stadium
+    if (!this.live) this.track.venue = VENUES[this.level]; // raced where its rivals race: the high school, or the big stadium (live: the big stadium)
   }
 
-  /** Six teams, yours in your lane: always against rivals (Special Events are never Training). */
+  /** Six teams, yours in your lane: always against rivals (Special Events are never Training). Live: yours and the other players'. */
   buildField() {
     const cfg = this.cfg;
     const captain = chosenPlayer(this.ev.id);
+    if (this.live) {
+      const mine = Object.assign(this.team(cfg.playerLane, captain, true), { name: this.live.name });
+      const others = this.live.others;
+      const theirs = nearestLanes(cfg.playerLane, cfg.lanes)
+        .slice(0, others.length)
+        .map((lane, i) => this.liveTeam(lane, others[i]));
+      return [mine, ...theirs].sort((a, b) => a.lane - b.lane);
+    }
     const rivals = shuffle(CHARACTERS.filter((c) => c !== captain));
     const field = [];
     for (let lane = 1; lane <= cfg.lanes; lane++) {
@@ -70,8 +100,14 @@ export class Relay4x100 extends Sprint100 {
     return field;
   }
 
-  /** A team in `cap`'s kit: the three after them on the roster run legs 1-3, and they anchor. */
-  team(lane, cap, isPlayer) {
+  /** Another player's team in a live relay, captained by their relay athlete and named for them. */
+  liveTeam(lane, p) {
+    const team = this.team(lane, theirAthlete(p, this.ev.id), false, false);
+    return Object.assign(team, { name: p.name, uid: p.uid, live: new LiveTrace(this.ev.id, TEAM_PROPS, this.stage, LIVE_TRACE.maxFrames) });
+  }
+
+  /** A team in `cap`'s kit: the three after them on the roster run legs 1-3, and they anchor. `ai`: the computer runs it. */
+  team(lane, cap, isPlayer, ai = !isPlayer) {
     const cfg = this.cfg;
     const i = CHARACTERS.indexOf(cap);
     const squad = [1, 2, 3].map((k) => CHARACTERS[(i + k) % CHARACTERS.length]).concat(cap);
@@ -80,7 +116,7 @@ export class Relay4x100 extends Sprint100 {
     team.legs = squad.map((who, k) => {
       const runner = new Runner(this.runnerParams, undefined, k === 0 ? cfg.startX : exchangeSpot(cfg, k - 1).wait);
       const colors = { ...who.colors, ...kit };
-      return { who, colors, runner, ai: isPlayer ? null : this.createAI(runner), view: { lane, runner, colors, legIndex: k, team, idlePhase: rand(0, Math.PI * 2), mark: null } };
+      return { who, colors, runner, ai: ai ? this.createAI(runner) : null, view: { lane, runner, colors, legIndex: k, team, idlePhase: rand(0, Math.PI * 2), mark: null } };
     });
     this.toLeg(team, 0);
     return team;
@@ -105,7 +141,8 @@ export class Relay4x100 extends Sprint100 {
         l.runner.reset();
         if (l.ai) l.ai = this.createAI(l.runner, l.ai);
       }
-      a.exchanges = [0, 1, 2].map((k) => new Exchange(this.cfg, k, a.legs[k].runner, a.legs[k + 1].runner, a.isPlayer ? null : this.cfg.ai[this.level]));
+      // A live team's exchanges only say what its frames do (stepLiveTeam): its own phone runs them.
+      a.exchanges = [0, 1, 2].map((k) => (a.live ? { k, stage: 'approach', reachT: null } : new Exchange(this.cfg, k, a.legs[k].runner, a.legs[k + 1].runner, a.isPlayer ? null : this.cfg.ai[this.level])));
       a.ex = a.exchanges[0];
     }
     this.popup = null;
@@ -121,6 +158,7 @@ export class Relay4x100 extends Sprint100 {
   // ---------------------------------------------------------------- the race
 
   stepAthlete(a, dt, t) {
+    if (a.live) return this.stepLiveTeam(a);
     const r = a.runner;
     const D = this.cfg.distance;
     // The baton carrier runs on strides until their exchange takes over in the zone.
@@ -135,6 +173,41 @@ export class Relay4x100 extends Sprint100 {
     for (const ex of a.exchanges) if (ex.step(t, dt) === 'handoff') this.handOff(a, ex, t + dt);
     // Everyone who's run their leg pulls up.
     for (const l of a.legs) if (l.runner.finished && l.runner !== a.runner) l.runner.update(dt, t);
+  }
+
+  /** Another player's team, as their latest frames have it (see traceFrameProps). */
+  stepLiveTeam(a) {
+    a.live.advanceTo();
+    const f = a.live.frame;
+    if (!f) return;
+    const at = (i) => f.pa[i] + (f.pb[i] - f.pa[i]) * f.k;
+    const pick = (i) => (f.k < 0.5 ? f.pa[i] : f.pb[i]);
+    a.legs.forEach((l, k) => {
+      const r = l.runner;
+      const o = k * LEG_PROPS;
+      r.x = at(o);
+      r.v = Math.max(0, at(o + 1));
+      r.phase = at(o + 2);
+      r.reach = Math.max(0, at(o + 3));
+      const m = Math.round(pick(o + 4));
+      r.mode = MODES[m % 3] ?? 'run';
+      r.finished = m >= 3;
+      if (r.v > 0) r.started = true;
+    });
+    const leg = clamp(Math.round(pick(4 * LEG_PROPS)), 0, 3);
+    if (leg !== a.leg) this.toLeg(a, leg);
+    a.exchanges.forEach((ex, k) => {
+      const out = pick(4 * LEG_PROPS + 1 + k) > 0.5;
+      if (out && ex.stage !== 'reach') Object.assign(ex, { stage: 'reach', reachT: this.game.time });
+      else if (!out) ex.stage = k < leg ? 'done' : 'approach';
+    });
+  }
+
+  /** Your team for the others, with each frame (TEAM_PROPS numbers, read back by stepLiveTeam). */
+  traceFrameProps(a) {
+    const legs = a.legs.flatMap(({ runner: r }) => [r.x, r.v, r.phase, r.reach, Math.max(0, MODES.indexOf(r.mode)) + (r.finished ? 3 : 0)]);
+    const reaching = a.exchanges.map((ex) => (ex.stage === 'reach' || ex.stage === 'missed' ? 1 : 0));
+    return [...legs, a.leg, ...reaching];
   }
 
   /** The baton changed hands in exchange `ex` at time t: the next leg is the team's runner now. */
@@ -194,10 +267,10 @@ export class Relay4x100 extends Sprint100 {
     return 'exchange';
   }
 
-  /** In the late hits a team is its anchor, by name (it keeps the team's name as its id). */
+  /** In the late hits a team is its anchor, by name (it keeps the team's name as its id). Live: the player's name. */
   fighterOf(a) {
     const f = super.fighterOf(a);
-    return a.legs ? { ...f, name: a.legs[a.leg].who.name } : f;
+    return a.legs && !this.live ? { ...f, name: a.legs[a.leg].who.name } : f;
   }
 
   /** Your numbers, with how each of your exchanges went. */
@@ -219,6 +292,13 @@ export class Relay4x100 extends Sprint100 {
         this.drawAthlete(ctx, view, l.view, H);
       });
     }
+    // Live: your team's frame, for the others (LaneRace takes one as it draws the player; here that's the legs' views).
+    if (this.tracer && (this.state === 'race' || this.state === 'finished')) {
+      const a = this.player;
+      const r = a.runner;
+      this.tracer.sample(this.game.time - this.goT, r.x + r.reach * 0.5, 0, this.poseFor(a.legs[a.leg].view), this.traceFrameProps(a));
+      this.stream?.pump();
+    }
   }
 
   /** A runner, with the baton in their hand if it's theirs. */
@@ -230,6 +310,8 @@ export class Relay4x100 extends Sprint100 {
     const p = this.track.toScreen(this.camera, view, r.x + r.reach * 0.5 + this.startNudge(a), a.lane);
     if (p.x < -80 || p.x > view.w + 80) return;
     const h = H * this.track.figureScale(a.lane) * heightOf(a.colors);
+    // Live: another player's baton carrier has their name over them (a team drawn whole, LaneRace names already).
+    if (team.live && a.team) text(ctx, team.live.left ? `${team.name} (left)` : team.name, p.x, p.y - h - 6, { size: 14, color: '#ffb400', shadow: true });
     const pose = this.poseFor(a);
     const hand = handPos(p.x, p.y + 4, h, pose, 0);
     const fore = pose.arms[0].fore;

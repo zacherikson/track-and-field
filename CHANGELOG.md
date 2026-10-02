@@ -4,6 +4,22 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Squad practice, and the 4×100m relay live
+- The Squad tab has a big ⚔ **Practice** button, like a Clash Royale friendly
+  battle: it opens the events (the five, the 4×100m relay, the tournament),
+  and picking one opens a live waiting room only your squad sees. While it's
+  open it sits next to the button on every member's Squad tab with **Join**.
+  Results say PRACTICE; Race again and Menu go back to the squad.
+- Squad rooms are `squadlobby/{squad}/{kind}` in the Realtime Database, the
+  same waiting room as `lobby/{kind}` (paste the new `database.rules.json`
+  into the console).
+- The 4×100m relay plays live for the first time. Each phone sends its team
+  frame by frame (all four runners, the baton, held-out batons) at 20 a
+  second, and the other teams are drawn from that with the relay's own poses.
+  `relay.liveWait` 25 s (the other live races wait 12 s) for slower teams to
+  finish, since a missed exchange or two spreads them out. The rules allow
+  1000 frame chunks a player (was 400) for a relay that runs past a minute.
+
 ## Time trial (Special Events)
 - A cycling time trial: 620 m of road (flat, 8% climb, 11% descent, flat, a
   5.5% kick), you against the clock with the rivals as ghosts. Each tap is a

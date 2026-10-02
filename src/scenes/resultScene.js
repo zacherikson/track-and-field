@@ -46,9 +46,9 @@ export class ResultScene {
 
     this.buttons = [
       this.stats?.live
-        ? new Button({ label: `${(this.ev.againLabel ?? 'Race again').replace(' again', '')} live again`, color: '#2bb673', onTap: () => flow.live(this.game, this.ev.id) })
+        ? new Button({ label: `${(this.ev.againLabel ?? 'Race again').replace(' again', '')} live again`, color: '#2bb673', onTap: () => flow.live(this.game, this.ev.id, this.stats.squad) })
         : new Button({ label: this.ev.againLabel ?? 'Race again', color: '#2bb673', onTap: () => flow.play(this.game, this.ev) }),
-      new Button({ label: 'Menu', color: 'rgba(255,255,255,0.18)', onTap: () => flow.menu(this.game) }),
+      new Button({ label: 'Menu', color: 'rgba(255,255,255,0.18)', onTap: () => flow.menu(this.game, this.stats?.squad ? 'squad' : 'play') }),
     ];
     if (canTune()) this.buttons.push(new Button({ label: '⚙ Tuning', color: 'rgba(255,255,255,0.18)', onTap: () => flow.tuning(this.game) }));
     if (this.ev.online) this.buttons.splice(2, 0, new Button({ label: '📊 Leaderboard', color: 'rgba(255,255,255,0.18)', onTap: () => flow.leaderboard(this.game, this.ev) }));
@@ -129,7 +129,7 @@ export class ResultScene {
     else if (me.status === 'nm') headline = 'NO MARK';
     else headline = formatMark(this.ev, me.mark);
     const cx = lx + colW / 2;
-    const where = this.stats?.live ? 'LIVE' : this.ev.special ? getSpecialLevel().toUpperCase() : getCampaign() ? getCampaign().toUpperCase() : 'TRAINING';
+    const where = this.stats?.squad ? 'PRACTICE' : this.stats?.live ? 'LIVE' : this.ev.special ? getSpecialLevel().toUpperCase() : getCampaign() ? getCampaign().toUpperCase() : 'TRAINING';
     text(ctx, `${this.ev.name.toUpperCase()} · ${where}${this.beaten ? ' · BEATEN!' : ''}`, cx, 52, { size: 20, color: 'rgba(255,255,255,0.7)' });
     text(ctx, headline, cx, 118, { size: me.status === 'ok' ? 72 : 38, color: '#fff', shadow: true });
     if (me.status === 'ok' && this.results.length > 1) text(ctx, `${ordinal(this.place)} place`, cx, 178, { size: 32, color: this.place === 1 ? '#ffb400' : '#fff' });

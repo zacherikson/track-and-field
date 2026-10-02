@@ -12,6 +12,7 @@ import { RunwayRenderer } from '../render/runway.js';
 import { ORANGE, drawPad, drawX } from '../render/pads.js';
 import { drawDrop, drawHitRing } from '../render/targetPads.js';
 import { getDifficulty, hasRivals } from '../core/storage.js';
+import { venueFor } from '../render/venues.js';
 import { flow } from '../flow.js';
 import { Venue, FIELD_DEPTH } from '../brawl/venue.js';
 import { startFieldLateHits, fieldLateStep, fieldLateRender } from '../brawl/fieldLateHits.js';
@@ -51,7 +52,7 @@ export class LongJump {
 
   enter() {
     const cfg = this.cfg;
-    this.track = new RunwayRenderer(cfg.runway, { from: 1, to: 10.5 }, cfg.runwayZones);
+    this.track = new RunwayRenderer(cfg.runway, { from: 1, to: 10.5 }, cfg.runwayZones, venueFor(this.live));
     this.camera = new Camera();
     const me = chosenPlayer(this.ev.id);
     this.player = { name: this.live ? this.live.name : me.name, colors: me.colors, isPlayer: true, jumps: [] }; // live: your username, as the others see you

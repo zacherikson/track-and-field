@@ -1,6 +1,7 @@
 import { text } from '../core/ui.js';
 import { LAYOUT } from './track.js';
 import { RunwayRenderer } from './runway.js';
+import { venueFor } from './venues.js';
 
 /**
  * Pole vault: the long jump's runway (with the colored edge stripes) ending
@@ -10,8 +11,8 @@ import { RunwayRenderer } from './runway.js';
  * draws sky above the stadium.
  */
 export class VaultRenderer extends RunwayRenderer {
-  constructor(cfg) {
-    super(cfg.runway, { from: 0, to: 0 }, cfg.runwayZones);
+  constructor(cfg, venue = venueFor()) {
+    super(cfg.runway, { from: 0, to: 0 }, cfg.runwayZones, venue);
     this.cfg = cfg;
     this.bar = null; // crossbar height (m): your best so far, or null
     this.lastHeight = null; // marker on the upright for the last vault (m)
@@ -22,8 +23,8 @@ export class VaultRenderer extends RunwayRenderer {
     // Tall enough for the camera to rise into.
     const top = -900;
     const g = ctx.createLinearGradient(0, top, 0, LAYOUT.standsTop + 40);
-    g.addColorStop(0, '#2f7fc8');
-    g.addColorStop(1, '#a9d6f5');
+    g.addColorStop(0, this.venue.sky.high);
+    g.addColorStop(1, this.venue.sky.bottom);
     ctx.fillStyle = g;
     ctx.fillRect(0, top, view.w, LAYOUT.standsTop + 40 - top);
   }
@@ -31,10 +32,11 @@ export class VaultRenderer extends RunwayRenderer {
   drawTrack(ctx, view, camera) {
     const z = (f) => this.zNear + f;
     this.drawRunway(ctx, view, camera, this.cfg.mat.to + 4);
-    // The box the pole plants in: a sunken steel trough ending at x = 0.
-    ctx.fillStyle = '#8a8f98';
+    // The box the pole plants in: a sunken steel trough ending at x = 0 (the
+    // same metal as the starting blocks: shiny at the big meets, rusty at home).
+    ctx.fillStyle = this.venue.blocks.railTop;
     this.quad(ctx, camera, view, -0.8, 0, z(0.4), z(0.6));
-    ctx.fillStyle = '#3a3e45';
+    ctx.fillStyle = this.venue.blocks.rail;
     this.quad(ctx, camera, view, -0.35, 0, z(0.43), z(0.57));
   }
 
@@ -60,15 +62,16 @@ export class VaultRenderer extends RunwayRenderer {
   /** The landing mat: blue sides, yellow top. Drawn before the athlete. */
   drawMat(ctx, view, camera) {
     const m = this.cfg.mat;
+    const M = this.venue.mat;
     const z0 = this.zNear + 0.12;
     const z1 = this.zNear + 0.88;
     const P = (x, z, h) => this.point(camera, view, x, z, h);
-    this.poly(ctx, [P(m.from, z0, 0), P(m.from, z1, 0), P(m.from, z1, m.height), P(m.from, z0, m.height)], '#22398a');
-    this.poly(ctx, [P(m.from, z0, m.height), P(m.to, z0, m.height), P(m.to, z1, m.height), P(m.from, z1, m.height)], '#f4c532');
-    this.poly(ctx, [P(m.from, z0, 0), P(m.to, z0, 0), P(m.to, z0, m.height), P(m.from, z0, m.height)], '#2e4fb8');
+    this.poly(ctx, [P(m.from, z0, 0), P(m.from, z1, 0), P(m.from, z1, m.height), P(m.from, z0, m.height)], M.side);
+    this.poly(ctx, [P(m.from, z0, m.height), P(m.to, z0, m.height), P(m.to, z1, m.height), P(m.from, z1, m.height)], M.top);
+    this.poly(ctx, [P(m.from, z0, 0), P(m.to, z0, 0), P(m.to, z0, m.height), P(m.from, z0, m.height)], M.front);
     // A lighter band along the top edge, and handles on the side.
-    this.poly(ctx, [P(m.from, z0, m.height - 0.08), P(m.to, z0, m.height - 0.08), P(m.to, z0, m.height), P(m.from, z0, m.height)], '#ffdc5e');
-    ctx.fillStyle = '#1b2d6e';
+    this.poly(ctx, [P(m.from, z0, m.height - 0.08), P(m.to, z0, m.height - 0.08), P(m.to, z0, m.height), P(m.from, z0, m.height)], M.topBand);
+    ctx.fillStyle = M.handle;
     for (let x = m.from + 0.8; x < m.to - 0.4; x += 1.4) {
       const p = P(x, z0, m.height * 0.45);
       ctx.beginPath();
@@ -83,9 +86,9 @@ export class VaultRenderer extends RunwayRenderer {
     const base = this.point(camera, view, x, z, 0);
     const top = this.point(camera, view, x, z, 7.4);
     const w = Math.max(3, 0.07 * this.hPx(camera, z));
-    ctx.fillStyle = '#e7c21c';
+    ctx.fillStyle = this.venue.upright.post;
     ctx.fillRect(base.x - w / 2, top.y, w, base.y - top.y);
-    ctx.fillStyle = '#9a7f0a';
+    ctx.fillStyle = this.venue.upright.shade;
     ctx.fillRect(base.x + w / 2 - 1, top.y, 1, base.y - top.y);
     if (!labels) return;
     // Height marks every meter, and the world record, on the far post.

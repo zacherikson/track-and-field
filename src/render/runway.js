@@ -1,5 +1,6 @@
 import { text } from '../core/ui.js';
 import { TrackRenderer, LAYOUT } from './track.js';
+import { venueFor } from './venues.js';
 
 /**
  * Long jump runway: the stadium from TrackRenderer (stands, boards, grass,
@@ -9,8 +10,8 @@ import { TrackRenderer, LAYOUT } from './track.js';
  * One "lane" deep; the athlete runs down its middle.
  */
 export class RunwayRenderer extends TrackRenderer {
-  constructor(runway, pit, zones = []) {
-    super(1, 0, null);
+  constructor(runway, pit, zones = [], venue = venueFor()) {
+    super(1, 0, null, venue);
     this.runway = runway;
     this.pit = pit; // { from, to } in m from the foul line
     this.zones = zones; // colored runway sections: { from, to, color } in m before the line
@@ -25,18 +26,23 @@ export class RunwayRenderer extends TrackRenderer {
   drawRunway(ctx, view, camera, end) {
     const zN = this.zNear;
     const z = (f) => zN + f;
-    ctx.fillStyle = '#4f9c41';
+    const G = this.venue.grass;
+    const T = this.venue.track;
+    ctx.fillStyle = G.base;
     ctx.fillRect(0, LAYOUT.farY, view.w, LAYOUT.nearY - LAYOUT.farY);
-    // Mowed stripes on the infield.
-    ctx.fillStyle = '#58a849';
+    // Mowed stripes on the infield, if anyone mows it.
     const [l, r] = this.rangeAt(camera, view, zN);
-    for (let m = Math.floor(l / 8) * 8; m < r; m += 8) this.quad(ctx, camera, view, m, m + 4, z(0), z(1));
+    if (G.stripe) {
+      ctx.fillStyle = G.stripe;
+      for (let m = Math.floor(l / 8) * 8; m < r; m += 8) this.quad(ctx, camera, view, m, m + 4, z(0), z(1));
+    }
 
     // Runway: a strip down the middle of the lane, with white edge lines.
     const r0 = z(0.28), r1 = z(0.72);
-    ctx.fillStyle = '#c1502e';
+    ctx.fillStyle = T.surface;
     this.quad(ctx, camera, view, -this.runway - 20, end, r0, r1);
-    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    if (T.worn) this.drawWear(ctx, view, camera, T.worn, r0, r1);
+    ctx.fillStyle = T.paint;
     this.quad(ctx, camera, view, -this.runway - 20, end, r0, r0 + 0.02);
     this.quad(ctx, camera, view, -this.runway - 20, end, r1 - 0.02, r1);
 
@@ -57,15 +63,15 @@ export class RunwayRenderer extends TrackRenderer {
 
     // Sand pit, wider than the runway, with a concrete rim.
     const p0 = z(0.16), p1 = z(0.84);
-    ctx.fillStyle = '#d9d2c3';
+    ctx.fillStyle = this.venue.sand.rim;
     this.quad(ctx, camera, view, this.pit.from - 0.15, this.pit.to + 0.15, p0 - 0.03, p1 + 0.03);
-    ctx.fillStyle = '#e6cf95';
+    ctx.fillStyle = this.venue.sand.sand;
     this.quad(ctx, camera, view, this.pit.from, this.pit.to, p0, p1);
 
     // Takeoff board (white) and the red foul line at its front edge.
-    ctx.fillStyle = '#f7f7f2';
+    ctx.fillStyle = this.venue.board.face;
     this.quad(ctx, camera, view, -0.2, 0, r0, r1);
-    ctx.fillStyle = '#e8281e';
+    ctx.fillStyle = this.venue.board.foul;
     this.quad(ctx, camera, view, 0, 0.07, r0, r1);
 
     // Footmark where you took off, so you can see how close to the line you were.
@@ -104,11 +110,12 @@ export class RunwayRenderer extends TrackRenderer {
       const p = this.project(camera, view, m, p1 + 0.04);
       if (p.x < -30 || p.x > view.w + 30) continue;
       const s = this.scaleAt(p1);
-      ctx.fillStyle = '#fff';
+      const S = this.venue.signs;
+      ctx.fillStyle = S.post;
       ctx.fillRect(p.x - 1, p.y - 14 * s, 2, 14 * s);
-      ctx.fillStyle = '#c62828';
+      ctx.fillStyle = S.plate;
       ctx.fillRect(p.x - 11 * s, p.y - 34 * s, 22 * s, 20 * s);
-      text(ctx, String(m), p.x, p.y - 24 * s, { size: Math.round(14 * s), color: '#fff' });
+      text(ctx, String(m), p.x, p.y - 24 * s, { size: Math.round(14 * s), color: S.text });
     }
   }
 }

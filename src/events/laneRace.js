@@ -11,6 +11,7 @@ import { TrackRenderer } from '../render/track.js';
 import { ORANGE, drawPad } from '../render/pads.js';
 import { flow } from '../flow.js';
 import { getDifficulty, hasRivals } from '../core/storage.js';
+import { venueFor } from '../render/venues.js';
 import { GhostRecorder, GhostRun } from '../online/ghost.js';
 import { TraceRecorder, TracePlayer } from '../online/trace.js';
 import { serverNow } from '../online/live.js';
@@ -66,7 +67,7 @@ export class LaneRace {
 
   enter() {
     const cfg = this.cfg;
-    this.track = new TrackRenderer(cfg.lanes, cfg.distance, cfg.startX);
+    this.track = new TrackRenderer(cfg.lanes, cfg.distance, cfg.startX, venueFor(this.live));
     this.track.blocksNudge = (lane) => this.laneNudge(lane);
     this.camera = new Camera();
 

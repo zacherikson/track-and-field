@@ -1,6 +1,7 @@
 import { text } from '../core/ui.js';
 import { LAYOUT } from './track.js';
 import { RunwayRenderer } from './runway.js';
+import { venueFor } from './venues.js';
 
 const hash = (n) => {
   let x = (n | 0) ^ 0x9e3779b9;
@@ -49,8 +50,8 @@ export function drawJavelin(ctx, x, y, len, ang, w = 4) {
  * field at the distance boards, the javelin stuck in the grass).
  */
 export class JavelinRenderer extends RunwayRenderer {
-  constructor(cfg, record) {
-    super(cfg.runway, { from: 0, to: 0 }, cfg.runwayZones);
+  constructor(cfg, record, venue = venueFor()) {
+    super(cfg.runway, { from: 0, to: 0 }, cfg.runwayZones, venue);
     this.cfg = cfg;
     this.record = record;
   }
@@ -59,12 +60,15 @@ export class JavelinRenderer extends RunwayRenderer {
     const z = (f) => this.zNear + f;
     // Grass sector beyond the line, over the whole infield strip.
     this.drawRunway(ctx, view, camera, 0);
-    ctx.fillStyle = '#7ccf55';
+    const F = this.venue.sector;
+    ctx.fillStyle = F.base;
     this.quad(ctx, camera, view, 0, 400, z(0), z(1));
-    ctx.fillStyle = '#86d65e';
-    for (let m = 0; m < 400; m += 10) this.quad(ctx, camera, view, m, m + 5, z(0), z(1));
+    if (F.stripe) {
+      ctx.fillStyle = F.stripe;
+      for (let m = 0; m < 400; m += 10) this.quad(ctx, camera, view, m, m + 5, z(0), z(1));
+    }
     // Sector lines opening out from the line.
-    ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+    ctx.strokeStyle = this.venue.track.paint;
     ctx.lineWidth = 2;
     for (const [z0, z1, x1] of [[z(0.72), z(1), 12], [z(0.28), z(0), 4]]) {
       const a = this.project(camera, view, 0.1, z0);
@@ -76,7 +80,7 @@ export class JavelinRenderer extends RunwayRenderer {
     }
     // The foul line (white) with black-and-white blocks at both ends.
     const r0 = z(0.28), r1 = z(0.72);
-    ctx.fillStyle = '#f7f7f2';
+    ctx.fillStyle = this.venue.board.face;
     this.quad(ctx, camera, view, -0.07, 0, r0, r1);
     for (const [za, zb] of [[r0 - 0.06, r0], [r1, r1 + 0.06]]) {
       for (let i = 0; i < 3; i++) {
@@ -89,8 +93,8 @@ export class JavelinRenderer extends RunwayRenderer {
   /** Sky with clouds, hills and the sea on the horizon at y `hy`, scrolling with world x `x` (m). */
   drawSkyline(ctx, view, x, hy) {
     const g = ctx.createLinearGradient(0, 0, 0, hy);
-    g.addColorStop(0, '#6fb4ea');
-    g.addColorStop(1, '#cfe8f7');
+    g.addColorStop(0, this.venue.sky.top);
+    g.addColorStop(1, this.venue.sky.bottom);
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, view.w, view.h);
     // Clouds (far: slow parallax).
@@ -174,12 +178,15 @@ export class JavelinRenderer extends RunwayRenderer {
     this.drawBoards(ctx, view, camera, LAYOUT.boardsTop, LAYOUT.grassTop - LAYOUT.boardsTop, 0.24, 13);
     ctx.restore();
     // The field, seen side on, with distance boards along the far edge.
-    ctx.fillStyle = '#7ccf55';
+    const F = this.venue.sector;
+    ctx.fillStyle = F.base;
     ctx.fillRect(0, groundY, view.w, view.h - groundY);
-    ctx.fillStyle = '#86d65e';
-    for (let m = Math.floor(x / 10) * 10 - 40; m < x + 40; m += 10) {
-      const a = view.w * 0.45 + (m - x) * camera.ppm * 0.6;
-      ctx.fillRect(a, groundY, 5 * camera.ppm * 0.6, view.h - groundY);
+    if (F.stripe) {
+      ctx.fillStyle = F.stripe;
+      for (let m = Math.floor(x / 10) * 10 - 40; m < x + 40; m += 10) {
+        const a = view.w * 0.45 + (m - x) * camera.ppm * 0.6;
+        ctx.fillRect(a, groundY, 5 * camera.ppm * 0.6, view.h - groundY);
+      }
     }
     for (let d = 10; d <= 110; d += 10) this.drawBoard(ctx, view.w * 0.45 + (d - x) * camera.ppm * 0.6, groundY + 4, String(d), false, 1);
     this.drawBoard(ctx, view.w * 0.45 + (this.record - x) * camera.ppm * 0.6, groundY + 4, 'WR', true, 1);
@@ -188,11 +195,12 @@ export class JavelinRenderer extends RunwayRenderer {
   /** A distance board: white sign (red for the record) on a red base. */
   drawBoard(ctx, x, y, label, wr, s) {
     if (x < -60 || x > 3000) return;
+    const S = this.venue.signs;
     const w = 34 * s, h = 22 * s;
-    ctx.fillStyle = wr ? '#d9281e' : '#fff';
+    ctx.fillStyle = wr ? S.plate : S.post;
     ctx.fillRect(x - w / 2, y - h, w, h);
-    ctx.fillStyle = wr ? '#fff' : '#d9281e';
+    ctx.fillStyle = wr ? S.post : S.plate;
     ctx.fillRect(x - w / 2, y - 4 * s, w, 4 * s);
-    text(ctx, label, x, y - h / 2 - 1.5 * s, { size: Math.round(13 * s), color: wr ? '#fff' : '#1b2433' });
+    text(ctx, label, x, y - h / 2 - 1.5 * s, { size: Math.round(13 * s), color: wr ? S.text : '#1b2433' });
   }
 }

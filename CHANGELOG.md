@@ -4,6 +4,28 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## A different place for every mode
+- Each mode is played somewhere of its own (`src/render/venues.js`). **Training**
+  is a rundown community track: overcast sky, a sun-faded surface worn through
+  to dirt in patches, chalk instead of paint, dry unmown grass, rusted blocks,
+  and pine woods behind a chainlink fence where the stand would be — nobody
+  came. **Amateur** is the school stadium as before: brick-red track, mowed
+  stripes, a low stand with gaps all through it. **Pro** is the big one: blue
+  track, crisp white paint, a deep stand packed solid under floodlights with
+  camera flashes going off, lit LED hoardings, and an evening sky. Live play
+  uses Pro.
+- A venue is paint and props only. Every one shares `LAYOUT` in
+  `src/render/track.js`, so the perspective solve, all five event cameras, the
+  late-hit venues and the vault's upward pan are untouched.
+- Amateur looks the same as before bar three things: the stand is emptier (1
+  seat in 4 rather than 1 in 7 — a school meet), the long jump's infield green
+  now matches the track's infield instead of being three points off it, and the
+  javelin flight shot's sky matches the venue's so dusk doesn't clash.
+- Every venue carries a color for the relay's exchange zones, pale on the Pro
+  track because that one is itself blue.
+- `node tools/venuecheck.mjs` draws every venue through every renderer and
+  fails if one is missing a color a renderer reads.
+
 ## Fight the referee
 - Long jump and javelin: after your last attempt the referee joins the late
   hits from their spot at the foul line (white uniform, red cap). Leave them be

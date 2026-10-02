@@ -53,6 +53,29 @@ face; then they come after you, and gloat once they've put you down. In live pla
 other players, and each phone decides its own player's hits. Keyboard: arrows
 or WASD, J / K / L, 1-6 for emotes.
 
+## Where you play
+
+Each mode has a venue of its own ([`src/render/venues.js`](src/render/venues.js)):
+
+- **Training** — a rundown community track. Overcast, faded surface worn to
+  dirt, chalk lines, dry unmown grass, rusty blocks, pine woods behind a
+  chainlink fence. No stand, because nobody came.
+- **Amateur** — the high-school stadium: brick-red track, mowed stripes, a low
+  stand that's a good way from full, painted sponsor boards.
+- **Pro** — the big final: blue track, crisp paint, a deep stand packed solid
+  under floodlights with camera flashes, lit hoardings, evening sky. Live play
+  uses this one.
+
+A venue is **paint and props only**. All three share the geometry in `LAYOUT`
+([`src/render/track.js`](src/render/track.js)) — the horizon and the near and
+far edges of the track — because the perspective solve, every event camera, the
+late-hit venues and the pole vault's upward pan are all tuned against those
+numbers. A venue may recolor anything and swap what fills the band behind the
+track (a stand, or hills and trees), but it never moves the ground.
+
+`node tools/venuecheck.mjs` draws every venue through all four renderers and
+fails if one is missing a color a renderer reads.
+
 ## Tuning
 
 **On the phone:** tap **⚙ Tuning** on the menu or results screen. Every speed

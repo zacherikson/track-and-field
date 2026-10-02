@@ -12,6 +12,7 @@ import { VaultRenderer } from '../render/vaultArena.js';
 import { ORANGE, drawPad, drawX } from '../render/pads.js';
 import { drawDrop, drawHitRing } from '../render/targetPads.js';
 import { getDifficulty, hasRivals } from '../core/storage.js';
+import { venueFor } from '../render/venues.js';
 import { flow } from '../flow.js';
 import { Venue, FIELD_DEPTH } from '../brawl/venue.js';
 import { startFieldLateHits, fieldLateStep, fieldLateRender } from '../brawl/fieldLateHits.js';
@@ -97,7 +98,7 @@ export class PoleVault {
     // Hips to hands upside down at the top of the pole (arms straight along the body).
     const top = handPos(0, 0, this.figH, vaultSwingPose(Math.PI, 1), 0);
     this.reach = Math.hypot(top.x, top.y);
-    this.track = new VaultRenderer(cfg);
+    this.track = new VaultRenderer(cfg, venueFor(this.live));
     this.camera = new Camera();
     const me = chosenPlayer(this.ev.id);
     this.player = { name: this.live ? this.live.name : me.name, colors: me.colors, isPlayer: true, jumps: [] }; // live: your username, as the others see you

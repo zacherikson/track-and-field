@@ -1,6 +1,7 @@
 import { text } from '../core/ui.js';
 import { CONFIG } from '../config.js';
 import { BLOCK_FEET } from '../athletes/stickFigure.js';
+import { venueFor } from './venues.js';
 
 /**
  * Side-on stadium with real one-point perspective, framed like the original:
@@ -23,6 +24,11 @@ import { BLOCK_FEET } from '../athletes/stickFigure.js';
  * Lanes: internally lane 1 is nearest the camera (the player's lane); the
  * numbers painted on the track count the other way, 1 (far) to 6 (near).
  * Runners are drawn at (almost) the same size in every lane, as in the original.
+ *
+ * Venue: `this.venue` (render/venues.js) decides how the place looks — the sky,
+ * whether there's a stand or a treeline behind the track, the surface color,
+ * the paint, the equipment. It never moves the ground: LAYOUT below is the same
+ * in every venue, so the perspective solve and every camera stay put.
  */
 export const LAYOUT = {
   standsTop: 26,
@@ -36,10 +42,11 @@ export const LAYOUT = {
 
 export class TrackRenderer {
   /** @param blocksX world x (m) of the athletes' start position, for drawing starting blocks */
-  constructor(lanes, distance, blocksX = null) {
+  constructor(lanes, distance, blocksX = null, venue = venueFor()) {
     this.lanes = lanes;
     this.distance = distance;
     this.blocksX = blocksX;
+    this.venue = venue;
     const L = LAYOUT;
     const ratio = (L.nearY - L.horizonY) / (L.farY - L.horizonY);
     this.zNear = lanes / (ratio - 1);
@@ -111,55 +118,197 @@ export class TrackRenderer {
 
   drawSky(ctx, view) {
     const g = ctx.createLinearGradient(0, 0, 0, LAYOUT.standsTop + 40);
-    g.addColorStop(0, '#5aa9e6');
-    g.addColorStop(1, '#a9d6f5');
+    g.addColorStop(0, this.venue.sky.top);
+    g.addColorStop(1, this.venue.sky.bottom);
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, view.w, LAYOUT.standsTop + 40);
   }
 
   drawStands(ctx, view, camera) {
+    const s = this.venue.stands;
+    if (!s) return this.drawBackdrop(ctx, view, camera);
     const top = LAYOUT.standsTop;
     const bottom = LAYOUT.boardsTop;
-    ctx.fillStyle = '#39465e';
+    ctx.fillStyle = s.body;
     ctx.fillRect(0, top, view.w, bottom - top);
-    ctx.fillStyle = '#2a3346';
+    ctx.fillStyle = s.roof;
     ctx.fillRect(0, top, view.w, 8);
 
     // Crowd: a grid of "heads" colored by a hash of their seat. Far away, so it
-    // scrolls much slower than the track (parallax).
+    // scrolls much slower than the track (parallax). A big stadium packs more,
+    // smaller rows into the same band and leaves no seat empty; a school meet
+    // has a few rows and gaps all through them (venues.js `emptyEvery`).
     const par = 0.2;
-    const seatW = 14;
+    const seatW = s.seatW;
+    const head = Math.max(5, seatW - 5);
     const offset = camera.x * camera.ppm * par;
     const first = Math.floor(offset / seatW) - 1;
     const count = Math.ceil(view.w / seatW) + 2;
-    const palette = ['#f4d35e', '#ee964b', '#f95738', '#faf0ca', '#0d3b66', '#8ecae6', '#e9edc9', '#b5838d'];
-    for (let row = 0; row < 6; row++) {
-      const y = top + 14 + row * 14;
+    for (let row = 0; row < s.rows; row++) {
+      const y = top + s.rowH + row * s.rowH;
       const rowShift = (row % 2) * (seatW / 2);
       for (let i = first; i < first + count; i++) {
         const h = hash(i * 31 + row * 7919);
-        if (h % 7 === 0) continue; // empty seat
+        if (s.emptyEvery && h % s.emptyEvery === 0) continue; // empty seat
         const x = i * seatW - offset + rowShift;
-        ctx.fillStyle = palette[h % palette.length];
-        ctx.fillRect(x, y, 9, 9);
+        ctx.fillStyle = s.crowd[h % s.crowd.length];
+        ctx.fillRect(x, y, head, head);
       }
-      ctx.fillStyle = 'rgba(0,0,0,0.18)';
-      ctx.fillRect(0, y + 10, view.w, 2);
+      ctx.fillStyle = s.shade;
+      ctx.fillRect(0, y + head + 1, view.w, 2);
+    }
+    if (this.venue.flashes) this.drawFlashes(ctx, view, camera, top, bottom);
+    if (this.venue.lights) this.drawLights(ctx, view, camera, top);
+  }
+
+  /**
+   * No stand: low hills and a pine treeline behind the track instead, on the
+   * same slow parallax a crowd would have. The near fence (drawFence) covers
+   * the trunks, so the woods read as being on the other side of it.
+   */
+  drawBackdrop(ctx, view, camera) {
+    const b = this.venue.backdrop;
+    const top = LAYOUT.standsTop;
+    const bottom = LAYOUT.boardsTop;
+    const offset = camera.x * camera.ppm * 0.2;
+    const ridge = (color, lift, drift, a1, w1, a2, w2) => {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(0, bottom);
+      for (let sx = 0; sx <= view.w + 16; sx += 16) {
+        const wx = sx + offset * drift;
+        ctx.lineTo(sx, top + lift - a1 * Math.sin(wx / w1) - a2 * Math.sin(wx / w2));
+      }
+      ctx.lineTo(view.w, bottom);
+      ctx.closePath();
+      ctx.fill();
+    };
+    ridge(b.hillFar, 11, 1, 7, 190, 4, 71);
+    ridge(b.hill, 31, 1.4, 9, 130, 5, 47);
+
+    // Pines along the bottom of the band, a ragged line of them.
+    const treeW = 26;
+    const near = offset * 1.8;
+    const first = Math.floor(near / treeW) - 1;
+    for (let i = first; i < first + Math.ceil(view.w / treeW) + 2; i++) {
+      const h = hash(i * 5471);
+      const x = i * treeW - near + (h % 10);
+      const base = bottom + 3;
+      const ht = 34 + (h % 22);
+      const halfW = 8 + (h % 5);
+      ctx.fillStyle = b.trunk;
+      ctx.fillRect(x - 1.5, base - 5, 3, 6);
+      ctx.fillStyle = h % 3 ? b.tree : b.treeLit;
+      ctx.beginPath();
+      ctx.moveTo(x, base - ht);
+      ctx.lineTo(x + halfW, base - 4);
+      ctx.lineTo(x - halfW, base - 4);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  /** Camera flashes popping in a packed stand. Cosmetic, so it runs off the wall clock. */
+  drawFlashes(ctx, view, camera, top, bottom) {
+    const t = performance.now() / 1000;
+    const band = Math.max(1, bottom - top - 26);
+    for (let i = 0; i < 16; i++) {
+      const phase = (t * 1.6 + i * 0.41) % 1;
+      if (phase > 0.17) continue; // a flash is a brief pop, then gone
+      const a = 1 - phase / 0.17;
+      const h = hash(i * 7717 + Math.floor(t * 1.6 + i * 0.41) * 9176);
+      const x = ((h % 10000) / 10000) * view.w;
+      const y = top + 14 + ((h >>> 13) % band);
+      const r = 2.2 + 2 * a;
+      for (const [rad, alpha] of [[r * 2.8, 0.22 * a], [r, 0.9 * a]]) {
+        ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+        ctx.beginPath();
+        ctx.arc(x, y, rad, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+
+  /** Floodlight towers behind the stand, lit for an evening final. */
+  drawLights(ctx, view, camera, top) {
+    const towerW = 300;
+    const offset = camera.x * camera.ppm * 0.2;
+    const mast = 15, bw = 44, bh = 11;
+    for (let i = Math.floor(offset / towerW) - 1; i < Math.floor(offset / towerW) + Math.ceil(view.w / towerW) + 2; i++) {
+      const x = i * towerW - offset + 40;
+      const bankTop = top - mast - bh;
+      ctx.fillStyle = '#0e1626';
+      ctx.fillRect(x - 2.5, bankTop + bh, 5, mast + 8);
+      ctx.fillRect(x - bw / 2, bankTop, bw, bh);
+      for (let k = 0; k < 6; k++) {
+        ctx.fillStyle = '#fff6d8';
+        ctx.fillRect(x - bw / 2 + 3.5 + k * 7, bankTop + 2.5, 5, bh - 5);
+      }
+      const cy = bankTop + bh / 2;
+      const g = ctx.createRadialGradient(x, cy, 2, x, cy, 52);
+      g.addColorStop(0, 'rgba(255,245,210,0.34)');
+      g.addColorStop(1, 'rgba(255,245,210,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(x, cy, 52, 0, Math.PI * 2);
+      ctx.fill();
     }
   }
 
   drawBoards(ctx, view, camera, top, h, par, size) {
+    const b = this.venue.boards;
+    if (b.kind === 'fence') return this.drawFence(ctx, view, camera, top, h, par);
+    const led = b.kind === 'led';
     const boardW = 180 * Math.max(1, par);
     const offset = camera.x * camera.ppm * par;
     const first = Math.floor(offset / boardW) - 1;
-    const words = ['TRACK ROYALE', 'TAP TAP GO', 'FAST THUMBS', 'RUN JUNO RUN', 'NO FALSE STARTS'];
-    const colors = ['#1b998b', '#e4572e', '#2e294e', '#f1c40f', '#3f88c5'];
     for (let i = first; i < first + Math.ceil(view.w / boardW) + 2; i++) {
       const x = i * boardW - offset;
-      const k = ((i % words.length) + words.length) % words.length;
-      ctx.fillStyle = colors[k];
+      const k = ((i % b.words.length) + b.words.length) % b.words.length;
+      const dark = !!b.dark?.includes(k);
+      ctx.fillStyle = b.colors[k];
       ctx.fillRect(x, top, boardW - 2, h);
-      text(ctx, words[k], x + boardW / 2, top + h / 2 + 1, { size, color: k === 3 ? '#222' : '#fff' });
+      if (led) {
+        // A lit panel rather than paint: bright bleed along the top, dark bezel
+        // under it, and lettering that glows.
+        ctx.fillStyle = 'rgba(255,255,255,0.28)';
+        ctx.fillRect(x, top, boardW - 2, Math.max(1, h * 0.14));
+        ctx.fillStyle = 'rgba(0,0,0,0.42)';
+        ctx.fillRect(x, top + h - Math.max(1, h * 0.1), boardW - 2, Math.max(1, h * 0.1));
+      }
+      text(ctx, b.words[k], x + boardW / 2, top + h / 2 + 1, { size, color: dark ? '#222' : '#fff', shadow: led && !dark });
+    }
+  }
+
+  /** A chainlink fence where the hoardings would be: nobody is selling anything here. */
+  drawFence(ctx, view, camera, top, h, par) {
+    const b = this.venue.boards;
+    ctx.fillStyle = b.back;
+    ctx.fillRect(0, top, view.w, h);
+    const offset = camera.x * camera.ppm * par;
+    const step = Math.max(7, h * 0.55);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, top, view.w, h);
+    ctx.clip();
+    ctx.strokeStyle = b.mesh;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let sx = -h - (offset % step); sx < view.w + h; sx += step) {
+      ctx.moveTo(sx, top + h);
+      ctx.lineTo(sx + h, top);
+      ctx.moveTo(sx, top);
+      ctx.lineTo(sx + h, top + h);
+    }
+    ctx.stroke();
+    ctx.restore();
+    // Top rail and leaning posts.
+    ctx.fillStyle = b.post;
+    ctx.fillRect(0, top, view.w, Math.max(1, h * 0.1));
+    const postW = 110 * Math.max(1, par);
+    const firstPost = Math.floor(offset / postW) - 1;
+    for (let i = firstPost; i < firstPost + Math.ceil(view.w / postW) + 2; i++) {
+      ctx.fillRect(i * postW - offset, top, Math.max(2, h * 0.06), h);
     }
   }
 
@@ -180,10 +329,12 @@ export class TrackRenderer {
 
   /** Infield grass beyond the track, mowed in stripes that follow the perspective. */
   drawGrass(ctx, view, camera) {
-    ctx.fillStyle = '#4c9a3f';
+    const g = this.venue.grass;
+    ctx.fillStyle = g.base;
     ctx.fillRect(0, LAYOUT.grassTop, view.w, LAYOUT.farY - LAYOUT.grassTop);
-    ctx.fillStyle = '#56a847';
-    const stripeM = 4;
+    if (!g.stripe) return; // nobody has mowed it
+    ctx.fillStyle = g.stripe;
+    const stripeM = g.stripeM;
     const [from, to] = this.rangeAt(camera, view, this.zGrassTop);
     for (let m = Math.floor(from / (stripeM * 2)) * stripeM * 2; m < to; m += stripeM * 2) {
       this.quad(ctx, camera, view, m, m + stripeM, this.zFar, this.zGrassTop);
@@ -193,11 +344,13 @@ export class TrackRenderer {
   drawTrack(ctx, view, camera) {
     const top = LAYOUT.farY;
     const bottom = LAYOUT.nearY;
-    ctx.fillStyle = '#c1502e';
+    const T = this.venue.track;
+    ctx.fillStyle = T.surface;
     ctx.fillRect(0, top, view.w, bottom - top);
+    if (T.worn) this.drawWear(ctx, view, camera, T.worn);
 
     // Lane lines: horizontal, closer together further away.
-    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.fillStyle = T.paint;
     for (let k = 0; k <= this.lanes; k++) {
       const y = this.yAt(this.zNear + k);
       const w = 1.5 + 1.5 * this.scaleAt(this.zNear + k);
@@ -218,15 +371,15 @@ export class TrackRenderer {
     const [from, to] = this.rangeAt(camera, view, this.zFar);
     // Every 10 m: a painted band across all lanes, drawn in perspective so it
     // widens toward the viewer like the lane lines.
-    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.fillStyle = T.band;
     const band = 0.14; // m
     for (let m = Math.ceil(from / 10) * 10; m <= to; m += 10) {
       if (m > 0 && m < this.distance) this.quad(ctx, camera, view, m - band / 2, m + band / 2, this.zNear, this.zFar);
     }
-    line(0, 5, '#fff');
+    line(0, 5, T.line);
     // Finish (as in the original): a single white line, no checkerboard.
     const D = this.distance;
-    line(D, 5, '#fff');
+    line(D, 5, T.line);
     this.drawFinishTicks(ctx, view, camera);
     if (this.blocksX != null) this.drawStartBlocks(ctx, view, camera);
 
@@ -236,10 +389,27 @@ export class TrackRenderer {
       const z = this.laneZ(k);
       const size = Math.round(12 + 14 * this.scaleAt(z));
       const p = this.project(camera, view, 0.9, z);
-      if (p.x > -40 && p.x < view.w + 40) text(ctx, String(this.laneNumber(k)), p.x, p.y + 1, { size, color: 'rgba(255,255,255,0.9)' });
+      if (p.x > -40 && p.x < view.w + 40) text(ctx, String(this.laneNumber(k)), p.x, p.y + 1, { size, color: T.paint });
       this.drawPaintedNumber(ctx, view, camera, this.laneNumber(k), D - 1.1, z);
     }
     this.drawFinishPost(ctx, view, camera);
+  }
+
+  /**
+   * Patches where a neglected surface has worn through to the dirt under it,
+   * scattered down the depth range given (a lane band, or a runway strip).
+   */
+  drawWear(ctx, view, camera, color, z0 = this.zNear, z1 = this.zFar) {
+    ctx.fillStyle = color;
+    const [from, to] = this.rangeAt(camera, view, z1);
+    const span = Math.max(0.01, z1 - z0 - 0.4);
+    for (let m = Math.floor(from / 3) * 3; m < to; m += 3) {
+      const h = hash(m * 7717);
+      if (h % 3) continue;
+      const zc = z0 + 0.2 + (((h >>> 7) % 1000) / 1000) * span;
+      const len = 1.2 + (((h >>> 17) % 100) / 100) * 2.2;
+      this.quad(ctx, camera, view, m, m + len, zc - 0.2, zc + 0.2);
+    }
   }
 
   /**
@@ -250,6 +420,7 @@ export class TrackRenderer {
    */
   drawStartBlocks(ctx, view, camera) {
     if (this.project(camera, view, this.blocksX, this.zNear).x < -80 && this.project(camera, view, this.blocksX, this.zFar).x < -80) return;
+    const B = this.venue.blocks;
     const H0 = CONFIG.figure.height * camera.ppm;
     const ang = BLOCK_FEET.plateAngle;
     for (let k = this.lanes; k >= 1; k--) {
@@ -261,9 +432,9 @@ export class TrackRenderer {
       const r0 = px(BLOCK_FEET.rear - 0.14);
       const r1 = px(BLOCK_FEET.front + 0.05);
       const th = Math.max(3, 0.028 * Hk);
-      ctx.fillStyle = '#3b4250';
+      ctx.fillStyle = B.rail;
       ctx.fillRect(r0, gy - th, r1 - r0, th);
-      ctx.fillStyle = '#9aa3b2';
+      ctx.fillStyle = B.railTop;
       ctx.fillRect(r0, gy - th, r1 - r0, Math.max(1, th * 0.35));
       for (const tx of [BLOCK_FEET.rear, BLOCK_FEET.front]) {
         const bx = px(tx + 0.02); // + half a limb stroke: the drawn foot's rounded toe reaches past the toe point
@@ -271,7 +442,7 @@ export class TrackRenderer {
         const topX = bx - len * Math.cos(ang);
         const topY = gy - len * Math.sin(ang);
         // Strut behind the plate.
-        ctx.strokeStyle = '#3b4250';
+        ctx.strokeStyle = B.rail;
         ctx.lineWidth = Math.max(2, 0.02 * Hk);
         ctx.beginPath();
         ctx.moveTo(topX + 0.2 * (bx - topX), topY + 0.2 * (gy - topY));
@@ -279,13 +450,13 @@ export class TrackRenderer {
         ctx.stroke();
         // Footplate: thick red slab with a lighter face where the sole goes.
         ctx.lineCap = 'round';
-        ctx.strokeStyle = '#b3172b';
+        ctx.strokeStyle = B.plate;
         ctx.lineWidth = Math.max(4, 0.05 * Hk);
         ctx.beginPath();
         ctx.moveTo(bx, gy - th * 0.5);
         ctx.lineTo(topX, topY);
         ctx.stroke();
-        ctx.strokeStyle = '#ef4f5f';
+        ctx.strokeStyle = B.plateFace;
         ctx.lineWidth = Math.max(1.5, 0.016 * Hk);
         ctx.beginPath();
         ctx.moveTo(bx + 0.008 * Hk, gy - th * 0.8);
@@ -300,7 +471,7 @@ export class TrackRenderer {
   drawFinishTicks(ctx, view, camera) {
     const D = this.distance;
     if (this.project(camera, view, D - 6, this.zNear).x > view.w + 60) return;
-    ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+    ctx.strokeStyle = this.venue.track.paint;
     for (const back of [5, 4, 3]) {
       for (let k = 1; k <= this.lanes; k++) {
         const zc = this.laneZ(k);
@@ -329,7 +500,7 @@ export class TrackRenderer {
     ctx.translate(p.x, p.y);
     ctx.scale(1, (0.8 * laneH) / (0.62 * size)); // digit width fills ~80% of the lane
     ctx.rotate(Math.PI / 2);
-    text(ctx, String(n), 0, 0, { size, color: 'rgba(255,255,255,0.92)', weight: 800 });
+    text(ctx, String(n), 0, 0, { size, color: this.venue.track.paint, weight: 800 });
     ctx.restore();
   }
 
@@ -338,21 +509,23 @@ export class TrackRenderer {
     if (base.x < -200 || base.x > view.w + 200) return;
     const s = this.scaleAt(this.zFar);
     const h = 190 * s;
-    ctx.fillStyle = '#ddd';
+    const F = this.venue.finish;
+    ctx.fillStyle = F.post;
     ctx.fillRect(base.x - 3, base.y - h, 6, h);
-    ctx.fillStyle = '#12203a';
+    ctx.fillStyle = F.sign;
     ctx.fillRect(base.x - 55, base.y - h - 30, 110, 32);
-    text(ctx, 'FINISH', base.x, base.y - h - 14, { size: 17, color: '#ffb400' });
+    text(ctx, 'FINISH', base.x, base.y - h - 14, { size: 17, color: F.text });
   }
 
   /** In front of the near lane: a curb with 1m ticks, then ad boards (nearer = faster). */
   drawNearSide(ctx, view, camera) {
     const top = LAYOUT.nearY;
-    ctx.fillStyle = '#3f8f3a';
+    const T = this.venue.track;
+    ctx.fillStyle = T.apron;
     ctx.fillRect(0, top, view.w, LAYOUT.nearBoardsTop - top);
-    ctx.fillStyle = '#e8e8e8';
+    ctx.fillStyle = T.curb;
     ctx.fillRect(0, top, view.w, 5);
-    ctx.fillStyle = '#9a9a9a';
+    ctx.fillStyle = T.tick;
     const [l, r] = this.rangeAt(camera, view, this.zNear);
     for (let m = Math.floor(l); m < r; m++) {
       ctx.fillRect(this.project(camera, view, m, this.zNear).x, top, 3, 5);

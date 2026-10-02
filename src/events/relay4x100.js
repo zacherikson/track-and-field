@@ -9,11 +9,7 @@ import { text, roundRect } from '../core/ui.js';
 import { drawPad } from '../render/pads.js';
 import { LAYOUT } from '../render/track.js';
 import { VENUES } from '../render/venues.js';
-
-// The rival level for the relay (Special Events picks it; the campaigns don't come into it).
-let rivalLevel = 'amateur';
-export const setRelayLevel = (level) => (rivalLevel = level === 'pro' ? 'pro' : 'amateur');
-export const getRelayLevel = () => rivalLevel;
+import { getSpecialLevel } from '../core/storage.js';
 
 const BLUE = { hi: '#bfe0ff', mid: '#2f80ff', lo: '#1347b8' };
 const GRADES = {
@@ -50,7 +46,7 @@ export class Relay4x100 extends Sprint100 {
     super(ev);
     this.cfg = { ...CONFIG.sprint100, ...CONFIG.relay };
     this.recordGhost = false;
-    this.level = rivalLevel;
+    this.level = getSpecialLevel(); // Special Events' RIVALS toggle (the campaigns don't come into it)
     this.difficulty = CONFIG.ai[this.level];
   }
 

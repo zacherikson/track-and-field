@@ -30,6 +30,42 @@ function save(data) {
   }
 }
 
+// What follows your account (online/progress.js): campaign progress, your top
+// marks, your lineup and solo athlete. Changing any of it tells the listener,
+// which saves it to the account a moment later.
+let progressListener = null;
+
+/** `fn` is called whenever the progress that follows your account changes here. */
+export function onProgressChange(fn) {
+  progressListener = fn;
+}
+
+const progressChanged = () => progressListener?.();
+
+/**
+ * The progress that follows your account: { beaten, top, lineup, character,
+ * lineupAt }. `lineupAt` is when you last changed your lineup or solo athlete
+ * (ms; 0 if never since this was kept), so the newer lineup wins a sync.
+ */
+export function getProgress() {
+  const d = load();
+  return { beaten: d.beaten ?? {}, top: d.top ?? {}, lineup: getLineup(), character: d.character ?? null, lineupAt: d.lineupAt ?? 0 };
+}
+
+/** Replaces the progress that follows your account (a sync's result). Doesn't count as a change here. */
+export function setProgress(p) {
+  const data = load();
+  Object.assign(data, { beaten: p.beaten, top: p.top, lineup: p.lineup, character: p.character, lineupAt: p.lineupAt });
+  save(data);
+}
+
+/** Forgets it all: it belonged to the player you were (you signed out). */
+export function forgetProgress() {
+  const data = load();
+  for (const k of ['beaten', 'top', 'lineup', 'character', 'lineupAt']) delete data[k];
+  save(data);
+}
+
 export function getBest(eventId) {
   return load().best?.[eventId] ?? null;
 }
@@ -44,6 +80,7 @@ export function setBest(eventId, value, lowerIsBetter = true) {
     keepInTop(data, eventId, value, lowerIsBetter);
   }
   save(data);
+  progressChanged();
 }
 
 /** Records a result; returns true if it is a new personal best. `lowerIsBetter` for timed events. */
@@ -56,6 +93,7 @@ export function submitBest(eventId, value, lowerIsBetter = true) {
     if (prev != null) keepInTop(data, eventId, prev, lowerIsBetter); // the best it replaces stays on your top list
     data.best[eventId] = value;
     save(data);
+    progressChanged();
   }
   return better;
 }
@@ -99,6 +137,7 @@ export function addTopMark(boardId, entry, lowerIsBetter = true) {
   data.top ??= {};
   data.top[boardId] = list;
   save(data);
+  progressChanged();
   return place;
 }
 
@@ -128,7 +167,9 @@ export function getCharacter() {
 export function setCharacter(id) {
   const data = load();
   data.character = id;
+  data.lineupAt = Date.now();
   save(data);
+  progressChanged();
 }
 
 /**
@@ -141,10 +182,13 @@ export function getLineup() {
   return l && typeof l === 'object' ? l : {};
 }
 
-export function setLineupSlot(eventId, id) {
+/** Puts athlete `id` (null: nobody) in event `eventId`'s slot. `edit` false: filling in a default, not your choice (an older lineup from your account still wins). */
+export function setLineupSlot(eventId, id, edit = true) {
   const data = load();
   data.lineup = { ...getLineup(), [eventId]: id };
+  if (edit) data.lineupAt = Date.now();
   save(data);
+  if (edit) progressChanged();
 }
 
 /** Which tournament the menu plays: 'solo' (one athlete, all five events) or 'team' (your lineup). */
@@ -170,6 +214,17 @@ export function setCampaign(level) {
 
 export function getCampaign() {
   return campaign;
+}
+
+// The rival level for the special events (the relay): Special Events' RIVALS toggle, for this session.
+let specialLevel = 'amateur';
+
+export function setSpecialLevel(level) {
+  specialLevel = level === 'pro' ? 'pro' : 'amateur';
+}
+
+export function getSpecialLevel() {
+  return specialLevel;
 }
 
 /** Whether computer rivals race: only in a campaign. */
@@ -203,6 +258,7 @@ export function markBeaten(level, id) {
   data.beaten[level][id] = true;
   save(data);
   fresh = { level, id };
+  progressChanged();
   return true;
 }
 

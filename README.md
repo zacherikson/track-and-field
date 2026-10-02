@@ -200,6 +200,17 @@ total. Marks made with changed tuning aren't posted, and don't count as a
 personal best either. Set your username with the 👤 button at the top right of
 the menu; names are unique.
 
+**Your progress follows your account.** Signed in with Google, your
+campaign progress (what you've beaten in Amateur and Pro), your top five marks
+on every board (the Leaderboard's **Mine**) and your lineup and solo athlete
+are saved to your account as well as the phone
+([`src/online/progress.js`](src/online/progress.js), Firestore
+`progress/{uid}`, private to you). A new phone, or one whose data was cleared,
+gets them back when you sign in. Syncing merges rather than overwrites: you
+keep everything either copy has beaten and the best five marks from both, and
+the lineup changed most recently wins. A guest's progress stays on the phone
+until they sign in.
+
 **Live play**: **🌐 Live** on the Play tab lists every event and the
 tournament, live against other people (**🤖 vs Computer** is against the
 computer). You wait in a waiting room for that event until someone else joins;
@@ -338,6 +349,7 @@ src/online/
   squads.js           squads: start, find, join and leave one; your squad and its members
   post.js             posts a finished mark to its board and reports how it went
   bests.js            personal bests: your board entries, synced to the phone's copy
+  progress.js         campaign progress, top five marks and lineup, synced to your account (merged)
   live.js             live play: the waiting rooms, shared start times, sending and receiving players
   liveRun.js          another player's runner in a live 100m, replayed as their taps arrive
   liveTrace.js        sends your athlete frame by frame in live play, and draws the others' (all but the 100m)

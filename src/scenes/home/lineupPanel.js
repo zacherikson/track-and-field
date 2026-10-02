@@ -33,7 +33,7 @@ export class LineupPanel {
     this.slots = [...EVENTS.map((ev) => ({ event: ev.id, label: SHORT[ev.id] ?? ev.name })), { event: null, label: 'Solo' }].map((s) => ({ ...s, x: 0, y: 0, w: 0, h: 0, pressT: 0, flashT: 0 }));
     // Slots never set follow your solo athlete; fill them in now, so changing
     // the solo athlete from here doesn't change them too. (An emptied slot stays empty.)
-    for (const ev of EVENTS) if (getLineup()[ev.id] === undefined) setLineupSlot(ev.id, soloAthlete().id);
+    for (const ev of EVENTS) if (getLineup()[ev.id] === undefined) setLineupSlot(ev.id, soloAthlete().id, false);
     this.cards = CHARACTERS.map((c) => ({ c, x: 0, y: 0, w: 0, h: 0, pressT: 0 }));
     this.picked = null; // the athlete card tapped (Info and Use show under it)
     this.slotMenu = null; // the slot tapped (Info and Remove show under it)

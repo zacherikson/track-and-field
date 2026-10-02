@@ -14,6 +14,8 @@ import { toWire, fromWire } from './trace.js';
  *   usernames/{key}                   = { uid }  claims a name (key = lowercased), so names are unique
  *   leaderboards/{boardId}/runs/{uid} = { name, mark, ghost?, traced?, v, createdAt }
  *   ghosts/{boardId}/runs/{uid}       = { mark, ghost, v, createdAt }
+ *   progress/{uid}                    = { beaten, top, lineup, character, lineupAt, v, updatedAt }
+ *                                       your progress, private to you (online/progress.js)
  * One doc per player per board, holding their best mark (a time, a distance or
  * tournament points) and a copy of their name, so the board is one query. The
  * 100m doc carries its recorded run (the ghost others can race: small). Other

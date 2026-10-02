@@ -1,7 +1,7 @@
 rules_version = '2';
 
-// Security rules for the online leaderboard, usernames (see src/online/firebase.js)
-// and squads (src/online/squads.js).
+// Security rules for the online leaderboard, usernames (see src/online/firebase.js),
+// squads (src/online/squads.js) and your saved progress (src/online/progress.js).
 // Paste into Firebase console > Firestore Database > Rules, then Publish.
 //
 // Anyone can read. Every player is signed in, as a guest (anonymous sign-in)
@@ -21,6 +21,14 @@ service cloud.firestore {
         && request.resource.data.key == request.resource.data.name.lower()
         && request.resource.data.updatedAt == request.time
         && getAfter(/databases/$(database)/documents/usernames/$(request.resource.data.key)).data.uid == uid;
+    }
+
+    // Your progress (online/progress.js): campaign progress, top marks, lineup.
+    // Private: only you, signed in with an account (not as a guest), can read or write it.
+    match /progress/{uid} {
+      allow read: if isMember(uid);
+      allow create, update: if isMember(uid) && validProgress(request.resource.data);
+      allow delete: if false;
     }
 
     // One doc per username (lowercased), so no two players share a name.
@@ -164,6 +172,19 @@ service cloud.firestore {
     // You, signed in with an account rather than as a guest.
     function isMember(uid) {
       return isMe(uid) && request.auth.token.firebase.sign_in_provider != 'anonymous';
+    }
+
+    // The shape of progress/{uid}. Sanity and size only: it's yours alone.
+    function validProgress(d) {
+      return d.keys().hasOnly(['beaten', 'top', 'lineup', 'character', 'lineupAt', 'v', 'updatedAt'])
+        && d.keys().hasAll(['beaten', 'top', 'lineup', 'character', 'lineupAt', 'v', 'updatedAt'])
+        && d.v == 1
+        && d.updatedAt == request.time
+        && d.beaten is map && d.beaten.keys().hasOnly(['amateur', 'pro'])
+        && d.top is map && d.top.size() <= 30
+        && d.lineup is map && d.lineup.size() <= 30
+        && (d.character == null || (d.character is string && d.character.size() <= 32))
+        && d.lineupAt is number;
     }
 
     // 1-16 characters, no '/', not starting with '_', '.' or a space.

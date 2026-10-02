@@ -4,6 +4,21 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Progress follows your account
+- Signed in with Google, your campaign progress (BEATEN! stamps, Pro
+  unlocked), your top five marks on every board and your lineup and solo
+  athlete now save to your account (Firestore `progress/{uid}`, private), not
+  just the phone. A new phone or cleared data gets them back on sign-in.
+- Syncs as you come back to the menu and a few seconds after any of it
+  changes. The two copies merge: everything either has beaten, the best five
+  marks from both, and the most recently changed lineup.
+- Signing out clears them from the phone like your bests (they're your
+  account's now). Signing in as a guest puts the guest's progress up.
+- The Special Events RIVALS toggle moved into core/storage.js
+  (`getSpecialLevel`), so the menu no longer imports the relay scene.
+- Needs the new `progress` rule in firestore.rules published in the Firebase
+  console.
+
 ## 4×100m relay (Special Events)
 - A third big button on the home screen, **⭐ Special Events**, opens a list
   of events outside the five: for now the 4×100m relay, against Amateur or

@@ -2,17 +2,21 @@ import { CONFIG } from '../../config.js';
 import { Button, text, roundRect } from '../../core/ui.js';
 import { drawFigure, runPose } from '../../athletes/stickFigure.js';
 import { EVENTS, SPECIAL_EVENTS, TOURNAMENT_BOARDS, formatMark } from '../../events/registry.js';
-import { getRelayLevel, setRelayLevel } from '../../events/relay4x100.js';
-import { canTune, getBest, getGhostOn, setGhostOn, getPlayerName, getTourMode, setTourMode, setCampaign, getBeaten, takeFreshBeaten } from '../../core/storage.js';
+import { canTune, getBest, getGhostOn, setGhostOn, getPlayerName, getTourMode, setTourMode, setCampaign, getBeaten, takeFreshBeaten, getSpecialLevel, setSpecialLevel } from '../../core/storage.js';
 import { lineupAthlete, lineupSlotEmpty, heightOf } from '../../athletes/roster.js';
 import { TOUR_KINDS } from '../../tournament/tournament.js';
 import { flow } from '../../flow.js';
 import { syncBests } from '../../online/bests.js';
+import { syncProgress } from '../../online/progress.js';
 import { EventTile } from './eventTile.js';
 
 const SHORT = { sprint100: '100m', longjump: 'Long jump', hurdles110: 'Hurdles', polevault: 'Pole vault', javelin: 'Javelin' };
 const DIM = 'rgba(255,255,255,0.6)';
 const PLAIN = 'rgba(255,255,255,0.15)';
+
+// When the menu last fetched your progress from your account (see enter()).
+let lastPull = -Infinity;
+const PULL_EVERY = 60000; // ms
 
 // The list you were on (null: the big buttons), kept for the session so
 // Menu after a race comes back to it.
@@ -72,7 +76,7 @@ export class PlayPanel {
           w: 120,
           h: 44,
           onTap: () => {
-            setRelayLevel(level);
+            setSpecialLevel(level);
             this.styleRivals();
           },
         }),
@@ -151,6 +155,21 @@ export class PlayPanel {
     syncBests()
       .then((changed) => changed && this.game.scene === this.home && this.showBests())
       .catch(() => {});
+    // Your campaign progress and lineup follow your account (online/progress.js):
+    // catch up with it too. That needs the Firebase SDK (it's private), so not
+    // every time you're back at the menu: your own changes go up as they happen.
+    if (performance.now() - lastPull > PULL_EVERY) {
+      lastPull = performance.now();
+      syncProgress()
+        .then((changed) => changed && this.game.scene === this.home && this.showProgress())
+        .catch((e) => console.warn('progress not synced', e));
+    }
+  }
+
+  /** Your progress came in from your account: the campaign cards and your lineup again. */
+  showProgress() {
+    this.onShow();
+    this.styleSections();
   }
 
   /** Coming to this tab: your lineup may have changed on the Lineup tab. */
@@ -249,7 +268,7 @@ export class PlayPanel {
   }
 
   styleRivals() {
-    const level = getRelayLevel();
+    const level = getSpecialLevel();
     for (const b of this.rivalButtons) b.color = (b.label === 'Pro') === (level === 'pro') ? '#c2337a' : PLAIN;
   }
 

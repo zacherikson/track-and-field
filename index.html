@@ -23,7 +23,9 @@
       -webkit-tap-highlight-color: transparent;
     }
     body { position: fixed; inset: 0; }
-    canvas { display: block; width: 100vw; height: 100vh; height: 100dvh; touch-action: none; }
+    /* Sized from the fixed body (the visible screen), not 100vh/dvh, which iOS
+       can leave stale after launching or rotating a home-screen app. */
+    canvas { display: block; position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
     /* Probe element: lets JS read the notch / home-indicator safe-area insets. */
     #safe-probe {
       position: fixed; visibility: hidden; pointer-events: none;

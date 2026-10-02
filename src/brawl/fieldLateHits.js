@@ -2,11 +2,15 @@ import { text } from '../core/ui.js';
 import { flow } from '../flow.js';
 import { Aftermath } from './aftermath.js';
 import { FIELD_DEPTH, fieldSpot } from './venue.js';
+import { REFEREE } from '../athletes/roster.js';
 
 /**
  * The late hits after a field event (long jump, javelin, pole vault), shared.
  * They start with your last attempt: you're already on your feet where it left
  * you, and the computer rivals walk over from off screen to stand round you.
+ * Where there's a referee (the scene has refereeSpot()), offline they join in
+ * too, from their post: leave them be and they stay there; hit them (or taunt
+ * them) and they come after you like a rival, then go back to their post.
  * Offline the results come up a moment later; live, when everyone's done
  * (online/liveField.js). The event scene provides:
  *
@@ -29,6 +33,13 @@ export function startFieldLateHits(scene, x, pose, facing = 1) {
   scene.lateT = scene.now;
   const bots = scene.rivals.filter((r) => !r.live && !r.uid);
   scene.after.callOver(bots.map((r) => ({ id: r.name, name: r.name, colors: r.colors })), fieldSpot(x, FIELD_DEPTH));
+  // Live, every phone would have its own referee: they stay painted at the line instead.
+  if (scene.refereeSpot && !scene.live) {
+    const post = scene.refereeSpot();
+    const ref = scene.after.join({ id: REFEREE.id, name: REFEREE.name, colors: REFEREE.colors, x: post.x, d: post.d, facing: post.facing });
+    if (ref.brain) ref.brain.post = post;
+    scene.refereeFights = true; // the event stops drawing them at the line
+  }
 }
 
 /** A step before the results: the ✕, your controls, and (offline) the results after a moment. */

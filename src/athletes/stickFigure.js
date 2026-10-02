@@ -679,6 +679,12 @@ function drawHair(ctx, hx, hy, r, lean, colors) {
     ctx.fill();
   } else if (style === 'short') {
     cap();
+  } else if (style === 'refcap') {
+    // The referee's red cap: a dome, and the peak out over the face.
+    ctx.beginPath();
+    ctx.arc(0, -r * 0.15, r * 1.05, Math.PI, 0);
+    ctx.fill();
+    ctx.fillRect(0, -r * 0.3, r * 1.4, r * 0.28);
   } else if (style === 'fringe') {
     // Straight black fringe down over the forehead.
     cap();

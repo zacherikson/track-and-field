@@ -4,6 +4,25 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Fight the referee
+- Long jump and javelin: after your last attempt the referee joins the late
+  hits from their spot at the foul line (white uniform, red cap). Leave them be
+  and they stay at their post; hit them, or emote in their face, and they come
+  after you like a rival, then walk back to their post once they've put you
+  down. Works in Training too, where they're the only one to fight.
+- Live, they stay painted at the line (every phone would have its own).
+- The red cap is a hair style now (`refcap`), so the referee draws the same
+  in the event and in a fight.
+
+## Screen fits after launching or rotating
+- Opening the home-screen app (or rotating, or coming back to it) could leave
+  the game drawn short with a band of background under it, and the top bar
+  pushed down for a notch that was now at the side: iOS settles the screen
+  size and the notch insets a beat late, and the game measured once.
+- The game now measures again a few times after each of those (and when only
+  the insets change), puts back any scroll the page picked up, and sizes the
+  canvas from the fixed page instead of 100vh / 100dvh.
+
 ## Field-event ghosts set off with you
 - Long jump, pole vault and javelin: the ghost used to start its run the
   moment the attempt began, and its recording kept however long its player

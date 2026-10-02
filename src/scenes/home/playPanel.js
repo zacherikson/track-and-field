@@ -1,7 +1,8 @@
 import { CONFIG } from '../../config.js';
 import { Button, text, roundRect } from '../../core/ui.js';
 import { drawFigure, runPose } from '../../athletes/stickFigure.js';
-import { EVENTS, TOURNAMENT_BOARDS, formatMark } from '../../events/registry.js';
+import { EVENTS, SPECIAL_EVENTS, TOURNAMENT_BOARDS, formatMark } from '../../events/registry.js';
+import { getRelayLevel, setRelayLevel } from '../../events/relay4x100.js';
 import { canTune, getBest, getGhostOn, setGhostOn, getPlayerName, getTourMode, setTourMode, setCampaign, getBeaten, takeFreshBeaten } from '../../core/storage.js';
 import { lineupAthlete, lineupSlotEmpty, heightOf } from '../../athletes/roster.js';
 import { TOUR_KINDS } from '../../tournament/tournament.js';
@@ -13,13 +14,13 @@ const SHORT = { sprint100: '100m', longjump: 'Long jump', hurdles110: 'Hurdles',
 const DIM = 'rgba(255,255,255,0.6)';
 const PLAIN = 'rgba(255,255,255,0.15)';
 
-// The list you were on (null: the two big buttons), kept for the session so
+// The list you were on (null: the big buttons), kept for the session so
 // Menu after a race comes back to it.
 let lastList = null;
 
 /**
- * The home screen's middle tab: where you play. Two big buttons, vs Computer
- * and Live, over your lineup standing on the track; each opens its list.
+ * The home screen's middle tab: where you play. Three big buttons, vs Computer,
+ * Live and Special Events, over your lineup standing on the track; each opens its list.
  * Tuning (the owner only, storage.js canTune), Leaderboard and Profile along the top.
  *
  * vs Computer is three rows of cards, the five events then the tournament:
@@ -29,6 +30,8 @@ let lastList = null;
  * - Training: play anything on your own, no rivals (your ghost if GHOST is on), nothing ticked off.
  *   Campaigns never have a ghost.
  * Live is the tournament and the five events against other people.
+ * Special Events is what doesn't fit the five (the 4x100m relay), always
+ * against computer rivals at the level its RIVALS toggle says.
  */
 export class PlayPanel {
   constructor(home) {
@@ -37,13 +40,44 @@ export class PlayPanel {
   }
 
   enter() {
-    this.list = lastList; // null | 'offline' | 'live'
+    this.list = lastList; // null | 'offline' | 'live' | 'special'
     this.fade = 1; // 0 -> 1 as a list (or the buttons) come in
     this.phase = 0;
     this.demoX = 0;
     // The two big buttons.
     this.offlineBig = new BigButton({ label: '🤖 vs Computer', sub: 'Tournament + 5 events', color: '#e4572e', onTap: () => this.open('offline') });
     this.liveBig = new BigButton({ label: '🌐 Live', sub: 'Race people right now', color: '#1f8a58', onTap: () => this.open('live') });
+    this.specialBig = new BigButton({ label: '⭐ Special Events', sub: '4×100m Relay', color: '#c2337a', onTap: () => this.open('special') });
+    // Special Events: a card each, and who you race (remembered for the session).
+    this.specialButtons = SPECIAL_EVENTS.map(
+      (ev) =>
+        new Button({
+          label: ev.name,
+          sub: `Best ${formatMark(ev, getBest(ev.id))}`,
+          w: 300,
+          h: 96,
+          size: 28,
+          color: '#c2337a',
+          enabled: ev.available,
+          onTap: () => {
+            setCampaign(null); // nothing to tick off: never a campaign
+            flow.intro(this.game, ev);
+          },
+        }),
+    );
+    this.rivalButtons = ['amateur', 'pro'].map(
+      (level) =>
+        new Button({
+          label: level === 'pro' ? 'Pro' : 'Amateur',
+          w: 120,
+          h: 44,
+          onTap: () => {
+            setRelayLevel(level);
+            this.styleRivals();
+          },
+        }),
+    );
+    this.styleRivals();
     // A team tournament needs every lineup slot filled (Lineup tab); trying one without says so.
     this.warnT = 0;
     this.fillBtn = new Button({ label: 'Fill your lineup ›', w: 230, h: 42, size: 19, color: '#3a6fd8', onTap: () => this.home.show(0) });
@@ -180,7 +214,7 @@ export class PlayPanel {
     this.warnT = detail ? 5 : 4;
   }
 
-  /** Opens a list: 'offline' (vs Computer) or 'live'. */
+  /** Opens a list: 'offline' (vs Computer), 'live' or 'special'. */
   open(list) {
     this.list = lastList = list;
     this.fade = 0;
@@ -190,7 +224,7 @@ export class PlayPanel {
     this.relayout();
   }
 
-  /** Back from a list to the two big buttons. True if there was a list to leave (Esc). */
+  /** Back from a list to the big buttons. True if there was a list to leave (Esc). */
   back() {
     if (!this.list) return false;
     this.list = lastList = null;
@@ -203,12 +237,20 @@ export class PlayPanel {
     if (this.view) this.layout(this.view, this.bottom);
   }
 
-  /** The Best lines under the Training cards, from your saved bests. */
+  /** The Best lines under the Training and Special Events cards, from your saved bests. */
   showBests() {
     this.styleModes();
     EVENTS.forEach((ev, i) => {
       this.buttons[i].sub = ev.available ? `Best ${formatMark(ev, getBest(ev.id))}` : 'Coming soon';
     });
+    SPECIAL_EVENTS.forEach((ev, i) => {
+      this.specialButtons[i].sub = ev.available ? `Best ${formatMark(ev, getBest(ev.id))}` : 'Coming soon';
+    });
+  }
+
+  styleRivals() {
+    const level = getRelayLevel();
+    for (const b of this.rivalButtons) b.color = (b.label === 'Pro') === (level === 'pro') ? '#c2337a' : PLAIN;
   }
 
   /** The campaign cards: BEATEN! stamps, the locked tournaments; `fresh` ({ level, id }) is stamped in. */
@@ -262,13 +304,17 @@ export class PlayPanel {
     this.profileButton.x = (this.fsButton ? this.fsButton.x - 10 : view.w - 14 - view.safe.r) - this.profileButton.w;
     for (const b of [this.tuneButton, this.onlineButton, this.backBtn, this.fsButton, this.profileButton]) if (b) b.y = top;
 
-    // The two big buttons, side by side.
-    const bw = Math.min(330, (view.w - margin * 2 - 24) / 2);
-    this.offlineBig.w = this.liveBig.w = bw;
-    this.offlineBig.h = this.liveBig.h = 108;
-    this.offlineBig.x = view.w / 2 - 12 - bw;
-    this.liveBig.x = view.w / 2 + 12;
-    this.offlineBig.y = this.liveBig.y = 150;
+    // The three big buttons, side by side.
+    const bigs = [this.offlineBig, this.liveBig, this.specialBig];
+    const bigGap = 18;
+    const bw = Math.min(300, (view.w - margin * 2 - bigGap * 2) / 3);
+    bigs.forEach((b, i) => Object.assign(b, { w: bw, h: 108, x: view.w / 2 - (bw * 3 + bigGap * 2) / 2 + i * (bw + bigGap), y: 150 }));
+
+    // Special Events: the cards in a row, the RIVALS toggle under them.
+    const sw = Math.min(300, (view.w - margin * 2 - gapFor(this.specialButtons.length)) / this.specialButtons.length);
+    const sx = view.w / 2 - (sw * this.specialButtons.length + gapFor(this.specialButtons.length)) / 2;
+    this.specialButtons.forEach((b, i) => Object.assign(b, { w: sw, h: 96, x: sx + i * (sw + 16), y: SPECIAL_Y }));
+    this.rivalButtons.forEach((b, i) => Object.assign(b, { x: view.w / 2 - b.w - 4 + i * (b.w + 8), y: SPECIAL_SETTINGS_Y }));
 
     // Live: the tournament and the five events, three to a row.
     const gap = 12;
@@ -313,7 +359,7 @@ export class PlayPanel {
 
   /** Top of the open list's settings row. */
   get settingsY() {
-    return this.list === 'live' ? SETTINGS_Y : OFFLINE_SETTINGS_Y;
+    return this.list === 'live' ? SETTINGS_Y : this.list === 'special' ? SPECIAL_SETTINGS_Y : OFFLINE_SETTINGS_Y;
   }
 
   get tiles() {
@@ -324,7 +370,8 @@ export class PlayPanel {
     const fill = this.warnT > 0 && this.warnFill ? [this.fillBtn] : [];
     if (this.list === 'offline') return [...fill, this.backBtn, ...this.tiles, ...this.modeButtons, this.ghostButton];
     if (this.list === 'live') return [...fill, this.backBtn, ...this.liveButtons, ...this.modeButtons];
-    return [this.fsButton, this.tuneButton, this.onlineButton, this.profileButton, this.offlineBig, this.liveBig].filter(Boolean);
+    if (this.list === 'special') return [this.backBtn, ...this.specialButtons, ...this.rivalButtons];
+    return [this.fsButton, this.tuneButton, this.onlineButton, this.profileButton, this.offlineBig, this.liveBig, this.specialBig].filter(Boolean);
   }
 
   /** `events`: this tab's taps and keys (the home screen has sorted out swipes). */
@@ -363,7 +410,7 @@ export class PlayPanel {
   renderButtons(ctx, view) {
     text(ctx, 'TRACK ROYALE', view.w / 2, 88, { size: 44, color: '#ffb400', shadow: true });
     text(ctx, `Five events. Two thumbs. Starring ${starring(this.lineup)}.`, view.w / 2, 122, { size: 15, weight: 500, color: 'rgba(255,255,255,0.8)', maxWidth: view.w - 40 });
-    for (const b of [this.fsButton, this.tuneButton, this.onlineButton, this.profileButton, this.offlineBig, this.liveBig]) b?.draw(ctx);
+    for (const b of [this.fsButton, this.tuneButton, this.onlineButton, this.profileButton, this.offlineBig, this.liveBig, this.specialBig]) b?.draw(ctx);
 
     // Your lineup, warming up on the track: an athlete per event.
     const top = this.trackTop;
@@ -385,6 +432,7 @@ export class PlayPanel {
   }
 
   renderList(ctx, view) {
+    if (this.list === 'special') return this.renderSpecial(ctx, view);
     const offline = this.list === 'offline';
     this.backBtn.draw(ctx);
     text(ctx, offline ? 'VS COMPUTER' : 'LIVE', view.w / 2, 36, { size: 30, color: offline ? '#ffb400' : '#59cd90', shadow: true });
@@ -420,6 +468,18 @@ export class PlayPanel {
     if (!offline) return;
     label('TRAINING GHOST', this.ghostButton, this.ghostButton);
     this.ghostButton.draw(ctx);
+  }
+
+  /** Special Events: the cards, and who you race in them. */
+  renderSpecial(ctx, view) {
+    this.backBtn.draw(ctx);
+    text(ctx, 'SPECIAL EVENTS', view.w / 2, 36, { size: 30, color: '#ff8cc6', shadow: true });
+    text(ctx, 'One-offs against the computer. Nothing to tick off, just your best.', view.w / 2, 72, { size: 15, weight: 500, color: 'rgba(255,255,255,0.8)', maxWidth: view.w - 40 });
+    this.drawTrack(ctx, view, this.trackTop, this.trackBottom - this.trackTop, true);
+    this.specialButtons.forEach((b) => b.draw(ctx));
+    const [a, p] = this.rivalButtons;
+    text(ctx, 'RIVALS', (a.x + p.x + p.w) / 2, this.settingsY - 14, { size: 13, weight: 700, color: DIM });
+    this.rivalButtons.forEach((b) => b.draw(ctx));
   }
 
   /** vs Computer: each section's name and progress, then its cards. */
@@ -488,6 +548,9 @@ function starring(lineup) {
 const TOUR_COLOR = { offline: '#c98a00', live: '#1f8a58' };
 const LIST_Y = 100; // top of the Live list's first row of buttons
 const SETTINGS_Y = 270; // the Live list's settings row
+const SPECIAL_Y = 104; // top of the Special Events cards
+const SPECIAL_SETTINGS_Y = 238; // the Special Events RIVALS row
+const gapFor = (n) => (n - 1) * 16; // between the Special Events cards
 // vs Computer: the sections (level null: Training), top to bottom.
 const SECTIONS = [
   { level: 'amateur', title: 'AMATEUR', color: '#e4352a', label: '#ff7a5c' },

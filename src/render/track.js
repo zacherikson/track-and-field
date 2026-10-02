@@ -376,6 +376,7 @@ export class TrackRenderer {
     for (let m = Math.ceil(from / 10) * 10; m <= to; m += 10) {
       if (m > 0 && m < this.distance) this.quad(ctx, camera, view, m - band / 2, m + band / 2, this.zNear, this.zFar);
     }
+    this.drawZones(ctx, view, camera, from, to);
     line(0, 5, T.line);
     // Finish (as in the original): a single white line, no checkerboard.
     const D = this.distance;
@@ -464,6 +465,21 @@ export class TrackRenderer {
         ctx.stroke();
         ctx.lineCap = 'butt';
       }
+    }
+  }
+
+  /**
+   * Relay exchange zones (`zones`: [{ from, to }] in m): tinted blue across
+   * every lane, with a blue line at each end, so the blue PASS button has
+   * somewhere to come from.
+   */
+  drawZones(ctx, view, camera, from, to) {
+    for (const z of this.zones ?? []) {
+      if (z.to < from || z.from > to) continue;
+      ctx.fillStyle = this.venue.zone.fill;
+      this.quad(ctx, camera, view, z.from, z.to, this.zNear, this.zFar);
+      ctx.fillStyle = this.venue.zone.line;
+      for (const m of [z.from, z.to]) this.quad(ctx, camera, view, m - 0.12, m + 0.12, this.zNear, this.zFar);
     }
   }
 

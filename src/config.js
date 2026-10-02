@@ -197,6 +197,46 @@ export const CONFIG = {
   },
 
   /**
+   * 4x100m RELAY (special event; see relayRules.js). Four legs on one long
+   * straight, the 100m's targets and runner physics for each leg, and the
+   * baton changing hands in a 20 m zone around each 100 m line: the blue PASS
+   * button reaches it out, then TAKE when your teammate is at arm's length.
+   * Shares the 100m's start, countdown and finish lean (the anchor leans).
+   */
+  relay: {
+    distance: 400,
+    maxRaceTime: 70, // s; give up and DNF after this
+    zone: { before: 10, after: 10 }, // m either side of each 100 m line: the baton changes hands in here
+    waitBack: 20, // m before the line where the outgoing runner waits (they may start before the zone)
+    checkTime: 1.2, // s: the outgoing runner takes off when the incoming runner is this far behind them (their check mark)
+    outgoing: {
+      accel: 6, // m/s^2 from a standing start
+      closeRate: 1.4, // m/s: they settle this much slower than the incoming runner, who reels them in
+    },
+    zoneDecel: 0.2, // m/s^2 the incoming runner loses carrying their speed through the zone
+    reachDecel: 0.9, // m/s^2 more once they reach the baton out (PASS): reaching early costs time
+    reach: 1.9, // m between the runners (hips) at which the baton can change hands: both arms out
+    perfectBand: 0.55, // m inside full reach that counts as PERFECT
+    jamGap: 0.9, // m: closer than this and you've run up their back (LATE)
+    minGap: 0.45, // m: the incoming runner can't get closer than this
+    lateLoss: 1.6, // m/s the outgoing runner loses on a LATE handover, at worst
+    whiffLoss: 0.7, // m/s the outgoing runner loses reaching back for a baton that isn't there
+    whiffLockout: 0.25, // s before you can TAKE again after a whiff
+    doubleTap: 0.08, // s after PASS before a TAKE counts (one press can't be both)
+    batonLead: 0.6, // m the baton is ahead of the incoming runner's hips: when it reaches the end of the zone unpassed, it's MISSED
+    brakeDecel: 12, // m/s^2: missed, the outgoing runner pulls up...
+    handGap: 1.1, // m ...and the incoming runner stops this far behind them, where the baton changes hands
+    button: { radius: 66, y: 0.42, hit: 0.34 }, // the PASS / TAKE button: px, fraction of screen height; `hit` = share of screen width it answers to
+    banner: 1.1, // s a handover's PERFECT / GOOD / LATE / MISSED stays up
+    // Computer teams: PASS once the gap is down to `passGap` m, TAKE at `reach - takeErr` m
+    // (a negative error reaches too soon: a whiff).
+    ai: {
+      amateur: { passGap: [2.6, 5.0], takeErr: [-0.35, 1.1] },
+      pro: { passGap: [2.2, 3.4], takeErr: [-0.1, 0.6] },
+    },
+  },
+
+  /**
    * LONG JUMP, from footage of the original plus real rules (see
    * longJumpRules.js). The run-up uses the 100m's targets and runner physics.
    */

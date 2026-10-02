@@ -70,44 +70,8 @@ export class LaneRace {
     this.track = new TrackRenderer(cfg.lanes, cfg.distance, cfg.startX, venueFor(this.live));
     this.track.blocksNudge = (lane) => this.laneNudge(lane);
     this.camera = new Camera();
-
-    // Build the field: player in their lane, rivals in the others (a ghost, if
-    // there is one, takes the lane next to the player, or shares the player's).
-    const spec = this.ghostSpec;
-    const ghostLane = spec && !spec.overlay ? (cfg.playerLane < cfg.lanes ? cfg.playerLane + 1 : cfg.playerLane - 1) : null;
-    const rivals = shuffle(rivalRoster(this.ev.id));
-    // Live: the other players in the lanes nearest yours, and nobody else (so every phone has the same results).
-    const others = this.live ? this.live.others : [];
     if (this.live) this.stage = this.live.stage(this.ev.id);
-    const liveLanes = new Map(nearestLanes(cfg.playerLane, cfg.lanes).slice(0, others.length).map((lane, i) => [lane, others[i]]));
-    this.athletes = [];
-    for (let lane = 1; lane <= cfg.lanes; lane++) {
-      if (lane === ghostLane) {
-        this.athletes.push(this.ghostAthlete(lane));
-        continue;
-      }
-      if (liveLanes.has(lane)) {
-        this.athletes.push(this.liveAthlete(lane, liveLanes.get(lane)));
-        continue;
-      }
-      const isPlayer = lane === cfg.playerLane;
-      if ((this.live || !hasRivals()) && !isPlayer) continue; // Training: just you (and your ghost)
-      const who = isPlayer ? chosenPlayer(this.ev.id) : rivals.pop();
-      const runner = new Runner(this.runnerParams, undefined, cfg.startX); // event-specific physics, if any
-      this.athletes.push({
-        lane,
-        isPlayer,
-        name: isPlayer && this.live ? this.live.name : who.name, // live: you're your username, as the others see you
-        colors: who.colors,
-        runner,
-        ai: isPlayer ? null : this.createAI(runner),
-        mark: null,
-        status: 'ok',
-        idlePhase: rand(0, Math.PI * 2), // so the waiting athletes don't sway in unison
-      });
-      // Sharing the player's lane: drawn just behind them.
-      if (isPlayer && spec?.overlay) this.athletes.push(this.ghostAthlete(lane));
-    }
+    this.athletes = this.buildField();
     this.player = this.athletes.find((a) => a.isPlayer);
     if (this.traceProps != null) this.tracer = new TraceRecorder(this.ev.id, this.traceProps);
     if (this.recordGhost) {
@@ -124,6 +88,49 @@ export class LaneRace {
     this.resetField();
     this.setState('waiting', this.game.time);
     if (this.live) this.openLive();
+  }
+
+  /**
+   * The field: player in their lane, rivals in the others (a ghost, if there
+   * is one, takes the lane next to the player, or shares the player's).
+   */
+  buildField() {
+    const cfg = this.cfg;
+    const spec = this.ghostSpec;
+    const ghostLane = spec && !spec.overlay ? (cfg.playerLane < cfg.lanes ? cfg.playerLane + 1 : cfg.playerLane - 1) : null;
+    const rivals = shuffle(rivalRoster(this.ev.id));
+    // Live: the other players in the lanes nearest yours, and nobody else (so every phone has the same results).
+    const others = this.live ? this.live.others : [];
+    const liveLanes = new Map(nearestLanes(cfg.playerLane, cfg.lanes).slice(0, others.length).map((lane, i) => [lane, others[i]]));
+    const athletes = [];
+    for (let lane = 1; lane <= cfg.lanes; lane++) {
+      if (lane === ghostLane) {
+        athletes.push(this.ghostAthlete(lane));
+        continue;
+      }
+      if (liveLanes.has(lane)) {
+        athletes.push(this.liveAthlete(lane, liveLanes.get(lane)));
+        continue;
+      }
+      const isPlayer = lane === cfg.playerLane;
+      if ((this.live || !hasRivals()) && !isPlayer) continue; // Training: just you (and your ghost)
+      const who = isPlayer ? chosenPlayer(this.ev.id) : rivals.pop();
+      const runner = new Runner(this.runnerParams, undefined, cfg.startX); // event-specific physics, if any
+      athletes.push({
+        lane,
+        isPlayer,
+        name: isPlayer && this.live ? this.live.name : who.name, // live: you're your username, as the others see you
+        colors: who.colors,
+        runner,
+        ai: isPlayer ? null : this.createAI(runner),
+        mark: null,
+        status: 'ok',
+        idlePhase: rand(0, Math.PI * 2), // so the waiting athletes don't sway in unison
+      });
+      // Sharing the player's lane: drawn just behind them.
+      if (isPlayer && spec?.overlay) athletes.push(this.ghostAthlete(lane));
+    }
+    return athletes;
   }
 
   /**

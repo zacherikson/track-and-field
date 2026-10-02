@@ -12,6 +12,7 @@ import { ButtonSet, HurdleRun, HurdleAI, hurdlePositions } from '../src/events/h
 import { jumpMark, rivalJump } from '../src/events/longJumpRules.js';
 import { pressQuality, releaseQuality, releaseTarget, vaultHeight, rivalVault } from '../src/events/poleVaultRules.js';
 import { throwMark, rivalThrow } from '../src/events/javelinRules.js';
+import { Exchange, exchangeSpot, LEG } from '../src/events/relayRules.js';
 
 const STEP = CONFIG.loop.fixedStep;
 const D = CONFIG.sprint100.distance;
@@ -476,4 +477,62 @@ for (const level of ['amateur', 'pro']) {
   winners.sort((a, b) => a - b);
   const q = (arr, p) => arr[Math.floor(p * (arr.length - 1))].toFixed(2);
   console.log(`${level.padEnd(8)} rival best-of-3 median ${q(bests, 0.5)}; winner median ${q(winners, 0.5)}, top 10% ${q(winners, 0.9)}`);
+}
+
+// ---------------------------------------------------------------- 4x100m relay
+const RC = CONFIG.relay;
+
+/**
+ * One team, every leg on the same thumbs: `level` drives the strides (a CONFIG.ai
+ * level, or a steady player). `exchange` is how they pass: { passAt, takeAt } gaps
+ * in m (a player), CONFIG.relay.ai.<level> (a rival), or 'none' (never: all missed).
+ */
+function relayRace(level, exchange) {
+  const legs = [0, 1, 2, 3].map((k) => new Runner(undefined, undefined, k === 0 ? CONFIG.sprint100.startX : exchangeSpot(RC, k - 1).wait));
+  const ais = legs.map((r) => new AIController(r, level));
+  const exs = [0, 1, 2].map((k) => {
+    const ex = new Exchange(RC, k, legs[k], legs[k + 1], exchange.passGap ? exchange : null);
+    if (!exchange.passGap) Object.assign(ex, { ai: {}, ...(exchange === 'none' ? { passAt: -1, takeAt: -1 } : exchange) });
+    return ex;
+  });
+  ais[0].go(0);
+  let leg = 0;
+  for (let t = 0; t < RC.maxRaceTime; t += STEP) {
+    const r = legs[leg];
+    if (leg === 3 || exs[leg].stage === 'approach') {
+      if (leg === 3 && RC.distance - r.x <= DIP.promptDistance && r.mode === 'run' && !r.dipUsed) r.carry();
+      ais[leg].update(t, STEP, (r.x - leg * LEG) / LEG, RC.distance - r.x);
+      r.update(STEP, t);
+    }
+    for (const ex of exs) {
+      if (ex.step(t, STEP) !== 'handoff') continue;
+      leg = ex.k + 1;
+      ais[leg].nextTapT = t + STEP + 1 / ais[leg].cadence;
+    }
+    for (const l of legs) if (l.finished && l !== legs[leg]) l.update(STEP, t);
+    const cross = leg === 3 ? legs[3].crossing(RC.distance, t, STEP) : null;
+    if (cross != null) return { time: cross, exs };
+  }
+  return { time: null, exs };
+}
+
+console.log('\n4x100m RELAY (steady player, every exchange the same; the 100m’s 8.9s record is about 4.15 taps/s)');
+const steady = (rate) => ({ ...CONFIG.ai.pro, cadence: [rate, rate], jitter: 0, missChance: 0, reaction: [0.2, 0.2], dipError: [0, 0], fatigue: 0 });
+for (const [label, pass, take] of [
+  ['PASS at 2.4m, TAKE at full reach (perfect)', 2.4, RC.reach - 0.05],
+  ['PASS at 2.4m, TAKE at 1.1m (good)', 2.4, 1.1],
+  ['PASS at 2.4m, TAKE at 0.7m (late)', 2.4, 0.7],
+  ['never pass (all missed)', null, null],
+]) {
+  const times = [3.6, 4.15].map((rate) => relayRace(steady(rate), pass == null ? 'none' : { passAt: pass, takeAt: take }));
+  const zone = times[1].exs.map((ex) => (ex.tOut - ex.tIn).toFixed(2)).join(' ');
+  console.log(`${label.padEnd(46)} 3.6/s ${times[0].time.toFixed(2)}s   4.15/s ${times[1].time.toFixed(2)}s   zone ${zone}`);
+}
+for (const level of ['amateur', 'pro']) {
+  const runs = Array.from({ length: 200 }, () => relayRace(CONFIG.ai[level], RC.ai[level]));
+  const grades = {};
+  for (const r of runs) for (const ex of r.exs) grades[ex.grade] = (grades[ex.grade] ?? 0) + 1;
+  const times = runs.map((r) => r.time).sort((a, b) => a - b);
+  const share = Object.entries(grades).map(([g, n]) => `${g} ${Math.round((100 * n) / (runs.length * 3))}%`).join(', ');
+  console.log(`${level.padEnd(8)} team median ${times[100].toFixed(2)}s, best ${times[0].toFixed(2)}s; exchanges: ${share}`);
 }

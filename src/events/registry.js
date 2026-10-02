@@ -3,6 +3,7 @@ import { Hurdles110 } from './hurdles110.js';
 import { LongJump } from './longJump.js';
 import { PoleVault } from './poleVault.js';
 import { Javelin } from './javelin.js';
+import { Relay4x100 } from './relay4x100.js';
 
 // The list of events shown on the menu, in tournament order. Each available
 // event provides `create()` returning its play scene.
@@ -109,6 +110,30 @@ export const EVENTS = [
     ],
     create() {
       return new Javelin(this);
+    },
+  },
+];
+
+// Special events: on their own list (home screen, Special Events), never in a
+// tournament, and not on the online leaderboards (yet). Always against rivals.
+export const SPECIAL_EVENTS = [
+  {
+    id: 'relay4x100',
+    name: '4×100m Relay',
+    record: 33.8, // what the 100m record's pace runs with three perfect exchanges (tools/simulate.mjs)
+    unit: 's',
+    lowerIsBetter: true,
+    available: true,
+    howTo: [
+      'Four legs of 100m, and you run them all. Tap the green targets.',
+      'Your teammate sets off as you get close. In the BLUE zone, tap PASS.',
+      'Then tap TAKE as they come into reach: when the ring meets the button.',
+      'Too soon and they grab air. Too late and you run up their back.',
+      'No pass by the end of the zone and you both stop to swap. Costly!',
+      'Desktop: ← → to run, Space for PASS, TAKE and the anchor’s lean.',
+    ],
+    create() {
+      return new Relay4x100(this);
     },
   },
 ];

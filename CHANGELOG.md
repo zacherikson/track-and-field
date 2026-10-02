@@ -4,6 +4,23 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## 4×100m relay (Special Events)
+- A third big button on the home screen, **⭐ Special Events**, opens a list
+  of events outside the five: for now the 4×100m relay, against Amateur or
+  Pro rival teams (the RIVALS toggle; raced in that level's venue).
+- Six teams of four in their captain's kit; you run all four legs of yours
+  with the 100m's targets. Each exchange is a blue 20 m zone around the 100 m
+  line. Your teammate sets off when you're `checkTime` 1.2 s away and settles
+  `closeRate` 1.4 m/s under your speed, so the catch comes around the middle
+  of the zone at any pace. One blue button in the middle: PASS (reaching costs
+  `reachDecel` 0.9 m/s²), then TAKE, judged on the gap: PERFECT within 0.55 m
+  of full reach (1.9 m), GOOD, LATE (inside 0.9 m), or a whiff if they're out
+  of reach. No pass by the end of the zone and it's MISSED: you both stop and
+  swap there, and the next leg starts from a standstill.
+- From the simulator at the 100m record's pace (4.15 taps/s): 33.84 s with
+  perfect exchanges, +0.1 s each for good, +0.2 s for late, +1.5 s for missed.
+  Rival teams: Amateur median 41.8 s, Pro 38.1 s. Record set to 33.8 s.
+
 ## A different place for every mode
 - Each mode is played somewhere of its own (`src/render/venues.js`). **Training**
   is a rundown community track: overcast sky, a sun-faded surface worn through

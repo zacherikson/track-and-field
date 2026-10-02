@@ -6,7 +6,8 @@ drawn art is ready to switch back on (see [src/athletes/sprites/](src/athletes/s
 Plain HTML5 Canvas + vanilla ES modules. No framework, no build step.
 
 **Status:** all five events playable (100m Dash, 110m Hurdles, Long Jump, Pole
-Vault, Javelin), against Amateur or Pro rivals.
+Vault, Javelin), against Amateur or Pro rivals, plus a 4×100m relay under
+Special Events.
 
 ## Play on your phone
 
@@ -105,13 +106,43 @@ body parts into an athlete's sprite sheet (see [src/athletes/sprites/](src/athle
 ## The home screen
 
 Like Clash Royale: three tabs along the bottom, **Lineup | Play | Squad**. Tap
-one or swipe sideways to slide between them. The game opens on **Play**: two
-big buttons, **🤖 vs Computer** and **🌐 Live**, over your lineup warming up on
-the track (tap it to change it). Each button opens its list: the tournament and
-the five events, with that mode's settings (Solo/Team tournament for both;
-Rivals and Ghost only against the computer). ‹ Back (or Esc) returns to the
+one or swipe sideways to slide between them. The game opens on **Play**: three
+big buttons, **🤖 vs Computer**, **🌐 Live** and **⭐ Special Events**, over your
+lineup warming up on the track (tap it to change it). vs Computer and Live open
+the tournament and the five events, with that mode's settings (Solo/Team
+tournament for both; Rivals and Ghost only against the computer). Special
+Events opens the events that aren't part of the five (the 4×100m relay), with
+a RIVALS toggle, Amateur or Pro. ‹ Back (or Esc) returns to the
 buttons, and Menu after a race comes back to the list you raced from.
 Keyboard: 1 / 2 / 3 or Q / E change tab, Esc goes back to Play.
+
+## 4×100m relay
+
+Under **Special Events**. Six teams of four on one long straight, in their
+captain's kit; yours is captained by whoever does the relay in your lineup
+(tap them on the intro card to swap), and they anchor. You run every leg with
+the 100m's green targets.
+
+The baton changes hands in a blue 20 m zone around each 100 m line (10 m
+either side). Your teammate takes off on their own as you come in and settles
+just under your speed, so you reel them in. In the zone the targets give way to
+one blue button in the middle: **PASS** reaches the baton out (it slows you a
+little, so not too early), then **TAKE** as they come into reach. A ring round
+the button closes in as you catch them; tap when it meets the button.
+
+- **PERFECT**: at arm's length. **GOOD**: a bit close. **LATE**: up their back,
+  and they check their stride. Tap TAKE while they're out of reach and they
+  grab air (**TOO SOON**) and lose speed.
+- **MISSED**: the baton reaches the end of the zone unpassed. Your teammate
+  pulls up just past it, you stop behind them, and the baton changes hands
+  there: the next leg starts from a standstill (about 1.5 s lost).
+- The anchor leans at the line with the orange pads, as in the 100m.
+
+The results show each of your exchanges and the baton's time through the zone.
+Rivals race in the venue for their level: the high school for Amateur, the big
+stadium for Pro. The relay isn't on the online leaderboards yet. Tuning:
+`CONFIG.relay` in [`src/config.js`](src/config.js); `node tools/simulate.mjs`
+shows what a change does to team times and exchange grades.
 
 ## Squads
 
@@ -281,6 +312,8 @@ src/events/
   sprint100.js        100m: random-side target pads, wrong-tap ✕, lean prompt
   hurdleRules.js      hurdles: shuffled 1-2-3 button sets, clear/clip rules, rival thumbs (pure, shared with the simulator)
   hurdles110.js       110m hurdles: button sets along the top, hurdles in every lane, hurdling pose
+  relayRules.js       4x100m relay: the exchange zone, the outgoing runner, PASS / TAKE judging, rival timing (pure)
+  relay4x100.js       4x100m relay: teams of four, every runner on the track, the blue button, the baton
   longJumpRules.js    long jump: flight physics, marks from the foul line, stretch, rival jumps (pure)
   longJump.js         long jump: 3 rounds, run-up, blinking takeoff pads, flight, stretch, sand, marks
   poleVaultRules.js   pole vault: plant and release quality, height, rival vaults (pure)

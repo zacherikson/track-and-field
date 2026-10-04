@@ -1,31 +1,32 @@
-import { connectSDK, SDK_URL } from './firebase.js';
 import { getPlayerName } from '../core/storage.js';
+import { applyPatch } from '../meet/protocol.js';
+import { Conn, meetServer } from './net.js';
+import { MAX_PLAYERS, CLOSE_BEFORE } from './liveRules.js';
+
+export { MAX_PLAYERS, CLOSE_BEFORE };
 
 /**
  * LIVE: a waiting room, then an event (or a whole tournament) against the other
  * people in it.
  *
- * It runs on Firebase's Realtime Database (the leaderboards stay in
- * Firestore): it's quick with small, frequent messages, tells us the server's
- * clock, and marks a player whose phone drops off (onDisconnect).
- * database.rules.json says who may write what.
- *
- *   lobby/{kind}               = { room, startAt, setLen, players: { uid: { name, athlete, at } } }
- *   squadlobby/{squad}/{kind}  = the same, for one squad's practice (squadRoomKey)
- *   live/{room}/{uid}          = { v, name, athlete, left, s, t0, run, n, done, f, res, ready, b, h }
+ * It runs on the meet server (server/, a WebSocket; online/net.js):
+ *   /lobby/public        the public waiting rooms (server/src/lobbyCore.js)
+ *   /squad/<key>         a squad's PRACTICE waiting rooms, on its SquadHub,
+ *                        which lists them on its members' Squad tabs (`rooms`)
+ *   /room/<id>           one room's play (server/src/roomCore.js)
  *
  * `kind` is an event id or 'tournament' (tournament.js TOURNAMENT_KIND).
- * PRACTICE is a squad's own waiting rooms: started from the Squad tab, and only
- * listed there, on its members' Squad tabs (watchSquadRooms). The lobby node IS the waiting room:
- * whoever is in `players` plays together. When a second player arrives it gets
- * a start time (`startAt`, server clock, ms) a few seconds ahead; everyone
- * starts then. Shortly before, the room closes: the next player to arrive
- * starts a new room in the same node.
+ * Whoever is in a kind's waiting room plays together. When a second player
+ * arrives the server sets a start time (`startAt`, server clock, ms) a few
+ * seconds ahead; everyone starts then. CLOSE_BEFORE that the room closes: the
+ * next player to arrive starts a new one.
  *
- * In the room, play is split into STAGES: a race, or one round of a field
- * event; a tournament has one stage per race and per round. `s` is the stage
- * you're on and `t0` when it started (server ms). While it runs your phone
- * sends what the others need to draw you:
+ * In the room each player has a DOC, { v, name, athlete, left, s, t0, run, n,
+ * done, f, res, ready, b, h }, which they patch and the server passes on (as in
+ * a meet). Play is split into STAGES: a race, or one round of a field event; a
+ * tournament has one stage per race and per round. `s` is the stage you're on
+ * and `t0` when it started (server ms). While it runs your phone sends what the
+ * others need to draw you:
  * - the 100m: your inputs (`run`, the same data as a 100m ghost, online/ghost.js)
  *   and `n`, the physics steps run so far; the others replay them through the
  *   same physics (liveRun.js), so every phone works out every time exactly;
@@ -37,157 +38,83 @@ import { getPlayerName } from '../core/storage.js';
  * is (or a while after the first), it starts on every phone at the same
  * moment, a few seconds later (startOf), with a countdown on screen.
  * `b` and `h` are the late hits between events: where you are and who you
- * hit (brawl/liveBrawl.js).
+ * hit (brawl/liveBrawl.js). `left`: your socket closed before the end (the
+ * server says so for you), until it's back.
  */
-export const MAX_PLAYERS = 4;
-const START_DELAY = 10000; // ms from the second player arriving to the start
-export const CLOSE_BEFORE = 6000; // ms before the start the room stops taking players (and everyone goes to the event)
 const SEND_EVERY = 100; // ms between updates during a stage
 const READY_WAIT = 20000; // ms after the first player is ready for a stage that it starts without the others
 const ROUND_LEAD = 6000; // ms from everyone finishing a field-event round to the next one starting (a look at the marks first)
 export const EVENT_LEAD = 22000; // ms from everyone finishing a tournament event to the next one's start (standings and late hits, then its title card)
+const HANDOVER = 3000; // ms the waiting room's socket stays open after you go to the event, so the server has closed the room with you in it
 
-// The server's clock minus this phone's (ms), from the database.
-let offset = 0;
+let clockConn = null; // the live socket whose clock is the server's (the waiting room's, then the room's)
 let clock = null; // a meet's clock, while one is on (setClock)
-export const serverNow = () => (clock ? clock() : Date.now() + offset);
+export const serverNow = () => (clock ? clock() : clockConn ? clockConn.now() : Date.now());
 
-/** A squad meet (meet/meet.js) runs on the meet server's clock: `fn` () => ms, or null to go back to the database's. */
+/** A squad meet (meet/meet.js) runs on the meet server's clock: `fn` () => ms, or null to go back to live play's. */
 export function setClock(fn) {
   clock = fn;
 }
 
-let connecting = null;
-
-/** The Realtime Database SDK and your sign-in: { rt, db, uid }. Also starts following the server's clock. */
-function connectRT() {
-  connecting ??= (async () => {
-    const [{ app, uid }, rt] = await Promise.all([connectSDK(), import(`${SDK_URL}/firebase-database.js`)]);
-    const db = rt.getDatabase(app);
-    await new Promise((resolve) => {
-      rt.onValue(rt.ref(db, '.info/serverTimeOffset'), (snap) => {
-        offset = snap.val() ?? 0;
-        resolve();
-      });
-    });
-    return { rt, db, uid };
-  })();
-  connecting.catch(() => {
-    connecting = null; // try again next time
-  });
-  return connecting;
-}
-
-const newRoomId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
-
-const closed = (d, now) => d?.startAt != null && now > d.startAt - CLOSE_BEFORE;
-
-/** Two or more players: the start is set. Fewer: it's off. */
-function withStart(d, now) {
-  const n = Object.keys(d.players ?? {}).length;
-  if (n < 2) return { ...d, startAt: null, setLen: null };
-  if (d.startAt != null) return d;
-  return { ...d, startAt: Math.round(now + START_DELAY), setLen: 1.1 + Math.random() * 1.2 }; // GET SET lasts a random time, as offline
-}
-
-/**
- * A squad's key as a database key: squad names may have a '.' in them, which
- * the Realtime Database doesn't allow in a key (nor # $ [ ] /).
- */
-export const squadRoomKey = (squadKey) => encodeURIComponent(squadKey).replace(/\./g, '%2E');
-
-/** Where the waiting room for `kind` lives: the public one, or squad `squad`'s practice ({ key }). */
-const lobbyPath = (kind, squad) => (squad ? `squadlobby/${squadRoomKey(squad.key)}/${kind}` : `lobby/${kind}`);
+/** Where a waiting room lives: the public ones, or squad `squad`'s Practice ({ key }). */
+const lobbyPath = (squad) => (squad ? `/squad/${encodeURIComponent(squad.key)}` : '/lobby/public');
 
 /**
  * The waiting room for one event, or a tournament (`kind`). `onChange(view)` gets
- * { room, players: [{ uid, name, athlete, lineup, me }], startAt, setLen, closed, uid } whenever it changes.
- * `who` = the athlete you play as: { athlete } (a character id). (`lineup`
- * comes from phones older than one athlete per player.) `squad` ({ key }): that
- * squad's practice room instead of the public one.
+ * { room, players: [{ uid, name, athlete, me }], startAt, setLen, closed, uid } whenever it changes.
+ * `who` = the athlete you play as: { athlete } (a character id). `squad` ({ key, name }): that
+ * squad's Practice room instead of a public one.
  */
 export class Lobby {
   constructor(kind, onChange, who, squad = null) {
     this.kind = kind;
     this.onChange = onChange;
     this.who = who;
-    this.path = lobbyPath(kind, squad);
+    this.squad = squad;
     this.data = null;
   }
 
-  async join() {
-    const { rt, db, uid } = await connectRT();
-    Object.assign(this, { rt, db, uid });
-    this.ref = rt.ref(db, this.path);
-    const me = { name: getPlayerName(), ...this.who };
-    await this.update((d, now) => {
-      // Join the room in the node unless it's closed or full; otherwise start a new one.
-      const players = d?.players ?? {};
-      const open = !!d?.room && !closed(d, now) && (players[uid] != null || Object.keys(players).length < MAX_PLAYERS);
-      const next = open ? { ...d, players: { ...players } } : { room: newRoomId(), players: {} };
-      next.players[uid] = { ...me, at: now };
-      return withStart(next, now);
+  /** Resolves once you're in the waiting room; rejects if the server won't have you. */
+  join() {
+    if (!meetServer()) return Promise.reject(new Error('no live server'));
+    return new Promise((resolve, reject) => {
+      this.conn = new Conn(
+        lobbyPath(this.squad),
+        {
+          message: (m) => {
+            if (m.t !== 'waiting') return;
+            this.data = m;
+            resolve();
+            this.onChange(this.view());
+          },
+          status: (s) => {
+            if (s === 'open') this.conn.send({ t: 'join', kind: this.kind, name: getPlayerName(), ...this.who }); // again after a reconnect
+            if (s === 'denied' || s === 'reload') reject(new Error(s));
+          },
+        },
+        { squadName: this.squad?.name },
+      );
+      clockConn = this.conn;
     });
-    // Your phone drops off: the server takes you out of the room.
-    this.gone = rt.onDisconnect(rt.ref(db, `${this.path}/players/${uid}`));
-    this.gone.remove();
-    this.stop = rt.onValue(this.ref, (snap) => {
-      this.data = snap.val();
-      const v = this.view();
-      // Someone dropped off and left one player: call the start off.
-      if (v.startAt != null && !v.closed && v.players.length < 2) this.update((d, now) => (!d || closed(d, now) ? undefined : withStart(d, now))).catch(() => {});
-      this.onChange(v);
-    });
-  }
-
-  /** Runs `change(node, now)` on the lobby node in a transaction (`change` returns the new node, or undefined for none). */
-  update(change) {
-    return this.rt.runTransaction(this.ref, (d) => change(d, serverNow()));
   }
 
   view() {
     const d = this.data;
-    const players = Object.entries(d?.players ?? {})
-      .map(([uid, p]) => ({ uid, name: p.name, athlete: p.athlete ?? null, lineup: p.lineup ?? null, at: p.at, me: uid === this.uid }))
-      .sort((a, b) => a.at - b.at);
-    return { room: d?.room ?? null, players, startAt: d?.startAt ?? null, setLen: d?.setLen ?? null, closed: closed(d, serverNow()), uid: this.uid };
+    const uid = this.conn?.uid ?? null;
+    const players = (d?.players ?? []).map((p) => ({ uid: p.uid, name: p.name, athlete: p.athlete || null, at: p.at, me: p.uid === uid }));
+    const closed = !!d?.closed || (d?.startAt != null && serverNow() > d.startAt - CLOSE_BEFORE);
+    return { room: d?.room ?? null, players, startAt: d?.startAt ?? null, setLen: d?.setLen ?? null, closed, uid };
   }
 
-  /** Stops listening. `leave` also takes you out of the room (unless it has closed for the start). */
-  async close(leave = true) {
-    this.stop?.();
-    this.gone?.cancel();
-    if (!leave || !this.ref) return;
-    await this.update((d, now) => {
-      if (!d?.players?.[this.uid] || closed(d, now)) return undefined;
-      const players = { ...d.players };
-      delete players[this.uid];
-      return withStart({ ...d, players }, now);
-    }).catch(() => {});
+  /** Stops listening. `leave` also takes you out of the room; otherwise (going to the event) the socket stays a moment, so the room closes with you in it. */
+  close(leave = true) {
+    const conn = this.conn;
+    if (!conn) return;
+    if (leave) {
+      conn.send({ t: 'leave' });
+      conn.close();
+    } else setTimeout(() => conn.close(), HANDOVER);
   }
-}
-
-/**
- * Follows squad `squadKey`'s practice rooms: `onChange(rooms)` gets the ones
- * that are open, now and on every change, oldest first:
- * [{ kind, host, players: [{ uid, name, me }], full, mine }] (`host`: the name
- * of whoever started it, `mine`: you're in it). Resolves to a function that stops it.
- */
-export async function watchSquadRooms(squadKey, onChange) {
-  const { rt, db, uid } = await connectRT();
-  return rt.onValue(rt.ref(db, `squadlobby/${squadRoomKey(squadKey)}`), (snap) => {
-    const now = serverNow();
-    const rooms = [];
-    for (const [kind, d] of Object.entries(snap.val() ?? {})) {
-      if (!d || typeof d !== 'object' || closed(d, now)) continue;
-      const players = Object.entries(d.players ?? {})
-        .map(([id, p]) => ({ uid: id, name: p?.name ?? '?', at: p?.at ?? 0, me: id === uid }))
-        .sort((a, b) => a.at - b.at);
-      if (!players.length) continue;
-      rooms.push({ kind, host: players[0].name, players, full: players.length >= MAX_PLAYERS, mine: players.some((p) => p.me), at: players[0].at });
-    }
-    onChange(rooms.sort((a, b) => a.at - b.at));
-  });
 }
 
 /** The field events: three rounds, each its own stage. */
@@ -207,7 +134,7 @@ export class LiveSession {
     Object.assign(this, info);
     this.first = first;
     this.others = info.players.filter((p) => p.uid !== info.uid);
-    this.docs = new Map(); // uid -> their latest doc
+    this.docs = new Map(); // uid -> their doc, as patched
     this.listeners = new Set();
     this.batches = []; // updates waiting to go out, in order
     this.lastSent = 0;
@@ -219,22 +146,27 @@ export class LiveSession {
     this.send({ v: 2, name: info.name ?? '', athlete: me?.athlete ?? '' }, true);
   }
 
-  async open() {
-    const { rt, db, uid } = await connectRT();
-    if (this.closed) return;
-    Object.assign(this, { rt, db, uid });
-    this.ref = rt.ref(db, `live/${this.room}/${uid}`);
-    // Your phone drops off: the others see you've left.
-    this.gone = rt.onDisconnect(this.ref);
-    this.gone.update({ left: true });
-    this.stop = rt.onValue(rt.ref(db, `live/${this.room}`), (snap) => {
-      for (const [id, doc] of Object.entries(snap.val() ?? {})) {
-        if (id === uid || !doc || typeof doc !== 'object') continue;
-        this.docs.set(id, doc);
-        for (const fn of this.listeners) fn(id, doc);
-      }
+  /** Connects to the room's play on the server; it says `left` for you if your phone drops off. */
+  open() {
+    const prev = clockConn;
+    this.conn = new Conn(`/room/${this.room}`, {
+      message: (m) => {
+        if (m.t === 'docs') for (const [id, doc] of Object.entries(m.docs ?? {})) this.update(id, () => doc);
+        else if (m.t === 'doc') this.update(m.u, (doc) => applyPatch(doc, m.p));
+      },
+      status: (s) => s === 'open' && this.flush(),
     });
-    this.flush();
+    this.conn.adoptClock(prev); // the waiting room's clock until this one has its own
+    clockConn = this.conn;
+  }
+
+  /** Player `id`'s doc changed (`change(doc)` returns the new one). */
+  update(id, change) {
+    if (id === this.uid) return;
+    const doc = change(this.docs.get(id) ?? {});
+    if (!doc || typeof doc !== 'object') return;
+    this.docs.set(id, doc);
+    for (const fn of this.listeners) fn(id, doc);
   }
 
   /** Calls `fn(uid, doc)` with each other player's latest doc, now and on every change. Returns a function that stops it. */
@@ -331,31 +263,30 @@ export class LiveSession {
   }
 
   flush() {
-    if (!this.ref || this.closed || !this.batches.length) return;
+    if (!this.conn || this.closed || !this.batches.length) return;
     const wait = this.urgent ? 0 : this.lastSent + SEND_EVERY - Date.now();
     if (wait > 0) {
       clearTimeout(this.timer);
       this.timer = setTimeout(() => this.flush(), wait);
       return;
     }
-    // The database keeps one phone's writes in order, so they can all go now.
-    while (this.batches.length) this.rt.update(this.ref, this.batches.shift()).catch((err) => console.warn('live update failed', err));
+    // The socket keeps them in order (and holds them while it's reconnecting).
+    while (this.batches.length) this.conn.send({ t: 'patch', p: this.batches.shift() });
     this.urgent = false;
     this.lastSent = Date.now();
   }
 
-  /** Stops listening. Unless you played to the end, the others see you've left. */
+  /** Stops listening. Unless you played to the end, the others see you've left (the server says so as the socket closes). */
   end() {
     if (this.closed) return;
-    if (!this.done) {
-      this.batches = [];
-      this.send({ left: true }, true);
-    } else this.send({ b: null }, true); // off the others' late hits (brawl/liveBrawl.js)
+    if (this.done) {
+      this.conn?.send({ t: 'finished' }); // nothing to say when the socket closes
+      this.send({ b: null }, true); // off the others' late hits (brawl/liveBrawl.js)
+    }
     this.closed = true;
     clearTimeout(this.timer);
-    this.stop?.();
     this.listeners.clear();
-    if (this.done) this.gone?.cancel(); // nothing to say if the phone drops off now
+    this.conn?.close();
   }
 }
 
@@ -366,7 +297,7 @@ let current = null;
 export function startLive(info, first) {
   endLive();
   current = new LiveSession(info, first);
-  current.open().catch((err) => console.warn('live room unavailable', err));
+  current.open();
   return current;
 }
 

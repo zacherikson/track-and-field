@@ -1,10 +1,12 @@
 # The meet server
 
-Squad meets (see [docs/meets.md](../docs/meets.md)) run on this Cloudflare
-Worker: one **SquadHub** Durable Object per squad (the meet sign-up), one
-**Matchmaker**, and one **Meet** per meet (its lobby, its clock, heats, scoring
-and the relay). The game connects with a WebSocket; the rest of the game
-(accounts, squads, leaderboards) stays on Firebase.
+Squad meets (see [docs/meets.md](../docs/meets.md)) and all live play run on
+this Cloudflare Worker: one **SquadHub** Durable Object per squad (the meet
+sign-up and its Practice waiting rooms), one **Matchmaker**, one **Meet** per
+meet (its lobby, its clock, heats, scoring and the relay), one **Lobby** (the
+public live waiting rooms) and one **Room** per live room (its play). The game
+connects with a WebSocket; the rest of the game (accounts, squads,
+leaderboards) stays on Firebase.
 
 ```
 src/index.js          the Worker and the three Durable Objects (sockets, timers, RPC between them)
@@ -14,6 +16,8 @@ src/matchmakerCore.js which lobby a squad goes in
 src/socket.js         the WebSocket handshake (hello with a Firebase ID token), pings for the clock
 src/auth.js           checks the Firebase ID token against Google's keys
 src/firestore.js      reads a squad's members from Firestore (public), to let only them in
+src/lobbyCore.js      live waiting rooms (public ones in the Lobby, Practice in each SquadHub)
+src/roomCore.js       one live room's play: passes each player's updates on to the others
 ```
 
 The `*Core.js` files don't touch Cloudflare's APIs, so the tests run them on a

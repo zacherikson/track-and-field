@@ -39,9 +39,9 @@ real browsers playing with bots (including two browsers sharing a relay,
 with 150 ms of added lag, and a phone dropping mid-relay). Not deployed yet:
 see server/README.md, then set `MEET_SERVER` in `src/online/net.js`.
 
-Not built yet (later phases below): Practice and public live rooms on the new
-server, the server replaying the 100m to check times, meet history and squad
-records in Firestore, load tests at scale.
+Practice and public live rooms are on the same server. Not built yet (later
+phases below): the server replaying the 100m to check times, meet history and
+squad records in Firestore, load tests at scale.
 
 ## Why the live layer moves
 
@@ -387,8 +387,10 @@ globals).
   foul).
 - `src/config.js`: `CONFIG.meet` (timings, cutoffs, lobby waits).
 
-Practice and public live rooms move onto the same server later (Phase 6), so
-there's one live stack, and the Realtime Database's live paths are retired.
+Practice and public live rooms run on the same server too (`/lobby/public`,
+a squad's `/squad/<key>`, and a `/room/<id>` per room: server/src/lobbyCore.js,
+roomCore.js), so there's one live stack. The Realtime Database's live paths
+are no longer used.
 
 ## Build phases
 
@@ -400,7 +402,7 @@ there's one live stack, and the Realtime Database's live paths are retired.
 | **3. Field flights** | Long jump, pole vault, javelin with round cutoffs | Done |
 | **4. Four-phone relay** | A leg per phone, the taker's phone decides exchanges, stand-ins | Done (exchanges decided on the phone, not yet rechecked on the server) |
 | **5. Meet screens** | Lobby, heat + overall results, squad totals, final standings, late hits between events | Done |
-| **6. Hardening** | Load tests at scale, network-chaos tests, 100m replay check, server-checked exchanges, `meets/{id}` history and squad records, Practice and public rooms moved over, RTDB live retired | To do |
+| **6. Hardening** | Load tests at scale, network-chaos tests, 100m replay check, server-checked exchanges, `meets/{id}` history and squad records | To do (Practice and public rooms moved over: done) |
 
 ## Testing
 

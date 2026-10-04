@@ -3,7 +3,7 @@ import { PROTOCOL } from '../meet/protocol.js';
 
 /**
  * THE MEET SERVER CONNECTION (server/, docs/meets.md): a WebSocket to the
- * Cloudflare Worker that runs squad meets.
+ * Cloudflare Worker that runs squad meets and live play (online/live.js).
  *
  * MEET_SERVER is where it's deployed (`npx wrangler deploy` in server/ prints
  * it). Empty: meets aren't open, and the Meet button says so. Testing with the
@@ -84,7 +84,7 @@ const QUEUE_MAX = 300; // messages held while disconnected (the oldest go first)
 
 export class Conn {
   /**
-   * @param path      '/squad/<key>' or '/meet/<id>'
+   * @param path      '/squad/<key>', '/meet/<id>', '/lobby/public' or '/room/<id>'
    * @param handlers  { message(msg), status(state) }: state is 'connecting' | 'open' | 'reconnecting' | 'denied' | 'reload' | 'replaced' | 'closed'
    * @param hello     extra fields for the hello
    */
@@ -177,6 +177,13 @@ export class Conn {
         return this.close(false);
     }
     this.handlers.message?.(msg);
+  }
+
+  /** Starts from `other`'s reading of the server's clock (the same server), until this socket has a better one. */
+  adoptClock(other) {
+    if (!other || other.bestRtt === Infinity) return;
+    this.offset = other.offset;
+    this.bestRtt = other.bestRtt;
   }
 
   /** A server time `now` that took `rtt` ms there and back: the clock, if it's the best reading yet. */

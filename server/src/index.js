@@ -4,13 +4,18 @@ import { loadSquad } from './firestore.js';
 import { MeetCore } from './meetCore.js';
 import { SquadHubCore } from './squadHubCore.js';
 import { MatchmakerCore } from './matchmakerCore.js';
+import { LobbyCore } from './lobbyCore.js';
+import { RoomCore } from './roomCore.js';
+import { LIVE_KINDS } from '../../src/online/liveRules.js';
 
 /**
- * THE MEET SERVER (docs/meets.md): a Cloudflare Worker and three kinds of
+ * THE MEET SERVER (docs/meets.md): a Cloudflare Worker and five kinds of
  * Durable Object. The game connects with a WebSocket to
  *
- *   /squad/<squad key>   that squad's SquadHub: the Squad tab, meet sign-up
+ *   /squad/<squad key>   that squad's SquadHub: the Squad tab, meet sign-up, Practice waiting rooms
  *   /meet/<meet id>      a Meet: its lobby, then the meet itself
+ *   /lobby/public        the Lobby: live waiting rooms anyone can join
+ *   /room/<room id>      a Room: one live room's play (public or Practice)
  *
  * and the objects talk to each other by RPC: a SquadHub asks the Matchmaker
  * for a lobby and hands its squad to that Meet; a Meet tells the Matchmaker
@@ -29,11 +34,18 @@ export default {
     if (!name || name.length > 160) return new Response('Not found', { status: 404 });
     if (kind === 'squad') return env.SQUADS.get(env.SQUADS.idFromName(name)).fetch(request);
     if (kind === 'meet' && /^[a-z0-9]{6,40}$/.test(name)) return env.MEETS.get(env.MEETS.idFromName(name)).fetch(request);
+    if (kind === 'lobby' && name === 'public') return env.LOBBIES.get(env.LOBBIES.idFromName(name)).fetch(request);
+    if (kind === 'room' && ROOM_ID.test(name)) return env.ROOMS.get(env.ROOMS.idFromName(name)).fetch(request);
     return new Response('Not found', { status: 404 });
   },
 };
 
 const TICK = 100; // ms
+const ROOM_ID = /^[a-z0-9]{6,40}$/;
+const newId = () => crypto.randomUUID().replace(/-/g, '').slice(0, 20);
+
+/** Hands a live room's players to its Room (lobbyCore.js openRoom). */
+const openRoom = (env, id, info) => later('open room', () => env.ROOMS.get(env.ROOMS.idFromName(id)).init(info));
 
 /** Calls `fn` (an RPC to another object) without waiting, logging a failure. */
 const later = (what, fn) => Promise.resolve().then(fn).catch((e) => console.error(what, e));
@@ -56,6 +68,8 @@ export class SquadHub extends DurableObject {
       place: (squad) => this.place(squad),
       fill: (meetId, member) => env.MEETS.get(env.MEETS.idFromName(meetId)).fill(key, member),
       save: (state) => later('save squad', () => this.ctx.storage.put('state', state)),
+      newId,
+      openRoom: (id, info) => openRoom(env, id, info),
     });
     core.load(await this.ctx.storage.get('state'));
     this.core ??= core;
@@ -165,5 +179,53 @@ export class Meet extends DurableObject {
   async fill(squadKey, member) {
     if (!this.core) return { ok: false, why: 'gone' };
     return this.core.fill(squadKey, member);
+  }
+}
+
+/** The public live waiting rooms (lobbyCore.js), one for each event and the tournament. */
+export class Lobby extends DurableObject {
+  constructor(ctx, env) {
+    super(ctx, env);
+    this.core = new LobbyCore({ now: () => Date.now(), newId, openRoom: (id, info) => openRoom(env, id, info), changed: () => {} }, LIVE_KINDS);
+    this.timer = null;
+  }
+
+  async fetch(request) {
+    this.timer ??= setInterval(() => this.core.tick(), 250);
+    return acceptSocket(request, this.env, {
+      onPeer: () => true,
+      onMessage: (peer, msg) => {
+        if (msg.t === 'join') this.core.join(peer, msg);
+        else if (msg.t === 'leave') this.core.leave(peer);
+      },
+      onClose: (peer) => this.core.leave(peer),
+    });
+  }
+}
+
+/** One live room's play (roomCore.js). */
+export class Room extends DurableObject {
+  constructor(ctx, env) {
+    super(ctx, env);
+    this.core = new RoomCore({ now: () => Date.now(), ended: () => clearInterval(this.timer) });
+    this.timer = null;
+  }
+
+  // RPC from the waiting room that closed.
+  async init(info) {
+    this.core.init(info);
+    this.timer ??= setInterval(() => this.core.tick(), 1000);
+  }
+
+  async fetch(request) {
+    return acceptSocket(request, this.env, {
+      onPeer: async (peer) => {
+        // The waiting room's word may still be on its way.
+        for (let i = 0; i < 50 && !this.core.info; i++) await new Promise((r) => setTimeout(r, 100));
+        return this.core.connect(peer);
+      },
+      onMessage: (peer, msg) => this.core.message(peer, msg),
+      onClose: (peer) => this.core.disconnect(peer),
+    });
   }
 }

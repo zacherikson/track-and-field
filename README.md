@@ -199,10 +199,8 @@ the tournament), and you're in a live
 waiting room that only your squad sees. While it's open it shows next to the
 Practice button on every member's Squad tab, with **Join**; it plays like any
 live event (below), up to 4 players, and Race again or Menu bring you back to
-the squad. Squad rooms are `squadlobby/{squad}/{kind}` in the Realtime
-Database, next to the public `lobby/{kind}` (`src/online/live.js`); the
-database can't see squads (they're in Firestore), so its rules don't check
-who joins: only members are shown the room.
+the squad. Practice rooms run on the squad's SquadHub on the meet server
+(`server/src/lobbyCore.js`), which only lets the squad's members in.
 
 Squads live in Firestore (`squads/` and `squadmembers/`, see
 [src/online/squads.js](src/online/squads.js)); `firestore.rules` checks every
@@ -236,10 +234,9 @@ in about five minutes ([docs/meets.md](docs/meets.md)).
   heat and the squads' totals over them; then the next title card comes up by
   itself. After the relay, the final standings.
 
-Meets run on the meet server, a Cloudflare Worker in [server/](server/README.md),
-not the Realtime Database: it runs each meet's clock, heats and scoring. It
-has to be deployed (server/README.md) and its address put in
-`src/online/net.js` (`MEET_SERVER`) before the Meet button opens.
+Meets run on the meet server, a Cloudflare Worker in [server/](server/README.md):
+it runs each meet's clock, heats and scoring, and all other live play too. Its
+address is `MEET_SERVER` in `src/online/net.js`.
 
 ## Your athlete
 
@@ -289,10 +286,13 @@ in live play, so every phone shows the same results.
   itself. Nobody taps to go on; anyone still playing after 20 s is left to
   catch up.
 
-Live play runs on Firebase's Realtime Database, which is quick with small
-frequent messages and marks a player as gone when their phone drops off; its
-rules are in [`database.rules.json`](database.rules.json) (paste them into
-Firebase console > Realtime Database > Rules after changing them). In the 100m
+Live play runs on the meet server ([server/](server/README.md)), like squad
+meets: a Lobby object holds the public waiting rooms (a squad's Practice
+rooms are on its SquadHub), and each room's play gets a Room object that
+passes every player's updates on to the others and marks a player as gone
+when their phone drops off (`src/online/live.js`, `server/src/lobbyCore.js`,
+`server/src/roomCore.js`). Guests can play public live rooms; Practice is
+for the squad's members. In the 100m
 each phone sends its taps as they happen, the same data as a 100m ghost, and
 replays everyone else's through the same physics, so every phone gets every
 time exactly; the others' runners are drawn carried on at their current speed
@@ -441,7 +441,7 @@ src/tuning/           in-game tuning panel (params list, saved overrides, live e
 tools/simulate.mjs    headless tuning simulator
 tools/ghostcheck.mjs  checks that recorded runs replay to the exact same time
 firestore.rules       Firestore security rules for the leaderboards and usernames
-database.rules.json   Realtime Database security rules for live play
+database.rules.json   Realtime Database security rules (live play used it before the meet server; no longer used)
 ```
 
 ### Game-dev concepts used here

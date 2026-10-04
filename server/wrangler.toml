@@ -5,7 +5,8 @@ name = "track-royale-live"
 main = "src/index.js"
 compatibility_date = "2025-09-01"
 
-# One SquadHub per squad (meet sign-up), one Matchmaker, one Meet per meet.
+# One SquadHub per squad (meet sign-up, Practice), one Matchmaker, one Meet per meet,
+# one Lobby (public live waiting rooms), one Room per live room.
 [[durable_objects.bindings]]
 name = "SQUADS"
 class_name = "SquadHub"
@@ -18,9 +19,21 @@ class_name = "Matchmaker"
 name = "MEETS"
 class_name = "Meet"
 
+[[durable_objects.bindings]]
+name = "LOBBIES"
+class_name = "Lobby"
+
+[[durable_objects.bindings]]
+name = "ROOMS"
+class_name = "Room"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["SquadHub", "Matchmaker", "Meet"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["Lobby", "Room"]
 
 [vars]
 FIREBASE_PROJECT = "track-royale-f18ad"

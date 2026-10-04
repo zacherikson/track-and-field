@@ -43,7 +43,7 @@ const firebaseConfig = {
   storageBucket: 'track-royale-f18ad.firebasestorage.app',
   messagingSenderId: '701591973322',
   appId: '1:701591973322:web:d44061828fb08aff243333',
-  databaseURL: 'https://track-royale-f18ad-default-rtdb.firebaseio.com', // Realtime Database: live races (live.js)
+  databaseURL: 'https://track-royale-f18ad-default-rtdb.firebaseio.com', // Realtime Database: no longer used (live play moved to the meet server, online/live.js)
 };
 
 const SDK = 'https://www.gstatic.com/firebasejs/12.19.0';

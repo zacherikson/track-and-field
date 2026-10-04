@@ -1,5 +1,7 @@
 import { CONFIG } from '../../src/config.js';
 import { SQUAD_SIZE } from '../../src/meet/rules.js';
+import { PRACTICE_KINDS } from '../../src/online/liveRules.js';
+import { LobbyCore } from './lobbyCore.js';
 
 const SQUAD_CACHE = 20000; // ms a squad's member list is trusted before it's read again
 const STALE_MEET = 3 * 60 * 1000; // ms without word from the squad's meet before it's taken as gone
@@ -13,9 +15,13 @@ const STALE_MEET = 3 * 60 * 1000; // ms without word from the squad's meet befor
  * are sent there (`goto`). Once the squad is in a meet, a place that opens up
  * (someone left the lobby) is filled by the next squadmate to tap Meet.
  *
+ * It also runs the squad's PRACTICE waiting rooms (lobbyCore.js: `join` /
+ * `leave`), and tells every Squad tab here which are open (`rooms`).
+ *
  * `io`: { now(), loadSquad() -> { name, members: { uid: name } } | null,
  *         place(squad) -> meet id | null (Matchmaker + Meet.addSquad),
- *         fill(meetId, member) -> { ok }, save(state) }
+ *         fill(meetId, member) -> { ok }, save(state),
+ *         newId(), openRoom(id, info) (a Practice room's play) }
  */
 export class SquadHubCore {
   constructor(key, io) {
@@ -26,6 +32,7 @@ export class SquadHubCore {
     this.meet = null; // { id, phase, squads, seen }: the squad's meet
     this.squad = null; // { name, members, at }
     this.placing = false;
+    this.practice = new LobbyCore({ now: () => io.now(), newId: () => io.newId(), openRoom: (id, info) => io.openRoom(id, info), changed: () => this.roomsChanged() }, PRACTICE_KINDS);
   }
 
   /** The squad, from Firestore (cached), or null if it's closed. */
@@ -52,10 +59,12 @@ export class SquadHubCore {
     const f = this.forming.find((x) => x.uid === peer.uid);
     if (f) f.lostAt = null;
     peer.send(this.view());
+    peer.send({ t: 'rooms', rooms: this.practice.rooms() });
     return true;
   }
 
   disconnect(peer) {
+    this.practice.leave(peer);
     const mine = this.peers.get(peer.uid);
     if (!mine?.delete(peer) || mine.size) return; // still here on another socket
     this.peers.delete(peer.uid);
@@ -65,6 +74,8 @@ export class SquadHubCore {
 
   async message(peer, msg) {
     if (msg.t === 'signup') return this.signup(peer, msg);
+    if (msg.t === 'join') return this.practice.join(peer, { ...msg, name: peer.name });
+    if (msg.t === 'leave') return this.practice.leave(peer);
     if (msg.t === 'unsignup') {
       this.forming = this.forming.filter((x) => x.uid !== peer.uid);
       this.changed();
@@ -156,6 +167,13 @@ export class SquadHubCore {
     }
     this.checkMeet();
     this.tryPlace();
+    this.practice.tick();
+  }
+
+  /** The open Practice rooms, to every Squad tab here. */
+  roomsChanged() {
+    const msg = { t: 'rooms', rooms: this.practice.rooms() };
+    for (const set of this.peers.values()) for (const p of set) p.send(msg);
   }
 
   view() {

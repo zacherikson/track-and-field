@@ -4,6 +4,17 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Live play on the meet server
+- Live races and squad Practice moved off Firebase's Realtime Database onto the
+  meet server (Cloudflare), the same place as squad meets: a Lobby object
+  holds the public waiting rooms, each squad's SquadHub its Practice rooms (members
+  only, checked on the server now), and a Room object per room passes each
+  player's updates on. Same rules as before: 4 a room, the start 10 s after
+  the second player, closed 6 s before it. A phone that drops and reconnects
+  mid-room is back in instead of gone for good.
+- `database.rules.json` is no longer used by the game. Phones still on the old
+  build (Pages caches for ~10 minutes) keep using it among themselves.
+
 ## One athlete, one tournament
 - The lineup is gone: the left tab is now **Athlete**, where you pick one
   athlete who does every event (tap a card and they're yours). The Play tab

@@ -2,7 +2,7 @@ import { Button, text, roundRect } from '../../core/ui.js';
 import { cleanName, getPlayerName } from '../../core/storage.js';
 import { cachedSquad, loadMySquad, topSquads, searchSquads, createSquad, joinSquad, leaveSquad, kickFromSquad, SQUAD_MAX, inviteLink, getInvite, setInvite, squadInfo } from '../../online/squads.js';
 import { prewarmSDK } from '../../online/firebase.js';
-import { watchSquadRooms, MAX_PLAYERS, FIELD } from '../../online/live.js';
+import { MAX_PLAYERS, FIELD } from '../../online/live.js';
 import { EVENTS, eventById } from '../../events/registry.js';
 import { TOURNAMENT_KIND } from '../../tournament/tournament.js';
 import { flow } from '../../flow.js';
@@ -70,10 +70,9 @@ export class SquadPanel {
     this.meetBtn = new BigButton({ label: '🏟 Meet', sub: 'Squads vs squads', color: '#2f6fd8', onTap: () => this.goMeet() });
     this.meetView = null;
     this.meetWatch = null; // { key, conn }
-    this.rooms = []; // open practice rooms (watchSquadRooms)
+    this.rooms = []; // open practice rooms, from the squad's hub on the meet server (watchMeet)
     this.roomBoxes = [];
     this.roomBtns = [];
-    this.watching = null; // the squad whose rooms are followed
     this.refresh();
     this.loadInvite();
     if (this.home.panels[this.home.tab] === this) prewarmSDK(); // the game opened on this tab
@@ -107,21 +106,35 @@ export class SquadPanel {
   }
 
   exit() {
-    this.watchRooms(null);
     this.watchMeet(null);
   }
 
   /**
-   * Follows squad `key`'s meet sign-up on the meet server (null: stops), while
-   * the Squad tab shows, for the Meet button's line.
+   * Follows squad `key`'s hub on the meet server (null: stops), while the
+   * Squad tab shows: its meet sign-up, for the Meet button's line, and its
+   * open Practice rooms.
    */
   watchMeet(key) {
     if (key === (this.meetWatch?.key ?? null)) return;
     this.meetWatch?.conn.close();
     this.meetWatch = null;
     this.meetView = null;
+    this.rooms = [];
+    this.relayout();
     if (!key || !meetServer()) return;
-    const conn = new Conn(`/squad/${encodeURIComponent(key)}`, { message: (m) => m.t === 'squad' && (this.meetView = m) }, { squadName: this.mine?.name });
+    const conn = new Conn(
+      `/squad/${encodeURIComponent(key)}`,
+      {
+        message: (m) => {
+          if (m.t === 'squad') this.meetView = m;
+          else if (m.t === 'rooms') {
+            this.rooms = (m.rooms ?? []).map((r) => ({ ...r, players: r.players.map((p) => ({ ...p, me: p.uid === conn.uid })), mine: r.players.some((p) => p.uid === conn.uid) }));
+            this.relayout();
+          }
+        },
+      },
+      { squadName: this.mine?.name },
+    );
     this.meetWatch = { key, conn };
   }
 
@@ -147,31 +160,6 @@ export class SquadPanel {
     }
     if (v.forming.length) return `${v.forming.map((f) => f.name).join(', ')} · ${v.forming.length}/4 · Join!`;
     return 'Squads vs squads · 4 a squad';
-  }
-
-  /**
-   * Follows squad `key`'s open practice rooms (null: stops). Only while the
-   * Squad tab is showing: it needs the Realtime Database, which nothing else
-   * on the home screen does.
-   */
-  watchRooms(key) {
-    if (key === this.watching) return;
-    this.unwatch?.();
-    this.unwatch = null;
-    this.watching = key;
-    this.rooms = [];
-    this.relayout();
-    if (!key) return;
-    watchSquadRooms(key, (rooms) => {
-      if (this.watching !== key) return;
-      this.rooms = rooms;
-      this.relayout();
-    })
-      .then((stop) => {
-        if (this.watching === key) this.unwatch = stop;
-        else stop();
-      })
-      .catch((e) => console.warn('squad practice rooms unavailable', e));
   }
 
   /** Practice: the events to pick from. */
@@ -463,7 +451,6 @@ export class SquadPanel {
   /** `events`: this tab's taps (the home screen has sorted out swipes). */
   update(dt, events) {
     const showing = this.mine && this.home.panels[this.home.tab] === this ? this.mine.key : null;
-    this.watchRooms(showing);
     this.watchMeet(showing);
     this.meetBtn.sub = this.meetLine();
     if (!this.mine) this.picking = false;

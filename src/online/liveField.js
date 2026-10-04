@@ -83,6 +83,11 @@ export class LiveField {
       }
     }
     if (this.wait) {
+      // A meet lost on this phone: the next round won't be set. Back to the squad.
+      if (this.session.meet?.lost && !this.session.meet.final) {
+        flow.menu(sc.game, 'squad');
+        return true;
+      }
       const start = this.session.startOf(this.wait.stage);
       if (start == null || serverNow() < start) return this.wait.round === 1;
       sc.round = this.wait.round - 1;
@@ -90,12 +95,26 @@ export class LiveField {
       sc.startRound();
       return false;
     }
+    // A squad meet: an attempt not done by the round's cutoff is a foul (the server has moved on).
+    const cutoff = this.session.isMeet && this.stageKey && this.sentFor !== this.stageKey ? this.session.cutoffOf(this.stageKey) : null;
+    if (cutoff != null && serverNow() > cutoff) this.timeUp();
     if (this.finishing == null) return false;
     const now = serverNow();
-    if (now < this.finishAfter || (this.unfinished().length && now < this.finishing)) return false;
+    // Waiting for the others' last attempts: in a meet, for the server to have every flight's.
+    const waiting = this.session.isMeet ? !this.session.stageDone(this.stageKey) : this.unfinished().length;
+    if (now < this.finishAfter || (waiting && now < this.finishing)) return false;
     this.finishing = null;
     sc.finish();
     return true;
+  }
+
+  /** Out of time in a meet before the attempt was done: a foul (a failure in the pole vault). */
+  timeUp() {
+    const sc = this.scene;
+    this.sentFor = this.stageKey;
+    if (sc.state !== 'ready' && sc.state !== 'run') return; // in the air: it's about to land
+    sc.mark = this.ev.id === 'polevault' ? { fail: true } : { foul: true };
+    sc.showMark();
   }
 
   unfinished() {
@@ -127,6 +146,7 @@ export class LiveField {
    */
   result(mark) {
     if (!this.stageKey) return;
+    this.sentFor = this.stageKey;
     this.stream.pump(true);
     this.session.result(this.stageKey, Number.isFinite(mark?.mark) ? { mark: mark.mark } : mark?.fail ? { fail: true } : { foul: true });
     const r = this.scene.round;
@@ -135,7 +155,8 @@ export class LiveField {
       this.session.ready(this.wait.stage);
     } else {
       this.finishAfter = serverNow() + RESULTS_AFTER;
-      this.finishing = serverNow() + FINISH_WAIT;
+      const cutoff = this.session.isMeet ? this.session.cutoffOf(this.stageKey) : null;
+      this.finishing = cutoff != null ? Math.max(serverNow(), cutoff) + 3000 : serverNow() + FINISH_WAIT;
     }
   }
 

@@ -4,6 +4,32 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Squad meets
+- The Squad tab has a 🏟 **Meet** button: squads against squads, live, up to six
+  squads of four through the five events and the 4×100m relay
+  ([docs/meets.md](docs/meets.md)). The first four to sign up make the squad's
+  team; each squad's meet captain (picked at random) presses Ready, and with
+  everyone ready captains can Start early with fewer than six squads.
+- Every event is four heats (or flights) at once, one athlete from each squad,
+  seeded by personal best; you see your heat. Places across every heat score
+  10-8-6-5-4-3-2-1; ties share points. The relay is one race, a leg per phone.
+- Meets run on a new meet server (Cloudflare Workers + Durable Objects,
+  `server/`), which runs the clock: `CONFIG.meet` (new) has its timings.
+  `countdown` 8 s from the lock to the first title card, `titleCard` 8 s,
+  `eventGap` 15 s from an event's last result to the next start (the live
+  tournament's `EVENT_LEAD` is 22 s from everyone being ready), `roundGap` 4 s
+  between field rounds (live: `ROUND_LEAD` 6 s), a race's cutoff its
+  `maxRaceTime` + `raceGrace` 3 s, field rounds `fieldCutoff` 18 / 22 / 18 s
+  (long jump / pole vault / javelin; an attempt not done by then is a foul).
+  Bot meets on the local server: 4.6 to 4.7 minutes from the lock to the final
+  standings.
+- relayRules.js: an exchange can have a computer runner on one side only
+  (`aiPass`, `aiTake`) and its taker on another phone (`remoteOut`,
+  `remoteHandoff`). A computer team's exchanges are unchanged
+  (tools/simulate.mjs gives the same relay times).
+- Not live yet: deploy the server (server/README.md) and set `MEET_SERVER` in
+  `src/online/net.js`.
+
 ## Squad practice, and the 4×100m relay live
 - The Squad tab has a big ⚔ **Practice** button, like a Clash Royale friendly
   battle: it opens the events (the five, the 4×100m relay, the tournament),

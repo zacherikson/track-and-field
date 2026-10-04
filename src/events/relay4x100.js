@@ -27,10 +27,10 @@ const BACK_ARM = { upper: -1.2, fore: -1.4 }; // outgoing: hand back for it
 // besides the baton carrier's own body: every runner as LEG_PROPS numbers
 // (x, speed, stride phase, lean reach, mode), which leg has the baton, and
 // whether each exchange's baton is held out.
-const MODES = ['run', 'carry', 'lean'];
-const LEG_PROPS = 5;
-const TEAM_PROPS = 4 * LEG_PROPS + 1 + 3;
-const LIVE_TRACE = { hz: 20, maxFrames: 1500 }; // the longest relay (maxRaceTime) at 20 frames a second
+export const MODES = ['run', 'carry', 'lean'];
+export const LEG_PROPS = 5;
+export const TEAM_PROPS = 4 * LEG_PROPS + 1 + 3;
+export const LIVE_TRACE = { hz: 20, maxFrames: 1500 }; // the longest relay (maxRaceTime) at 20 frames a second
 
 /**
  * 4x100m RELAY: six teams of four, one long straight, the baton changing hands
@@ -474,6 +474,6 @@ export class Relay4x100 extends Sprint100 {
  * None for a missed one: it left the zone in a hand that then stopped, so its
  * time would leave out the standing start that follows.
  */
-function zoneTime(ex) {
+export function zoneTime(ex) {
   return ex.grade !== 'missed' && ex.tIn != null && ex.tOut != null ? ex.tOut - ex.tIn : null;
 }

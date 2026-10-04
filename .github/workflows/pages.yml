@@ -1,5 +1,6 @@
 # Publishes the game to GitHub Pages on every push to master.
-# There is no build step: the repo root is the site, except that the game's
+# There is no build step: the repo root is the site (less the meet server and
+# the tests, server/ and test/), except that the game's
 # code is also copied to v/<commit>/src and index.html loads it from there.
 # GitHub Pages lets browsers reuse files for 10 minutes; a new folder per
 # deploy means a phone can never mix old cached code with a new page.
@@ -36,7 +37,7 @@ jobs:
           mkdir -p _site
           shopt -s dotglob nullglob
           for f in *; do
-            case "$f" in .git|.github|_site) ;; *) cp -r "$f" _site/ ;; esac
+            case "$f" in .git|.github|_site|server|test) ;; *) cp -r "$f" _site/ ;; esac
           done
           mkdir -p "_site/$v"
           cp -r src "_site/$v/src"

@@ -1,0 +1,14 @@
+{
+  "name": "track-royale-live",
+  "private": true,
+  "type": "module",
+  "description": "The meet server: Cloudflare Workers + Durable Objects (docs/meets.md)",
+  "scripts": {
+    "dev": "wrangler dev --var DEV_AUTH:1",
+    "deploy": "wrangler deploy",
+    "test": "node --test test/*.test.mjs"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

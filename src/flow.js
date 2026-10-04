@@ -2,6 +2,7 @@
 // home (Lineup | Play | Squad tabs) -> event intro -> event (countdown/play inside) -> result -> retry | menu
 // tournament: intro -> event -> standings -> next intro ... -> champion
 // live: waiting room -> event (or a tournament's events) with the others in it (a squad's practice too)
+// meet: sign-up -> lobby -> intro -> event -> meet standings -> next intro ... -> relay -> final standings
 import { HomeScene } from './scenes/homeScene.js';
 import { IntroScene } from './scenes/introScene.js';
 import { ResultScene } from './scenes/resultScene.js';
@@ -9,6 +10,9 @@ import { LeaderboardScene } from './scenes/leaderboardScene.js';
 import { ProfileScene } from './scenes/profileScene.js';
 import { LobbyScene } from './scenes/lobbyScene.js';
 import { StandingsScene } from './tournament/standingsScene.js';
+import { MeetScene } from './meet/meetScene.js';
+import { MeetStandingsScene } from './meet/meetStandingsScene.js';
+import { meet } from './meet/meet.js';
 import { tournament } from './tournament/tournament.js';
 import { openTuning } from './tuning/panel.js';
 import { roundMark, eventById } from './events/registry.js';
@@ -22,6 +26,7 @@ export const flow = {
   menu: (game, tab = 'play') => {
     resetScars(); // the late hits' wounds heal
     endLive(); // and leaves a live room
+    meet.end(); // or a squad meet
     tournament.end(); // leaving to the menu ends a tournament in progress
     game.setScene(new HomeScene(tab));
   },
@@ -36,7 +41,8 @@ export const flow = {
   intro: (game, ev) => game.setScene(new IntroScene(ev)),
   play: (game, ev) => {
     const scene = ev.create();
-    if (tournament.live) scene.live = tournament.live; // a live tournament's next event
+    if (meet.active) scene.live = meet.session; // a squad meet's next event
+    else if (tournament.live) scene.live = tournament.live; // a live tournament's next event
     else endLive(); // playing on your own after a live event
     game.setScene(scene);
   },
@@ -55,9 +61,11 @@ export const flow = {
     const backdrop = game.scene?.lateRender ? game.scene : null;
     if (backdrop) backdrop.handedOver = true; // it stays open until the results scene leaves it
     game.setScene(
-      tournament.active
-        ? new StandingsScene(ev, results.filter((r) => !r.ghost), stats, backdrop) // a ghost is never scored
-        : new ResultScene(ev, results, stats, backdrop),
+      meet.active
+        ? new MeetStandingsScene(ev, results, stats, backdrop)
+        : tournament.active
+          ? new StandingsScene(ev, results.filter((r) => !r.ghost), stats, backdrop) // a ghost is never scored
+          : new ResultScene(ev, results, stats, backdrop),
     );
   },
   leaderboard: (game, board) => {
@@ -86,6 +94,23 @@ export const flow = {
     const scene = eventById(first).create();
     scene.live = session;
     game.setScene(scene);
+  },
+  // A squad meet (docs/meets.md): `squad` ({ key, name }) signs you up for its meet.
+  meet: (game, squad) => {
+    setCampaign(null);
+    endLive();
+    tournament.end();
+    meet.end();
+    game.setScene(new MeetScene(squad));
+  },
+  // The meet's event `i` (meet/rules.js MEET_ORDER): its title card, which counts down to it.
+  // Not in it (you dropped out of it): waiting for the next.
+  meetEvent: (game, i) => {
+    resetScars();
+    meet.index = i;
+    if (meet.session) meet.session.step = i;
+    if (!meet.inEvent(i)) return game.setScene(new MeetScene(null, { waiting: true }));
+    game.setScene(new IntroScene(eventById(meet.eventId(i))));
   },
   // Tuning panel overlay; the canvas scene underneath stays as it was.
   tuning: (game) => canTune() && openTuning(() => game.input.clear()), // the owner's only

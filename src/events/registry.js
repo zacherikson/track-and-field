@@ -4,6 +4,8 @@ import { LongJump } from './longJump.js';
 import { PoleVault } from './poleVault.js';
 import { Javelin } from './javelin.js';
 import { Relay4x100 } from './relay4x100.js';
+import { MeetRelay } from './meetRelay.js';
+import { meet } from '../meet/meet.js';
 import { TimeTrial } from './timeTrial.js';
 
 // The list of events shown on the menu, in tournament order. Each available
@@ -135,8 +137,16 @@ export const SPECIAL_EVENTS = [
       'No pass by the end of the zone and you both stop to swap. Costly!',
       'Desktop: ← → to run, Space for PASS, TAKE and the anchor’s lean.',
     ],
+    // In a squad meet each of the four runs a leg on their own phone.
+    meetHowTo: [
+      'Your squad’s four each run one leg. Tap the green targets on yours.',
+      'Waiting for the baton: TAKE it when the ring around the blue button meets it.',
+      'Bringing it in: in the BLUE zone, tap PASS, then your teammate takes it.',
+      'Anyone whose phone drops is run by the computer. Keep going!',
+      'Desktop: ← → to run, Space for PASS, TAKE and the anchor’s lean.',
+    ],
     create() {
-      return new Relay4x100(this);
+      return meet.active ? new MeetRelay(this) : new Relay4x100(this); // a squad meet's: a leg each
     },
   },
   {

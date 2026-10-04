@@ -238,6 +238,28 @@ export const CONFIG = {
   },
 
   /**
+   * SQUAD MEETS (docs/meets.md; the meet server, server/, reads these too).
+   * The server runs a meet's clock: every stage starts at a set time and has
+   * a cutoff, and the meet moves on as soon as every result is in (or the
+   * cutoff passes), so nobody can hold it up.
+   */
+  meet: {
+    countdown: 8, // s from the lock (everyone ready) to the first event's title card: the lanes and squads
+    titleCard: 8, // s before an event's start that its title card comes up (4 s of card, then 4 s on the track: READY / GET SET, or a round's countdown)
+    eventGap: 15, // s from an event's last result to the next event's start: the results and late hits (7 s), then the title card
+    roundGap: 4, // s from a field-event round's last attempt to the next round's start (a look at the marks)
+    raceGrace: 3, // s past a race's own limit (maxRaceTime) the server waits for a result before it's a DNF
+    fieldCutoff: { longjump: 18, polevault: 22, javelin: 18 }, // s from a round's start: an attempt not done by then is a foul
+    reconnect: 20, // s a dropped phone keeps its place in the lobby before it's taken off its squad's sign-up
+    lobby: {
+      readyWait: 60, // s a squad may stay unready once every other squad is ready, before it's sent back
+      shortWait: 60, // s a squad that lost a member (3 of 4) has to fill the place, before it's sent back
+      voteWait: 20, // s for every captain to press Start early once the first has, before the votes clear
+    },
+    podium: 30, // s the final standings are kept on the server for a phone that reconnects
+  },
+
+  /**
    * TIME TRIAL (special event; see cyclingRules.js). One hilly road, you
    * against the clock, rivals as see-through ghosts. Each tap is a pedal
    * stroke, left and right in turn; the gear turns pedal speed into road

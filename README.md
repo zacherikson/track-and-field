@@ -292,7 +292,9 @@ rooms are on its SquadHub), and each room's play gets a Room object that
 passes every player's updates on to the others and marks a player as gone
 when their phone drops off (`src/online/live.js`, `server/src/lobbyCore.js`,
 `server/src/roomCore.js`). Guests can play public live rooms; Practice is
-for the squad's members. In the 100m
+for the squad's members. Everyone in a room gets the same buttons (targets,
+hurdle sets, run-up targets), seeded from the room and stage on every phone
+(`src/core/random.js`). In the 100m
 each phone sends its taps as they happen, the same data as a 100m ghost, and
 replays everyone else's through the same physics, so every phone gets every
 time exactly; the others' runners are drawn carried on at their current speed

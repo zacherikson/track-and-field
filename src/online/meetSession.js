@@ -65,6 +65,11 @@ export class MeetSession {
     return !!this.docs.get(uid)?.left || this.meet.members.get(uid)?.connected === false;
   }
 
+  /** What every phone seeds `stage`'s buttons with (core/random.js liveRandom). */
+  seedOf(stage) {
+    return `meet/${this.meet.id}/${stage}`;
+  }
+
   stage(evId, round = 0) {
     return `${this.step}-${evId}${round ? `-${round}` : ''}`;
   }

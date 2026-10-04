@@ -2,6 +2,7 @@ import { CONFIG } from '../config.js';
 import { clamp } from '../core/math.js';
 import { LaneRace } from './laneRace.js';
 import { ButtonSet, HurdleRun, HurdleAI, hurdlePositions } from './hurdleRules.js';
+import { liveRandom } from '../core/random.js';
 import { hurdlePose, tripPose } from '../athletes/stickFigure.js';
 import { ORANGE, RIM, drawPad, drawX, drawNumberButton } from '../render/pads.js';
 import { isTrace } from '../online/trace.js';
@@ -43,7 +44,7 @@ export class Hurdles110 extends LaneRace {
     this.rings = []; // { slot, t0 }
     this.ghostSpec = this.live ? null : pickGhost(this.ev, (d) => isTrace(d, this.ev.id, this.traceProps)); // a live race has real people instead
     super.enter();
-    this.set = new ButtonSet(this.player.runner, this.cfg);
+    this.set = new ButtonSet(this.player.runner, this.cfg, liveRandom(this.live, this.stage, 'buttons')); // live: the same sets for everyone
   }
 
   createAI(runner, prev = null) {

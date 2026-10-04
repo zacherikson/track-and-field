@@ -338,6 +338,7 @@ export class MeetRelay extends Relay4x100 {
     if (this.human(a, a.leg)) {
       // Your thumbs are on your runner now: a fresh green target right away.
       this.judge.runner = a.runner;
+      this.judge.seq.rng = this.targetRandom(`leg${a.leg}`); // live: this leg's targets are the same for every team
       this.judge.start(t);
       this.spawnT = t;
       this.missSide = null;

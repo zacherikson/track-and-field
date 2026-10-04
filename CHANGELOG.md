@@ -4,6 +4,16 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Same buttons for everyone, live
+- In live play (public rooms, Practice and squad meets) everyone in a room
+  gets the same 100m targets, hurdle button sets and field-event run-up
+  targets, so nobody draws an easier run. Each phone makes them from a seed
+  every phone already has (the room or meet, plus the stage:
+  src/core/random.js), so nothing extra is sent. A target only changes on a
+  hit and a set only at a hurdle, so target 12 is the same for everyone
+  whatever their timing. Each relay leg and field round has its own seed, so
+  leg 3 is the same for every team. Off line it's random, as before.
+
 ## Live play on the meet server
 - Live races and squad Practice moved off Firebase's Realtime Database onto the
   meet server (Cloudflare), the same place as squad meets: a Lobby object

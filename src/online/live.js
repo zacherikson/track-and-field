@@ -181,6 +181,11 @@ export class LiveSession {
     return !!this.docs.get(uid)?.left;
   }
 
+  /** What every phone seeds `stage`'s buttons with (core/random.js liveRandom). */
+  seedOf(stage) {
+    return `${this.room}/${stage}`;
+  }
+
   /** A stage's key: this event of the room, and the round for a field event. */
   stage(evId, round = 0) {
     return `${this.step}-${evId}${round ? `-${round}` : ''}`;

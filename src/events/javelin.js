@@ -7,6 +7,7 @@ import { AIController } from '../athletes/ai.js';
 import { player as chosenPlayer, rivals as rivalRoster, heightOf, REFEREE } from '../athletes/roster.js';
 import { drawFigure, runPose, lerpPose, sampleTrack, handPos, JAVELIN_POSES, POSES } from '../athletes/stickFigure.js';
 import { StrideTargets } from './strideTargets.js';
+import { liveRandom } from '../core/random.js';
 import { angleAt, flightRange, rivalThrow } from './javelinRules.js';
 import { JavelinRenderer, drawJavelin } from '../render/javelinField.js';
 import { ORANGE, drawPad, drawX } from '../render/pads.js';
@@ -112,7 +113,7 @@ export class Javelin {
     this.round++;
     const t = this.now;
     this.runner = new Runner(undefined, undefined, -this.cfg.runway);
-    this.judge = new StrideTargets(this.runner, CONFIG.sprint100.targets);
+    this.judge = new StrideTargets(this.runner, CONFIG.sprint100.targets, liveRandom(this.live, this.live?.stage(this.ev.id, this.round), 'targets')); // live: this round's run-up targets are the same for everyone
     this.runner.go(t);
     this.judge.start(t);
     this.spawnT = -Infinity;

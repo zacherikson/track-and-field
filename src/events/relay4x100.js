@@ -217,6 +217,7 @@ export class Relay4x100 extends Sprint100 {
     if (!a.isPlayer) return;
     // Your thumbs are on the new runner: a fresh green target right away.
     this.judge.runner = a.runner;
+    this.judge.seq.rng = this.targetRandom(`leg${a.leg}`); // live: this leg's targets are the same for every team
     this.judge.start(t);
     this.spawnT = t;
     this.missSide = null;

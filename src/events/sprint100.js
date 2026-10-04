@@ -1,6 +1,7 @@
 import { CONFIG } from '../config.js';
 import { LaneRace } from './laneRace.js';
 import { StrideTargets } from './strideTargets.js';
+import { liveRandom } from '../core/random.js';
 import { ORANGE, drawPad, drawX } from '../render/pads.js';
 import { drawDrop, drawHitRing } from '../render/targetPads.js';
 import { isReplayable } from '../online/ghost.js';
@@ -55,6 +56,11 @@ export class Sprint100 extends LaneRace {
     this.judge = new StrideTargets(this.player.runner, CONFIG.sprint100.targets);
   }
 
+  /** The targets' random numbers (`what`: which run of them): live, the same for everyone in the room (core/random.js). */
+  targetRandom(what) {
+    return liveRandom(this.live, this.stage, what);
+  }
+
   /** Player numbers for the results screen. */
   raceStats() {
     return { hits: this.judge.hits, misses: this.judge.misses, topSpeed: this.playerTopV ?? 0, input: this.inputStats() };
@@ -80,6 +86,7 @@ export class Sprint100 extends LaneRace {
   }
 
   onGo() {
+    this.judge.seq.rng = this.targetRandom('targets'); // from the top on every start, so a restart can't put you out of step
     this.judge.start(this.goT);
     this.spawnT = -Infinity; // the first target just appears in place at GO; later ones drop in
   }

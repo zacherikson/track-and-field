@@ -105,6 +105,11 @@ export class MeetStandingsScene {
     }
     btns.forEach((b) => b.update(dt));
     bd?.lateUpdate(dt, t);
+    if (meet.lost && !meet.final) {
+      this.nextBtn.label = 'Meet lost';
+      return;
+    }
+    if (this.last && !meet.final) this.nextBtn.label = 'Final standings…';
     if (meet.final || this.last) return;
     // The next event: its title card comes up by itself.
     const next = meet.events[this.index + 1];
@@ -133,6 +138,7 @@ export class MeetStandingsScene {
     this.drawSquads(ctx, x0 + placesW + 12, s.t + 10, squadsW, room);
     this.buttons.forEach((b) => b.draw(ctx));
     if (this.backdrop) this.backdrop.after?.drawControls(ctx, view, false);
+    if (meet.lostText && !meet.final) text(ctx, meet.lostText, view.w / 2, view.h - 76 - s.b, { size: 17, weight: 700, color: '#ffb35c', shadow: true, maxWidth: view.w - 40 });
   }
 
   /** This event: the overall places once the server has them (else your heat), or the final standings. */

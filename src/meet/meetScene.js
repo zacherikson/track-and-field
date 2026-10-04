@@ -96,6 +96,7 @@ export class MeetScene {
 
   onMeet() {
     if (meet.withdrawn) this.note = { text: WITHDRAWN[meet.withdrawn] ?? 'You’re out of the meet.', color: '#ffb35c' };
+    else if (meet.lostText) this.note = { text: meet.lostText, color: '#ffb35c' };
   }
 
   /** The captain's Ready button: ready, or not after all. */
@@ -225,12 +226,14 @@ export class MeetScene {
     const squads = locked ? [...l.squads].sort((a, b) => a.lane - b.lane) : l.squads;
     // Status line.
     let status;
-    if (locked) {
+    const titleCard = CONFIG.meet.titleCard * 1000;
+    const begun = locked && (this.waiting || serverNow() > (l.firstStart ?? meet.events.find(Boolean)?.start ?? Infinity) - titleCard);
+    if (begun) status = { text: 'The meet is on: you’re back in from the next event you’re in', color: OK, size: 20 };
+    else if (locked) {
       const first = l.firstStart ?? meet.events[0]?.start;
-      const left = first == null ? null : Math.max(0, Math.ceil((first - CONFIG.meet.titleCard * 1000 - serverNow()) / 1000));
+      const left = first == null ? null : Math.max(0, Math.ceil((first - titleCard - serverNow()) / 1000));
       status = { text: left == null ? 'The meet is on!' : `The meet starts in ${Math.max(1, left)}`, color: OK, size: 26 };
-    } else if (meet.session) status = { text: 'The meet is on: you’re back in from the next event', color: OK, size: 20 };
-    else if (l.squads.length < 2) status = { text: `Waiting for another squad${this.dots()}`, color: '#fff', size: 20 };
+    } else if (l.squads.length < 2) status = { text: `Waiting for another squad${this.dots()}`, color: '#fff', size: 20 };
     else if (l.canStartEarly) {
       const votes = l.squads.filter((s) => s.vote).length;
       const left = l.voteUntil ? Math.max(0, Math.ceil((l.voteUntil - serverNow()) / 1000)) : null;

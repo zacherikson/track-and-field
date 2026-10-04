@@ -25,15 +25,23 @@ things the current live setup can't give it (see "Why the live layer moves").
 | Order | 100m, long jump, 110m hurdles, pole vault, javelin, then the 4×100m relay. |
 | Dropping out | DNF for that individual event, no points. You can rejoin for the next event. |
 | Relay with someone missing | A randomly picked teammate runs again. |
+| A relay runner's phone drops mid-race | A computer runner with Amateur settings finishes their legs, on a teammate's phone. |
+| Late hits | Kept, during the results between events (none after the relay: the final standings come up). |
 | Async play / ghosts | No. Meets are live only. |
 | Server | Cloudflare Workers + Durable Objects. |
 
-Still open (defaults used below until decided):
+## Status
 
-1. **The baton carrier drops mid-leg.** Default: a computer runner finishes that
-   leg at Amateur pace. That costs time but isn't a DNF for the team.
-2. **Late hits in a meet.** Default: kept, but only during the results
-   window between events (about 8 s), not as a separate pause.
+Built: the server ([server/](../server/README.md)), the Meet button and screens,
+all five events and the four-phone relay. Tested with the rules' unit tests,
+bot squads against the server running locally (`server/tools/bots.mjs`), and
+real browsers playing with bots (including two browsers sharing a relay,
+with 150 ms of added lag, and a phone dropping mid-relay). Not deployed yet:
+see server/README.md, then set `MEET_SERVER` in `src/online/net.js`.
+
+Not built yet (later phases below): Practice and public live rooms on the new
+server, the server replaying the 100m to check times, meet history and squad
+records in Firestore, load tests at scale.
 
 ## Why the live layer moves
 
@@ -269,10 +277,10 @@ off to yourself across two phones' worth of timing. So:
 | 1 | they run all four on one phone, as the relay plays today |
 | 0 | the team doesn't start, 0 points |
 
-**On screen.** While you wait, the camera follows the baton coming toward
-you. As your takeoff comes it cuts to you. After your leg, it follows the
-baton to the finish. Running two legs, you're back on the waiting mark after
-your first.
+**On screen.** The camera follows the baton all race: coming toward you
+while you wait on your mark, with you as you run, and on to the finish after.
+Your thumbs only work on your own leg (the targets, PASS coming in, TAKE as
+it comes to you); the line at the bottom says which leg is yours.
 
 **The exchange across two phones.** This is the one moment two players
 interact, so it's designed so lag can't wreck it:
@@ -283,107 +291,116 @@ interact, so it's designed so lag can't wreck it:
   how fast they were going, and when they pressed PASS.
 - The outgoing runner's takeoff (`checkTime`) and how fast they close the gap
   (`closeRate`) are already worked out from the incoming runner's motion.
-- So the whole exchange is decided by `{ zone entry time, entry speed, PASS
-  time, TAKE time }`. Both phones predict it as it happens, and the server
-  works it out from the same numbers with the same `Exchange` code. When a
-  phone's prediction differs (an input arrived ~100 ms late), the server's
-  ruling wins and the phone eases to it. The difference is centimetres.
-- The baton carrier's phone sends PASS. The outgoing runner's phone sends TAKE.
+- The TAKING runner's phone decides it: it runs both runners through the zone
+  with the same `Exchange` code, the incoming runner from their frames until
+  the zone (carried on to "now" at their speed) and by the zone's rules after
+  it, with their PASS (`xp/<k>`, race time) from their phone. It sends how
+  the handover went (`xt/<k>` = { t, g }) and every phone, the incoming
+  runner's included, goes by it.
+- Tested with 150 ms of added lag each way: perfect exchanges stay perfect,
+  about 0.04 s slower over the whole race than with none.
+- The server takes the team's time only from whoever ran the anchor leg.
+  Having the server rerun each exchange from the same numbers is a later
+  hardening step (Phase 6).
 
-**Baton carrier drops mid-leg** (open decision 1): by default the server
-finishes that leg with a computer runner at Amateur pace and the exchange
-plays out automatically (a GOOD exchange).
+**A runner's phone drops mid-race:** the server picks a teammate still there
+(the one running the next leg, else the one before, else anyone) and that
+phone runs the dropped runner's legs with a computer runner on Amateur
+settings, PASS and TAKE included (`proxies`; src/events/meetRelay.js).
 
 ## Protocol
 
-JSON over the WebSocket, every message `{ t: type, ... }`, protocol version `v`
-set when you connect. Frames keep the trace chunk strings.
+JSON over the WebSocket, every message `{ t: type, ... }`
+(src/meet/protocol.js). During play every player has a DOC on the server, the
+same shape as a live room's in the Realtime Database (online/live.js), so the
+events play a meet the way they play any live room.
 
 | Direction | Message | Carries |
 |---|---|---|
-| → | `hello` | Firebase ID token, client build, protocol version |
-| ← | `welcome` / `reload` | your uid, server time / please update |
-| ↔ | `ping` / `pong` | clock sync |
-| → | `meet.join` / `meet.leave` | sign up for your squad's meet slots |
-| → | `lobby.ready` / `lobby.unready` / `lobby.startEarly` | captain only |
-| ← | `lobby` | squads, entrants, captains, ready, votes, lock countdown |
-| ← | `schedule` | the next stages: `{ stage, kind, startAt, cutoff, heat, lanes }` |
-| → | `frames` | your trace chunk for the stage (or 100m inputs + step count) |
-| ← | `heat` | batched frames from your heat-mates |
-| → | `result` | your mark for the stage |
-| ← | `results` | the stage's results: heat, overall, points, squad totals |
-| → | `relay.pass` / `relay.take` | exchange inputs, in server time |
-| ← | `relay.exchange` | the server's ruling |
-| → / ← | `hit` | late hits (as `brawl/liveBrawl.js` today) |
-| ← | `snapshot` | everything needed to rejoin after a reconnect |
+| → | `hello` | Firebase ID token, protocol version, build |
+| ← | `welcome` / `reload` / `denied` | your uid and the server's time / update the game / not allowed |
+| ↔ | `ping` / `pong` | the clock |
+| → SquadHub | `signup` / `unsignup` | on or off your squad's sign-up, with your athletes and personal bests |
+| ← SquadHub | `squad` / `goto` / `busy` | the sign-up / go to meet `id` / your squad's meet is full or on |
+| → Meet | `ready` / `unready` / `startEarly` / `leave` | captain's buttons (leave: anyone) |
+| ← Meet | `lobby` / `withdrawn` | squads, rosters, captains, ready, votes, the lock / your squad was sent back |
+| ← Meet | `event` | an event's heats (or relay legs) and start |
+| ← Meet | `stage` / `stageDone` | a stage's start, cutoff and GET SET length / it's over |
+| → Meet | `patch` | updates to your doc: frames, results (`res/<stage>`), late hits, relay `xp`/`xt` |
+| ← Meet | `doc` | a heat-mate's patch |
+| ← Meet | `results` / `final` | an event's places across every heat and the squads' totals / the final standings |
+| ← Meet | `presence` / `proxies` | someone dropped or came back / whose phone runs a dropped relay runner's legs |
+| ← Meet | `snapshot` | everything, on (re)connecting |
 
 **Sign-in check in the Worker:** the Firebase ID token is a JWT signed with
 Google's published keys, so the Worker verifies it itself (issuer and audience
 are the Firebase project) and caches the keys. **Squad check:** the SquadHub
 reads `squads/{key}` over Firestore REST (public read, as `squads.js` does) and
-admits only members.
+admits only members; the Meet only admits the rosters its squads' SquadHubs
+sent.
 
 ## Code layout
 
-### Server: `server/` (new; deployed with Wrangler, Cloudflare's CLI, which bundles it)
+### Server: `server/` (see server/README.md)
 
 ```
 server/
-  wrangler.toml       Worker + 3 Durable Object classes, SQLite storage
-  src/index.js        router: /ws → auth, version → the right DO
-  src/auth.js         Firebase ID token check
-  src/squadHub.js     sign-up slots, captain, practice rooms
-  src/matchmaker.js   open lobbies, placing squads
-  src/meet.js         the meet state machine, schedule, heats, relay, scoring calls
-  src/clock.js        alarms → stage transitions
+  wrangler.toml          Worker + 3 Durable Object classes
+  src/index.js           the Worker and the Durable Objects: sockets, timers, RPC between them
+  src/socket.js          the hello handshake, pings
+  src/auth.js            Firebase ID token check
+  src/firestore.js       a squad's members, from Firestore
+  src/squadHubCore.js    sign-up: the first four, then a lobby
+  src/matchmakerCore.js  open lobbies, placing squads
+  src/meetCore.js        lobby rules, schedule and cutoffs, heats, results, relay legs and stand-ins
+  test/                  the cores on a fake clock, the token check
+  tools/bots.mjs         bot squads
 ```
 
-It imports `src/meet/*.js`, `src/events/relayRules.js` and `src/config.js` from
-the game. Those must stay pure (no DOM, no browser globals), as relayRules
-already is.
+It imports `src/meet/{rules,scoring,heats,relayLegs,protocol}.js` and
+`src/config.js` from the game, which must stay pure (no DOM, no browser
+globals).
 
-### Shared (new, pure)
+### Shared (pure)
 
-- `src/meet/scoring.js`: ranking, ties, points, squad totals.
-- `src/meet/heats.js`: seeding heats from personal bests, lane draw.
-- `src/meet/relayLegs.js`: leg shuffle and substitutes.
-- `src/meet/schedule.js`: the stage list and cutoffs from `CONFIG.meet`.
+- `src/meet/rules.js`: squad size, points, the events in order, stages.
+- `src/meet/scoring.js`: ranking across heats, ties, points, squad totals.
+- `src/meet/heats.js`: seeding heats from personal bests.
+- `src/meet/relayLegs.js`: leg shuffle and who runs again.
+- `src/meet/protocol.js`: the protocol version, applying a doc patch.
+- Tests: `test/meet.test.mjs` (`node --test test/*.test.mjs`).
 
 ### Client
 
-- `src/online/net.js` (new): the WebSocket, sign-in hello, clock sync,
-  reconnect with backoff, version check.
-- `src/online/meetSession.js` (new): a session with the same surface the
-  events already use from `LiveSession` (`stage`, `eventStage`, `startOf`,
-  `ready`, `begin`, `result`, `send`, `listen`, `left`, `others`), but
-  `startOf` comes from the server's schedule and `others` is your heat. The
-  events barely change.
-- `src/scenes/meetLobbyScene.js`, `meetResultsScene.js`, `meetPodiumScene.js`
-  (new).
-- `src/scenes/home/squadPanel.js`: the Meet button and its slots.
-- `src/events/laneRace.js`, `src/online/liveField.js`: lanes by squad, cutoffs
-  from the schedule instead of `LIVE_WAIT` / `FINISH_WAIT`.
-- `src/events/relay4x100.js`: one-leg control, the waiting camera, the
-  two-phone exchange.
-- `src/config.js`: `CONFIG.meet` (timings, cutoffs, points).
+- `src/online/net.js`: the WebSocket, sign-in hello, clock, reconnect,
+  `MEET_SERVER`, and test switches (`?meetserver=`, `?devuid=`, `?meetlag=`).
+- `src/meet/meet.js`: the meet you're in, as the server has said.
+- `src/online/meetSession.js`: the face the events already use from
+  `LiveSession`, but `others` is your heat and `startOf` / `cutoffOf` /
+  `stageDone` come from the server's schedule.
+- `src/meet/meetScene.js`: sign-up, lobby, countdown.
+- `src/meet/meetStandingsScene.js`: between events, and the final standings.
+- `src/events/meetRelay.js`: the relay, a leg per phone.
+- `src/scenes/home/squadPanel.js`: the Meet button, following the sign-up.
+- `src/events/laneRace.js`, `src/online/liveField.js`: waiting on the
+  server's results and cutoffs (a field attempt not done by the cutoff is a
+  foul).
+- `src/config.js`: `CONFIG.meet` (timings, cutoffs, lobby waits).
 
 Practice and public live rooms move onto the same server later (Phase 6), so
 there's one live stack, and the Realtime Database's live paths are retired.
 
 ## Build phases
 
-| Phase | Delivers | Done when |
+| Phase | Delivers | Status |
 |---|---|---|
-| **0. Spec** | This doc; `src/meet/scoring.js`, `heats.js`, `relayLegs.js` with tests (`node --test`, no dependencies) | Every case in the scoring table passes |
-| **1. Server foundation** | Cloudflare setup, Worker + DOs, sign-in check, clock sync, reconnect, version check; Squad Practice moved onto it behind a switch | A practice 100m on the new server plays like today's |
-| **2. Meet core** | Sign-up slots, captain, Matchmaker, lobby (Ready, Start early, the idle-squad rule), schedule, heats, cross-heat scoring, DNF; 100m and hurdles | A 3-squad meet with bots runs both events end to end |
-| **3. Field flights** | Long jump, pole vault, javelin on the server schedule with round cutoffs | All five events in a bot meet, under 4 minutes |
-| **4. Four-phone relay** | One leg per phone, server-ruled exchanges, substitutes, the waiting camera | 6 squads of bots plus a few people run clean relays under 150 ms of added lag |
-| **5. Meet screens** | Lobby, heat + overall results, running squad score, podium, late hits limited to the results window | A full meet under 6 minutes with real phones |
-| **6. Hardening** | Bot load tests, network-chaos tests, 100m replay check, `meets/{id}` history and squad records, Practice and public rooms moved over, RTDB live retired | Hundreds of meets at once with steady latency; no stuck meets |
-
-The relay (Phase 4) is the biggest single risk; everything before it is
-needed by it anyway.
+| **0. Spec** | This doc; the scoring, heats and relay-leg rules with tests | Done |
+| **1. Server foundation** | Worker + Durable Objects, sign-in check, clock, reconnect, version check | Done (not deployed). Practice not moved yet |
+| **2. Meet core** | Sign-up, captain, Matchmaker, lobby, schedule, heats, scoring, DNF; 100m and hurdles | Done |
+| **3. Field flights** | Long jump, pole vault, javelin with round cutoffs | Done |
+| **4. Four-phone relay** | A leg per phone, the taker's phone decides exchanges, stand-ins | Done (exchanges decided on the phone, not yet rechecked on the server) |
+| **5. Meet screens** | Lobby, heat + overall results, squad totals, final standings, late hits between events | Done |
+| **6. Hardening** | Load tests at scale, network-chaos tests, 100m replay check, server-checked exchanges, `meets/{id}` history and squad records, Practice and public rooms moved over, RTDB live retired | To do |
 
 ## Testing
 

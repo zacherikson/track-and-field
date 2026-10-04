@@ -1,0 +1,60 @@
+# The meet server (server/, docs/meets.md): its tests and the game's meet
+# rules on every push and pull request, and a deploy to Cloudflare on pushes
+# to master, once the repo has the CLOUDFLARE_API_TOKEN and
+# CLOUDFLARE_ACCOUNT_ID secrets (server/README.md). Without them it only tests.
+name: Meet server
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: The game's meet rules
+        run: node --test test/*.test.mjs
+      - name: The server's rules
+        working-directory: server
+        run: node --test test/*.test.mjs
+
+  deploy:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: meet-server
+      cancel-in-progress: false
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Changed?
+        id: changed
+        run: |
+          # Only what the server runs: itself, and the game's files it imports.
+          if git diff --name-only HEAD~1 HEAD | grep -qE '^(server/|src/meet/|src/config\.js)'; then
+            echo "yes=1" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-node@v4
+        if: steps.changed.outputs.yes && env.CLOUDFLARE_API_TOKEN != ''
+        with:
+          node-version: 22
+      - name: Deploy
+        if: steps.changed.outputs.yes && env.CLOUDFLARE_API_TOKEN != ''
+        working-directory: server
+        run: |
+          npm ci
+          npx wrangler deploy

@@ -72,6 +72,8 @@ export class IntroScene {
       }
       if (!this.live && (e.type === 'down' || ['Space', 'Enter'].includes(e.code))) return flow.play(this.game, this.ev);
     }
+    // A meet lost on this phone (meet/meet.js): back to the squad, rather than wait for a start that won't come.
+    if (this.meet && meet.lost && !meet.final) return flow.menu(this.game, 'squad');
     // Live: to the event a few seconds before it starts (it counts down the rest there).
     const start = this.live?.startOf(this.stage);
     if (start != null && serverNow() >= start - ON_TRACK) flow.play(this.game, this.ev);

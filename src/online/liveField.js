@@ -83,6 +83,11 @@ export class LiveField {
       }
     }
     if (this.wait) {
+      // A meet lost on this phone: the next round won't be set. Back to the squad.
+      if (this.session.meet?.lost && !this.session.meet.final) {
+        flow.menu(sc.game, 'squad');
+        return true;
+      }
       const start = this.session.startOf(this.wait.stage);
       if (start == null || serverNow() < start) return this.wait.round === 1;
       sc.round = this.wait.round - 1;

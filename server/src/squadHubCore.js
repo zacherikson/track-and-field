@@ -21,7 +21,7 @@ export class SquadHubCore {
   constructor(key, io) {
     this.key = key;
     this.io = io;
-    this.peers = new Map(); // uid -> peer
+    this.peers = new Map(); // uid -> Set of their sockets (the Squad tab, the sign-up, another phone)
     this.forming = []; // the sign-up before the squad has a meet: [{ uid, name, athlete, lineup, pbs, lostAt }]
     this.meet = null; // { id, phase, squads, seen }: the squad's meet
     this.squad = null; // { name, members, at }
@@ -47,9 +47,8 @@ export class SquadHubCore {
       name = s.members[peer.uid];
     } else this.squad ??= { name: String(hello.squadName ?? this.key).slice(0, 16), members: {}, at: this.io.now() };
     peer.name = name ?? '?';
-    const old = this.peers.get(peer.uid);
-    if (old && old !== peer) old.close();
-    this.peers.set(peer.uid, peer);
+    if (!this.peers.has(peer.uid)) this.peers.set(peer.uid, new Set());
+    this.peers.get(peer.uid).add(peer);
     const f = this.forming.find((x) => x.uid === peer.uid);
     if (f) f.lostAt = null;
     peer.send(this.view());
@@ -57,7 +56,8 @@ export class SquadHubCore {
   }
 
   disconnect(peer) {
-    if (this.peers.get(peer.uid) !== peer) return;
+    const mine = this.peers.get(peer.uid);
+    if (!mine?.delete(peer) || mine.size) return; // still here on another socket
     this.peers.delete(peer.uid);
     const f = this.forming.find((x) => x.uid === peer.uid);
     if (f) f.lostAt = this.io.now(); // off the sign-up if they're not back soon
@@ -111,7 +111,7 @@ export class SquadHubCore {
       if (id) {
         this.meet = { id, phase: 'lobby', squads: [{ key: this.key, uids: team.map((m) => m.uid), open: 0 }], seen: this.io.now() };
         this.forming = this.forming.filter((x) => !team.includes(x));
-        for (const m of team) this.peers.get(m.uid)?.send({ t: 'goto', meet: id });
+        for (const m of team) this.sendTo(m.uid, { t: 'goto', meet: id });
         this.save();
       }
     } catch (e) {
@@ -170,7 +170,11 @@ export class SquadHubCore {
 
   changed() {
     const v = this.view();
-    for (const p of this.peers.values()) p.send(v);
+    for (const set of this.peers.values()) for (const p of set) p.send(v);
+  }
+
+  sendTo(uid, msg) {
+    for (const p of this.peers.get(uid) ?? []) p.send(msg);
   }
 
   save() {

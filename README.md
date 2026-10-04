@@ -209,6 +209,39 @@ Squads live in Firestore (`squads/` and `squadmembers/`, see
 [src/online/squads.js](src/online/squads.js)); `firestore.rules` checks every
 join, leave and new squad.
 
+### Squad meets
+
+🏟 **Meet** (on your squad's page) is squads against squads, live: up to six
+squads of four through the five events in order and then the 4×100m relay,
+in about five minutes ([docs/meets.md](docs/meets.md)).
+
+- **Sign-up.** Tapping Meet signs you up; the first four of the squad make its
+  team (the button shows who's in). With four, the squad is put in a meet
+  lobby with other squads.
+- **Lobby.** Each squad gets a meet captain, picked at random (👑), who presses
+  **Ready**. Six squads ready start at once; with two to five all ready,
+  captains get **Start early**, and when every captain presses it the meet
+  starts with the squads there. A squad that dawdles while the rest are ready,
+  or is a member short too long, is sent back.
+- **Events.** Each squad has a lane. Every event runs as four heats (field
+  events: flights) at the same moment, one athlete from each squad in each,
+  seeded by personal best; you only see your heat. Places across all the
+  heats score 10-8-6-5-4-3-2-1 for the squad (ties share the points). The
+  server keeps the clock: every race and round has a cutoff, so nobody is
+  waited on for long (a field attempt not done by then is a foul).
+- **Relay.** One race, every squad. Each of the four runs one leg on their own
+  phone, legs drawn at random (someone runs again for anyone gone). The phone
+  of the runner taking the baton decides the handover; a runner whose phone
+  drops is finished by a computer runner on a teammate's phone.
+- **Between events** the late hits, with this event's places across every
+  heat and the squads' totals over them; then the next title card comes up by
+  itself. After the relay, the final standings.
+
+Meets run on the meet server, a Cloudflare Worker in [server/](server/README.md),
+not the Realtime Database: it runs each meet's clock, heats and scoring. It
+has to be deployed (server/README.md) and its address put in
+`src/online/net.js` (`MEET_SERVER`) before the Meet button opens.
+
 ## Lineup and tournaments
 
 **Lineup** (the home screen's left tab) works like Clash Royale's deck: a slot
@@ -409,6 +442,13 @@ src/scenes/home/                its panels: lineupPanel.js (who does each event,
 src/scenes/leaderboardScene.js  online leaderboards, a tab per event, with Race buttons
 src/scenes/profileScene.js      your username (unique, saved in Firebase) and Google sign-in
 src/scenes/lobbyScene.js        the live waiting room (any event, or a solo or team tournament)
+src/meet/             squad meets (docs/meets.md): the rules shared with the meet server (rules, scoring,
+                      heats, relayLegs, protocol), the meet you're in (meet.js), sign-up and lobby
+                      (meetScene.js), standings between events (meetStandingsScene.js)
+src/events/meetRelay.js  a meet's 4x100m relay: one leg per phone, exchanges decided by the taker's phone
+src/online/net.js     the meet server connection; meetSession.js: a meet as the events see a live room
+server/               the meet server: Cloudflare Worker + Durable Objects (server/README.md)
+test/                 the meet rules' tests (node --test test/*.test.mjs)
 src/tuning/           in-game tuning panel (params list, saved overrides, live estimates)
 tools/simulate.mjs    headless tuning simulator
 tools/ghostcheck.mjs  checks that recorded runs replay to the exact same time

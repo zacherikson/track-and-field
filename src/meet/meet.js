@@ -26,6 +26,7 @@ export const meet = {
   uid: null,
   state: 'connecting', // the socket: net.js Conn states
   withdrawn: null, // why the squad was sent back from the lobby
+  lost: null, // why this phone lost the meet (see join)
   listeners: new Set(),
 
   /** Into meet `id` (a SquadHub sent us there). */
@@ -45,6 +46,7 @@ export const meet = {
       final: null,
       index: 0,
       withdrawn: null,
+      lost: null, // why this phone can't carry on in the meet: 'denied' | 'reload' | 'replaced'
       state: 'connecting',
     });
     this.session = null;
@@ -52,10 +54,19 @@ export const meet = {
       message: (m) => this.receive(m),
       status: (s) => {
         this.state = s;
+        // Turned away on reconnecting (the server restarted, or the game is too old): the meet's gone for this phone.
+        if (s === 'denied' || s === 'reload' || s === 'replaced') this.lost = s;
         this.changed();
       },
     });
     setClock(() => this.conn?.now() ?? Date.now());
+  },
+
+  /** What to say when the meet is lost on this phone. */
+  get lostText() {
+    if (this.lost === 'reload') return 'There’s a new version of the game: reload the page.';
+    if (this.lost === 'replaced') return 'You’re in this meet on another tab or phone.';
+    return this.lost ? 'Lost the meet: the meet server dropped it.' : null;
   },
 
   /** Out of the meet (to the menu, or it's over). */
@@ -130,6 +141,7 @@ export const meet = {
         break;
       case 'withdrawn':
         this.withdrawn = m.why;
+        this.conn?.close(false); // out of it: no reconnecting
         break;
     }
     this.changed();

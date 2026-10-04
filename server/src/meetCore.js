@@ -1,5 +1,5 @@
 import { CONFIG } from '../../src/config.js';
-import { SQUAD_SIZE, MIN_SQUADS, MAX_SQUADS, MEET_ORDER, FIELD_EVENTS, LOWER_IS_BETTER, SQUAD_COLORS, eventStages } from '../../src/meet/rules.js';
+import { SQUAD_SIZE, MIN_SQUADS, MAX_SQUADS, MEET_ORDER, FIELD_EVENTS, SQUAD_COLORS, eventStages } from '../../src/meet/rules.js';
 import { rankEvent, squadStandings } from '../../src/meet/scoring.js';
 import { seedHeats } from '../../src/meet/heats.js';
 import { assignLegs } from '../../src/meet/relayLegs.js';
@@ -218,7 +218,7 @@ export class MeetCore {
     if (!m || this.phase !== 'lobby') return;
     const squad = this.squads.get(m.squad);
     this.members.delete(uid);
-    this.peers.get(uid)?.send({ t: 'withdrawn', why });
+    this.sendOff(uid, why);
     if (!squad) return;
     squad.roster = squad.roster.filter((u) => u !== uid);
     if (!squad.roster.length) return this.removeSquad(squad, 'empty');
@@ -226,12 +226,21 @@ export class MeetCore {
     this.lobbyChanged(true);
   }
 
+  /** `uid` is out of this meet: told why, and their socket closed. */
+  sendOff(uid, why) {
+    const peer = this.peers.get(uid);
+    if (!peer) return;
+    this.peers.delete(uid);
+    peer.send({ t: 'withdrawn', why });
+    peer.close();
+  }
+
   /** Sends a squad back to its SquadHub (gone quiet, or never filled), or it emptied. */
   removeSquad(squad, why) {
     this.squads.delete(squad.key);
     for (const uid of squad.roster) {
       this.members.delete(uid);
-      this.peers.get(uid)?.send({ t: 'withdrawn', why });
+      this.sendOff(uid, why);
     }
     this.io.released(squad.key, why);
     this.lobbyChanged(true);
@@ -416,7 +425,10 @@ export class MeetCore {
     const m = this.members.get(peer.uid);
     if (!m || this.phase === 'closed') return false;
     const old = this.peers.get(peer.uid);
-    if (old && old !== peer) old.close();
+    if (old && old !== peer) {
+      old.send({ t: 'replaced' }); // you connected again elsewhere: that socket plays now (and this one doesn't reconnect)
+      old.close();
+    }
     this.peers.set(peer.uid, peer);
     const was = m.connected;
     m.connected = true;

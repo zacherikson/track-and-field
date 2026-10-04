@@ -18,7 +18,7 @@ import { PROTOCOL } from '../meet/protocol.js';
  * reconnects by itself after a drop, a second or two later and then less
  * often, until it's closed.
  */
-export const MEET_SERVER = '';
+export const MEET_SERVER = 'wss://track-royale-live.trackroyale.workers.dev';
 
 const SERVER_KEY = 'trackroyale.meetserver';
 const BUILD = '1';

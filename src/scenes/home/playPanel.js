@@ -1,10 +1,10 @@
 import { CONFIG } from '../../config.js';
 import { Button, text, roundRect } from '../../core/ui.js';
 import { drawFigure, runPose } from '../../athletes/stickFigure.js';
-import { EVENTS, SPECIAL_EVENTS, TOURNAMENT_BOARDS, formatMark } from '../../events/registry.js';
-import { canTune, getBest, getGhostOn, setGhostOn, getPlayerName, getTourMode, setTourMode, setCampaign, getBeaten, takeFreshBeaten, getSpecialLevel, setSpecialLevel } from '../../core/storage.js';
-import { lineupAthlete, lineupSlotEmpty, heightOf } from '../../athletes/roster.js';
-import { TOUR_KINDS } from '../../tournament/tournament.js';
+import { EVENTS, SPECIAL_EVENTS, TOURNAMENT_BOARD, formatMark } from '../../events/registry.js';
+import { canTune, getBest, getGhostOn, setGhostOn, getPlayerName, setCampaign, getBeaten, takeFreshBeaten, getSpecialLevel, setSpecialLevel } from '../../core/storage.js';
+import { myAthlete, heightOf } from '../../athletes/roster.js';
+import { TOURNAMENT_KIND } from '../../tournament/tournament.js';
 import { flow } from '../../flow.js';
 import { syncBests } from '../../online/bests.js';
 import { syncProgress } from '../../online/progress.js';
@@ -24,7 +24,7 @@ let lastList = null;
 
 /**
  * The home screen's middle tab: where you play. Three big buttons, vs Computer,
- * Live and Special Events, over your lineup standing on the track; each opens its list.
+ * Live and Special Events, over your athlete warming up on the track; each opens its list.
  * Tuning (the owner only, storage.js canTune), Leaderboard and Profile along the top.
  *
  * vs Computer is three rows of cards, the five events then the tournament:
@@ -83,12 +83,8 @@ export class PlayPanel {
         }),
     );
     this.styleRivals();
-    // A team tournament needs every lineup slot filled (Lineup tab); trying one without says so.
-    this.warnT = 0;
-    this.fillBtn = new Button({ label: 'Fill your lineup ›', w: 230, h: 42, size: 19, color: '#3a6fd8', onTap: () => this.home.show(0) });
+    this.warnT = 0; // a locked card tapped: why, over the track
     this.backBtn = new Button({ label: '‹ Back', w: 120, h: 44, size: 20, color: PLAIN, onTap: () => this.back() });
-    // Tournament: all five events in a row, decathlon scoring; solo or team (the TOURNAMENT toggle).
-    this.mode = getTourMode();
     // vs Computer: a row of cards per section, the five events then the tournament.
     this.sections = SECTIONS.map((spec) => {
       const sec = { ...spec };
@@ -117,23 +113,9 @@ export class PlayPanel {
     this.styleSections(takeFreshBeaten());
     // Live: the same, against other people (a waiting room first, online/live.js).
     this.liveButtons = [
-      new Button({ label: '🏆 Tournament', color: TOUR_COLOR.live, onTap: () => this.tournament(() => flow.live(this.game, TOUR_KINDS[this.mode])) }),
+      new Button({ label: '🏆 Tournament', sub: 'Live', color: TOUR_COLOR.live, onTap: () => flow.live(this.game, TOURNAMENT_KIND) }),
       ...EVENTS.map((ev) => new Button({ label: ev.name, sub: 'Live', color: '#2bb673', enabled: ev.available, onTap: () => flow.live(this.game, ev.id) })),
     ];
-    // Tournament: solo (one athlete does all five) or team (your lineup), remembered on this device.
-    this.modeButtons = ['solo', 'team'].map(
-      (mode) =>
-        new Button({
-          label: mode === 'team' ? 'Team' : 'Solo',
-          w: 90,
-          h: 44,
-          onTap: () => {
-            this.mode = mode;
-            setTourMode(mode);
-            this.styleModes();
-          },
-        }),
-    );
     // Your ghost (Training only): race your best attempt in every event (remembered on this device).
     this.ghostButton = new Button({
       label: '',
@@ -144,7 +126,7 @@ export class PlayPanel {
         this.styleGhost();
       },
     });
-    this.styleModes();
+    this.styleTournament();
     this.styleGhost();
     this.onShow();
     this.tuneButton = canTune() ? new Button({ label: '⚙ Tuning', w: 132, h: 44, color: PLAIN, onTap: () => flow.tuning(this.game) }) : null;
@@ -156,7 +138,7 @@ export class PlayPanel {
     syncBests()
       .then((changed) => changed && this.game.scene === this.home && this.showBests())
       .catch(() => {});
-    // Your campaign progress and lineup follow your account (online/progress.js):
+    // Your campaign progress and athlete follow your account (online/progress.js):
     // catch up with it too. That needs the Firebase SDK (it's private), so not
     // every time you're back at the menu: your own changes go up as they happen.
     if (performance.now() - lastPull > PULL_EVERY) {
@@ -167,37 +149,23 @@ export class PlayPanel {
     }
   }
 
-  /** Your progress came in from your account: the campaign cards and your lineup again. */
+  /** Your progress came in from your account: the campaign cards and your athlete again. */
   showProgress() {
     this.onShow();
     this.styleSections();
   }
 
-  /** Coming to this tab: your lineup may have changed on the Lineup tab. */
+  /** Coming to this tab: your athlete may have changed on the Athlete tab. */
   onShow() {
-    this.lineup = EVENTS.map((ev) => ({ ev, c: lineupAthlete(ev.id) }));
+    this.me = myAthlete();
     this.warnT = 0;
-    if (this.modeButtons) this.styleModes(); // a slot may have been emptied or filled
-  }
-
-  /** A team tournament with an empty lineup slot: it can't start (single events and solo tournaments can). */
-  get teamBlocked() {
-    return this.mode === 'team' && EVENTS.some((ev) => lineupSlotEmpty(ev.id));
-  }
-
-  /** Starts a tournament (`go`), unless it's a team one and your lineup isn't full. */
-  tournament(go) {
-    if (this.teamBlocked) this.warn('You need a full lineup for a Team tournament!', true);
-    else go();
   }
 
   /** A section's tournament card: Training's, or a campaign's once its five events are beaten. */
   campaignTournament(sec) {
     if (this.refuse(sec, 'tournament')) return;
-    this.tournament(() => {
-      setCampaign(sec.level);
-      flow.tournament(this.game, this.mode);
-    });
+    setCampaign(sec.level);
+    flow.tournament(this.game);
   }
 
   /**
@@ -222,14 +190,13 @@ export class PlayPanel {
   /** Tapped a locked card: says why (and true). */
   refuse(sec, id) {
     const lock = this.lockOf(sec, id);
-    if (lock) this.warn(lock.title, false, lock.detail);
+    if (lock) this.warn(lock.title, lock.detail);
     return !!lock;
   }
 
-  /** A line over the track for a few seconds; `fill`: with the Fill your lineup button; `detail`: a second, smaller line. */
-  warn(msg, fill = false, detail = '') {
+  /** A line over the track for a few seconds; `detail`: a second, smaller line. */
+  warn(msg, detail = '') {
     this.warnMsg = msg;
-    this.warnFill = fill;
     this.warnDetail = detail;
     this.warnT = detail ? 5 : 4;
   }
@@ -259,7 +226,7 @@ export class PlayPanel {
 
   /** The Best lines under the Training and Special Events cards, from your saved bests. */
   showBests() {
-    this.styleModes();
+    this.styleTournament();
     EVENTS.forEach((ev, i) => {
       this.buttons[i].sub = ev.available ? `Best ${formatMark(ev, getBest(ev.id))}` : 'Coming soon';
     });
@@ -291,18 +258,10 @@ export class PlayPanel {
     this.offlineBig.sub = `Amateur ${done('amateur')}/6 · Pro ${pro.locked ? '🔒' : `${done('pro')}/6`} · Training`;
   }
 
-  styleModes() {
-    for (const b of this.modeButtons) b.color = (b.label === 'Team') === (this.mode === 'team') ? '#e4572e' : PLAIN;
-    const name = this.mode === 'team' ? 'Team' : 'Solo';
-    const best = getBest(TOURNAMENT_BOARDS[this.mode].id);
-    const blocked = this.teamBlocked;
-    this.tourButton.sub = blocked ? 'Lineup not full' : best == null ? name : `${name} · ${best}`;
-    this.liveButtons[0].sub = blocked ? 'Team · Lineup not full' : `Live · ${name}`;
-    // Greyed out (but still tappable, to say why) while it can't start.
-    this.tourButton.color = blocked ? 'rgba(201,138,0,0.4)' : TOUR_COLOR.offline;
-    for (const sec of this.sections) if (sec.level) sec.tiles.at(-1).sub = blocked && !sec.tiles.at(-1).locked ? 'Lineup not full' : name;
-    this.liveButtons[0].color = blocked ? 'rgba(31,138,88,0.45)' : TOUR_COLOR.live;
-    if (!blocked && this.warnFill) this.warnT = 0;
+  /** Training's tournament card: your best total. */
+  styleTournament() {
+    const best = getBest(TOURNAMENT_BOARD.id);
+    this.tourButton.sub = best == null ? '' : `Best ${best}`;
   }
 
   styleGhost() {
@@ -352,29 +311,16 @@ export class PlayPanel {
       sec.labelX = rx + labelW / 2;
       sec.tiles.forEach((t, i) => Object.assign(t, { w: tw, h: TILE_H, x: rx + labelW + 10 + i * (tw + TILE_GAP), y: sec.y }));
     });
-    // Its settings: TOURNAMENT (both), and GHOST (vs Computer, for Training).
-    const [mw, gw, sp] = [90, 110, 48];
-    this.modeButtons.forEach((b) => (b.w = mw));
-    this.ghostButton.w = gw;
-    const row = mw * 2 + 8 + sp + gw;
-    this.settingsX = { offline: view.w / 2 - row / 2, live: view.w / 2 - (mw * 2 + 8) / 2 };
-    Object.assign(this.ghostButton, { x: this.settingsX.offline + row - gw, y: OFFLINE_SETTINGS_Y });
-    this.placeModes();
+    // Its setting: GHOST (vs Computer, for Training).
+    Object.assign(this.ghostButton, { x: view.w / 2 - this.ghostButton.w / 2, y: OFFLINE_SETTINGS_Y });
 
-    // The track along the bottom: your lineup on the buttons screen, a runner under a list.
-    this.trackTop = this.list ? this.settingsY + 44 + 14 : 286;
+    // The track along the bottom: your athlete on the buttons screen, a runner under a list (Live has no settings row).
+    this.trackTop = !this.list ? 286 : this.list === 'live' ? SETTINGS_Y : this.settingsY + 44 + 14;
     this.trackBottom = bottom - 6;
-    // The warning line (and Fill your lineup): over the track, or on vs Computer (its track is short) a card over the cards.
+    // The warning line: over the track, or on vs Computer (its track is short) a card over the cards.
     this.warnY = this.list === 'offline' ? POPUP_Y : this.trackTop + 28;
-    Object.assign(this.fillBtn, { x: view.w / 2 - this.fillBtn.w / 2, y: this.list === 'offline' ? POPUP_Y + 26 : Math.min(this.trackTop + 58, this.trackBottom - this.fillBtn.h - 6) });
     this.view = view;
     this.bottom = bottom;
-  }
-
-  /** The Solo / Team toggle sits in a different place in each list. */
-  placeModes() {
-    const x = this.settingsX?.[this.list ?? 'offline'] ?? 0;
-    this.modeButtons.forEach((b, i) => Object.assign(b, { x: x + i * (b.w + 8), y: this.settingsY }));
   }
 
   /** Top of the open list's settings row. */
@@ -387,9 +333,8 @@ export class PlayPanel {
   }
 
   get allButtons() {
-    const fill = this.warnT > 0 && this.warnFill ? [this.fillBtn] : [];
-    if (this.list === 'offline') return [...fill, this.backBtn, ...this.tiles, ...this.modeButtons, this.ghostButton];
-    if (this.list === 'live') return [...fill, this.backBtn, ...this.liveButtons, ...this.modeButtons];
+    if (this.list === 'offline') return [this.backBtn, ...this.tiles, this.ghostButton];
+    if (this.list === 'live') return [this.backBtn, ...this.liveButtons];
     if (this.list === 'special') return [this.backBtn, ...this.specialButtons, ...this.rivalButtons];
     return [this.fsButton, this.tuneButton, this.onlineButton, this.profileButton, this.offlineBig, this.liveBig, this.specialBig].filter(Boolean);
   }
@@ -403,13 +348,13 @@ export class PlayPanel {
         if (this.game.scene !== this.home) return; // off to another screen
         continue;
       }
-      // Your lineup on the track: tap it to change it.
+      // Your athlete on the track: tap them to change who it is.
       if (!this.list && ev.y >= this.trackTop && ev.y <= this.trackBottom) this.home.show(0);
     }
     this.allButtons.forEach((b) => b.update(dt));
     this.fade = Math.min(1, this.fade + dt * 6);
     this.warnT = Math.max(0, this.warnT - dt);
-    this.phase += dt * 5; // the lineup warming up
+    this.phase += dt * 5; // your athlete warming up
     // The runner under a list goes along the track.
     const speed = 9;
     this.demoX += speed * dt;
@@ -431,23 +376,19 @@ export class PlayPanel {
     text(ctx, 'TRACK ROYALE', view.w / 2, 88, { size: 44, color: '#ffb400', shadow: true });
     for (const b of [this.fsButton, this.tuneButton, this.onlineButton, this.profileButton, this.offlineBig, this.liveBig, this.specialBig]) b?.draw(ctx);
 
-    // Your lineup, warming up on the track: an athlete per event.
+    // Your athlete, warming up on the track.
     const top = this.trackTop;
     const h = this.trackBottom - top;
     this.drawTrack(ctx, view, top, h);
-    const n = this.lineup.length;
-    const step = Math.min(170, (view.w - 80) / n);
+    const { me } = this;
+    const x = view.w / 2;
     const ground = top + h - 30;
-    const H = Math.min(118, h - 46);
-    this.lineup.forEach(({ ev, c }, i) => {
-      const x = view.w / 2 + (i - (n - 1) / 2) * step;
-      ctx.fillStyle = 'rgba(0,0,0,0.18)';
-      ctx.beginPath();
-      ctx.ellipse(x, ground + 2, 22, 5, 0, 0, Math.PI * 2);
-      ctx.fill();
-      drawFigure(ctx, x, ground, H * heightOf(c.colors), runPose(this.phase + i * 1.3, 0.12), c.colors, ground);
-      text(ctx, `${SHORT[ev.id] ?? ev.name} · ${c.name}`, x, ground + 17, { size: 13, weight: 700, color: 'rgba(255,255,255,0.85)', maxWidth: step - 8 });
-    });
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.beginPath();
+    ctx.ellipse(x, ground + 2, 26, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    drawFigure(ctx, x, ground, Math.min(150, h - 46) * heightOf(me.colors), runPose(this.phase, 0.12), me.colors, ground);
+    text(ctx, me.name, x, ground + 17, { size: 15, weight: 800, color: '#fff' });
   }
 
   renderList(ctx, view) {
@@ -464,7 +405,7 @@ export class PlayPanel {
       ctx.globalAlpha *= Math.min(1, this.warnT * 2);
       const pw = Math.min(view.w - 40, 640);
       if (offline) {
-        roundRect(ctx, view.w / 2 - pw / 2, this.warnY - 32, pw, this.warnFill ? 108 : this.warnDetail ? 92 : 64, 16);
+        roundRect(ctx, view.w / 2 - pw / 2, this.warnY - 32, pw, this.warnDetail ? 92 : 64, 16);
         ctx.fillStyle = 'rgba(10,18,36,0.94)';
         ctx.fill();
         ctx.strokeStyle = 'rgba(255,255,255,0.25)';
@@ -473,16 +414,10 @@ export class PlayPanel {
       }
       text(ctx, this.warnMsg, view.w / 2, this.warnY, { size: 22, weight: 800, color: '#fff', shadow: true, maxWidth: pw - 32 });
       if (this.warnDetail) text(ctx, this.warnDetail, view.w / 2, this.warnY + 32, { size: 16, weight: 600, color: 'rgba(255,255,255,0.85)', maxWidth: pw - 32 });
-      if (this.warnFill) this.fillBtn.draw(ctx);
       ctx.restore();
     }
-    const ly = this.settingsY - 14;
-    const label = (s, a, b) => text(ctx, s, (a.x + b.x + b.w) / 2, ly, { size: 13, weight: 700, color: DIM });
-    const [m0, m1] = this.modeButtons;
-    label('TOURNAMENT', m0, m1);
-    this.modeButtons.forEach((b) => b.draw(ctx));
     if (!offline) return;
-    label('TRAINING GHOST', this.ghostButton, this.ghostButton);
+    text(ctx, 'TRAINING GHOST', this.ghostButton.x + this.ghostButton.w / 2, this.settingsY - 14, { size: 13, weight: 700, color: DIM });
     this.ghostButton.draw(ctx);
   }
 
@@ -518,7 +453,7 @@ export class PlayPanel {
     ctx.fillRect(0, top, view.w, 2);
     ctx.fillRect(0, top + h - 2, view.w, 2);
     if (!runner) return;
-    const me = this.lineup[0].c;
+    const { me } = this;
     const ppm = 30; // the demo runner keeps its own small scale
     const span = view.w + 120;
     const sx = ((this.demoX * ppm) % span) - 60;

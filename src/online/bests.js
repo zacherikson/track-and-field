@@ -1,6 +1,6 @@
-import { BOARDS, TOURNAMENT_BOARDS } from '../events/registry.js';
+import { BOARDS } from '../events/registry.js';
 import { getBest, setBest, getGhost, setGhost, getBestTournament, saveBestTournament, addTopMark, forgetTopMarks, getCampaign, getSpecialLevel } from '../core/storage.js';
-import { player, soloAthlete } from '../athletes/roster.js';
+import { player } from '../athletes/roster.js';
 import { changes } from '../tuning/store.js';
 import { myEntries, fetchGhost, isSignedIn, submitMark } from './firebase.js';
 import { isReplayable } from './ghost.js';
@@ -35,7 +35,7 @@ export function counts() {
  */
 export function recordTopMark(board, mark, live = false) {
   if (!counts() || mark == null || !Number.isFinite(mark)) return 0;
-  const who = board.tournament === 'team' ? 'Team' : board.tournament === 'solo' ? soloAthlete().name : player(board.id).name;
+  const who = player(board.id).name;
   const where = live ? 'live' : board.special ? getSpecialLevel() : (getCampaign() ?? 'training'); // special events always have rivals
   return addTopMark(board.id, { mark, at: Date.now(), who, where }, board.lowerIsBetter);
 }
@@ -70,8 +70,8 @@ export async function syncBests() {
     }
     if (board.tournament) {
       // Your best tournament (kept for its ghosts) can't be better than your board entry.
-      const best = getBestTournament(board.tournament);
-      if (best && (mark == null || beats(board, best.total, mark))) saveBestTournament(board.tournament, null);
+      const best = getBestTournament();
+      if (best && (mark == null || beats(board, best.total, mark))) saveBestTournament(null);
       continue;
     }
     await syncGhost(board, entry);
@@ -104,7 +104,7 @@ export function forgetBests() {
     setBest(board.id, null);
     setGhost(board.id, null);
   }
-  for (const mode of Object.keys(TOURNAMENT_BOARDS)) saveBestTournament(mode, null);
+  saveBestTournament(null);
   forgetTopMarks();
 }
 

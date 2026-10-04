@@ -4,7 +4,7 @@ import { formatMark } from '../events/registry.js';
 import { submitBest, saveGhostIfBetter, getCampaign, markBeaten } from '../core/storage.js';
 import { postMark } from '../online/post.js';
 import { counts, recordTopMark } from '../online/bests.js';
-import { tournament, ORDER, TOUR_KINDS } from './tournament.js';
+import { tournament, ORDER, TOURNAMENT_KIND } from './tournament.js';
 import { flow } from '../flow.js';
 import { serverNow } from '../online/live.js';
 import { ResultsPanel } from '../brawl/aftermath.js';
@@ -71,8 +71,8 @@ export class StandingsScene {
     this.buttons = this.final
       ? [
           tournament.live
-            ? new Button({ label: 'Play live again', color: '#2bb673', onTap: () => flow.live(this.game, TOUR_KINDS[tournament.mode], tournament.live.squad) })
-            : new Button({ label: 'New tournament', color: '#2bb673', onTap: () => flow.tournament(this.game, tournament.mode) }),
+            ? new Button({ label: 'Play live again', color: '#2bb673', onTap: () => flow.live(this.game, TOURNAMENT_KIND, tournament.live.squad) })
+            : new Button({ label: 'New tournament', color: '#2bb673', onTap: () => flow.tournament(this.game) }),
           new Button({ label: '📊 Leaderboard', color: 'rgba(255,255,255,0.18)', onTap: () => flow.leaderboard(this.game, tournament.board) }),
           new Button({ label: 'Menu', color: 'rgba(255,255,255,0.18)', onTap: () => flow.menu(this.game, tournament.live?.squad ? 'squad' : 'play') }),
         ]

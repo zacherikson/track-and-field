@@ -14,7 +14,7 @@ import { getPlayerName } from '../core/storage.js';
  *   squadlobby/{squad}/{kind}  = the same, for one squad's practice (squadRoomKey)
  *   live/{room}/{uid}          = { v, name, athlete, left, s, t0, run, n, done, f, res, ready, b, h }
  *
- * `kind` is an event id, 'tournament' (solo) or 'teamtournament' (tournament.js TOUR_KINDS).
+ * `kind` is an event id or 'tournament' (tournament.js TOURNAMENT_KIND).
  * PRACTICE is a squad's own waiting rooms: started from the Squad tab, and only
  * listed there, on its members' Squad tabs (watchSquadRooms). The lobby node IS the waiting room:
  * whoever is in `players` plays together. When a second player arrives it gets
@@ -102,8 +102,8 @@ const lobbyPath = (kind, squad) => (squad ? `squadlobby/${squadRoomKey(squad.key
 /**
  * The waiting room for one event, or a tournament (`kind`). `onChange(view)` gets
  * { room, players: [{ uid, name, athlete, lineup, me }], startAt, setLen, closed, uid } whenever it changes.
- * `who` = the athletes you play as: { athlete } (a character id), plus a team
- * tournament's `lineup` ({ [eventId]: character id }). `squad` ({ key }): that
+ * `who` = the athlete you play as: { athlete } (a character id). (`lineup`
+ * comes from phones older than one athlete per player.) `squad` ({ key }): that
  * squad's practice room instead of the public one.
  */
 export class Lobby {
@@ -216,7 +216,7 @@ export class LiveSession {
     this.starts = new Map([[this.eventStage(first), info.startAt]]); // stage -> start (server ms), once known
     this.done = false; // played to the end: leaving now isn't leaving early
     const me = info.players.find((p) => p.uid === info.uid);
-    this.send({ v: 2, name: info.name ?? '', athlete: me?.athlete ?? '', ...(me?.lineup ? { lineup: me.lineup } : {}) }, true);
+    this.send({ v: 2, name: info.name ?? '', athlete: me?.athlete ?? '' }, true);
   }
 
   async open() {

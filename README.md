@@ -105,12 +105,12 @@ body parts into an athlete's sprite sheet (see [src/athletes/sprites/](src/athle
 
 ## The home screen
 
-Like Clash Royale: three tabs along the bottom, **Lineup | Play | Squad**. Tap
+Like Clash Royale: three tabs along the bottom, **Athlete | Play | Squad**. Tap
 one or swipe sideways to slide between them. The game opens on **Play**: three
 big buttons, **🤖 vs Computer**, **🌐 Live** and **⭐ Special Events**, over your
-lineup warming up on the track (tap it to change it). vs Computer and Live open
-the tournament and the five events, with that mode's settings (Solo/Team
-tournament for both; Rivals and Ghost only against the computer). Special
+athlete warming up on the track (tap them to change who it is). vs Computer and
+Live open the tournament and the five events (vs Computer with its Training
+Ghost toggle). Special
 Events opens the events that aren't part of the five (the 4×100m relay and the
 time trial), with a RIVALS toggle, Amateur or Pro. The Squad tab has ⚔ Practice:
 live events with just your squad (see Squads). ‹ Back (or Esc) returns to the
@@ -120,8 +120,7 @@ Keyboard: 1 / 2 / 3 or Q / E change tab, Esc goes back to Play.
 ## 4×100m relay
 
 Under **Special Events**. Six teams of four on one long straight, in their
-captain's kit; yours is captained by whoever does the relay in your lineup
-(tap them on the intro card to swap), and they anchor. You run every leg with
+captain's kit; yours is captained by your athlete, who anchors. You run every leg with
 the 100m's green targets.
 
 The baton changes hands in a blue 20 m zone around each 100 m line (10 m
@@ -196,7 +195,7 @@ until they join a squad or dismiss it (✕).
 
 ⚔ **Practice** (on your squad's page) is a friendly battle with your squad,
 like Clash Royale's: tap it, pick an event (the five, the **4×100m relay**, or
-the tournament as the Play tab's Solo/Team toggle has it), and you're in a live
+the tournament), and you're in a live
 waiting room that only your squad sees. While it's open it shows next to the
 Practice button on every member's Squad tab, with **Join**; it plays like any
 live event (below), up to 4 players, and Race again or Menu bring you back to
@@ -242,33 +241,22 @@ not the Realtime Database: it runs each meet's clock, heats and scoring. It
 has to be deployed (server/README.md) and its address put in
 `src/online/net.js` (`MEET_SERVER`) before the Meet button opens.
 
-## Lineup and tournaments
+## Your athlete
 
-**Lineup** (the home screen's left tab) works like Clash Royale's deck: a slot
-per event along the top, your athletes below. Tap an athlete, then **Use**, then
-the slot to put them in (the slots wiggle while you pick; Cancel or Esc calls it
-off). Tap a slot for **Info** or **Remove**. Like a Clash Royale deck missing
-a card, a lineup with an empty slot can't play a **Team** tournament (offline
-or live): the Tournament button greys out and says so, with a button to fill
-your lineup. Single events still play, with your solo athlete in an empty
-event, and so does a Solo tournament. Info shows an athlete running, their
-height and where they are in your lineup. It can be the same athlete in every
-slot or a different one in each.
-There's also a **Solo** slot: the athlete who does all five in a solo
-tournament. The athletes
-only look different for now; they all run on the same physics.
+**Athlete** (the home screen's left tab): your athlete warming up along the
+top, with their tagline and height, and everyone below. Tap one and they're
+yours. Your athlete does every event and the whole tournament (all five, like a
+pentathlon); in each event the other five are your rivals. The athletes only
+look different for now; they all run on the same physics.
 
-The **TOURNAMENT** toggle (in both lists) picks the kind of tournament, offline and live:
-- **Solo**: your solo athlete does all five events, like a pentathlon.
-- **Team**: your lineup, one athlete per event. Your rivals in each event are
-  the athletes who aren't doing it for you, and your total is your team's.
-
-Each kind has its own leaderboard and its own best tournament (and ghosts).
+(There used to be a lineup, a different athlete per event, and a Team
+tournament for it. Both are gone for now; the Team Tournament's board,
+`teamtournament`, stays in the database but isn't shown.)
 
 ## Online leaderboards and ghosts
 
 🌐 **Leaderboard** (on the menu, the results screen and the tournament's final
-standings) has a leaderboard for every event plus one each for solo and team tournament points.
+standings) has a leaderboard for every event plus one for tournament points.
 Finishing an event, on its own or in a tournament, posts your mark to that
 event's board if it beats your mark there; finishing a tournament posts your
 total. Marks made with changed tuning aren't posted, and don't count as a
@@ -277,13 +265,13 @@ the menu; names are unique.
 
 **Your progress follows your account.** Signed in with Google, your
 campaign progress (what you've beaten in Amateur and Pro), your top five marks
-on every board (the Leaderboard's **Mine**) and your lineup and solo athlete
+on every board (the Leaderboard's **Mine**) and your athlete
 are saved to your account as well as the phone
 ([`src/online/progress.js`](src/online/progress.js), Firestore
 `progress/{uid}`, private to you). A new phone, or one whose data was cleared,
 gets them back when you sign in. Syncing merges rather than overwrites: you
 keep everything either copy has beaten and the best five marks from both, and
-the lineup changed most recently wins. A guest's progress stays on the phone
+the athlete chosen most recently wins. A guest's progress stays on the phone
 until they sign in.
 
 **Live play**: **🌐 Live** on the Play tab lists every event and the
@@ -427,7 +415,7 @@ src/online/
   squads.js           squads: start, find, join and leave one; your squad and its members
   post.js             posts a finished mark to its board and reports how it went
   bests.js            personal bests: your board entries, synced to the phone's copy
-  progress.js         campaign progress, top five marks and lineup, synced to your account (merged)
+  progress.js         campaign progress, top five marks and your athlete, synced to your account (merged)
   live.js             live play: the waiting rooms (public, and each squad's Practice), shared start times, sending and receiving players
   liveRun.js          another player's runner in a live 100m, replayed as their taps arrive
   liveTrace.js        sends your athlete frame by frame in live play, and draws the others' (all but the 100m)
@@ -436,12 +424,12 @@ src/online/
   fieldGhost.js       records and draws ghosts in the long jump, pole vault and javelin
   ghosts.js           picks which ghost races: best tournament, a leaderboard pick, or your best
 src/scenes/inviteScreen.js      the invite screen a squad invite link opens: pick a username, join
-src/scenes/homeScene.js         the home screen: Lineup | Play | Squad tabs, swipes, the tab bar
-src/scenes/home/                its panels: lineupPanel.js (who does each event, and your solo athlete),
+src/scenes/homeScene.js         the home screen: Athlete | Play | Squad tabs, swipes, the tab bar
+src/scenes/home/                its panels: athletePanel.js (pick your athlete),
                                 playPanel.js (the events, tournament and settings), squadPanel.js (your squad, Practice)
 src/scenes/leaderboardScene.js  online leaderboards, a tab per event, with Race buttons
 src/scenes/profileScene.js      your username (unique, saved in Firebase) and Google sign-in
-src/scenes/lobbyScene.js        the live waiting room (any event, or a solo or team tournament)
+src/scenes/lobbyScene.js        the live waiting room (any event, or the tournament)
 src/meet/             squad meets (docs/meets.md): the rules shared with the meet server (rules, scoring,
                       heats, relayLegs, protocol), the meet you're in (meet.js), sign-up and lobby
                       (meetScene.js), standings between events (meetStandingsScene.js)

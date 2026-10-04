@@ -1,5 +1,5 @@
 // Top-level scene transitions in one place:
-// home (Lineup | Play | Squad tabs) -> event intro -> event (countdown/play inside) -> result -> retry | menu
+// home (Athlete | Play | Squad tabs) -> event intro -> event (countdown/play inside) -> result -> retry | menu
 // tournament: intro -> event -> standings -> next intro ... -> champion
 // live: waiting room -> event (or a tournament's events) with the others in it (a squad's practice too)
 // meet: sign-up -> lobby -> intro -> event -> meet standings -> next intro ... -> relay -> final standings
@@ -16,7 +16,7 @@ import { meet } from './meet/meet.js';
 import { tournament } from './tournament/tournament.js';
 import { openTuning } from './tuning/panel.js';
 import { roundMark, eventById } from './events/registry.js';
-import { ORDER, tourModeOf } from './tournament/tournament.js';
+import { ORDER, TOURNAMENT_KIND } from './tournament/tournament.js';
 import { startLive, endLive, currentLive } from './online/live.js';
 import { resetScars } from './brawl/wounds.js';
 import { getCampaign, setCampaign, markBeaten, canTune } from './core/storage.js';
@@ -31,11 +31,10 @@ export const flow = {
     game.setScene(new HomeScene(tab));
   },
   // Tournament: the five events in a row, decathlon points, a champion at the end.
-  // `mode`: 'solo' (one athlete) or 'team' (your lineup).
-  tournament: (game, mode) => {
+  tournament: (game) => {
     resetScars();
     endLive();
-    tournament.start(mode);
+    tournament.start();
     game.setScene(new IntroScene(tournament.event));
   },
   intro: (game, ev) => game.setScene(new IntroScene(ev)),
@@ -87,10 +86,10 @@ export const flow = {
   // The waiting room has closed: `info` = { kind, room, uid, name, players, startAt, setLen, squad }.
   liveStart: (game, info) => {
     resetScars();
-    const mode = tourModeOf(info.kind);
-    const first = mode ? ORDER[0] : info.kind;
+    const tour = info.kind === TOURNAMENT_KIND;
+    const first = tour ? ORDER[0] : info.kind;
     const session = startLive(info, first);
-    if (mode) tournament.start(mode, session);
+    if (tour) tournament.start(session);
     const scene = eventById(first).create();
     scene.live = session;
     game.setScene(scene);

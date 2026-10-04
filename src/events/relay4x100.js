@@ -38,7 +38,7 @@ export const LIVE_TRACE = { hz: 20, maxFrames: 1500 }; // the longest relay (max
  *
  * Each lane is a team, in its captain's kit: the captain anchors and the next
  * three athletes on the roster run the first three legs. Yours is captained by
- * whoever does the relay in your lineup (tap them on the intro card to swap).
+ * your athlete.
  *
  * You run every leg of your team with the 100m's green targets. In the zone
  * the targets give way to one blue button in the middle: PASS, then TAKE.

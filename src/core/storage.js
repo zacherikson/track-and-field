@@ -44,8 +44,10 @@ const progressChanged = () => progressListener?.();
 
 /**
  * The progress that follows your account: { beaten, top, lineup, character,
- * lineupAt }. `lineupAt` is when you last changed your lineup or solo athlete
- * (ms; 0 if never since this was kept), so the newer lineup wins a sync.
+ * lineupAt }. `lineupAt` is when you last changed your athlete (ms; 0 if never
+ * since this was kept), so the newer choice wins a sync. `lineup` is from when
+ * each event had its own athlete: no longer used, but kept as it was (the
+ * progress doc needs it, firestore.rules).
  */
 export function getProgress() {
   const d = load();
@@ -159,7 +161,7 @@ export function setBoardView(view) {
   save(data);
 }
 
-/** Your solo athlete (a character id from roster.js), or null for the default: the one who does a solo tournament. */
+/** Your athlete (a character id from roster.js), or null for the default. */
 export function getCharacter() {
   return load().character ?? null;
 }
@@ -172,34 +174,10 @@ export function setCharacter(id) {
   progressChanged();
 }
 
-/**
- * Your lineup: who does each event, { [eventId]: character id }. An event
- * missing from it (never set) or null (emptied with Remove) is done by your
- * solo athlete (getCharacter).
- */
-export function getLineup() {
+/** The old per-event lineup, { [eventId]: character id } (see getProgress). */
+function getLineup() {
   const l = load().lineup;
   return l && typeof l === 'object' ? l : {};
-}
-
-/** Puts athlete `id` (null: nobody) in event `eventId`'s slot. `edit` false: filling in a default, not your choice (an older lineup from your account still wins). */
-export function setLineupSlot(eventId, id, edit = true) {
-  const data = load();
-  data.lineup = { ...getLineup(), [eventId]: id };
-  if (edit) data.lineupAt = Date.now();
-  save(data);
-  if (edit) progressChanged();
-}
-
-/** Which tournament the menu plays: 'solo' (one athlete, all five events) or 'team' (your lineup). */
-export function getTourMode() {
-  return load().tourMode === 'team' ? 'team' : 'solo';
-}
-
-export function setTourMode(mode) {
-  const data = load();
-  data.tourMode = mode;
-  save(data);
 }
 
 // The campaign you're playing ('amateur' or 'pro'), or null for Training. Set
@@ -319,22 +297,22 @@ export function setGhost(eventId, run) {
   }
 }
 
-// Your best tournament of each kind ('solo' or 'team'), for its ghosts:
+// Your best tournament, for its ghosts:
 // { total, events: { [eventId]: { mark, pts, ghost } } }.
-const BEST_TOURNAMENT = { solo: 'trackroyale.besttournament.v1', team: 'trackroyale.bestteamtournament.v1' };
+const BEST_TOURNAMENT = 'trackroyale.besttournament.v1';
 
-export function getBestTournament(mode) {
+export function getBestTournament() {
   try {
-    return JSON.parse(localStorage.getItem(BEST_TOURNAMENT[mode]));
+    return JSON.parse(localStorage.getItem(BEST_TOURNAMENT));
   } catch {
     return null;
   }
 }
 
-export function saveBestTournament(mode, best) {
+export function saveBestTournament(best) {
   try {
-    if (best) localStorage.setItem(BEST_TOURNAMENT[mode], JSON.stringify(best));
-    else localStorage.removeItem(BEST_TOURNAMENT[mode]);
+    if (best) localStorage.setItem(BEST_TOURNAMENT, JSON.stringify(best));
+    else localStorage.removeItem(BEST_TOURNAMENT);
     return true;
   } catch {
     return false;

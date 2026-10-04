@@ -4,6 +4,18 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## One athlete, one tournament
+- The lineup is gone: the left tab is now **Athlete**, where you pick one
+  athlete who does every event (tap a card and they're yours). The Play tab
+  shows them warming up on the track; the intro card shows them but no longer
+  swaps them per event.
+- No more Team tournament or Solo/Team toggle: just the Tournament, on its
+  board (`tournament`, as before). The Team board is hidden; its entries stay
+  in the database. Squad meets and Practice use your one athlete in every event.
+- Your old lineup stays saved in your progress (unused), in case it comes back.
+- The home tabs lost their how-to lines (show, don't tell); messages that answer
+  a tap stay.
+
 ## Squad meets
 - The Squad tab has a 🏟 **Meet** button: squads against squads, live, up to six
   squads of four through the five events and the 4×100m relay

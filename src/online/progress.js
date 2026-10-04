@@ -4,9 +4,9 @@ import { connectSDK, isSignedIn } from './firebase.js';
 
 /**
  * YOUR PROGRESS FOLLOWS YOUR ACCOUNT: campaign progress (what you've beaten in
- * Amateur and Pro), your top five marks on every board, and your lineup and
- * solo athlete. Signed in with Google only, like the leaderboards: a guest's
- * progress stays on the phone, and goes up the first time they sign in.
+ * Amateur and Pro), your top five marks on every board, and your athlete.
+ * Signed in with Google only, like the leaderboards: a guest's progress stays
+ * on the phone, and goes up the first time they sign in.
  *
  * Firestore: progress/{uid} = { beaten, top, lineup, character, lineupAt, v, updatedAt },
  * private to you (firestore.rules). The phone keeps its own copy
@@ -16,7 +16,7 @@ import { connectSDK, isSignedIn } from './firebase.js';
  * played on in turn, never lose anything:
  * - beaten: everything either copy has beaten (nothing is ever un-beaten);
  * - top: both copies' marks, best TOP_N kept;
- * - lineup and solo athlete: whichever was changed last (`lineupAt`).
+ * - your athlete (and the old lineup): whichever was changed last (`lineupAt`).
  * syncProgress() runs as you come back to the menu, and a few seconds after
  * any of it changes here.
  */

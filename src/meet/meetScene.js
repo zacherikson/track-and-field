@@ -2,7 +2,7 @@ import { Button, text, roundRect } from '../core/ui.js';
 import { getBest } from '../core/storage.js';
 import { Conn, meetServer } from '../online/net.js';
 import { serverNow } from '../online/live.js';
-import { liveAthletes, TOUR_KINDS } from '../tournament/tournament.js';
+import { liveAthletes } from '../tournament/tournament.js';
 import { EVENTS } from '../events/registry.js';
 import { CONFIG } from '../config.js';
 import { flow } from '../flow.js';
@@ -76,9 +76,9 @@ export class MeetScene {
   /** Signed in to the squad's hub: on the sign-up (again, after a reconnect: it's the same). */
   onHubStatus(s) {
     if (s === 'open') {
-      const who = liveAthletes(TOUR_KINDS.team);
+      const who = liveAthletes();
       const pbs = Object.fromEntries(EVENTS.map((ev) => [ev.id, getBest(ev.id)]));
-      this.hub.send({ t: 'signup', athlete: who.athlete, lineup: who.lineup, pbs });
+      this.hub.send({ t: 'signup', athlete: who.athlete, pbs });
     } else if (s === 'denied') this.note = { text: 'The meet server didn’t let you in. Are you still in the squad?', color: '#ffb35c' };
     else if (s === 'reload') this.note = { text: 'There’s a new version of the game: reload the page to play meets.', color: '#ffb35c' };
   }

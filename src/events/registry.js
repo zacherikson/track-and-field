@@ -172,14 +172,10 @@ export const SPECIAL_EVENTS = [
   },
 ];
 
-// The tournaments' online leaderboards (total decathlon points), one per kind:
-// solo (one athlete does all five) and team (your lineup). Not playable on
-// their own, so they aren't in EVENTS. The solo board kept the id the one
-// tournament board had, so its entries carried over.
-export const TOURNAMENT_BOARDS = {
-  solo: { id: 'tournament', name: 'Solo Tournament', unit: 'pts', lowerIsBetter: false, online: true, tournament: 'solo' },
-  team: { id: 'teamtournament', name: 'Team Tournament', unit: 'pts', lowerIsBetter: false, online: true, tournament: 'team' },
-};
+// The tournament's online leaderboard (total decathlon points). Not playable
+// on its own, so it isn't in EVENTS. (The Team Tournament's board,
+// 'teamtournament', is retired: still in the database, no longer shown.)
+export const TOURNAMENT_BOARD = { id: 'tournament', name: 'Tournament', unit: 'pts', lowerIsBetter: false, online: true, tournament: true };
 
 /** Any playable event (the five, or a special one) by id. */
 export function eventById(id) {
@@ -187,7 +183,7 @@ export function eventById(id) {
 }
 
 /** Every online leaderboard, in menu order. */
-export const BOARDS = [...EVENTS, TOURNAMENT_BOARDS.solo, TOURNAMENT_BOARDS.team];
+export const BOARDS = [...EVENTS, TOURNAMENT_BOARD];
 
 /**
  * A mark as it's kept and compared everywhere (results, personal bests, the

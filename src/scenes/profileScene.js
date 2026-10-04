@@ -125,13 +125,13 @@ export class ProfileScene {
         const posted = await postBests();
         if (switched) {
           // That Google account already had a player: this phone is them now.
-          // (This phone's campaign progress and lineup are merged into theirs as the menu loads.)
+          // (This phone's campaign progress and athlete are merged into theirs as the menu loads.)
           forgetBests();
           this.status = { text: 'Loading your player…', color: OK };
           location.reload();
           return;
         }
-        // Your campaign progress, top marks and lineup go up to your account too.
+        // Your campaign progress, top marks and athlete go up to your account too.
         await syncProgress().catch((e) => console.warn('progress not synced', e));
         this.status = { text: posted ? 'Signed in. Your bests are on the online leaderboard.' : 'Signed in. Your name, bests and progress are saved to your Google account.', color: OK };
       })
@@ -145,7 +145,7 @@ export class ProfileScene {
   }
 
   signOut() {
-    const sure = window.confirm('Sign out? This phone goes back to being a new guest. Sign in again to get your name, bests, progress and lineup back.');
+    const sure = window.confirm('Sign out? This phone goes back to being a new guest. Sign in again to get your name, bests, progress and athlete back.');
     this.game.input.clear();
     if (!sure) return;
     this.busy = true;

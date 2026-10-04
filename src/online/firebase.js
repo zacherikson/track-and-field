@@ -21,7 +21,7 @@ import { toWire, fromWire } from './trace.js';
  * 100m doc carries its recorded run (the ghost others can race: small). Other
  * events' recordings are frame by frame (online/trace.js) and much bigger, so
  * they sit in ghosts/, fetched only to race one; `traced: true` says there is
- * one for this mark. A board is an event from registry.js or one of TOURNAMENT_BOARDS:
+ * one for this mark. A board is an event from registry.js or TOURNAMENT_BOARD:
  * { id, lowerIsBetter }.
  * firestore.rules says who may write what.
  *

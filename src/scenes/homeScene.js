@@ -1,13 +1,13 @@
 import { text, roundRect } from '../core/ui.js';
 import { chooseGhost } from '../online/ghost.js';
-import { LineupPanel } from './home/lineupPanel.js';
+import { AthletePanel } from './home/athletePanel.js';
 import { PlayPanel } from './home/playPanel.js';
 import { SquadPanel } from './home/squadPanel.js';
 
 /** The home screen's tabs, left to right. */
-export const TABS = ['lineup', 'play', 'squad'];
+export const TABS = ['athlete', 'play', 'squad'];
 const TAB_LOOK = [
-  { icon: '👟', label: 'Lineup' },
+  { icon: '👟', label: 'Athlete' },
   { icon: '🏁', label: 'Play' },
   { icon: '🛡️', label: 'Squad' },
 ];
@@ -18,7 +18,7 @@ const DRAG = 14; // past this the panels follow the finger, and the touch is no 
 const TAP = 24; // a touch that ends within this of where it started is a tap
 
 /**
- * The home screen, Clash Royale style: three panels side by side, Lineup |
+ * The home screen, Clash Royale style: three panels side by side, Athlete |
  * Play | Squad, with a tab bar along the bottom. Tap a tab or swipe sideways
  * to move between them; the panels slide.
  *
@@ -40,7 +40,7 @@ export class HomeScene {
     this.drag = 0; // how far a finger has dragged them, px
     this.press = null; // the touch being followed: { id, x, y, down, dragging, lost }
     this.tabPressT = TABS.map(() => 0);
-    this.panels = [new LineupPanel(this), new PlayPanel(this), new SquadPanel(this)];
+    this.panels = [new AthletePanel(this), new PlayPanel(this), new SquadPanel(this)];
     this.panels.forEach((p) => p.enter());
     this.layout(this.game.view);
   }

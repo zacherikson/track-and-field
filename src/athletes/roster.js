@@ -1,9 +1,8 @@
-import { getCharacter, getLineup } from '../core/storage.js';
+import { getCharacter } from '../core/storage.js';
 
 /**
- * The athletes (original characters). Your lineup (LineupScene) says who does
- * each event, and your solo athlete does all five in a solo tournament; in each
- * event the other five are your rivals. Each has a kit, a skin tone and a hairstyle (`hair`
+ * The athletes (original characters). You pick one (the Athlete tab) and they
+ * do every event; in each event the other five are your rivals. Each has a kit, a skin tone and a hairstyle (`hair`
  * color + `style`, drawn by drawFigure) so they read apart at a glance, and
  * Chonk has a heavier build (`girth`), Joey is two-thirds the height (`height`).
  * An athlete with drawn art names its sheet with `sprite` (e.g. `sprite: 'juno'`
@@ -22,34 +21,21 @@ export const CHARACTERS = [
 
 const byId = (id) => CHARACTERS.find((c) => c.id === id) ?? null;
 
-let solo = false; // a solo tournament is on: your solo athlete does every event
-
-/** Set by the tournament: while `on`, player() is your solo athlete in every event. */
-export function useSolo(on) {
-  solo = on;
-}
-
-/** Your solo athlete (chosen on the Lineup screen, remembered on this device). */
-export function soloAthlete() {
+/** Your athlete (chosen on the Athlete tab, remembered on this device and your account). */
+export function myAthlete() {
   return byId(getCharacter()) ?? CHARACTERS[0];
 }
 
-/** Who does event `eventId` in your lineup (your solo athlete if that slot is empty or was never set). */
-export function lineupAthlete(eventId) {
-  return byId(getLineup()[eventId]) ?? soloAthlete();
+/** The athlete you play an event as: always yours. */
+export function player() {
+  return myAthlete();
 }
 
-/** True if you emptied event `eventId`'s lineup slot (Remove): your solo athlete fills in. */
-export function lineupSlotEmpty(eventId) {
-  return getLineup()[eventId] === null;
-}
-
-/** The athlete you play event `eventId` as: your lineup's, or your solo athlete in a solo tournament. */
-export function player(eventId) {
-  return solo ? soloAthlete() : lineupAthlete(eventId);
-}
-
-/** Another player's athlete in event `eventId`, from what their phone sent: { athlete, lineup? } (tournament.js liveAthletes). */
+/**
+ * Another player's athlete in event `eventId`, from what their phone sent:
+ * { athlete, lineup? }. Phones from before the lineup went away still send a
+ * `lineup`, and show who they had in that event.
+ */
 export function theirAthlete(p, eventId) {
   return byId(p?.lineup?.[eventId]) ?? byId(p?.athlete) ?? CHARACTERS[0];
 }

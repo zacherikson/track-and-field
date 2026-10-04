@@ -1,11 +1,10 @@
 import { Button, text, roundRect } from '../../core/ui.js';
-import { cleanName, getPlayerName, getTourMode } from '../../core/storage.js';
+import { cleanName, getPlayerName } from '../../core/storage.js';
 import { cachedSquad, loadMySquad, topSquads, searchSquads, createSquad, joinSquad, leaveSquad, kickFromSquad, SQUAD_MAX, inviteLink, getInvite, setInvite, squadInfo } from '../../online/squads.js';
 import { prewarmSDK } from '../../online/firebase.js';
 import { watchSquadRooms, MAX_PLAYERS, FIELD } from '../../online/live.js';
 import { EVENTS, eventById } from '../../events/registry.js';
-import { lineupSlotEmpty } from '../../athletes/roster.js';
-import { TOUR_KINDS, tourModeOf } from '../../tournament/tournament.js';
+import { TOURNAMENT_KIND } from '../../tournament/tournament.js';
 import { flow } from '../../flow.js';
 import { openInvite } from '../inviteScreen.js';
 import { Conn, meetServer } from '../../online/net.js';
@@ -64,7 +63,7 @@ export class SquadPanel {
     this.practiceBtn = new BigButton({ label: '⚔ Practice', sub: 'Race your squad live', color: '#d98a00', onTap: () => this.openPicker() });
     this.picking = false;
     this.pickBtns = PRACTICE_KINDS.map(
-      (k) => new Button({ label: k.label, sub: k.sub, w: 160, h: 70, size: 20, color: k.color, onTap: () => this.practice(k.kind ?? TOUR_KINDS[getTourMode()]) }),
+      (k) => new Button({ label: k.label, sub: k.sub, w: 160, h: 70, size: 20, color: k.color, onTap: () => this.practice(k.kind) }),
     );
     this.cancelBtn = new Button({ label: 'Cancel', w: 140, h: 44, size: 19, color: PLAIN, onTap: () => this.back() });
     // Meet: the button, and the squad's sign-up as its SquadHub has it ({ forming, meet }).
@@ -180,7 +179,6 @@ export class SquadPanel {
     if (!this.mine || this.busy) return;
     this.picking = true;
     this.status = null;
-    for (const [i, k] of PRACTICE_KINDS.entries()) if (!k.kind) this.pickBtns[i].sub = getTourMode() === 'team' ? 'Team · 5 events' : 'Solo · 5 events';
     this.relayout();
   }
 
@@ -191,15 +189,11 @@ export class SquadPanel {
     return true;
   }
 
-  /** Starts, or joins, your squad's practice room for `kind` (an event, or a tournament's). */
+  /** Starts, or joins, your squad's practice room for `kind` (an event, or the tournament's). */
   practice(kind) {
     const s = this.mine;
     if (!s) return;
     this.picking = false;
-    if (tourModeOf(kind) === 'team' && EVENTS.some((ev) => lineupSlotEmpty(ev.id))) {
-      this.status = { text: 'A Team tournament needs a full lineup (Lineup tab), or switch to Solo on the Play tab.', color: WARN };
-      return;
-    }
     flow.live(this.game, kind, { key: s.key, name: s.name });
   }
 
@@ -640,13 +634,12 @@ const PRACTICE_H = 72; // the Practice button and the open rooms beside it
 const PRACTICE_KINDS = [
   ...EVENTS.map((ev) => ({ kind: ev.id, label: ev.name, sub: FIELD.has(ev.id) ? 'Three rounds' : 'Race', color: '#2bb673' })),
   { kind: 'relay4x100', label: '4×100m Relay', sub: 'Four legs, one baton', color: '#c2337a' },
-  { kind: null, label: '🏆 Tournament', sub: 'Solo · 5 events', color: '#1f8a58' },
+  { kind: TOURNAMENT_KIND, label: '🏆 Tournament', sub: '5 events', color: '#1f8a58' },
 ];
 
 /** A practice room's event, by name. */
 function kindName(kind) {
-  const mode = tourModeOf(kind);
-  return mode ? `${mode === 'team' ? 'Team' : 'Solo'} Tournament` : (eventById(kind)?.name ?? kind);
+  return kind === TOURNAMENT_KIND ? 'Tournament' : (eventById(kind)?.name ?? kind);
 }
 
 /** What to say when a squad or the list can't be loaded. */

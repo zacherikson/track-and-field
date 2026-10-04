@@ -3,7 +3,7 @@ import { CHARACTERS } from '../athletes/roster.js';
 import { eventById } from '../events/registry.js';
 import { Lobby, MAX_PLAYERS, CLOSE_BEFORE, serverNow } from '../online/live.js';
 import { flow } from '../flow.js';
-import { tourModeOf, liveAthletes } from '../tournament/tournament.js';
+import { TOURNAMENT_KIND, liveAthletes } from '../tournament/tournament.js';
 
 /**
  * The waiting room for a live event or tournament (`kind`: an event id or a
@@ -19,8 +19,7 @@ export class LobbyScene {
   constructor(kind, squad = null) {
     this.kind = kind;
     this.squad = squad;
-    const mode = tourModeOf(kind);
-    this.title = mode ? `${mode === 'team' ? 'Team' : 'Solo'} Tournament` : eventById(kind).name;
+    this.title = kind === TOURNAMENT_KIND ? 'Tournament' : eventById(kind).name;
   }
 
   enter() {
@@ -35,7 +34,7 @@ export class LobbyScene {
   join() {
     this.state = 'joining';
     this.lobby?.close(false);
-    this.lobby = new Lobby(this.kind, (v) => this.onLobby(v), liveAthletes(this.kind), this.squad);
+    this.lobby = new Lobby(this.kind, (v) => this.onLobby(v), liveAthletes(), this.squad);
     this.lobby.join().catch((err) => {
       console.warn('waiting room unavailable', err);
       if (this.game.scene === this) this.state = 'error';

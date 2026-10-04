@@ -15,7 +15,7 @@ import { chosenGhost } from './ghost.js';
 export function pickGhost(ev, valid) {
   if (getCampaign()) return null;
   if (tournament.active) {
-    const g = getGhostOn() ? getBestTournament(tournament.mode)?.events?.[ev.id]?.ghost : null;
+    const g = getGhostOn() ? getBestTournament()?.events?.[ev.id]?.ghost : null;
     return valid(g) ? { name: 'Best tournament', data: g, overlay: true } : null;
   }
   const picked = chosenGhost();

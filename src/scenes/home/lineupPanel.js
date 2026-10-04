@@ -122,12 +122,12 @@ export class LineupPanel {
     this.placeMenus();
   }
 
-  /** A slot tapped: its Info and Remove (an empty one says how to fill it). */
+  /** A slot tapped: its Info and Remove (an empty one says so). */
   openSlot(slot) {
     this.picked = null;
     if (this.empty(slot)) {
       this.slotMenu = null;
-      this.note = { text: `The ${slot.label.toLowerCase()} slot is empty: tap an athlete, then Use, to fill it.`, t: 3, plain: true };
+      this.note = { text: `The ${slot.label.toLowerCase()} slot is empty.`, t: 3, plain: true };
       return;
     }
     this.slotMenu = this.slotMenu === slot ? null : slot;
@@ -235,8 +235,7 @@ export class LineupPanel {
 
   render(ctx, view) {
     text(ctx, 'YOUR LINEUP', view.w / 2, 34, { size: 30, color: GOLD, shadow: true });
-    const sub = this.note?.text ?? 'Tap an athlete, then Use, then the slot to put them in. Tap a slot for Info or Remove.';
-    text(ctx, sub, view.w / 2, 62, { size: 14, weight: this.note ? 700 : 500, color: this.note ? (this.note.plain ? '#ffd35c' : '#59cd90') : 'rgba(255,255,255,0.75)', maxWidth: view.w - 40 });
+    if (this.note) text(ctx, this.note.text, view.w / 2, 62, { size: 14, weight: 700, color: this.note.plain ? '#ffd35c' : '#59cd90', maxWidth: view.w - 40 });
 
     // Below the slots: your athletes, or (picking a slot) the one you're placing.
     const top = 228;
@@ -300,7 +299,6 @@ export class LineupPanel {
     const where = this.slots.filter((s) => (s.event ? getLineup()[s.event] === c.id : soloAthlete() === c)).map((s) => s.label);
     text(ctx, 'IN YOUR LINEUP', tx, b.y + 140, { size: 12, weight: 800, align: 'left', color: DIM });
     text(ctx, where.length ? where.join(' · ') : 'Not yet', tx, b.y + 162, { size: 16, weight: 700, align: 'left', color: where.length ? '#59cd90' : DIM, maxWidth: tw });
-    text(ctx, 'Everyone runs on the same physics: pick who you like the look of.', tx, b.y + 192, { size: 14, weight: 500, align: 'left', color: DIM, maxWidth: tw });
     this.closeBtn.draw(ctx);
   }
 

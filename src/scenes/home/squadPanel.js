@@ -423,7 +423,6 @@ export class SquadPanel {
     const w = Math.min(280, this.contentW - (left - this.x0));
     const fits = Math.max(1, Math.floor((this.x0 + this.contentW - left + gap) / (w + gap)));
     this.roomBoxes = this.rooms.slice(0, fits).map((r, i) => ({ r, x: left + i * (w + gap), y: this.practiceY, w, h: PRACTICE_H }));
-    this.roomsLeft = { x: left, w: this.x0 + this.contentW - left };
     this.roomBtns = this.roomBoxes.map(
       (k) =>
         new Button({
@@ -504,8 +503,7 @@ export class SquadPanel {
   render(ctx, view) {
     if (this.mine) return this.renderSquad(ctx, view, this.mine);
     text(ctx, 'SQUADS', view.w / 2, 34, { size: 30, color: '#ffb400', shadow: true });
-    const sub = this.status ?? { text: 'Team up with your friends: start a squad, or find theirs and join it.', color: 'rgba(255,255,255,0.75)' };
-    text(ctx, sub.text, view.w / 2, 62, { size: 15, weight: sub === this.status ? 600 : 500, color: sub.color, maxWidth: view.w - 40 });
+    if (this.status) text(ctx, this.status.text, view.w / 2, 62, { size: 15, weight: 600, color: this.status.color, maxWidth: view.w - 40 });
     if (this.mine === undefined && !this.loadError) {
       text(ctx, 'Loading…', view.w / 2, 200, { size: 18, weight: 600, color: DIM });
       return;
@@ -568,9 +566,8 @@ export class SquadPanel {
     if (more) text(ctx, `+${more.n} more`, more.x + 12, more.y + more.h / 2, { size: 16, align: 'left', color: DIM });
     this.renderPractice(ctx, view);
     const elsewhere = this.invite && this.invite.key !== s.key ? { text: `You’re invited to ${this.invite.name}. Leave ${s.name} to join it.`, color: WARN } : null;
-    const tip = leading && s.members.length > 1 ? 'Tap Invite to send a friend a link to join. As leader, tap a member to kick them out.' : `Tap Invite to send a friend a link to join, or they can Find by name: “${s.name}”.`;
-    const hint = this.status ?? elsewhere ?? { text: tip, color: DIM };
-    text(ctx, hint.text, view.w / 2, this.bottom - 16, { size: 14, weight: 500, color: hint.color, maxWidth: view.w - 40 });
+    const hint = this.status ?? elsewhere;
+    if (hint) text(ctx, hint.text, view.w / 2, this.bottom - 16, { size: 14, weight: 500, color: hint.color, maxWidth: view.w - 40 });
     if (this.picking) this.renderPicker(ctx, view);
   }
 
@@ -578,11 +575,7 @@ export class SquadPanel {
   renderPractice(ctx, view) {
     this.meetBtn.draw(ctx);
     this.practiceBtn.draw(ctx);
-    if (!this.roomBoxes.length) {
-      const k = this.roomsLeft;
-      text(ctx, 'No practice going. Start one: your squad sees it here and joins you live.', k.x + 4, this.practiceY + PRACTICE_H / 2, { size: 15, weight: 500, align: 'left', color: DIM, maxWidth: k.w - 8 });
-      return;
-    }
+    if (!this.roomBoxes.length) return;
     const pulse = 0.55 + 0.45 * Math.sin(this.age * 4);
     this.roomBoxes.forEach((k, i) => {
       const r = k.r;
@@ -614,7 +607,6 @@ export class SquadPanel {
     ctx.strokeStyle = GOLD;
     ctx.stroke();
     text(ctx, '⚔ PRACTICE', view.w / 2, k.y + 30, { size: 26, color: GOLD, shadow: true });
-    text(ctx, `Pick an event. Only ${this.mine.name} sees it: they tap Join, and you race live.`, view.w / 2, k.y + 60, { size: 15, weight: 500, color: 'rgba(255,255,255,0.8)', maxWidth: k.w - 32 });
     this.pickBtns.forEach((b) => b.draw(ctx));
     this.cancelBtn.draw(ctx);
   }

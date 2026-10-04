@@ -429,7 +429,6 @@ export class PlayPanel {
 
   renderButtons(ctx, view) {
     text(ctx, 'TRACK ROYALE', view.w / 2, 88, { size: 44, color: '#ffb400', shadow: true });
-    text(ctx, `Five events. Two thumbs. Starring ${starring(this.lineup)}.`, view.w / 2, 122, { size: 15, weight: 500, color: 'rgba(255,255,255,0.8)', maxWidth: view.w - 40 });
     for (const b of [this.fsButton, this.tuneButton, this.onlineButton, this.profileButton, this.offlineBig, this.liveBig, this.specialBig]) b?.draw(ctx);
 
     // Your lineup, warming up on the track: an athlete per event.
@@ -456,9 +455,6 @@ export class PlayPanel {
     const offline = this.list === 'offline';
     this.backBtn.draw(ctx);
     text(ctx, offline ? 'VS COMPUTER' : 'LIVE', view.w / 2, 36, { size: 30, color: offline ? '#ffb400' : '#59cd90', shadow: true });
-    if (!offline) {
-      text(ctx, 'Race people right now: a waiting room first, then everyone goes together.', view.w / 2, 72, { size: 15, weight: 500, color: 'rgba(255,255,255,0.8)', maxWidth: view.w - 40 });
-    }
     this.drawTrack(ctx, view, this.trackTop, this.trackBottom - this.trackTop, true);
     if (offline) this.renderSections(ctx);
     else this.liveButtons.forEach((b) => b.draw(ctx));
@@ -494,7 +490,6 @@ export class PlayPanel {
   renderSpecial(ctx, view) {
     this.backBtn.draw(ctx);
     text(ctx, 'SPECIAL EVENTS', view.w / 2, 36, { size: 30, color: '#ff8cc6', shadow: true });
-    text(ctx, 'One-offs against the computer. Nothing to tick off, just your best.', view.w / 2, 72, { size: 15, weight: 500, color: 'rgba(255,255,255,0.8)', maxWidth: view.w - 40 });
     this.drawTrack(ctx, view, this.trackTop, this.trackBottom - this.trackTop, true);
     this.specialButtons.forEach((b) => b.draw(ctx));
     const [a, p] = this.rivalButtons;
@@ -556,12 +551,6 @@ function titleCase(s) {
 /** "100m", "100m and Hurdles", "100m, Hurdles and the tournament": cards by name. */
 function listOf(tiles) {
   const names = tiles.map((t) => (t.id === 'tournament' ? 'the tournament' : t.name));
-  return names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`;
-}
-
-/** "Juno", or "Juno, Okoro and Chan": everyone in your lineup, once each. */
-function starring(lineup) {
-  const names = [...new Set(lineup.map(({ c }) => c.name))];
   return names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`;
 }
 

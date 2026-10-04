@@ -141,7 +141,7 @@ export class LaneRace {
     const who = theirAthlete(p, this.ev.id);
     const live = this.recordGhost ? new LiveRun(this.cfg.startX) : new LiveTrace(this.ev.id, this.traceProps, this.stage);
     const runner = live.runner ?? new TraceBody(this.cfg.startX);
-    return { lane, isPlayer: false, name: p.name, uid: p.uid, colors: who.colors, runner, ai: null, live, mark: null, status: 'ok', idlePhase: rand(0, Math.PI * 2) };
+    return { lane, isPlayer: false, name: p.name, uid: p.uid, colors: who.colors, runner, ai: null, live, tag: p.color, mark: null, status: 'ok', idlePhase: rand(0, Math.PI * 2) };
   }
 
   /** Live race: when the gun fires here (this game's clock), and following the others. */
@@ -332,7 +332,10 @@ export class LaneRace {
       this.setState('finished', t);
     }
     // Live: wait for the others to finish (or give up on them). Everyone else crosses the line in the race itself.
-    const waitLive = this.athletes.some((a) => a.live && a.mark == null && !a.live.left) && end - this.stateT < this.cfg.finishHold + (this.cfg.liveWait ?? LIVE_WAIT);
+    // A squad meet waits as long as the meet server does: until it has every heat's results (or its cutoff).
+    const waitLive = this.live?.isMeet
+      ? !this.live.stageDone(this.stage) && serverNow() < (this.live.cutoffOf(this.stage) ?? Infinity) + 3000
+      : this.athletes.some((a) => a.live && a.mark == null && !a.live.left) && end - this.stateT < this.cfg.finishHold + (this.cfg.liveWait ?? LIVE_WAIT);
     const waitRivals = this.athletes.some((a) => a.ai && a.mark == null) && end - this.goT < this.cfg.maxRaceTime + RIVAL_WAIT;
     if (this.state === 'finished' && end - this.stateT >= this.cfg.finishHold && !waitLive && !waitRivals) return this.finish();
 
@@ -644,7 +647,7 @@ export class LaneRace {
     } else {
       drawAthleteFigure(ctx, p.x, p.y + 4 - lift, H * scale * tall, pose, a.colors, p.y + 4, this.faceFor(a));
       // Live: the other players are real rivals, named.
-      if (a.live) text(ctx, a.live.left ? `${a.name} (left)` : a.name, p.x, p.y - H * scale * tall - 6, { size: 14, color: '#ffb400', shadow: true });
+      if (a.live) text(ctx, a.live.left ? `${a.name} (left)` : a.name, p.x, p.y - H * scale * tall - 6, { size: 14, color: a.tag ?? '#ffb400', shadow: true }); // a meet: in their squad's colour
     }
     // Keep the player's frames for a frame-by-frame ghost (and a live race).
     if (a.isPlayer && this.tracer && (this.state === 'race' || this.state === 'finished')) {

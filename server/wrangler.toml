@@ -1,0 +1,31 @@
+# The meet server (docs/meets.md). Deploy: npx wrangler deploy (from server/).
+# The game connects to wss://<name>.<your-subdomain>.workers.dev
+# (src/online/net.js MEET_SERVER).
+name = "track-royale-live"
+main = "src/index.js"
+compatibility_date = "2025-09-01"
+
+# One SquadHub per squad (meet sign-up), one Matchmaker, one Meet per meet.
+[[durable_objects.bindings]]
+name = "SQUADS"
+class_name = "SquadHub"
+
+[[durable_objects.bindings]]
+name = "MATCH"
+class_name = "Matchmaker"
+
+[[durable_objects.bindings]]
+name = "MEETS"
+class_name = "Meet"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["SquadHub", "Matchmaker", "Meet"]
+
+[vars]
+FIREBASE_PROJECT = "track-royale-f18ad"
+# DEV_AUTH = "1" accepts made-up "dev:<uid>:<name>" tokens instead of Firebase
+# sign-ins, for local testing with bots (npm run dev). Never set it when deploying.
+
+[observability]
+enabled = true

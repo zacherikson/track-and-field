@@ -80,6 +80,13 @@ export class Exchange {
     this.in = incoming;
     this.out = outgoing;
     this.ai = ai;
+    // A computer team does both halves; in a squad meet's relay (events/meetRelay.js) a
+    // computer runner standing in for someone may do just one: PASS (aiPass) or TAKE (aiTake).
+    this.aiPass = null; // null: as `ai` says (a computer team: both)
+    this.aiTake = null;
+    // Meet relay, on the incoming runner's phone: the outgoing runner is on another phone,
+    // which moves them and says when the baton changed hands (remoteHandoff).
+    this.remoteOut = false;
     this.stage = 'approach';
     this.outState = 'stand'; // 'stand' | 'go' | 'hold' (pulling up: missed)
     this.reachT = null; // when PASS was pressed
@@ -141,7 +148,15 @@ export class Exchange {
     this.stage = 'done';
     this.in.mode = 'run';
     this.in.finished = true; // their leg is run: they pull up
-    takeOver(this.out, t);
+    if (!this.remoteOut) takeOver(this.out, t);
+  }
+
+  /** Meet relay: the outgoing runner's phone says the baton changed hands (`grade`, at `gap` m). */
+  remoteHandoff(t, grade, gap = null) {
+    if (this.stage === 'done') return;
+    this.grade = grade;
+    this.gap = gap;
+    this.handOver(t);
   }
 
   /**
@@ -161,7 +176,7 @@ export class Exchange {
       return null;
     }
     // The incoming runner hits the check mark: the outgoing runner goes.
-    if (this.outState === 'stand' && inc.x >= s.wait - inc.v * c.checkTime) {
+    if (!this.remoteOut && this.outState === 'stand' && inc.x >= s.wait - inc.v * c.checkTime) {
       this.outState = 'go';
       out.started = true;
     }
@@ -170,13 +185,15 @@ export class Exchange {
       this.tIn = end;
       inc.mode = 'carry'; // strides stop counting: the scene's input goes to PASS / TAKE
     }
-    if (this.outState === 'go') {
+    if (this.remoteOut) {
+      // Moved by their own phone.
+    } else if (this.outState === 'go') {
       // Up to (or back down to) closeRate under the incoming runner's speed.
       const target = Math.max(0, inc.v - c.outgoing.closeRate);
       const dv = c.outgoing.accel * dt;
       out.v = out.v < target ? Math.min(target, out.v + dv) : Math.max(target, out.v - dv);
     } else if (this.outState === 'hold') out.v = Math.max(0, out.v - c.brakeDecel * dt);
-    if (out.started) glide(out, dt);
+    if (out.started && !this.remoteOut) glide(out, dt);
 
     if (this.stage === 'approach') {
       this.keepBehind();
@@ -225,8 +242,8 @@ export class Exchange {
   /** A computer team: PASS when the gap closes to passAt, TAKE when it's down to takeAt. */
   think(t) {
     const g = this.gapNow;
-    if (this.stage === 'zone' && g <= this.passAt) this.pass(t);
-    if (this.stage === 'reach' && g <= this.takeAt && t - this.reachT >= this.cfg.doubleTap) {
+    if ((this.aiPass ?? true) && this.stage === 'zone' && g <= this.passAt) this.pass(t);
+    if ((this.aiTake ?? true) && this.stage === 'reach' && g <= this.takeAt && t - this.reachT >= this.cfg.doubleTap) {
       if (this.take(t) === 'whiff') this.takeAt = Math.min(this.takeAt, this.cfg.reach - 0.1); // reach for real next time
       else if (this.stage === 'done') return 'handoff';
     }

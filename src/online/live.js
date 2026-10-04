@@ -49,7 +49,13 @@ export const EVENT_LEAD = 22000; // ms from everyone finishing a tournament even
 
 // The server's clock minus this phone's (ms), from the database.
 let offset = 0;
-export const serverNow = () => Date.now() + offset;
+let clock = null; // a meet's clock, while one is on (setClock)
+export const serverNow = () => (clock ? clock() : Date.now() + offset);
+
+/** A squad meet (meet/meet.js) runs on the meet server's clock: `fn` () => ms, or null to go back to the database's. */
+export function setClock(fn) {
+  clock = fn;
+}
 
 let connecting = null;
 

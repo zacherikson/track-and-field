@@ -8,6 +8,7 @@ import { lineupSlotEmpty } from '../../athletes/roster.js';
 import { TOUR_KINDS, tourModeOf } from '../../tournament/tournament.js';
 import { flow } from '../../flow.js';
 import { openInvite } from '../inviteScreen.js';
+import { Conn, meetServer } from '../../online/net.js';
 import { BigButton } from './playPanel.js';
 
 const WARN = '#ffb35c';
@@ -28,6 +29,11 @@ const GOLD = '#ffb400';
  * the tournament), and picking one opens a live waiting room only your squad
  * sees (online/live.js, squadlobby/). While it's open it's on every member's
  * Squad tab, next to the button, with Join.
+ *
+ * MEET (in a squad): squads against squads on the meet server (docs/meets.md).
+ * The 🏟 Meet button signs you up (meet/meetScene.js); the first four make the
+ * squad's team. While this tab shows, it follows the squad's sign-up (its
+ * SquadHub), so the button says who's signed up and whether a meet is on.
  */
 export class SquadPanel {
   constructor(home) {
@@ -61,6 +67,10 @@ export class SquadPanel {
       (k) => new Button({ label: k.label, sub: k.sub, w: 160, h: 70, size: 20, color: k.color, onTap: () => this.practice(k.kind ?? TOUR_KINDS[getTourMode()]) }),
     );
     this.cancelBtn = new Button({ label: 'Cancel', w: 140, h: 44, size: 19, color: PLAIN, onTap: () => this.back() });
+    // Meet: the button, and the squad's sign-up as its SquadHub has it ({ forming, meet }).
+    this.meetBtn = new BigButton({ label: '🏟 Meet', sub: 'Squads vs squads', color: '#2f6fd8', onTap: () => this.goMeet() });
+    this.meetView = null;
+    this.meetWatch = null; // { key, conn }
     this.rooms = []; // open practice rooms (watchSquadRooms)
     this.roomBoxes = [];
     this.roomBtns = [];
@@ -99,6 +109,45 @@ export class SquadPanel {
 
   exit() {
     this.watchRooms(null);
+    this.watchMeet(null);
+  }
+
+  /**
+   * Follows squad `key`'s meet sign-up on the meet server (null: stops), while
+   * the Squad tab shows, for the Meet button's line.
+   */
+  watchMeet(key) {
+    if (key === (this.meetWatch?.key ?? null)) return;
+    this.meetWatch?.conn.close();
+    this.meetWatch = null;
+    this.meetView = null;
+    if (!key || !meetServer()) return;
+    const conn = new Conn(`/squad/${encodeURIComponent(key)}`, { message: (m) => m.t === 'squad' && (this.meetView = m) }, { squadName: this.mine?.name });
+    this.meetWatch = { key, conn };
+  }
+
+  /** The Meet button: sign up for the squad's meet (or back into it). */
+  goMeet() {
+    const s = this.mine;
+    if (!s || this.busy) return;
+    if (!meetServer()) {
+      this.status = { text: 'Meets aren’t open yet: the meet server isn’t set up.', color: WARN };
+      return;
+    }
+    flow.meet(this.game, { key: s.key, name: s.name });
+  }
+
+  /** What the Meet button says under its name: the sign-up, or the squad's meet. */
+  meetLine() {
+    const v = this.meetView;
+    if (!meetServer()) return 'Coming soon';
+    if (!v) return 'Squads vs squads';
+    if (v.meet) {
+      if (v.meet.phase === 'lobby') return v.meet.open > 0 ? `In a lobby · ${v.meet.open} place${v.meet.open > 1 ? 's' : ''} open` : `${v.meet.names.join(', ')} in a lobby`;
+      return `Meet on: ${v.meet.names.join(', ')}`;
+    }
+    if (v.forming.length) return `${v.forming.map((f) => f.name).join(', ')} · ${v.forming.length}/4 · Join!`;
+    return 'Squads vs squads · 4 a squad';
   }
 
   /**
@@ -365,8 +414,10 @@ export class SquadPanel {
    */
   layoutPractice(view, bottom) {
     this.practiceY = bottom - 30 - PRACTICE_H;
+    const bigW = Math.min(240, Math.max(170, this.contentW * 0.25));
+    Object.assign(this.meetBtn, { x: this.x0, y: this.practiceY, w: bigW, h: PRACTICE_H });
     const b = this.practiceBtn;
-    Object.assign(b, { x: this.x0, y: this.practiceY, w: Math.min(260, Math.max(200, this.contentW * 0.3)), h: PRACTICE_H });
+    Object.assign(b, { x: this.x0 + bigW + 12, y: this.practiceY, w: bigW, h: PRACTICE_H });
     const gap = 12;
     const left = b.x + b.w + 16;
     const w = Math.min(280, this.contentW - (left - this.x0));
@@ -410,7 +461,7 @@ export class SquadPanel {
 
   get buttons() {
     if (this.mine && this.picking) return [...this.pickBtns, this.cancelBtn];
-    if (this.mine) return [this.inviteBtn, this.leaveBtn, this.practiceBtn, ...this.roomBtns];
+    if (this.mine) return [this.inviteBtn, this.leaveBtn, this.meetBtn, this.practiceBtn, ...this.roomBtns];
     if (this.mine === undefined && !this.loadError) return [];
     if (this.loadError) return this.buttonRow();
     return [...this.buttonRow(), ...(this.inviteBox ? [this.inviteJoinBtn, this.dismissBtn] : []), ...this.joinBtns.slice(0, this.rowBoxes?.length ?? 0)];
@@ -418,7 +469,10 @@ export class SquadPanel {
 
   /** `events`: this tab's taps (the home screen has sorted out swipes). */
   update(dt, events) {
-    this.watchRooms(this.mine && this.home.panels[this.home.tab] === this ? this.mine.key : null);
+    const showing = this.mine && this.home.panels[this.home.tab] === this ? this.mine.key : null;
+    this.watchRooms(showing);
+    this.watchMeet(showing);
+    this.meetBtn.sub = this.meetLine();
     if (!this.mine) this.picking = false;
     const btns = this.buttons;
     for (const e of events) {
@@ -437,9 +491,9 @@ export class SquadPanel {
       const hit = this.leading && this.memberGrid(this.mine).boxes.find((k) => !k.m.me && e.x >= k.x && e.x <= k.x + k.w && e.y >= k.y && e.y <= k.y + k.h);
       if (hit) this.kick(hit.m);
     }
-    for (const b of [this.createBtn, this.findBtn, this.topBtn, this.profileBtn, this.retryBtn, this.leaveBtn, this.inviteBtn, this.inviteJoinBtn, this.dismissBtn, this.practiceBtn, this.cancelBtn, ...this.pickBtns, ...this.roomBtns, ...this.joinBtns]) b.update(dt);
+    for (const b of [this.createBtn, this.findBtn, this.topBtn, this.profileBtn, this.retryBtn, this.leaveBtn, this.inviteBtn, this.inviteJoinBtn, this.dismissBtn, this.meetBtn, this.practiceBtn, this.cancelBtn, ...this.pickBtns, ...this.roomBtns, ...this.joinBtns]) b.update(dt);
     const busy = this.busy;
-    for (const b of [this.createBtn, this.findBtn, this.topBtn, this.leaveBtn, this.inviteBtn, this.dismissBtn, this.practiceBtn]) b.enabled = !busy;
+    for (const b of [this.createBtn, this.findBtn, this.topBtn, this.leaveBtn, this.inviteBtn, this.dismissBtn, this.meetBtn, this.practiceBtn]) b.enabled = !busy;
     this.age = (this.age ?? 0) + dt;
     const full = this.invite?.size >= SQUAD_MAX;
     this.inviteJoinBtn.label = full ? 'Full' : 'Join';
@@ -522,6 +576,7 @@ export class SquadPanel {
 
   /** The Practice button and, beside it, the rooms your squadmates have open. */
   renderPractice(ctx, view) {
+    this.meetBtn.draw(ctx);
     this.practiceBtn.draw(ctx);
     if (!this.roomBoxes.length) {
       const k = this.roomsLeft;

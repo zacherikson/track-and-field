@@ -72,9 +72,11 @@ export class Exchange {
    * @param incoming  the Runner bringing the baton
    * @param outgoing  the Runner taking it
    * @param ai        CONFIG.relay.ai.<level> for a computer team, null for the player
+   * @param rng       where a computer team's timing comes from (seeded: the same on every phone, relaySim.js)
    */
-  constructor(cfg, k, incoming, outgoing, ai = null) {
+  constructor(cfg, k, incoming, outgoing, ai = null, rng = Math.random) {
     this.cfg = cfg;
+    this.rng = rng;
     this.k = k;
     this.spot = exchangeSpot(cfg, k);
     this.in = incoming;
@@ -101,8 +103,8 @@ export class Exchange {
 
   /** A computer runner's timing for this exchange. */
   plan() {
-    this.passAt = rand(...this.ai.passGap);
-    this.takeAt = this.cfg.reach - rand(...this.ai.takeErr);
+    this.passAt = rand(...this.ai.passGap, this.rng);
+    this.takeAt = this.cfg.reach - rand(...this.ai.takeErr, this.rng);
   }
 
   get gapNow() {

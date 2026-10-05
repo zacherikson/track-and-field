@@ -4,6 +4,7 @@ import { LongJump } from './longJump.js';
 import { PoleVault } from './poleVault.js';
 import { Javelin } from './javelin.js';
 import { Relay4x100 } from './relay4x100.js';
+import { PracticeRelay } from './practiceRelay.js';
 import { MeetRelay } from './meetRelay.js';
 import { meet } from '../meet/meet.js';
 import { TimeTrial } from './timeTrial.js';
@@ -145,8 +146,9 @@ export const SPECIAL_EVENTS = [
       'Anyone whose phone drops is run by the computer. Keep going!',
       'Desktop: ← → to run, Space for PASS, TAKE and the anchor’s lean.',
     ],
-    create() {
-      return meet.active ? new MeetRelay(this) : new Relay4x100(this); // a squad meet's: a leg each
+    // `live` (online/live.js): a squad's practice is the squad as one team, against a computer one.
+    create(live = null) {
+      return meet.active ? new MeetRelay(this) : live?.squad ? new PracticeRelay(this) : new Relay4x100(this); // a squad meet's: a leg each
     },
   },
   {

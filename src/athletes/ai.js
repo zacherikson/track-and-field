@@ -6,13 +6,15 @@ import { rand } from '../core/math.js';
  * the player's input does. Difficulty = the cadence range in CONFIG.ai.<level>.
  */
 export class AIController {
-  constructor(runner, level, cadence = rand(...level.cadence)) {
+  /** `rng`: where its randomness comes from (a seeded one runs the same on every phone: events/relaySim.js). */
+  constructor(runner, level, cadence = null, rng = Math.random) {
     this.runner = runner;
     this.level = level;
-    this.cadence = cadence;
-    this.reaction = rand(...level.reaction);
+    this.rng = rng;
+    this.cadence = cadence ?? rand(...level.cadence, rng);
+    this.reaction = rand(...level.reaction, rng);
     this.nextTapT = Infinity;
-    this.dipError = rand(...level.dipError);
+    this.dipError = rand(...level.dipError, rng);
   }
 
   go(t) {
@@ -30,8 +32,8 @@ export class AIController {
     const lv = this.level;
     const tired = 1 - lv.fatigue * Math.max(0, (progress - 0.6) / 0.4);
     while (this.nextTapT < t + dt) {
-      let interval = (1 / (this.cadence * tired)) * (1 + rand(-lv.jitter, lv.jitter));
-      if (Math.random() < lv.missChance) {
+      let interval = (1 / (this.cadence * tired)) * (1 + rand(-lv.jitter, lv.jitter, this.rng));
+      if (this.rng() < lv.missChance) {
         // Rivals misread a target now and then, and pay the same price the player does.
         r.stumble(lv.missSpeedLoss, this.nextTapT);
         interval += lv.missLockout;

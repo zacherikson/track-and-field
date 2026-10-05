@@ -620,7 +620,7 @@ const PRACTICE_H = 72; // the Practice button and the open rooms beside it
 /** What Practice offers: the five events, the 4x100m relay, and the tournament (no `kind`: Solo or Team, as the Play tab has it). */
 const PRACTICE_KINDS = [
   ...EVENTS.map((ev) => ({ kind: ev.id, label: ev.name, sub: FIELD.has(ev.id) ? 'Three rounds' : 'Race', color: '#2bb673' })),
-  { kind: 'relay4x100', label: '4×100m Relay', sub: 'Four legs, one baton', color: '#c2337a' },
+  { kind: 'relay4x100', label: '4×100m Relay', sub: 'Your squad vs a computer squad', color: '#c2337a' },
   { kind: TOURNAMENT_KIND, label: '🏆 Tournament', sub: '5 events', color: '#1f8a58' },
 ];
 

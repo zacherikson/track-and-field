@@ -1,6 +1,7 @@
 export const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 export const lerp = (a, b, t) => a + (b - a) * t;
-export const rand = (lo, hi) => lo + Math.random() * (hi - lo);
+/** A random number in [lo, hi): from `rng` if given (core/random.js seededRandom: the same on every phone), else Math.random. */
+export const rand = (lo, hi, rng = Math.random) => lo + rng() * (hi - lo);
 
 /**
  * Frame-rate independent smoothing ("exponential damping").

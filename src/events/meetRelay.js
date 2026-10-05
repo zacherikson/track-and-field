@@ -49,10 +49,41 @@ export class MeetRelay extends Relay4x100 {
   }
 
   enter() {
-    this.mev = meet.events[meet.index];
-    this.proxies = this.mev.proxies ?? {};
+    this.setUp();
     this.traces = new Map(); // uid -> LiveTrace of their team's frames
     super.enter();
+  }
+
+  /** Who you are and who stands in for whom. The meet's (meet/meet.js); a squad's practice has its own (practiceRelay.js). */
+  setUp() {
+    this.mev = meet.events[meet.index];
+    this.uid = meet.uid;
+    this.proxies = this.currentProxies();
+  }
+
+  /** Who runs for whom now (uid -> the uid whose phone runs their legs). The same object until it changes. */
+  currentProxies() {
+    return this.mev.proxies ?? this.proxies ?? {};
+  }
+
+  /** The teams: { mine, others } (lane order), each { key, name, color, legs: [uid ×4] }. */
+  relayTeams() {
+    const legs = this.mev.legs ?? {};
+    const mine = meet.me?.squad;
+    const team = (s) => ({ key: s.key, name: s.name, color: s.color, legs: legs[s.key] });
+    return {
+      mine: legs[mine] && meet.squads.get(mine) ? team(meet.squads.get(mine)) : null,
+      others: meet.lanes.filter((s) => legs[s.key] && s.key !== mine).map(team),
+    };
+  }
+
+  /** A runner's name, and what the game knows of them ({ athlete, lineup }). */
+  memberName(uid) {
+    return meet.members.get(uid)?.name;
+  }
+
+  memberPlayer(uid) {
+    return meet.player(uid);
   }
 
   // ------------------------------------------------------------------ teams
@@ -60,25 +91,24 @@ export class MeetRelay extends Relay4x100 {
   /** A team a squad: yours in your lane, the others beside it in lane order. */
   buildField() {
     const cfg = this.cfg;
-    const mine = meet.me?.squad;
-    const squads = meet.lanes.filter((s) => this.mev.legs?.[s.key]);
+    const { mine, others } = this.relayTeams();
     const lanes = nearestLanes(cfg.playerLane, cfg.lanes);
     const field = [];
-    if (this.mev.legs[mine]) field.push(this.meetTeam(cfg.playerLane, meet.squads.get(mine), true));
-    squads.filter((s) => s.key !== mine).forEach((s, i) => lanes[i] && field.push(this.meetTeam(lanes[i], s, false)));
+    if (mine) field.push(this.meetTeam(cfg.playerLane, mine, true));
+    others.forEach((s, i) => lanes[i] && field.push(this.meetTeam(lanes[i], s, false)));
     return field.sort((a, b) => a.lane - b.lane);
   }
 
-  /** Squad `squad`'s team: its four legs, each in its runner's athlete and the squad's colour. */
+  /** Squad `squad`'s team ({ key, name, color, legs }): its four legs, each in its runner's athlete and the squad's colour. */
   meetTeam(lane, squad, isPlayer) {
     const cfg = this.cfg;
-    const uids = this.mev.legs[squad.key];
+    const uids = squad.legs;
     const team = { lane, isPlayer, name: squad.name, squad: squad.key, uids, mark: null, status: 'ok', idlePhase: rand(0, Math.PI * 2), exchanges: [] };
     team.legs = uids.map((uid, k) => {
-      const who = uid === meet.uid ? chosenPlayer(this.ev.id) : theirAthlete(meet.player(uid), this.ev.id);
+      const who = uid === this.uid ? chosenPlayer(this.ev.id) : theirAthlete(this.memberPlayer(uid), this.ev.id);
       const runner = new Runner(this.runnerParams, undefined, k === 0 ? cfg.startX : exchangeSpot(cfg, k - 1).wait);
       const colors = { ...who.colors, shirt: squad.color, shorts: '#1b2a41' };
-      const name = meet.members.get(uid)?.name ?? who.name;
+      const name = this.memberName(uid) ?? who.name;
       return { who: { ...who, name }, uid, colors, runner, ai: null, view: { lane, runner, colors, legIndex: k, team, idlePhase: rand(0, Math.PI * 2), mark: null } };
     });
     this.toLeg(team, 0);
@@ -93,12 +123,12 @@ export class MeetRelay extends Relay4x100 {
 
   /** This phone runs leg `k` (as you, or as a computer runner for someone gone). */
   mine(a, k) {
-    return this.controller(a, k) === meet.uid;
+    return this.controller(a, k) === this.uid;
   }
 
   /** You run leg `k` with your thumbs. */
   human(a, k) {
-    return a.uids[k] === meet.uid && !this.proxies[meet.uid];
+    return a.uids[k] === this.uid && !this.proxies[this.uid];
   }
 
   /** A computer runner on this phone runs leg `k` (its runner's phone dropped). */
@@ -180,7 +210,7 @@ export class MeetRelay extends Relay4x100 {
     for (const a of this.athletes) {
       for (const k of [0, 1, 2, 3]) {
         const uid = this.controller(a, k);
-        if (uid === meet.uid || this.traces.has(uid)) continue;
+        if (uid == null || uid === this.uid || this.traces.has(uid)) continue; // (a team run on every phone has none: practiceRelay.js)
         this.traces.set(uid, new LiveTrace(this.ev.id, TEAM_PROPS, this.stage, LIVE_TRACE.maxFrames));
       }
     }
@@ -189,8 +219,9 @@ export class MeetRelay extends Relay4x100 {
       if (doc) tr.receive(doc);
       tr.advanceTo();
     }
-    if (this.mev.proxies && this.mev.proxies !== this.proxies) {
-      this.proxies = this.mev.proxies;
+    const proxies = this.currentProxies();
+    if (proxies !== this.proxies) {
+      this.proxies = proxies;
       for (const a of this.athletes) this.takeControl(a, t);
     }
   }
@@ -217,6 +248,7 @@ export class MeetRelay extends Relay4x100 {
       if (ex.kind === 'remote' || (ex.stage === 'done' && ex.tOut != null)) continue; // (a done one runs on until the baton's out of the zone: its time)
       this.feed(a, ex, t + dt);
       if (ex.step(t, dt) === 'handoff') this.handOff(a, ex, t + dt);
+      this.sayPass(ex);
     }
     this.watchBaton(a, t + dt);
     // Everyone this phone runs who's done their leg pulls up.
@@ -327,6 +359,13 @@ export class MeetRelay extends Relay4x100 {
     if (out && ex.stage !== 'reach') Object.assign(ex, { stage: 'reach', reachT: this.game.time });
   }
 
+  /** Bringing the baton in, for a taker on another phone: PASS (yours, or a computer runner's) goes to their phone (`xp/<k>`, race time). */
+  sayPass(ex) {
+    if (ex.kind !== 'send' || ex.reachT == null || ex.passSent) return;
+    ex.passSent = true;
+    this.live.send({ [`xp/${ex.k}`]: Math.round((ex.reachT - this.goT) * 1000) / 1000 }, true);
+  }
+
   /** The baton changed hands in exchange `ex` at `t`: the next leg has it; if this phone decided it, it says so. */
   handOff(a, ex, t) {
     this.toLeg(a, ex.k + 1);
@@ -401,7 +440,7 @@ export class MeetRelay extends Relay4x100 {
     const ex = b.ex;
     if (b.kind === 'PASS') {
       if (!ex.pass(t)) return 'exchange';
-      if (ex.kind === 'send') this.live.send({ [`xp/${ex.k}`]: Math.round((t - this.goT) * 1000) / 1000 }, true);
+      this.sayPass(ex);
       return 'pass';
     }
     const res = ex.take(t);
@@ -441,7 +480,7 @@ export class MeetRelay extends Relay4x100 {
     if (!team) return;
     const k = v.legIndex;
     const carrier = team.leg === k;
-    const you = team.uids[k] === meet.uid && !carrier && !v.runner.finished;
+    const you = team.uids?.[k] === this.uid && !carrier && !v.runner.finished;
     if (!carrier && !you) return;
     const r = v.runner;
     const p = this.track.toScreen(this.camera, view, r.x + r.reach * 0.5 + this.startNudge(v), v.lane);
@@ -456,7 +495,7 @@ export class MeetRelay extends Relay4x100 {
     super.drawHUD(ctx, view);
     const a = this.player;
     if (!a || this.state !== 'race' || this.human(a, a.leg)) return;
-    const mine = a.uids.map((u, k) => (u === meet.uid ? k : -1)).filter((k) => k > a.leg);
+    const mine = a.uids.map((u, k) => (u === this.uid ? k : -1)).filter((k) => k > a.leg);
     if (!mine.length) return;
     const next = mine[0];
     const msg = next === a.leg + 1 ? 'The baton’s coming to you: TAKE it when the ring meets the button' : `You run leg ${next + 1}`;

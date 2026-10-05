@@ -90,7 +90,7 @@ export const flow = {
     const first = tour ? ORDER[0] : info.kind;
     const session = startLive(info, first);
     if (tour) tournament.start(session);
-    const scene = eventById(first).create();
+    const scene = eventById(first).create(session);
     scene.live = session;
     game.setScene(scene);
   },

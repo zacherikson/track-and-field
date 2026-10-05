@@ -141,9 +141,12 @@ the button closes in as you catch them; tap when it meets the button.
 The results show each of your exchanges and the baton's time through the zone.
 Rivals race in the venue for their level: the high school for Amateur, the big
 stadium for Pro. The relay isn't on the online leaderboards yet. It plays
-live as a squad Practice (Squad tab): each other player's team runs in the
-lane next to yours, drawn from what their phone sends (every runner and the
-baton, 20 times a second). Tuning:
+live as a squad Practice (Squad tab, 2 to 4 squadmates): the squad is one
+team, each runner on their own phone as in a meet (two take turns, A B A B;
+three, one runs two legs), against the Practice Squad, a computer team that
+runs like a Pro team. Every phone runs the Practice Squad itself, from the
+same seed on its own fixed clock, so it runs the same race everywhere with
+nothing sent. Tuning:
 `CONFIG.relay` in [`src/config.js`](src/config.js); `node tools/simulate.mjs`
 shows what a change does to team times and exchange grades.
 
@@ -390,6 +393,8 @@ src/events/
   hurdles110.js       110m hurdles: button sets along the top, hurdles in every lane, hurdling pose
   relayRules.js       4x100m relay: the exchange zone, the outgoing runner, PASS / TAKE judging, rival timing (pure)
   relay4x100.js       4x100m relay: teams of four, every runner on the track, the blue button, the baton
+  relaySim.js         4x100m relay: a computer team run the same on every phone (seeded, fixed steps)
+  practiceRelay.js    4x100m relay in a squad's Practice: the squad as one team (meetRelay.js) vs the Practice Squad
   cyclingRules.js     time trial: the course, bike physics (gears, legs, hills, drag, tuck, throw), rival riders (pure)
   timeTrial.js        time trial: pedal pads, shifters, tuck, time checks, the pedal meter and course profile
   longJumpRules.js    long jump: flight physics, marks from the foul line, stretch, rival jumps (pure)

@@ -4,6 +4,22 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## The squad's relay, against a practice squad
+- A squad's Practice 4×100m relay (2 to 4 squadmates) is now the squad as ONE
+  team, each runner on their own phone as in a meet: two take turns (A B A B),
+  three have one runner on two legs that aren't next to each other, four run a
+  leg each. It used to be every player running a whole team of their own.
+- They race the Practice Squad: a computer team in grey that runs like a Pro
+  team (about 38 s; `tools/simulate.mjs`). Every phone runs it itself from the
+  room's seed on a fixed clock (src/events/relaySim.js), so it runs the same
+  race and time everywhere with nothing sent. The results wait up to 10 s
+  after your team's finish for it.
+- Someone whose phone drops mid-race is run by the computer on the first
+  squadmate's phone still there, until they're back.
+- Squad meets too: a computer runner standing in for someone now tells the
+  taker's phone when it passes. Before, a stand-in handing to a runner on
+  another phone always MISSED.
+
 ## Same buttons for everyone, live
 - In live play (public rooms, Practice and squad meets) everyone in a room
   gets the same 100m targets, hurdle button sets and field-event run-up

@@ -4,6 +4,14 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## No empty band at the bottom of the home-screen app
+- iOS can lay a home-screen app out a status bar short of the screen after a
+  launch or a return (an empty band below the tab bar), and re-measuring the
+  page only found the same short size. The game now checks the page against
+  the window and, as the home-screen app, the screen itself (the full width
+  of the screen means its full height too), and sizes the page by hand while
+  iOS has it short (src/core/game.js fitBody, screenFit).
+
 ## Other players drawn where they are now: relay and hurdles
 - Live hurdles: the other runners were drawn from their frames a moment
   behind (1.2 m on two phones with almost no network delay, ~3 m on a real

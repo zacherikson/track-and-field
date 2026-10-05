@@ -389,6 +389,8 @@ src/athletes/
 src/events/
   registry.js         event list for the menu
   strideTargets.js    100m random targets (max 2 in a row) + hit/miss judging
+  runUp.js            the field events' run-up: the 100m's targets on the pads, your taps, the carry zone
+  runUpRules.js       the field events' run-up, pure: a rival's (or a steady tapper's) run-up speed, the run pose
   laneRace.js         base for lane races: countdown FSM, finish lean, AI, HUD, results
   sprint100.js        100m: random-side target pads, wrong-tap ✕, lean prompt
   hurdleRules.js      hurdles: shuffled 1-2-3 button sets, clear/clip rules, rival thumbs (pure, shared with the simulator)

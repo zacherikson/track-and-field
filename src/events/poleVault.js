@@ -2,16 +2,13 @@ import { CONFIG } from '../config.js';
 import { Camera } from '../core/camera.js';
 import { clamp, damp, rand, shuffle } from '../core/math.js';
 import { text, roundRect } from '../core/ui.js';
-import { Runner } from '../athletes/runner.js';
-import { AIController } from '../athletes/ai.js';
 import { player as chosenPlayer, rivals as rivalRoster, heightOf } from '../athletes/roster.js';
-import { drawFigure, runPose, lerpPose, sampleTrack, handPos, vaultSwingPose, wrapNear, VAULT_POSES, POSES } from '../athletes/stickFigure.js';
-import { StrideTargets } from './strideTargets.js';
+import { drawFigure, lerpPose, sampleTrack, handPos, vaultSwingPose, wrapNear, VAULT_POSES, POSES } from '../athletes/stickFigure.js';
+import { RunUp } from './runUp.js';
+import { runUpSpeed, runUpPose } from './runUpRules.js';
 import { liveRandom } from '../core/random.js';
 import { pressQuality, releaseQuality, releaseTarget, vaultHeight, rivalVault } from './poleVaultRules.js';
 import { VaultRenderer } from '../render/vaultArena.js';
-import { ORANGE, drawPad, drawX } from '../render/pads.js';
-import { drawDrop, drawHitRing } from '../render/targetPads.js';
 import { getDifficulty, hasRivals } from '../core/storage.js';
 import { venueFor } from '../render/venues.js';
 import { flow } from '../flow.js';
@@ -106,10 +103,9 @@ export class PoleVault {
     this.rivals = shuffle(rivalRoster(this.ev.id))
       .slice(0, 5)
       .map((r) => ({ name: r.name, colors: r.colors, isPlayer: false, jumps: [], cadence: rand(...this.lv.cadence) }));
-    const r = CONFIG.sprint100.pads.radius;
-    this.pads = { L: { home: { x: 0, y: 0 }, r }, R: { home: { x: 0, y: 0 }, r } };
     this.exitBtn = { x: 0, y: 0, w: 44, h: 40 };
     this.stats = { hits: 0, misses: 0, topSpeed: 0 };
+    this.runUp = new RunUp(this.stats); // the 100m's targets and running (runUp.js)
     this.round = 0;
     this.liveField = this.live ? new LiveField(this) : null;
     if (this.liveField) this.rivals = this.liveField.people; // live: just the other players, so every phone has the same results
@@ -133,10 +129,7 @@ export class PoleVault {
   }
 
   onResize(view) {
-    const cfg = CONFIG.sprint100.pads;
-    const y = view.h * cfg.homeY;
-    this.pads.L.home = { x: view.safe.l + cfg.edgeInset + this.pads.L.r, y };
-    this.pads.R.home = { x: view.w - view.safe.r - cfg.edgeInset - this.pads.R.r, y };
+    this.runUp.layout(view);
     this.exitBtn.x = 10 + view.safe.l;
     this.exitBtn.y = 8 + view.safe.t;
   }
@@ -148,15 +141,7 @@ export class PoleVault {
   startRound() {
     this.round++;
     const t = this.now;
-    this.runner = new Runner(undefined, undefined, -this.cfg.runway);
-    this.judge = new StrideTargets(this.runner, CONFIG.sprint100.targets, liveRandom(this.live, this.live?.stage(this.ev.id, this.round), 'targets')); // live: this round's run-up targets are the same for everyone
-    this.runner.go(t);
-    this.judge.start(t);
-    this.spawnT = -Infinity;
-    this.rings = [];
-    this.missSide = null;
-    this.missT = -Infinity;
-    this.zoneT = null; // orange pads up, spark running down the pole
+    this.runner = this.runUp.begin(-this.cfg.runway, t, liveRandom(this.live, this.live?.stage(this.ev.id, this.round), 'targets')); // live: this round's run-up targets are the same for everyone
     this.down = { L: null, R: null }; // thumbs currently down: { id, t }
     this.holdT = null; // both thumbs down (the plant press)
     this.releaseT = null;
@@ -205,13 +190,13 @@ export class PoleVault {
       else this.lift(side, e);
     }
     this.simulate(dt, t);
-    this.rings = this.rings.filter((ring) => end - ring.t0 < CONFIG.sprint100.pads.hitRing.duration);
+    this.runUp.update(end);
   }
 
   press(side, e) {
     const t = e.t;
-    if ((this.state === 'ready' || this.state === 'run') && this.zoneT == null) {
-      if (side !== 'BOTH') this.stride(side, t);
+    if ((this.state === 'ready' || this.state === 'run') && this.runUp.striding) {
+      this.stride(side, t);
       return;
     }
     if (this.holdT != null || !(this.state === 'run' || this.state === 'vault')) return;
@@ -238,19 +223,7 @@ export class PoleVault {
   }
 
   stride(side, t) {
-    const result = this.judge.press(side, t);
-    if (result === 'hit') {
-      this.stats.hits++;
-      this.rings.push({ side, t0: t });
-      this.spawnT = t;
-      if (this.judge.target === this.missSide) this.missT = -Infinity;
-      if (this.state === 'ready') this.setState('run');
-    } else if (result === 'miss') {
-      this.stats.misses++;
-      this.missSide = side;
-      this.missT = t;
-      navigator.vibrate?.(40);
-    }
+    if (this.runUp.stride(side, t) === 'hit' && this.state === 'ready') this.setState('run');
   }
 
   release(t) {
@@ -315,12 +288,8 @@ export class PoleVault {
     if (this.state === 'ready' || this.state === 'run') {
       r.update(dt, t);
       this.hip = { x: r.x, y: 0.5 * this.figH };
-      if (this.state === 'run' && this.zoneT == null && this.plantX - r.x <= cfg.zoneDistance) {
-        // Plant zone: strides stop, the pads turn orange, the pole comes down.
-        this.zoneT = t;
-        this.judge.target = null;
-        r.carry();
-      }
+      // Plant zone: strides stop, the pads turn orange, the pole comes down.
+      if (this.state === 'run' && this.runUp.striding && this.plantX - r.x <= cfg.zoneDistance) this.runUp.enterZone(t);
       if (this.state === 'run' && r.x >= this.plantX) this.plant(end);
     } else if (this.state === 'vault') {
       const vt = this.vault;
@@ -459,19 +428,9 @@ export class PoleVault {
 
   /** A rival's speed at the plant (same physics as yours). */
   rivalRunUp(rv) {
-    const step = CONFIG.loop.fixedStep;
-    const r = new Runner(undefined, undefined, -this.cfg.runway);
-    const ai = new AIController(r, this.lv, rv.cadence);
-    ai.go(0);
-    let t = 0;
-    while (r.x < this.plantX && t < 20) {
-      if (this.plantX - r.x <= this.cfg.zoneDistance) r.carry();
-      ai.update(t, step, 0, Infinity);
-      r.update(step, t);
-      t += step;
-    }
-    return r.v;
+    return runUpSpeed({ from: -this.cfg.runway, line: this.plantX, end: this.plantX, zoneDistance: this.cfg.zoneDistance, level: this.lv, cadence: rv.cadence });
   }
+
 
   next() {
     if (this.liveField) return this.liveField.next();
@@ -551,7 +510,7 @@ export class PoleVault {
 
   /** How far into the plant zone you are: 0 at its start, 1 at the plant. */
   zoneProgress() {
-    if (this.zoneT == null) return 0;
+    if (this.runUp.striding) return 0;
     const start = this.plantX - this.cfg.zoneDistance;
     return clamp((this.runner.x - start) / (this.plantX - start), 0, 1);
   }
@@ -567,7 +526,7 @@ export class PoleVault {
       }
       case 'run': {
         // Running with the pole; the hands come up overhead for the plant.
-        const run = runPose(r.phase, clamp(r.v / 11, 0.15, 1), 0);
+        const run = runUpPose(r);
         const k = ease(clamp((this.zoneProgress() - 0.88) / 0.12, 0, 1)); // hands up over the last two strides
         const carry = { ...run, arms: V.carryArms };
         return lerpPose(carry, { ...run, arms: V.plantArms }, k);
@@ -717,7 +676,7 @@ export class PoleVault {
       const reach = Math.min(len, Math.hypot(boxP.x - hand.x, boxP.y - hand.y));
       a = hand;
       b = { x: hand.x + reach * Math.cos(psi), y: hand.y - reach * Math.sin(psi) };
-      if (this.zoneT != null) this.sparkS = p; // the spark runs down to the tip
+      if (!this.runUp.striding) this.sparkS = p; // the spark runs down to the tip
     } else if (this.state === 'vault') {
       const sw = this.vault.sw ?? this.swingAt(this.vault.u);
       a = hand;
@@ -753,7 +712,7 @@ export class PoleVault {
     this.poleDrawn = { e, a, c, b }; // for the ghost recording
     // Spark: down the pole in the plant zone, back up it while you hold.
     let s = null; // 0 = hands, 1 = tip
-    if ((this.state === 'run' && this.zoneT != null) || (this.state === 'vault' && this.holdT == null)) s = this.state === 'vault' ? 1 : this.sparkS;
+    if ((this.state === 'run' && !this.runUp.striding) || (this.state === 'vault' && this.holdT == null)) s = this.state === 'vault' ? 1 : this.sparkS;
     if (this.holdT != null && this.releaseT == null && this.state !== 'fly') s = 1 - clamp((this.now - this.holdT) / cfg.spark.climbTime, 0, 1);
     if (s != null) {
       const q = (k) => ({
@@ -807,17 +766,12 @@ export class PoleVault {
   drawControls(ctx) {
     if (this.liveField?.holding) return; // live: the round hasn't started
     const now = this.now;
-    const padsCfg = CONFIG.sprint100.pads;
-    const { L, R } = this.pads;
-    if ((this.state === 'ready' || this.state === 'run') && this.zoneT == null && this.judge.target) {
-      drawDrop(ctx, this.pads[this.judge.target], now - this.spawnT, padsCfg);
-      if (now - this.missT < padsCfg.missX) drawX(ctx, this.pads[this.missSide].home.x, this.pads[this.missSide].home.y);
-    }
-    const blink = this.cfg.blink;
+    const ru = this.runUp;
+    ru.drawTargets(ctx, now, this.state === 'ready' || this.state === 'run');
     const orange = (held) => {
-      for (const p of [L, R]) {
-        drawPad(ctx, ORANGE, p.home.x, p.home.y, held ? p.r * 0.86 : p.r);
-        if (held) {
+      ru.drawOrange(ctx, held ? 0.86 : 1);
+      if (held) {
+        for (const p of [ru.pads.L, ru.pads.R]) {
           ctx.strokeStyle = 'rgba(255,240,150,0.9)';
           ctx.lineWidth = 4;
           ctx.beginPath();
@@ -829,8 +783,8 @@ export class PoleVault {
     const holding = this.holdT != null && this.releaseT == null;
     if (holding && (this.state === 'run' || this.state === 'vault')) orange(true);
     else if (this.state === 'vault' && this.holdT == null) orange(false); // planted: press now
-    else if (this.state === 'run' && this.zoneT != null && this.holdT == null && (now - this.zoneT) % blink.period < blink.on) orange(false);
-    for (const ring of this.rings) drawHitRing(ctx, this.pads[ring.side], now - ring.t0, padsCfg);
+    else if (this.state === 'run' && this.holdT == null && ru.blinkOn(now, this.cfg.blink)) orange(false);
+    ru.drawRings(ctx, now);
   }
 
   drawHUD(ctx, view) {

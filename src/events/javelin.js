@@ -2,16 +2,13 @@ import { CONFIG } from '../config.js';
 import { Camera } from '../core/camera.js';
 import { clamp, rand, shuffle } from '../core/math.js';
 import { text, roundRect } from '../core/ui.js';
-import { Runner } from '../athletes/runner.js';
-import { AIController } from '../athletes/ai.js';
 import { player as chosenPlayer, rivals as rivalRoster, heightOf, REFEREE } from '../athletes/roster.js';
-import { drawFigure, runPose, lerpPose, sampleTrack, handPos, JAVELIN_POSES, POSES } from '../athletes/stickFigure.js';
-import { StrideTargets } from './strideTargets.js';
+import { drawFigure, lerpPose, sampleTrack, handPos, JAVELIN_POSES, POSES } from '../athletes/stickFigure.js';
+import { RunUp } from './runUp.js';
+import { runUpSpeed, runUpPose } from './runUpRules.js';
 import { liveRandom } from '../core/random.js';
 import { angleAt, flightRange, rivalThrow } from './javelinRules.js';
 import { JavelinRenderer, drawJavelin } from '../render/javelinField.js';
-import { ORANGE, drawPad, drawX } from '../render/pads.js';
-import { drawDrop, drawHitRing } from '../render/targetPads.js';
 import { getDifficulty, hasRivals } from '../core/storage.js';
 import { venueFor } from '../render/venues.js';
 import { flow } from '../flow.js';
@@ -67,11 +64,10 @@ export class Javelin {
     this.rivals = shuffle(rivalRoster(this.ev.id))
       .slice(0, 5)
       .map((r) => ({ name: r.name, colors: r.colors, isPlayer: false, jumps: [], cadence: rand(...this.lv.cadence) }));
-    const r = CONFIG.sprint100.pads.radius;
-    this.pads = { L: { home: { x: 0, y: 0 }, r }, R: { home: { x: 0, y: 0 }, r } };
     this.exitBtn = { x: 0, y: 0, w: 44, h: 40 };
     this.ffBtn = { x: 0, y: 0, r: 34 };
     this.stats = { hits: 0, misses: 0, topSpeed: 0 };
+    this.runUp = new RunUp(this.stats); // the 100m's targets and running (runUp.js)
     this.round = 0;
     this.liveField = this.live ? new LiveField(this) : null;
     if (this.liveField) this.rivals = this.liveField.people; // live: just the other players, so every phone has the same results
@@ -95,10 +91,7 @@ export class Javelin {
   }
 
   onResize(view) {
-    const cfg = CONFIG.sprint100.pads;
-    const y = view.h * cfg.homeY;
-    this.pads.L.home = { x: view.safe.l + cfg.edgeInset + this.pads.L.r, y };
-    this.pads.R.home = { x: view.w - view.safe.r - cfg.edgeInset - this.pads.R.r, y };
+    this.runUp.layout(view);
     this.exitBtn.x = 10 + view.safe.l;
     this.exitBtn.y = 8 + view.safe.t;
     this.ffBtn.x = view.w - view.safe.r - 60;
@@ -112,15 +105,7 @@ export class Javelin {
   startRound() {
     this.round++;
     const t = this.now;
-    this.runner = new Runner(undefined, undefined, -this.cfg.runway);
-    this.judge = new StrideTargets(this.runner, CONFIG.sprint100.targets, liveRandom(this.live, this.live?.stage(this.ev.id, this.round), 'targets')); // live: this round's run-up targets are the same for everyone
-    this.runner.go(t);
-    this.judge.start(t);
-    this.spawnT = -Infinity;
-    this.rings = [];
-    this.missSide = null;
-    this.missT = -Infinity;
-    this.zoneT = null; // orange pads up
+    this.runner = this.runUp.begin(-this.cfg.runway, t, liveRandom(this.live, this.live?.stage(this.ev.id, this.round), 'targets')); // live: this round's run-up targets are the same for everyone
     this.down = { L: null, R: null }; // thumbs down: { id, t }
     this.holdT = null; // both thumbs down: drawing the javelin back
     this.shot = null; // after letting go: { t0, x0, v, deg, range, foul, vx, vy, T, outT }
@@ -171,13 +156,13 @@ export class Javelin {
       else this.lift(side, e);
     }
     this.simulate(dt, t);
-    this.rings = this.rings.filter((ring) => end - ring.t0 < CONFIG.sprint100.pads.hitRing.duration);
+    this.runUp.update(end);
   }
 
   press(side, e) {
     const t = e.t;
-    if ((this.state === 'ready' || this.state === 'run') && this.zoneT == null) {
-      if (side !== 'BOTH') this.stride(side, t);
+    if ((this.state === 'ready' || this.state === 'run') && this.runUp.striding) {
+      this.stride(side, t);
       return;
     }
     if (this.state !== 'run' || this.holdT != null) return;
@@ -196,19 +181,7 @@ export class Javelin {
   }
 
   stride(side, t) {
-    const result = this.judge.press(side, t);
-    if (result === 'hit') {
-      this.stats.hits++;
-      this.rings.push({ side, t0: t });
-      this.spawnT = t;
-      if (this.judge.target === this.missSide) this.missT = -Infinity;
-      if (this.state === 'ready') this.setState('run');
-    } else if (result === 'miss') {
-      this.stats.misses++;
-      this.missSide = side;
-      this.missT = t;
-      navigator.vibrate?.(40);
-    }
+    if (this.runUp.stride(side, t) === 'hit' && this.state === 'ready') this.setState('run');
   }
 
   /** Let go: the throw, at the angle you've reached, from where you are. */
@@ -241,12 +214,8 @@ export class Javelin {
       r.update(dt, t);
     }
     if (this.state === 'run') {
-      if (this.zoneT == null && -r.x <= cfg.zoneDistance) {
-        // Throw zone: strides stop, the pads turn orange and blink.
-        this.zoneT = t;
-        this.judge.target = null;
-        r.carry();
-      }
+      // Throw zone: strides stop, the pads turn orange and blink.
+      if (this.runUp.striding && -r.x <= cfg.zoneDistance) this.runUp.enterZone(t);
       if (this.holdT != null) this.spark(t, Math.min(1, (end - this.holdT) / 1.2));
       if (r.x > cfg.overrun) {
         // Reached the line still holding (or never pressed): foul.
@@ -334,19 +303,9 @@ export class Javelin {
 
   /** A rival's speed arriving at the line (same physics as yours). */
   rivalRunUp(rv) {
-    const step = CONFIG.loop.fixedStep;
-    const r = new Runner(undefined, undefined, -this.cfg.runway);
-    const ai = new AIController(r, this.lv, rv.cadence);
-    ai.go(0);
-    let t = 0;
-    while (r.x < -1 && t < 20) {
-      if (-r.x <= this.cfg.zoneDistance) r.carry();
-      ai.update(t, step, 0, Infinity);
-      r.update(step, t);
-      t += step;
-    }
-    return r.v;
+    return runUpSpeed({ from: -this.cfg.runway, line: 0, end: -1, zoneDistance: this.cfg.zoneDistance, level: this.lv, cadence: rv.cadence });
   }
+
 
   next() {
     if (this.liveField) return this.liveField.next();
@@ -425,7 +384,7 @@ export class Javelin {
     const now = this.now;
     const r = this.runner;
     const J = JAVELIN_POSES;
-    const run = () => runPose(r.phase, clamp(r.v / 11, 0.15, 1), 0);
+    const run = () => runUpPose(r);
     switch (this.state) {
       case 'ready': {
         const s = Math.sin(now * 1.7);
@@ -694,28 +653,21 @@ export class Javelin {
   drawControls(ctx) {
     if (this.liveField?.holding) return; // live: the round hasn't started
     const now = this.now;
-    const padsCfg = CONFIG.sprint100.pads;
-    const { L, R } = this.pads;
-    if ((this.state === 'ready' || this.state === 'run') && this.zoneT == null && this.judge.target) {
-      drawDrop(ctx, this.pads[this.judge.target], now - this.spawnT, padsCfg);
-      if (now - this.missT < padsCfg.missX) drawX(ctx, this.pads[this.missSide].home.x, this.pads[this.missSide].home.y);
-    }
-    if (this.state === 'run' && this.zoneT != null) {
+    const ru = this.runUp;
+    ru.drawTargets(ctx, now, this.state === 'ready' || this.state === 'run');
+    if (this.state === 'run' && !ru.striding) {
       if (this.holdT != null) {
         // Held: the pads turn into rings, as in the original.
-        for (const p of [L, R]) {
+        for (const p of [ru.pads.L, ru.pads.R]) {
           ctx.strokeStyle = 'rgba(255,255,255,0.9)';
           ctx.lineWidth = 5;
           ctx.beginPath();
           ctx.arc(p.home.x, p.home.y, p.r * 0.95, 0, Math.PI * 2);
           ctx.stroke();
         }
-      } else if ((now - this.zoneT) % this.cfg.blink.period < this.cfg.blink.on) {
-        drawPad(ctx, ORANGE, L.home.x, L.home.y, L.r);
-        drawPad(ctx, ORANGE, R.home.x, R.home.y, R.r);
-      }
+      } else if (ru.blinkOn(now, this.cfg.blink)) ru.drawOrange(ctx);
     }
-    for (const ring of this.rings) drawHitRing(ctx, this.pads[ring.side], now - ring.t0, padsCfg);
+    ru.drawRings(ctx, now);
   }
 
   drawHUD(ctx, view) {

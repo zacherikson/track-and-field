@@ -13,6 +13,7 @@ import { jumpMark, rivalJump } from '../src/events/longJumpRules.js';
 import { pressQuality, releaseQuality, releaseTarget, vaultHeight, rivalVault } from '../src/events/poleVaultRules.js';
 import { throwMark, rivalThrow } from '../src/events/javelinRules.js';
 import { Exchange, exchangeSpot, LEG } from '../src/events/relayRules.js';
+import { runUpSpeed } from '../src/events/runUpRules.js';
 import { Bike, BikeAI, buildCourse, gearFor, idealThrow } from '../src/events/cyclingRules.js';
 
 const STEP = CONFIG.loop.fixedStep;
@@ -267,22 +268,9 @@ for (const level of ['amateur', 'pro']) {
 
 // ------------------------------------------------------------------ long jump
 const LJ = CONFIG.longJump;
-/** Speed at takeoff after a run-up hitting targets at `rate` per s, carrying through the zone. */
-function ljRunUp(rate) {
-  const r = new Runner(undefined, undefined, -LJ.runway);
-  r.go(0);
-  let t = 0;
-  let next = 0.25;
-  while (r.x < -1) {
-    if (-r.x <= LJ.zoneDistance) r.carry();
-    else if (t >= next) {
-      r.stride(t);
-      next += 1 / rate;
-    }
-    r.update(STEP, t);
-    t += STEP;
-  }
-  return r.v;
+/** Speed at takeoff after a run-up hitting targets at `rate` per s (or as a rival at `level`), carrying through the zone: the game's own (runUpRules.js). */
+function ljRunUp(rate, level = null) {
+  return runUpSpeed({ from: -LJ.runway, line: 0, end: -1, zoneDistance: LJ.zoneDistance, level, rate });
 }
 /**
  * A player aiming to take off `aim` s before reaching the line, with timing
@@ -316,19 +304,7 @@ for (const [label, rate, aim, sd, delay] of [
 }
 for (const level of ['amateur', 'pro']) {
   const lv = { ...CONFIG.ai[level], ...LJ.ai[level] };
-  const runUp = () => {
-    const r = new Runner(undefined, undefined, -LJ.runway);
-    const ai = new AIController(r, lv);
-    ai.go(0);
-    let t = 0;
-    while (r.x < -1 && t < 20) {
-      if (-r.x <= LJ.zoneDistance) r.carry();
-      ai.update(t, STEP, 0, Infinity);
-      r.update(STEP, t);
-      t += STEP;
-    }
-    return r.v;
-  };
+  const runUp = () => ljRunUp(0, lv);
   const bests = [];
   const winners = [];
   for (let i = 0; i < 100; i++) {
@@ -351,23 +327,7 @@ const PV = CONFIG.poleVault;
 const pvPlantX = -Math.sqrt(PV.pole.length ** 2 - PV.pole.gripY ** 2);
 /** Speed at the plant after a run-up tapping at `rate` (or driven by `ai`). */
 function pvRunUp(rate, level = null) {
-  const r = new Runner(undefined, undefined, -PV.runway);
-  const ai = level && new AIController(r, level);
-  if (ai) ai.go(0);
-  else r.go(0);
-  let t = 0;
-  let next = 0.25;
-  while (r.x < pvPlantX && t < 20) {
-    if (pvPlantX - r.x <= PV.zoneDistance) r.carry();
-    else if (ai) ai.update(t, STEP, 0, Infinity);
-    else if (t >= next) {
-      r.stride(t);
-      next += 1 / rate;
-    }
-    r.update(STEP, t);
-    t += STEP;
-  }
-  return r.v;
+  return runUpSpeed({ from: -PV.runway, line: pvPlantX, end: pvPlantX, zoneDistance: PV.zoneDistance, level, rate });
 }
 /** A player pressing with timing error sd `psd` and releasing with sd `rsd` (s). */
 function pvPlayer(rate, psd, rsd) {
@@ -418,23 +378,7 @@ for (const level of ['amateur', 'pro']) {
 const JV = CONFIG.javelin;
 /** Speed arriving at the line after a run-up tapping at `rate` (or driven by `level`'s AI). */
 function jvRunUp(rate, level = null) {
-  const r = new Runner(undefined, undefined, -JV.runway);
-  const ai = level && new AIController(r, level);
-  if (ai) ai.go(0);
-  else r.go(0);
-  let t = 0;
-  let next = 0.25;
-  while (r.x < -1 && t < 20) {
-    if (-r.x <= JV.zoneDistance) r.carry();
-    else if (ai) ai.update(t, STEP, 0, Infinity);
-    else if (t >= next) {
-      r.stride(t);
-      next += 1 / rate;
-    }
-    r.update(STEP, t);
-    t += STEP;
-  }
-  return r.v;
+  return runUpSpeed({ from: -JV.runway, line: 0, end: -1, zoneDistance: JV.zoneDistance, level, rate });
 }
 /** A player letting go `aim` s before the line (timing error sd `sd`), angle off by sd `asd` deg. */
 function jvPlayer(rate, aim, sd, asd) {

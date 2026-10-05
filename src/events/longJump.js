@@ -2,16 +2,13 @@ import { CONFIG } from '../config.js';
 import { Camera } from '../core/camera.js';
 import { clamp, rand, shuffle } from '../core/math.js';
 import { text, roundRect } from '../core/ui.js';
-import { Runner } from '../athletes/runner.js';
-import { AIController } from '../athletes/ai.js';
 import { player as chosenPlayer, rivals as rivalRoster, heightOf, REFEREE } from '../athletes/roster.js';
 import { drawFigure, runPose, lerpPose, sampleTrack, handPos, JUMP_POSES, POSES } from '../athletes/stickFigure.js';
-import { StrideTargets } from './strideTargets.js';
+import { RunUp } from './runUp.js';
+import { runUpSpeed, runUpPose } from './runUpRules.js';
 import { liveRandom } from '../core/random.js';
 import { flightPath, rivalJump } from './longJumpRules.js';
 import { RunwayRenderer } from '../render/runway.js';
-import { ORANGE, drawPad, drawX } from '../render/pads.js';
-import { drawDrop, drawHitRing } from '../render/targetPads.js';
 import { getDifficulty, hasRivals } from '../core/storage.js';
 import { venueFor } from '../render/venues.js';
 import { flow } from '../flow.js';
@@ -61,10 +58,9 @@ export class LongJump {
     this.rivals = shuffle(rivalRoster(this.ev.id))
       .slice(0, 5)
       .map((r) => ({ name: r.name, colors: r.colors, isPlayer: false, jumps: [], cadence: rand(...this.lv.cadence) }));
-    const r = CONFIG.sprint100.pads.radius;
-    this.pads = { L: { home: { x: 0, y: 0 }, r }, R: { home: { x: 0, y: 0 }, r } };
     this.exitBtn = { x: 0, y: 0, w: 44, h: 40 };
     this.stats = { hits: 0, misses: 0, topSpeed: 0 };
+    this.runUp = new RunUp(this.stats); // the 100m's targets and running (runUp.js)
     this.round = 0;
     this.liveField = this.live ? new LiveField(this) : null;
     if (this.liveField) this.rivals = this.liveField.people; // live: just the other players, so every phone has the same results
@@ -87,10 +83,7 @@ export class LongJump {
   }
 
   onResize(view) {
-    const cfg = CONFIG.sprint100.pads;
-    const y = view.h * cfg.homeY;
-    this.pads.L.home = { x: view.safe.l + cfg.edgeInset + this.pads.L.r, y };
-    this.pads.R.home = { x: view.w - view.safe.r - cfg.edgeInset - this.pads.R.r, y };
+    this.runUp.layout(view);
     this.exitBtn.x = 10 + view.safe.l;
     this.exitBtn.y = 8 + view.safe.t;
   }
@@ -102,15 +95,7 @@ export class LongJump {
   startRound() {
     this.round++;
     const t = this.now;
-    this.runner = new Runner(undefined, undefined, -this.cfg.runway);
-    this.judge = new StrideTargets(this.runner, CONFIG.sprint100.targets, liveRandom(this.live, this.live?.stage(this.ev.id, this.round), 'targets')); // live: this round's run-up targets are the same for everyone
-    this.runner.go(t); // the first tap's interval is your reaction to the first target
-    this.judge.start(t);
-    this.spawnT = -Infinity; // the first target just appears; later ones drop in
-    this.rings = [];
-    this.missSide = null;
-    this.missT = -Infinity;
-    this.zoneT = null; // when the orange takeoff pads appeared
+    this.runner = this.runUp.begin(-this.cfg.runway, t, liveRandom(this.live, this.live?.stage(this.ev.id, this.round), 'targets')); // live: this round's run-up targets are the same for everyone
     this.press = { L: -Infinity, R: -Infinity };
     this.jump = null; // { x0, v, t0, path, apexT, stretchT, stretchK, foul, hipX, hipY, landT, markX }
     this.mark = null; // this round's result: { mark } or { foul: true }
@@ -160,32 +145,19 @@ export class LongJump {
       }
       const action = this.mapInput(e);
       if (action == null) continue;
-      if ((this.state === 'ready' || this.state === 'run') && this.zoneT == null) this.stride(action, e.t);
-      else if (this.state === 'run' && this.zoneT != null) {
+      if ((this.state === 'ready' || this.state === 'run') && this.runUp.striding) this.stride(action, e.t);
+      else if (this.state === 'run' && !this.runUp.striding) {
         if (this.chord(action, e.t)) this.takeoff(e.t);
       } else if (this.state === 'air' && e.t >= this.jump.apexT && this.jump.stretchT == null) {
         if (this.chord(action, e.t)) this.stretch(e.t);
       }
     }
     this.simulate(dt, t);
-    this.rings = this.rings.filter((ring) => end - ring.t0 < CONFIG.sprint100.pads.hitRing.duration);
+    this.runUp.update(end);
   }
 
   stride(side, t) {
-    if (side === 'BOTH') return;
-    const result = this.judge.press(side, t);
-    if (result === 'hit') {
-      this.stats.hits++;
-      this.rings.push({ side, t0: t });
-      this.spawnT = t;
-      if (this.judge.target === this.missSide) this.missT = -Infinity;
-      if (this.state === 'ready') this.setState('run');
-    } else if (result === 'miss') {
-      this.stats.misses++;
-      this.missSide = side;
-      this.missT = t;
-      navigator.vibrate?.(40);
-    }
+    if (this.runUp.stride(side, t) === 'hit' && this.state === 'ready') this.setState('run');
   }
 
   takeoff(t) {
@@ -215,12 +187,8 @@ export class LongJump {
     const r = this.runner;
     if (this.state === 'ready' || this.state === 'run' || this.state === 'overrun') {
       r.update(dt, t);
-      if (this.state === 'run' && this.zoneT == null && -r.x <= cfg.zoneDistance) {
-        // Takeoff zone: strides stop, the pads turn orange and blink.
-        this.zoneT = t;
-        this.judge.target = null;
-        r.carry();
-      }
+      // Takeoff zone: strides stop, the pads turn orange and blink.
+      if (this.state === 'run' && this.runUp.striding && -r.x <= cfg.zoneDistance) this.runUp.enterZone(t);
       if (this.state === 'run' && r.x > cfg.overrun) {
         // Ran over the line without jumping: foul.
         this.mark = { foul: true };
@@ -307,18 +275,7 @@ export class LongJump {
 
   /** A rival's speed at takeoff after their run-up (same physics as yours). */
   rivalRunUp(rv, runway) {
-    const step = CONFIG.loop.fixedStep;
-    const r = new Runner(undefined, undefined, -runway);
-    const ai = new AIController(r, this.lv, rv.cadence);
-    ai.go(0);
-    let t = 0;
-    while (r.x < -1 && t < 20) {
-      if (-r.x <= this.cfg.zoneDistance) r.carry();
-      ai.update(t, step, 0, Infinity);
-      r.update(step, t);
-      t += step;
-    }
-    return r.v;
+    return runUpSpeed({ from: -runway, line: 0, end: -1, zoneDistance: this.cfg.zoneDistance, level: this.lv, cadence: rv.cadence });
   }
 
   next() {
@@ -390,7 +347,7 @@ export class LongJump {
   poseFor() {
     const now = this.now;
     const r = this.runner;
-    const run = () => runPose(r.phase, clamp(r.v / 11, 0.15, 1), 0);
+    const run = () => runUpPose(r);
     const P = JUMP_POSES;
     switch (this.state) {
       case 'ready': {
@@ -540,21 +497,12 @@ export class LongJump {
   drawControls(ctx) {
     if (this.liveField?.holding) return; // live: the round hasn't started
     const now = this.now;
-    const padsCfg = CONFIG.sprint100.pads;
-    const { L, R } = this.pads;
-    if ((this.state === 'ready' || this.state === 'run') && this.zoneT == null && this.judge.target) {
-      drawDrop(ctx, this.pads[this.judge.target], now - this.spawnT, padsCfg);
-      if (now - this.missT < padsCfg.missX) drawX(ctx, this.pads[this.missSide].home.x, this.pads[this.missSide].home.y);
-    }
-    const blink = this.cfg.blink;
-    const showOrange = () => {
-      drawPad(ctx, ORANGE, L.home.x, L.home.y, L.r);
-      drawPad(ctx, ORANGE, R.home.x, R.home.y, R.r);
-    };
-    if (this.state === 'run' && this.zoneT != null && (now - this.zoneT) % blink.period < blink.on) showOrange();
+    const ru = this.runUp;
+    ru.drawTargets(ctx, now, this.state === 'ready' || this.state === 'run');
+    if (this.state === 'run' && ru.blinkOn(now, this.cfg.blink)) ru.drawOrange(ctx);
     const j = this.jump;
-    if (this.state === 'air' && now >= j.apexT && j.stretchT == null && now - j.apexT < this.cfg.stretch.window) showOrange();
-    for (const ring of this.rings) drawHitRing(ctx, this.pads[ring.side], now - ring.t0, padsCfg);
+    if (this.state === 'air' && now >= j.apexT && j.stretchT == null && now - j.apexT < this.cfg.stretch.window) ru.drawOrange(ctx);
+    ru.drawRings(ctx, now);
   }
 
   drawHUD(ctx, view) {

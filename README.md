@@ -111,8 +111,8 @@ big buttons, **🤖 vs Computer** and **🌐 Live**, over your athlete warming u
 the track (tap them to change who it is). Live opens the tournament and the
 five events. vs Computer opens four big buttons, two by two: **Amateur** and
 **Pro** (a campaign each: the five events and the tournament, Pro locked until
-Amateur is beaten), **Training** (the same on your own, with its Training Ghost
-toggle) and **⭐ Special Events** (the events that aren't part of the five, the
+Amateur is beaten), **Training** (the five events on your own, no tournament, with its Training
+Ghost toggle) and **⭐ Special Events** (the events that aren't part of the five, the
 4×100m relay and the time trial, with a RIVALS toggle, Amateur or Pro). The
 Squad tab has ⚔ Practice: live events with just your squad (see Squads).
 ‹ Back (or Esc) goes back a step, and Menu after a race comes back to the

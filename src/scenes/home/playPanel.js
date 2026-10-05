@@ -1,7 +1,7 @@
 import { CONFIG } from '../../config.js';
 import { Button, text, roundRect } from '../../core/ui.js';
 import { drawFigure, runPose } from '../../athletes/stickFigure.js';
-import { EVENTS, SPECIAL_EVENTS, TOURNAMENT_BOARD, formatMark } from '../../events/registry.js';
+import { EVENTS, SPECIAL_EVENTS, formatMark } from '../../events/registry.js';
 import { canTune, getBest, getGhostOn, setGhostOn, getPlayerName, setCampaign, getBeaten, takeFreshBeaten, getSpecialLevel, setSpecialLevel } from '../../core/storage.js';
 import { myAthlete, heightOf } from '../../athletes/roster.js';
 import { TOURNAMENT_KIND } from '../../tournament/tournament.js';
@@ -32,8 +32,8 @@ let lastList = null;
  *   tournament. Win an event (in any order) and its card is stamped BEATEN!;
  *   beat all five and the tournament opens; win that too. Pro stays locked
  *   until all of Amateur (tournament too) is beaten.
- * - Training: the same six cards on your own, no rivals (your ghost if GHOST is on),
- *   nothing ticked off. Campaigns never have a ghost.
+ * - Training: the five events on your own (no tournament), no rivals (your ghost
+ *   if GHOST is on), nothing ticked off. Campaigns never have a ghost.
  * - Special Events: what doesn't fit the five (the 4x100m relay, the cycling
  *   time trial), always against computer rivals at the level its RIVALS toggle says.
  * Live is the tournament and the five events against other people.
@@ -103,13 +103,13 @@ export class PlayPanel {
               },
             }),
         ),
-        new EventTile({ id: 'tournament', name: 'Tournament', color: sec.level ? sec.color : TOUR_COLOR.offline, onTap: () => this.campaignTournament(sec) }),
+        // A campaign ends in its tournament (Training is the five events on their own).
+        ...(sec.level ? [new EventTile({ id: 'tournament', name: 'Tournament', color: sec.color, onTap: () => this.campaignTournament(sec) })] : []),
       ];
       return sec;
     });
     this.training = this.sections.find((sec) => !sec.level);
-    this.tourButton = this.training.tiles.at(-1);
-    this.buttons = this.training.tiles.slice(0, -1);
+    this.buttons = this.training.tiles;
     // vs Computer's grid: a big button for each section, and Special Events.
     this.gridButtons = [
       ...this.sections.map((sec) => Object.assign(new BigButton({ label: sec.name, sub: '', color: sec.color, onTap: () => this.openSection(sec) }), { key: sec.key })),
@@ -131,7 +131,6 @@ export class PlayPanel {
         this.styleGhost();
       },
     });
-    this.styleTournament();
     this.styleGhost();
     this.onShow();
     this.tuneButton = canTune() ? new Button({ label: '⚙ Tuning', w: 132, h: 44, color: PLAIN, onTap: () => flow.tuning(this.game) }) : null;
@@ -180,7 +179,7 @@ export class PlayPanel {
     return this.sections.find((sec) => sec.key === this.list) ?? null;
   }
 
-  /** A section's tournament card: Training's, or a campaign's once its five events are beaten. */
+  /** A campaign's tournament card, once its five events are beaten. */
   campaignTournament(sec) {
     if (this.refuse(sec, 'tournament')) return;
     setCampaign(sec.level);
@@ -247,7 +246,6 @@ export class PlayPanel {
 
   /** The Best lines under the Training and Special Events cards, from your saved bests. */
   showBests() {
-    this.styleTournament();
     EVENTS.forEach((ev, i) => {
       this.buttons[i].sub = ev.available ? `Best ${formatMark(ev, getBest(ev.id))}` : 'Coming soon';
     });
@@ -284,12 +282,6 @@ export class PlayPanel {
       b.sub = !sec.level ? 'Just you (and your ghost)' : sec.locked ? `🔒 Beat ${titleCase(sec.after)} first` : complete ? '★ Complete' : `${sec.done} / ${sec.tiles.length} beaten`;
       b.color = sec.locked ? 'rgba(123,47,191,0.45)' : sec.color;
     }
-  }
-
-  /** Training's tournament card: your best total. */
-  styleTournament() {
-    const best = getBest(TOURNAMENT_BOARD.id);
-    this.tourButton.sub = best == null ? '' : `Best ${best}`;
   }
 
   styleGhost() {
@@ -331,8 +323,10 @@ export class PlayPanel {
     const n = 6;
     const tw = Math.min(TILE_MAX, (view.w - margin * 2 - (n - 1) * TILE_GAP) / n);
     this.tileH = Math.round(tw * 1.08);
-    const rx = (view.w - (n * tw + (n - 1) * TILE_GAP)) / 2;
-    for (const row of [...this.sections.map((sec) => sec.tiles), this.liveButtons]) row.forEach((t, i) => Object.assign(t, { w: tw, h: this.tileH, x: rx + i * (tw + TILE_GAP), y: TILES_Y }));
+    for (const row of [...this.sections.map((sec) => sec.tiles), this.liveButtons]) {
+      const rx = (view.w - (row.length * tw + (row.length - 1) * TILE_GAP)) / 2; // Training's five, centred
+      row.forEach((t, i) => Object.assign(t, { w: tw, h: this.tileH, x: rx + i * (tw + TILE_GAP), y: TILES_Y }));
+    }
     // Its setting: GHOST (Training).
     Object.assign(this.ghostButton, { x: view.w / 2 - this.ghostButton.w / 2, y: TILES_Y + this.tileH + 34 });
 
@@ -525,7 +519,7 @@ function listOf(tiles) {
   return names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`;
 }
 
-const TOUR_COLOR = { offline: '#c98a00', live: '#1f8a58' };
+const TOUR_COLOR = { live: '#1f8a58' };
 const SPECIAL_Y = 104; // top of the Special Events cards
 const SPECIAL_SETTINGS_Y = 238; // the Special Events RIVALS row
 const gapFor = (n) => (n - 1) * 16; // between the Special Events cards

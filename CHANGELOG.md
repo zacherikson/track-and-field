@@ -4,7 +4,15 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
-## Relay runners on other phones drawn where they are now
+## Other players drawn where they are now: relay and hurdles
+- Live hurdles: the other runners were drawn from their frames a moment
+  behind (1.2 m on two phones with almost no network delay, ~3 m on a real
+  one). They're now carried on at their speed to where they are, stride by
+  stride, and their hops worked out here from where they are, over the same
+  hurdles (a hop is a place on the track: HurdleRun). Measured: 1.18 → 0.20 m
+  behind. The cost: a trip reaches your phone a moment late, so a tripping
+  runner seems to clear the hurdle, then it falls and they stumble just past
+  it. Their lean at the line comes from how far their frames lean.
 - In a squad meet's or a practice's relay, the legs run on other phones were
   drawn a moment behind (from their frames, `delay` ≈ 0.1–0.3 s: up to 3 m at
   full speed), unless an exchange of yours was placing them. They now carry on

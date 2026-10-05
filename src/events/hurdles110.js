@@ -29,6 +29,9 @@ const DIP_KEYS = ['Space', 'ArrowUp'];
  * Each button's hit zone is its third of the screen. Rules in hurdleRules.js;
  * start, rivals and finish are the shared lane race.
  */
+const RUN_LEAN = 0.28; // a runner's torso lean at full speed (stickFigure.js runPose): more than LEAN_SEEN is the lean at the line
+const LEAN_SEEN = 0.45;
+
 export class Hurdles110 extends LaneRace {
   constructor(ev) {
     super(ev, { ...CONFIG.sprint100, ...CONFIG.hurdles110 });
@@ -90,12 +93,48 @@ export class Hurdles110 extends LaneRace {
     return [mask];
   }
 
-  /** The ghost knocks down the hurdles its recording did, in its own lane. */
+  /** The ghost knocks down the hurdles its recording did, in its own lane (a live runner stumbles on from it as you hear). */
   onTraceFrame(a, f, rt) {
     const mask = f.pa[0];
     this.positions.forEach((_, i) => {
-      if (mask & (1 << i) && !a.hurdles.knocked.has(i)) a.hurdles.knocked.set(i, this.goT + rt);
+      if (!(mask & (1 << i)) || a.hurdles.knocked.has(i)) return;
+      a.hurdles.knocked.set(i, this.goT + rt);
+      if (a.live) a.hurdles.tripT = this.game.time;
     });
+  }
+
+  /** Live hurdlers are drawn where they are now: carried on from their frames, their hops worked out here (followLive). */
+  drawnNow(a) {
+    return !!a.live;
+  }
+
+  stepAthlete(a, dt, t) {
+    super.stepAthlete(a, dt, t);
+    if (a.live && a.frame) this.followLive(a, t + dt);
+  }
+
+  /**
+   * Another player's hurdler, where they are now, as the 100m and the relay draw
+   * theirs: their frames carried on at their speed (LiveTrace.ahead), stride by
+   * stride, and their hops worked out from there over the same hurdles as yours
+   * (HurdleRun: a hop is where you are). A trip comes with their frames, a moment
+   * late (onTraceFrame); their lean at the line, as much as their frames show.
+   */
+  followLive(a, t) {
+    const L = a.live;
+    const r = a.runner;
+    const v = L.speed();
+    r.v = v;
+    L.dx = v * L.ahead;
+    const x = r.x + L.dx;
+    const p = this.runnerParams;
+    if (a.shownX != null && x > a.shownX) r.phase = (r.phase ?? 0) + ((x - a.shownX) / (p.strideBase + p.stridePerMps * v)) * Math.PI * 2;
+    a.shownX = x;
+    const lean = a.frame.pose.lean; // running carries it under RUN_LEAN; the lean at the line takes it toward 1.4
+    r.mode = lean > LEAN_SEEN && this.cfg.distance - x < 15 ? 'lean' : 'run';
+    r.leanAmount = clamp((lean - RUN_LEAN) / (1.4 - RUN_LEAN), 0, 1);
+    r.finished = x >= this.cfg.distance;
+    a.hurdles.update({ x, v: Infinity }, t, 0); // a clean hop here; a trip comes with their frames
   }
 
   /** Player numbers for the results screen. */
@@ -143,10 +182,10 @@ export class Hurdles110 extends LaneRace {
 
   /** A short athlete (Joey) bounces up over each hurdle: the shorter, the bigger the hop (m). */
   liftFor(a) {
-    if (a.trace || a.frame) return 0; // a ghost's (or live runner's) lift is in its recording
+    if (a.trace || (a.frame && !this.drawnNow(a))) return 0; // a ghost's lift is in its recording
     const tall = a.colors.height ?? 1;
     if (tall >= 1 || (this.state !== 'race' && this.state !== 'finished')) return 0;
-    const k = a.hurdles?.hopProgress(a.runner.x);
+    const k = a.hurdles?.hopProgress(a.runner.x + (a.live?.dx ?? 0));
     if (k == null || a.hurdles.hop?.trip) return 0;
     return Math.sin(Math.PI * k) * (1 - tall) * 1.3;
   }
@@ -157,8 +196,8 @@ export class Hurdles110 extends LaneRace {
 
   poseFor(a) {
     let pose = super.poseFor(a);
-    if (a.trace || a.frame || (this.state !== 'race' && this.state !== 'finished')) return pose; // a ghost's (or live runner's) pose is recorded as drawn
-    const k = a.hurdles?.hopProgress(a.runner.x);
+    if (a.trace || (a.frame && !this.drawnNow(a)) || (this.state !== 'race' && this.state !== 'finished')) return pose; // a ghost's pose is recorded as drawn
+    const k = a.hurdles?.hopProgress(a.runner.x + (a.live?.dx ?? 0));
     if (k != null) pose = hurdlePose(pose, Math.pow(Math.sin(Math.PI * k), 0.6));
     // Caught the hurdle: stumble on from the hurdling pose.
     const trip = a.hurdles?.tripAge(this.game.time);

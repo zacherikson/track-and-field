@@ -128,7 +128,16 @@ export class LiveTrace {
     const theirs = (now - this.t0) / 1000; // their race time now
     const t = Math.max(0, Math.min(theirs - this.delay, this.lastT));
     this.ahead = this.left ? 0 : Math.min(MAX_AHEAD, Math.max(0, theirs - t));
+    this.drawnT = t;
     return this.play.at(t);
+  }
+
+  /** Their speed (m/s) at the frame drawn, from their frames over the last `span` s. */
+  speed(span = 0.1) {
+    if (!this.play || this.drawnT == null || !this.frame) return 0;
+    const t0 = Math.max(0, this.drawnT - span);
+    if (this.drawnT - t0 < 1e-3) return 0;
+    return Math.max(0, (this.frame.x - this.play.at(t0).x) / (this.drawnT - t0));
   }
 
   /** In a lane race: moves `frame` along (the race time isn't needed: their frames carry their own clock). */

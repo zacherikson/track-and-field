@@ -419,6 +419,15 @@ export class LaneRace {
       .map((a) => ({ d: (a.lane - 0.5) * LANE_WIDTH, draw: (ctx) => this.drawAthlete(ctx, view, a, H) }));
   }
 
+  /**
+   * True if live runner `a` is drawn where they are now, from their speed (their
+   * frames carried on: hurdles110.js), rather than as their frames recorded
+   * them a moment ago. The 100m's always are (liveRun.js).
+   */
+  drawnNow(a) {
+    return false;
+  }
+
   /** One physics step for one athlete, shared by live play and the fast-forward in finish(). */
   stepAthlete(a, dt, t) {
     if (a.ghost) return a.ghost.advanceTo(t + dt - this.goT); // replays on its own step grid
@@ -637,7 +646,7 @@ export class LaneRace {
     if (p.x < -80 || p.x > view.w + 80) return;
     const scale = this.track.figureScale(a.lane);
     // Events can lift an athlete off the track (a short one bouncing over a hurdle); the shadow stays down.
-    const liftM = a.trace || a.frame ? (a.frame?.e ?? 0) : this.liftFor?.(a) ?? 0;
+    const liftM = (a.trace || a.frame) && !this.drawnNow(a) ? (a.frame?.e ?? 0) : this.liftFor?.(a) ?? 0;
     const lift = liftM * this.camera.ppm * scale;
     const pose = this.poseFor(a);
     if (a.ghost || a.trace) {
@@ -748,8 +757,8 @@ export class LaneRace {
     if (this.state === 'set') {
       return lerpPose(POSES.blocks, POSES.set, ease(clamp((now - this.stateT - a.setDelay) / c.riseTime, 0, 1)));
     }
-    // Racing. A frame-by-frame ghost (or live runner) shows what it recorded.
-    if (a.frame) return a.frame.pose;
+    // Racing. A frame-by-frame ghost (or live runner) shows what it recorded (unless the event draws it now: drawnNow).
+    if (a.frame && !this.drawnNow(a)) return a.frame.pose;
     // Until an athlete reacts to the gun they hold the set position.
     // (A live runner is drawn a little ahead of their replay, legs and all: liveRun.js.)
     const d = r.x + (a.live?.dx ?? 0) - r.startX; // meters out of the blocks
@@ -864,6 +873,8 @@ class TraceBody {
   reset() {
     this.x = this.startX;
     this.v = 0;
+    this.phase = 0; // stride, for a live runner drawn now (hurdles110.js followLive)
+    this.leanAmount = 0;
     this.mode = 'run';
     this.finished = false;
   }

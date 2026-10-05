@@ -9,6 +9,11 @@ Gameplay and tuning changes, newest first. When you change a number in
   1.7 → 2.1 m/s: falling behind the pace and wrong-side taps both cost more.
   Mashing costs far more: an alternating masher at 10/s goes 10.35 → 12.42 s,
   while a good reader only loses 0.05 s (8.73 → 8.78 s; tools/simulate.mjs).
+- Rivals pay the same for a wrong-side tap as you: `ai.<level>.missSpeedLoss`
+  (1.7) and `missLockout` are gone, and the computer reads
+  `sprint100.targets` (now 2.1 m/s), so the two can't drift apart again (the
+  hurdles keep their own rule for both). Rivals rarely miss, so it barely moves
+  their times: Amateur 100m median about +0.05 s.
 - `dip.carryDecel` 0.5 → 0.4 m/s²: carrying speed through the lean zone
   costs less.
 - `ai.pro.cadence` low end 2.88 → 3.0 taps/s: no slow Pros. Pro 100m median

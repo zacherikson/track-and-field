@@ -1,3 +1,4 @@
+import { CONFIG } from '../config.js';
 import { rand } from '../core/math.js';
 
 /**
@@ -34,9 +35,11 @@ export class AIController {
     while (this.nextTapT < t + dt) {
       let interval = (1 / (this.cadence * tired)) * (1 + rand(-lv.jitter, lv.jitter, this.rng));
       if (this.rng() < lv.missChance) {
-        // Rivals misread a target now and then, and pay the same price the player does.
-        r.stumble(lv.missSpeedLoss, this.nextTapT);
-        interval += lv.missLockout;
+        // Rivals misread a target now and then, and pay the same price the player does
+        // (the 100m's targets, unless the event has its own: hurdles110.js).
+        const tg = CONFIG.sprint100.targets;
+        r.stumble(lv.missSpeedLoss ?? tg.missSpeedLoss, this.nextTapT);
+        interval += lv.missLockout ?? tg.missLockout;
       } else {
         r.stride(this.nextTapT);
       }

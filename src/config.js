@@ -465,6 +465,8 @@ export const CONFIG = {
     },
   },
 
+  // A rival's wrong-side tap costs what yours does: sprint100.targets' missSpeedLoss and
+  // missLockout (athletes/ai.js). An event with rules of its own says so (hurdles110.js).
   ai: {
     amateur: {
       cadence: [2.3, 3.1], // strides/s range across the field (median time about 10.8s)
@@ -472,8 +474,6 @@ export const CONFIG = {
       jitter: 0.3, // +/- fraction of randomness on each stride interval (reaction variance)
       fatigue: 0.05, // cadence lost by the finish (fades in over the last 40%)
       missChance: 0.03, // chance a stride is a wrong-side tap instead
-      missSpeedLoss: 1.7, // same price the player pays
-      missLockout: 0,
       dipError: [-1.2, 2.5], // m; AI leans at the ideal spot plus this (negative = late)
     },
     pro: {
@@ -482,8 +482,6 @@ export const CONFIG = {
       jitter: 0.22,
       fatigue: 0.03,
       missChance: 0.015,
-      missSpeedLoss: 1.7, // same price the player pays
-      missLockout: 0,
       dipError: [-0.6, 1.2],
     },
   },

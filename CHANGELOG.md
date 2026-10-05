@@ -4,6 +4,17 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Relay runners on other phones drawn where they are now
+- In a squad meet's or a practice's relay, the legs run on other phones were
+  drawn a moment behind (from their frames, `delay` ≈ 0.1–0.3 s: up to 3 m at
+  full speed), unless an exchange of yours was placing them. They now carry on
+  at their speed to where they are now, legs and all, as the 100m's runners
+  do (src/events/meetRelay.js `follow`, src/online/liveTrace.js `ahead`).
+  Measured on two phones: 0.17 → 0.02 m behind on average, worst tenth
+  0.81 → 0.08 m (with almost no network delay; more on a real one).
+- The relay's old live mode (each player a whole team) is gone: nothing could
+  reach it since practice became the squad as one team.
+
 ## Smooth legs on the other runners, live
 - In a live 100m (and a squad meet's) the other runners were drawn a little
   ahead of their replay, so they'd be where they really are, but their legs

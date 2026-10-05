@@ -263,9 +263,13 @@ export class MeetRelay extends Relay4x100 {
     return !!ex && ex.kind === 'recv' && (ex.stage === 'zone' || ex.stage === 'reach' || ex.stage === 'missed');
   }
 
-  /** Leg `k`'s runner as its phone's frames have them (drawn a moment behind, smoothly). */
+  /**
+   * Leg `k`'s runner as its phone's frames have them: drawn smoothly from a moment
+   * ago, carried on at their speed to where they are now (legs too), as the 100m does.
+   */
   follow(a, k) {
-    const f = this.traces.get(this.controller(a, k))?.frame;
+    const tr = this.traces.get(this.controller(a, k));
+    const f = tr?.frame;
     if (!f) return;
     const r = a.legs[k].runner;
     const o = k * LEG_PROPS;
@@ -280,6 +284,7 @@ export class MeetRelay extends Relay4x100 {
     r.mode = MODES[m % 3] ?? 'run';
     r.finished = m >= 3;
     if (r.v > 0) r.started = true;
+    carryOn(r, r.v * tr.ahead);
   }
 
   /** Leg `k` as its phone last said, carried on to race time `rt` at their speed: { x, v, phase, mode, t }, or null. */
@@ -501,4 +506,11 @@ export class MeetRelay extends Relay4x100 {
     const msg = next === a.leg + 1 ? 'The baton’s coming to you: TAKE it when the ring meets the button' : `You run leg ${next + 1}`;
     text(ctx, msg, view.w / 2, view.h - 40 - view.safe.b, { size: 18, color: '#ffd35c', shadow: true, maxWidth: view.w - 40 });
   }
+}
+
+/** Runner `r` drawn `dx` m on from where its frame has it: its stride goes on with it (as Runner.update turns distance into stride). */
+function carryOn(r, dx) {
+  if (!(dx > 0)) return;
+  r.x += dx;
+  r.phase += (dx / (r.p.strideBase + r.p.stridePerMps * r.v)) * Math.PI * 2;
 }

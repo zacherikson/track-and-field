@@ -9,12 +9,15 @@ import { serverNow } from './live.js';
  * The frames arrive a little after they happen, so the others are drawn a
  * moment behind: `delay` follows how late their newest frame usually is, plus
  * a margin, so they move smoothly instead of stopping and starting. Their
- * marks come from their phones, exactly.
+ * marks come from their phones, exactly. `ahead` says how far behind (s): a
+ * race that draws them from their speed (the relay) carries them on by it, to
+ * where they are now, as the 100m does (liveRun.js).
  */
 const SEND_EVERY = 100; // ms between chunks
 const MIN_DELAY = 0.1; // s
 const MAX_DELAY = 1.5; // s
 const MARGIN = 0.08; // s drawn behind their newest frame on top of the usual lateness
+const MAX_AHEAD = 0.75; // s at most that `ahead` carries them on (their phone gone quiet)
 
 /** Sends your frames as they're recorded: `f/{k}` = the new frames since the last chunk, comma-separated. */
 export class TraceStream {
@@ -70,6 +73,7 @@ export class LiveTrace {
     this.result = null;
     this.left = false;
     this.frame = null;
+    this.ahead = 0; // s from the frame drawn to their clock now
     this.dx = 0; // drawn where the frame says
   }
 
@@ -121,7 +125,9 @@ export class LiveTrace {
     this.drawnAt = now;
     const want = Math.min(MAX_DELAY, Math.max(MIN_DELAY, (this.lag ?? 0.2) + MARGIN));
     this.delay = this.delay == null ? want : this.delay + (want - this.delay) * (1 - Math.exp(-2 * dt));
-    const t = Math.max(0, Math.min((now - this.t0) / 1000 - this.delay, this.lastT));
+    const theirs = (now - this.t0) / 1000; // their race time now
+    const t = Math.max(0, Math.min(theirs - this.delay, this.lastT));
+    this.ahead = this.left ? 0 : Math.min(MAX_AHEAD, Math.max(0, theirs - t));
     return this.play.at(t);
   }
 

@@ -4,6 +4,19 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Tuning: harder to mash, a closer Pro field
+- `runner.coastDecel` 4.0 → 4.5 m/s² and `sprint100.targets.missSpeedLoss`
+  1.7 → 2.1 m/s: falling behind the pace and wrong-side taps both cost more.
+  Mashing costs far more: an alternating masher at 10/s goes 10.35 → 12.42 s,
+  while a good reader only loses 0.05 s (8.73 → 8.78 s; tools/simulate.mjs).
+- `dip.carryDecel` 0.5 → 0.4 m/s²: carrying speed through the lean zone
+  costs less.
+- `ai.pro.cadence` low end 2.88 → 3.0 taps/s: no slow Pros. Pro 100m median
+  9.88 → 9.75 s; the slowest Pro 10.90 → 10.73 s.
+- `longJump.stretch.kickY` 1.3 → 1.4 m/s: a bigger stretch hop (good jumper's
+  best 7.96 → 8.12 m).
+- `poleVault.press.window` 0.18 → 0.2 s: a little more room on the plant.
+
 ## The squad's relay, against a practice squad
 - A squad's Practice 4×100m relay (2 to 4 squadmates) is now the squad as ONE
   team, each runner on their own phone as in a meet: two take turns (A B A B),

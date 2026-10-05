@@ -56,7 +56,7 @@ export const CONFIG = {
     startPace: 4.5, // strides/s your pace is assumed to be on the first stride
     accelMax: 10.0, // m/s^2 from standstill
     accelFalloff: 0.72, // accel shrinks by this fraction as speed approaches topSpeed
-    coastDecel: 4.0, // m/s^2 lost when your cadence is below what your speed needs
+    coastDecel: 4.5, // m/s^2 lost when your cadence is below what your speed needs
     finishDecel: 3.5, // m/s^2 braking after crossing the line
     cadenceSmoothing: 0.1, // 0..1 weight of the newest stride interval (higher = twitchier)
     idleGrace: 1.2, // a gap must exceed this x your usual interval before it slows you
@@ -88,7 +88,7 @@ export const CONFIG = {
     leanDecel: 1.0, // m/s^2 lost while leaning
     postLeanDecel: 4.5, // m/s^2 lost once you straighten up before the line (leaned too early)
     minLeanSpeed: 4, // m/s; an early lean slows you to no less than this
-    carryDecel: 0.5, // m/s^2 lost while carrying speed through the lean zone
+    carryDecel: 0.4, // m/s^2 lost while carrying speed through the lean zone
     minCarrySpeed: 5, // m/s; slower than this and you just keep running (no coasting to a halt)
   },
 
@@ -118,7 +118,7 @@ export const CONFIG = {
       maxSameSide: 2,
       switchChance: 0.5, // chance of switching sides when not forced
       missLockout: 0, // s; a wrong-side tap freezes your input this long (0 = none, like the original)
-      missSpeedLoss: 1.7, // m/s lost on a wrong-side tap
+      missSpeedLoss: 2.1, // m/s lost on a wrong-side tap
     },
     pads: {
       radius: 56, // target size (visual only; the hit zone is the whole screen half)
@@ -363,7 +363,7 @@ export const CONFIG = {
       // (times the stretch quality) from that moment, landing far out on your heels.
       // A mini double jump: a little hop up, then a long flat glide.
       carryX: 0.8, // forward speed after a perfect stretch, as a share of your takeoff speed
-      kickY: 1.3, // m/s hop upward
+      kickY: 1.4, // m/s hop upward
       window: 0.95, // real s the pads stay up after the top of the jump; the later you press, the weaker the kick
     },
     // Rivals: run-up pace from CONFIG.ai, plus where they take off relative to
@@ -438,7 +438,7 @@ export const CONFIG = {
     ],
     blink: { period: 0.36, on: 0.24 }, // s: the orange pads blink while the spark runs down
     chordWindow: 0.12, // s: left + right presses this close together count as both
-    press: { window: 0.18, miss: 0.35 }, // s either side of the plant: plant quality falls to 0 at `window`; no press within `miss` and you run through (no height)
+    press: { window: 0.2, miss: 0.35 }, // s either side of the plant: plant quality falls to 0 at `window`; no press within `miss` and you run through (no height)
     spark: { climbTime: 0.6 }, // s for the spark to climb back up the pole while you hold
     // Best release: `lead` s after the spark reaches your hands (covers the ~0.15 s between
     // seeing it get there and your finger actually leaving the screen); quality falls to 0
@@ -477,7 +477,7 @@ export const CONFIG = {
       dipError: [-1.2, 2.5], // m; AI leans at the ideal spot plus this (negative = late)
     },
     pro: {
-      cadence: [2.88, 3.68], // median time about 9.85s
+      cadence: [3.0, 3.68], // median time about 9.75s
       reaction: [0.16, 0.24],
       jitter: 0.22,
       fatigue: 0.03,

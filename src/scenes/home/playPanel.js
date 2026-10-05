@@ -116,10 +116,10 @@ export class PlayPanel {
       Object.assign(new BigButton({ label: '⭐ Special Events', sub: 'Relay · Time Trial', color: '#c2337a', onTap: () => this.open('special') }), { key: 'special' }),
     ];
     this.styleSections(takeFreshBeaten());
-    // Live: the same, against other people (a waiting room first, online/live.js).
+    // Live: the same six cards as a campaign's, against other people (a waiting room first, online/live.js).
     this.liveButtons = [
-      new Button({ label: '🏆 Tournament', sub: 'Live', color: TOUR_COLOR.live, onTap: () => flow.live(this.game, TOURNAMENT_KIND) }),
-      ...EVENTS.map((ev) => new Button({ label: ev.name, sub: 'Live', color: '#2bb673', enabled: ev.available, onTap: () => flow.live(this.game, ev.id) })),
+      ...EVENTS.map((ev) => new EventTile({ id: ev.id, name: SHORT[ev.id] ?? ev.name, color: '#2bb673', enabled: ev.available, onTap: () => flow.live(this.game, ev.id) })),
+      new EventTile({ id: 'tournament', name: 'Tournament', color: TOUR_COLOR.live, onTap: () => flow.live(this.game, TOURNAMENT_KIND) }),
     ];
     // Your ghost (Training only): race your best attempt in every event (remembered on this device).
     this.ghostButton = new Button({
@@ -327,17 +327,12 @@ export class PlayPanel {
     this.specialButtons.forEach((b, i) => Object.assign(b, { w: sw, h: 96, x: sx + i * (sw + 16), y: SPECIAL_Y }));
     this.rivalButtons.forEach((b, i) => Object.assign(b, { x: view.w / 2 - b.w - 4 + i * (b.w + 8), y: SPECIAL_SETTINGS_Y }));
 
-    // Live: the tournament and the five events, three to a row.
-    const gap = 12;
-    const w = Math.min(260, (view.w - margin * 2 - gap * 2) / 3);
-    const x0 = (view.w - (w * 3 + gap * 2)) / 2;
-    this.liveButtons.forEach((b, i) => Object.assign(b, { w, h: 66, x: x0 + (i % 3) * (w + gap), y: LIST_Y + Math.floor(i / 3) * (66 + gap) }));
-    // A vs Computer section's page: its six cards in a row (each section the same).
+    // A vs Computer section's page, and Live: six cards in a row (each the same).
     const n = 6;
     const tw = Math.min(TILE_MAX, (view.w - margin * 2 - (n - 1) * TILE_GAP) / n);
     this.tileH = Math.round(tw * 1.08);
     const rx = (view.w - (n * tw + (n - 1) * TILE_GAP)) / 2;
-    for (const sec of this.sections) sec.tiles.forEach((t, i) => Object.assign(t, { w: tw, h: this.tileH, x: rx + i * (tw + TILE_GAP), y: TILES_Y }));
+    for (const row of [...this.sections.map((sec) => sec.tiles), this.liveButtons]) row.forEach((t, i) => Object.assign(t, { w: tw, h: this.tileH, x: rx + i * (tw + TILE_GAP), y: TILES_Y }));
     // Its setting: GHOST (Training).
     Object.assign(this.ghostButton, { x: view.w / 2 - this.ghostButton.w / 2, y: TILES_Y + this.tileH + 34 });
 
@@ -345,23 +340,21 @@ export class PlayPanel {
     const sec = this.section;
     this.trackTop = !this.list
       ? 286
-      : this.list === 'live'
-        ? SETTINGS_Y
-        : this.list === 'offline'
-          ? GRID_Y + 2 * GRID_H + GRID_GAP + 16
-          : sec?.level
-            ? TILES_Y + this.tileH + 22 // a campaign has no settings row
-            : this.settingsY + 44 + 14;
+      : this.list === 'offline'
+        ? GRID_Y + 2 * GRID_H + GRID_GAP + 16
+        : sec?.level || this.list === 'live'
+          ? TILES_Y + this.tileH + 22 // a campaign and Live have no settings row
+          : this.settingsY + 44 + 14;
     this.trackBottom = bottom - 6;
-    // The warning: over the track on Live; on vs Computer's pages (their track is short) a card over the buttons.
-    this.warnY = this.list === 'live' ? this.trackTop + 28 : this.list === 'offline' ? GRID_Y + GRID_H - 10 : TILES_Y + this.tileH / 2 - 22;
+    // The warning: a card over the buttons (the track under them is short).
+    this.warnY = this.list === 'offline' ? GRID_Y + GRID_H - 10 : TILES_Y + this.tileH / 2 - 22;
     this.view = view;
     this.bottom = bottom;
   }
 
   /** Top of the open list's settings row. */
   get settingsY() {
-    return this.list === 'live' ? SETTINGS_Y : this.list === 'special' ? SPECIAL_SETTINGS_Y : this.ghostButton.y;
+    return this.list === 'special' ? SPECIAL_SETTINGS_Y : this.ghostButton.y;
   }
 
   get tiles() {
@@ -434,33 +427,34 @@ export class PlayPanel {
     const sec = this.section;
     if (this.list === 'special') this.renderSpecial(ctx, view);
     else if (sec) this.renderSection(ctx, view, sec);
-    else {
-      const offline = this.list === 'offline';
-      text(ctx, offline ? 'VS COMPUTER' : 'LIVE', view.w / 2, 36, { size: 30, color: offline ? '#ffb400' : '#59cd90', shadow: true });
+    else if (this.list === 'live') {
+      text(ctx, 'LIVE', view.w / 2, 36, { size: 30, color: '#59cd90', shadow: true });
+      text(ctx, 'Race people right now: a waiting room first', view.w / 2, 66, { size: 15, weight: 700, color: DIM });
       this.drawTrack(ctx, view, this.trackTop, this.trackBottom - this.trackTop, true);
-      (offline ? this.gridButtons : this.liveButtons).forEach((b) => b.draw(ctx));
+      this.liveButtons.forEach((b) => b.draw(ctx));
+    } else {
+      text(ctx, 'VS COMPUTER', view.w / 2, 36, { size: 30, color: '#ffb400', shadow: true });
+      this.drawTrack(ctx, view, this.trackTop, this.trackBottom - this.trackTop, true);
+      this.gridButtons.forEach((b) => b.draw(ctx));
     }
     this.drawWarning(ctx, view);
   }
 
-  /** Clash Royale style: say what's missing (on vs Computer, on a card over the buttons; on Live, over the track). */
+  /** Clash Royale style: say what's missing, on a card over the buttons. */
   drawWarning(ctx, view) {
-    if (this.warnT > 0) {
-      ctx.save();
-      ctx.globalAlpha *= Math.min(1, this.warnT * 2);
-      const pw = Math.min(view.w - 40, 640);
-      if (this.list !== 'live') {
-        roundRect(ctx, view.w / 2 - pw / 2, this.warnY - 32, pw, this.warnDetail ? 92 : 64, 16);
-        ctx.fillStyle = 'rgba(10,18,36,0.94)';
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(255,255,255,0.25)';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-      }
-      text(ctx, this.warnMsg, view.w / 2, this.warnY, { size: 22, weight: 800, color: '#fff', shadow: true, maxWidth: pw - 32 });
-      if (this.warnDetail) text(ctx, this.warnDetail, view.w / 2, this.warnY + 32, { size: 16, weight: 600, color: 'rgba(255,255,255,0.85)', maxWidth: pw - 32 });
-      ctx.restore();
-    }
+    if (this.warnT <= 0) return;
+    ctx.save();
+    ctx.globalAlpha *= Math.min(1, this.warnT * 2);
+    const pw = Math.min(view.w - 40, 640);
+    roundRect(ctx, view.w / 2 - pw / 2, this.warnY - 32, pw, this.warnDetail ? 92 : 64, 16);
+    ctx.fillStyle = 'rgba(10,18,36,0.94)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    text(ctx, this.warnMsg, view.w / 2, this.warnY, { size: 22, weight: 800, color: '#fff', shadow: true, maxWidth: pw - 32 });
+    if (this.warnDetail) text(ctx, this.warnDetail, view.w / 2, this.warnY + 32, { size: 16, weight: 600, color: 'rgba(255,255,255,0.85)', maxWidth: pw - 32 });
+    ctx.restore();
   }
 
   /** Special Events: the cards, and who you race in them. */
@@ -532,8 +526,6 @@ function listOf(tiles) {
 }
 
 const TOUR_COLOR = { offline: '#c98a00', live: '#1f8a58' };
-const LIST_Y = 100; // top of the Live list's first row of buttons
-const SETTINGS_Y = 270; // the Live list's settings row
 const SPECIAL_Y = 104; // top of the Special Events cards
 const SPECIAL_SETTINGS_Y = 238; // the Special Events RIVALS row
 const gapFor = (n) => (n - 1) * 16; // between the Special Events cards

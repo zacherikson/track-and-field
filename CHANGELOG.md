@@ -4,6 +4,34 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## How to play, shorter event cards, arms, javelin stop, rising vault bar
+- **How to play**: a new screen (❓ on the Play tab) with a page per event,
+  each step an icon of the control as it looks in the race plus one line
+  (src/scenes/howTo.js, tutorialScene.js), and Practice to try it.
+- **Event cards** lose their five or six lines of rules. They show the
+  controls in order instead (Run › Lean, Run › Plant › Push off…) and a ❓
+  How to play button that opens the event's steps over the card. The steps
+  are on top of the card rather than a screen of their own, so a live or
+  meet countdown carries on underneath. `howTo` / `meetHowTo` are gone from
+  registry.js.
+- **Arm swing at top speed** (stickFigure.js runPose): the front arm came up
+  only to about 47° from vertical (hand at the chest) while the back arm went
+  74° behind. Now about 64° in front (hand at the chin) and still about 73°
+  behind, and the elbow opens more at the back of the swing so the hand passes
+  behind the hip. Swing `e * (0.2 + 1.1 sin)` → `e * (0.05 + 1.25 sin)`;
+  elbow opening at the back 0.35 → 0.55 rad. Jogging barely changes.
+- **Javelin follow-through**: you stop dead where you let go, as in the
+  original, instead of braking at `finishDecel` (about 8 m past the release
+  before the flight shot) and lunging onto your hands. The pose goes brace →
+  release → follow (held 0.45 s) → stand, on the spot. The `lunge` pose is
+  gone. Distances are unchanged: the mark was always from the release point.
+- **Pole vault bar**: it rises with you, as in the original. Each attempt it
+  waits at `poleVault.bar.rest` (2.0 m), then rides up with your hips once
+  you're on the pole and stops at the height you clear (`bar.follow` 14:
+  how tightly it follows). It used to sit at your best so far (none on the
+  first vault). It's also drawn striped red and white with a dark edge: seen
+  nearly end-on it's short, and the plain white line was lost against the sky.
+
 ## No empty band at the bottom of the home-screen app
 - iOS can lay a home-screen app out a status bar short of the screen after a
   launch or a return (an empty band below the tab bar), and re-measuring the

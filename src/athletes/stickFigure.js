@@ -422,8 +422,8 @@ const clamp01 = (k) => Math.max(0, Math.min(1, k));
  *              javelin arm long behind, free arm up in front
  *   release    the arm whips over the top, chest forward, front leg braced
  *   follow     folding forward over the front leg, throwing arm down across,
- *              rear leg swinging through
- *   lunge      dropping down and forward onto the hands to stop at the line
+ *              rear leg swinging through (where you stop: no running on past
+ *              the line, as in the original)
  */
 export const JAVELIN_POSES = {
   carryArms: [{ upper: 1.95, fore: -2.25 }, { upper: 0.2, fore: 1.3 }],
@@ -442,11 +442,6 @@ export const JAVELIN_POSES = {
     hipX: 0.12, hipY: -0.42, lean: 0.95,
     legs: [{ ...legIK(0.12, -0.42, 0.4, 0), toe: 0 }, { thigh: -0.9, shin: -1.7, toe: 0.4 }],
     arms: [{ upper: 1.05, fore: 0.7 }, { upper: -1.0, fore: -0.6 }],
-  },
-  lunge: {
-    hipX: 0.2, hipY: -0.3, lean: 1.3,
-    legs: [{ ...legIK(0.2, -0.3, 0.5, 0), toe: 0 }, { thigh: -1.35, shin: -1.55, toe: 0.3 }],
-    arms: [{ upper: 0.55, fore: 0.35 }, { upper: 0.45, fore: 0.25 }],
   },
 };
 
@@ -543,12 +538,13 @@ export function runPose(phase, amp, drive = 0) {
     // The swing is measured from the torso (arm hanging along it = -lean), so
     // the elbow still drives well behind the body when it's pitched forward in
     // the drive phase. At full effort it swings from about 60° behind the torso
-    // line to about 65° in front: upper arm about 75° back and hand at chin
-    // height when running upright, elbow up above the shoulder out of the blocks.
-    const upper = -lean + 0.25 - e * (0.2 + 1.1 * Math.sin(q));
-    // Elbow held near 90° at any speed (about 100° jogging, 94° sprinting),
-    // opening a little at the back of the swing.
-    return { upper, fore: upper + 1.3 + 0.2 * e - 0.35 * e * back };
+    // line to about 83° in front: running upright, the upper arm goes from
+    // about 75° back to about 67° forward of vertical (hand up at the chin),
+    // elbow up above the shoulder out of the blocks.
+    const upper = -lean + 0.25 - e * (0.05 + 1.25 * Math.sin(q));
+    // Elbow held near 90° at any speed (about 100° jogging, 97° sprinting),
+    // opening out at the back of the swing so the hand passes behind the hip.
+    return { upper, fore: upper + 1.25 + 0.2 * e - 0.55 * e * back };
   });
 
   return { hipX: 0, hipY, lean, legs, arms };

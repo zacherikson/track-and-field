@@ -21,14 +21,6 @@ export const EVENTS = [
     available: true,
     online: true, // posts marks to the online leaderboard
     ghosts: true, // each entry carries its recorded run, which others can race as a ghost (online/ghost.js)
-    howTo: [
-      'At GO the first green target appears.',
-      'Tap the side the green target is on. It jumps around at random!',
-      'Tap the wrong side and you stumble.',
-      'Near the line the pads turn ORANGE: press BOTH together to lean.',
-      'Lean too early and you slow down before the line.',
-      'Desktop: ← → to run, Space to lean.',
-    ],
     create() {
       return new Sprint100(this);
     },
@@ -43,13 +35,6 @@ export const EVENTS = [
     online: true, // posts marks to the online leaderboard
     traceProps: 0, // its ghost is recorded frame by frame (online/trace.js), keeping the body only
     againLabel: 'Jump again',
-    howTo: [
-      'Three jumps; your best counts. Tap the green targets to run up.',
-      'Near the board the pads turn ORANGE and blink: press BOTH to jump.',
-      'Measured from the end of the board: jump late, but step over and it’s a foul.',
-      'At the top of the jump press BOTH again to stretch and throw yourself forward. Miss it and you crumple.',
-      'Desktop: ← → to run, Space to jump and stretch.',
-    ],
     create() {
       return new LongJump(this);
     },
@@ -63,13 +48,6 @@ export const EVENTS = [
     available: true,
     online: true, // posts marks to the online leaderboard
     traceProps: 1, // its ghost is recorded frame by frame (online/trace.js), keeping the hurdles knocked down
-    howTo: [
-      'Three numbered buttons appear in a random order: tap 1, 2, 3.',
-      'Every hurdle you jump brings a new set. Clear it fast to run fast.',
-      'Any mistake (a wrong number, or not finishing in time) and you trip over the next hurdle.',
-      'After the last hurdle the pads turn ORANGE: press BOTH together to lean.',
-      'Desktop: number keys 1 2 3 (or ← ↓ → for the slots), Space to lean.',
-    ],
     create() {
       return new Hurdles110(this);
     },
@@ -84,13 +62,6 @@ export const EVENTS = [
     online: true, // posts marks to the online leaderboard
     traceProps: 9, // its ghost is recorded frame by frame (online/trace.js), keeping the pole
     againLabel: 'Vault again',
-    howTo: [
-      'Three vaults; your best height counts. Tap the green targets to run up.',
-      'Near the box the pads turn ORANGE and a spark runs down your pole.',
-      'When it reaches the tip the pole plants: press and HOLD both.',
-      'The spark climbs back up the pole: let go as it reaches your hands.',
-      'Desktop: ← → to run, hold Space to plant, let go to push off.',
-    ],
     create() {
       return new PoleVault(this);
     },
@@ -105,13 +76,6 @@ export const EVENTS = [
     online: true, // posts marks to the online leaderboard
     traceProps: 3, // its ghost is recorded frame by frame (online/trace.js), keeping the javelin
     againLabel: 'Throw again',
-    howTo: [
-      'Three throws; your best counts. Tap the green targets to run up.',
-      'Near the line the pads turn ORANGE: press and HOLD both.',
-      'The javelin is drawn back and its tip rises. Let go to throw.',
-      'Best angle is about 36°. Let go close to the line, but not past it: FOUL.',
-      'Desktop: ← → to run, hold Space and let go to throw.',
-    ],
     create() {
       return new Javelin(this);
     },
@@ -130,22 +94,6 @@ export const SPECIAL_EVENTS = [
     unit: 's',
     lowerIsBetter: true,
     available: true,
-    howTo: [
-      'Four legs of 100m, and you run them all. Tap the green targets.',
-      'Your teammate sets off as you get close. In the BLUE zone, tap PASS.',
-      'Then tap TAKE as they come into reach: when the ring meets the button.',
-      'Too soon and they grab air. Too late and you run up their back.',
-      'No pass by the end of the zone and you both stop to swap. Costly!',
-      'Desktop: ← → to run, Space for PASS, TAKE and the anchor’s lean.',
-    ],
-    // In a squad meet each of the four runs a leg on their own phone.
-    meetHowTo: [
-      'Your squad’s four each run one leg. Tap the green targets on yours.',
-      'Waiting for the baton: TAKE it when the ring around the blue button meets it.',
-      'Bringing it in: in the BLUE zone, tap PASS, then your teammate takes it.',
-      'Anyone whose phone drops is run by the computer. Keep going!',
-      'Desktop: ← → to run, Space for PASS, TAKE and the anchor’s lean.',
-    ],
     // `live` (online/live.js): a squad's practice is the squad as one team, against a computer one.
     create(live = null) {
       return meet.active ? new MeetRelay(this) : live?.squad ? new PracticeRelay(this) : new Relay4x100(this); // a squad meet's: a leg each
@@ -160,14 +108,6 @@ export const SPECIAL_EVENTS = [
     lowerIsBetter: true,
     available: true,
     againLabel: 'Ride again',
-    howTo: [
-      'Pedal with the two big pads, LEFT, RIGHT, LEFT…: the green one is next.',
-      'Shift with the blue buttons: − easier for the climb, + harder for the flat.',
-      'Keep the PEDALS needle in the green. Too slow? Shift down. Spinning? Shift up.',
-      'Downhill, HOLD both pads to tuck. In the last stretch, press both to throw the bike.',
-      'Your rivals ride with you as ghosts. Time checks at the top and the bottom.',
-      'Desktop: ← → to pedal, ↑ ↓ to shift, hold Space to tuck.',
-    ],
     create() {
       return new TimeTrial(this);
     },

@@ -16,7 +16,7 @@
 <p>Serve the repo (python3 -m http.server) and open /tools/sprites.html. Order: flight, stretch, landing; bottom row: the crumple without a stretch.</p>
 <canvas id="sheet"></canvas>
 <h1>Juno: javelin keyframes</h1>
-<p>Carry, withdrawal (held; the javelin angle rises), brace, release, follow-through, lunge.</p>
+<p>Carry, withdrawal (held; the javelin angle rises), brace, release, follow-through.</p>
 <canvas id="javelin"></canvas>
 <script type="module">
 import { drawFigure, JUMP_POSES, POSES } from '../src/athletes/stickFigure.js';
@@ -67,7 +67,6 @@ rows.forEach((row, ri) => row.forEach((name, ci) => {
     ['brace', J.brace, 36],
     ['release', J.release, 36],
     ['follow', J.follow, null],
-    ['lunge', J.lunge, null],
   ];
   const cv2 = document.getElementById('javelin');
   const Wc = 170;

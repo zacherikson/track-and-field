@@ -456,6 +456,10 @@ export const CONFIG = {
     // take off under one pole length from the bar.
     mat: { from: 0.0, to: 5.2, height: 0.8 }, // m past the box
     uprightX: 0.25, // m past the box
+    // The crossbar, as in the original: it waits at `rest` m, then rises with
+    // your hips once you're up the pole and stops at the height you clear.
+    // Every attempt starts from `rest` again (your best doesn't set it).
+    bar: { rest: 2.0, follow: 14 }, // m; how tightly it follows (higher = tighter)
     landX: 1.3, // m past the box where you come down on the mat
     markHold: 2.4, // s after landing before the result banner
     camera: { topFrac: 0.3 }, // the camera rises to keep the vaulter at least this far down the screen

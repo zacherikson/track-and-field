@@ -68,7 +68,10 @@ function swingKey(u, col) {
  *   plants in the box.
  * - Press and HOLD both at the plant. The spark climbs back up the pole; let
  *   go as it reaches your hands. You swing up the bending pole, push off the
- *   top, arch over the bar and drop onto the mat. The camera rises with you.
+ *   top, arch over the bar and drop onto the mat. The camera rises with you,
+ *   and so does the bar (as in the original): it waits at `bar.rest`, rides
+ *   up with your hips and stops at the height you clear. Every attempt starts
+ *   it from rest again.
  * - No press at all: you run through. No height.
  *
  * States: 'ready' → 'run' → 'vault' (on the pole) → 'fly' → 'landed' → 'mark';
@@ -150,6 +153,8 @@ export class PoleVault {
     this.fly = null; // { t0, x0, y0, vx, vy, T }
     this.mark = null; // { mark } or { fail: true }
     this.hip = { x: this.runner.x, y: 0.5 * (this.figH ?? FIG_H) };
+    this.barTop = 0; // the highest your hips have been on this attempt (the bar rises with them)
+    this.track.bar = this.cfg.bar.rest;
     this.camY = 0;
     this.puff = [];
     this.ghost.startAttempt(t);
@@ -326,7 +331,20 @@ export class PoleVault {
       p.life -= dt;
     }
     this.puff = this.puff.filter((p) => p.life > 0);
+    if (this.state === 'vault' || this.state === 'fly') this.barTop = Math.max(this.barTop, this.hip.y);
+    this.track.bar = damp(this.track.bar, this.barHeight(), cfg.bar.follow, dt);
     this.followCamera(dt);
+  }
+
+  /**
+   * Where the crossbar is headed: at rest until your hips pass it, then with
+   * them, but never above the height you're clearing (once it's known), so it
+   * stops right where you go over.
+   */
+  barHeight() {
+    const top = Math.max(this.cfg.bar.rest, this.barTop);
+    const h = this.vault?.height;
+    return h == null ? top : Math.min(h, top);
   }
 
   plant(t) {
@@ -419,8 +437,6 @@ export class PoleVault {
       const level = { ...this.lv, cadence: [rv.cadence, rv.cadence] };
       rv.jumps.push(rivalVault(level, this.cfg, () => this.rivalRunUp(rv)));
     }
-    const best = this.best(this.player);
-    this.track.bar = best;
     this.setState('mark');
     // Your last vault: on your feet (on the mat, facing back the way you came), the late hits start (brawl/fieldLateHits.js).
     if (this.round >= this.cfg.rounds) startFieldLateHits(this, this.hip.x, this.poseFor(), this.fly ? -1 : 1);

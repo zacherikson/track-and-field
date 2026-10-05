@@ -11,16 +11,20 @@ import { counts } from '../online/bests.js';
 import { meet } from '../meet/meet.js';
 import { formatPoints } from '../meet/scoring.js';
 import { MEET_ORDER } from '../meet/rules.js';
+import { drawStrip, drawSteps, stepsHeight } from './howTo.js';
 
 const ON_TRACK = 4000; // ms before a live event starts that it's shown (the gun's READY / GET SET, or a round's countdown)
 
 /**
- * Event title card: name, world record, your best, how to play. Tap to start.
- * In a live tournament it counts down instead, and the event starts at the
- * same moment for everyone (online/live.js).
+ * Event title card: name, world record, your best, and the controls in the
+ * order you use them (howTo.js strip). Tap to start. In a live tournament it
+ * counts down instead, and the event starts at the same moment for everyone
+ * (online/live.js).
  *
  * Top left, Back (Quit in a tournament) goes to the menu. Top right, your
- * athlete, warming up.
+ * athlete, warming up. ❓ How to play opens the event's steps over the card
+ * (not a screen of their own, so a live countdown carries on underneath);
+ * any tap closes them.
  */
 export class IntroScene {
   constructor(ev) {
@@ -34,6 +38,8 @@ export class IntroScene {
     this.backBtn = tournament.live || this.meet
       ? null
       : new Button({ label: tournament.active ? '‹ Quit' : '‹ Back', w: 110, h: 42, size: 19, color: 'rgba(255,255,255,0.15)', onTap: () => flow.menu(this.game) });
+    this.howBtn = new Button({ label: '❓ How to play', w: 200, h: 44, size: 19, color: 'rgba(255,255,255,0.15)', onTap: () => (this.howOpen = true) });
+    this.howOpen = false;
     this.best = getBest(this.ev.id);
     this.live = this.meet ? meet.session : tournament.active ? tournament.live : null;
     this.stage = this.live?.eventStage(this.ev.id);
@@ -50,11 +56,18 @@ export class IntroScene {
     this.age += dt;
     this.phase += dt * 5; // your athlete warming up
     this.backBtn?.update(dt);
+    this.howBtn.update(dt);
     for (const e of this.game.input.consume(t + dt)) {
       // Short grace period so the tap that opened this card doesn't also skip it.
       if (this.age < 0.35) continue;
+      // The steps are up: any tap (or key) puts them away.
+      if (this.howOpen) {
+        if (e.type === 'down' || e.type === 'key') this.howOpen = false;
+        continue;
+      }
       if (e.type === 'key' && e.code === 'Escape') return flow.menu(this.game);
-      if (e.type === 'down' && this.backBtn?.tap(e.x, e.y)) return;
+      if (e.type === 'key' && e.code === 'KeyH') this.howOpen = true;
+      if (e.type === 'down' && (this.backBtn?.tap(e.x, e.y) || this.howBtn.tap(e.x, e.y))) return;
       if (!this.live && (e.type === 'down' || ['Space', 'Enter'].includes(e.code))) return flow.play(this.game, this.ev);
     }
     // A meet lost on this phone (meet/meet.js): back to the squad, rather than wait for a start that won't come.
@@ -95,10 +108,11 @@ export class IntroScene {
     text(ctx, `World Record  ${formatMark(this.ev, this.ev.record)}`, cx, 160, { size: 22 });
     text(ctx, `Your Best  ${formatMark(this.ev, this.best)}`, cx, 192, { size: 18, weight: 500, color: 'rgba(255,255,255,0.8)' });
 
-    const lines = (this.meet && this.ev.meetHowTo) || this.ev.howTo || [];
-    lines.forEach((l, i) => text(ctx, l, cx, 250 + i * 30, { size: 18, weight: 500, color: '#e6eefc', maxWidth: cw - 40 }));
+    drawStrip(ctx, this.ev.id, cx, 284);
     if (this.meet) text(ctx, this.meetLine(), cx, 222, { size: 17, weight: 700, color: '#ffd35c', maxWidth: cw - 200 });
 
+    Object.assign(this.howBtn, { x: cx - this.howBtn.w / 2, y: 366 });
+    this.howBtn.draw(ctx);
     const pulse = 0.6 + 0.4 * Math.sin(this.age * 5);
     text(ctx, this.prompt(), cx, 450, { size: 24, color: `rgba(255,255,255,${pulse})`, maxWidth: cw - 40 });
 
@@ -107,6 +121,22 @@ export class IntroScene {
       this.backBtn.draw(ctx);
     }
     this.drawAthlete(ctx, cx + cw / 2 - 80, 186);
+    if (this.howOpen) this.drawHowTo(ctx, view, cx, cw);
+  }
+
+  /** The event's steps over the card. */
+  drawHowTo(ctx, view, cx, cw) {
+    ctx.fillStyle = 'rgba(8,14,28,0.7)';
+    ctx.fillRect(0, 0, view.w, view.h);
+    const rowH = 54;
+    const h = stepsHeight(this.ev.id, rowH) + 112;
+    const y = Math.max(16, (view.h - h) / 2);
+    roundRect(ctx, cx - cw / 2, y, cw, h, 22);
+    ctx.fillStyle = '#1d3a66';
+    ctx.fill();
+    text(ctx, `HOW TO PLAY · ${this.ev.name.toUpperCase()}`, cx, y + 26, { size: 20, color: '#ffb400', maxWidth: cw - 40 });
+    drawSteps(ctx, this.ev.id, cx - cw / 2 + 10, y + 46, cw - 20, rowH);
+    text(ctx, 'Tap to close', cx, y + h - 14, { size: 14, weight: 600, color: 'rgba(255,255,255,0.6)' });
   }
 
   /** A meet: your heat and who's in it (the relay: your leg). */

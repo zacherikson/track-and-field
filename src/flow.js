@@ -8,6 +8,7 @@ import { IntroScene } from './scenes/introScene.js';
 import { ResultScene } from './scenes/resultScene.js';
 import { LeaderboardScene } from './scenes/leaderboardScene.js';
 import { ProfileScene } from './scenes/profileScene.js';
+import { TutorialScene } from './scenes/tutorialScene.js';
 import { LobbyScene } from './scenes/lobbyScene.js';
 import { StandingsScene } from './tournament/standingsScene.js';
 import { MeetScene } from './meet/meetScene.js';
@@ -73,6 +74,8 @@ export const flow = {
     tournament.end(); // a Race from the board is a normal race
     game.setScene(new LeaderboardScene(board));
   },
+  // How to play (the Play tab's ❓): a tab per event, `id` open (or the last one looked at).
+  tutorial: (game, id = null) => game.setScene(new TutorialScene(id)),
   // Your profile; Back returns to the home screen's `tab`.
   profile: (game, tab = 'play') => game.setScene(new ProfileScene(null, tab)),
   // Live: the waiting room for an event or the tournament (`kind`), then play with everyone in it (online/live.js).

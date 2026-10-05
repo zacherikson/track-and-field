@@ -117,6 +117,17 @@ Ghost toggle) and **⭐ Special Events** (the events that aren't part of the fiv
 Squad tab has ⚔ Practice: live events with just your squad (see Squads).
 ‹ Back (or Esc) goes back a step, and Menu after a race comes back to the
 page you raced from.
+
+**❓ How to play** (top of the Play tab) has a page per event, the five and
+the special events: each step is the control as it looks on the track (the
+green target, the orange pads, HOLD, LET GO, 1 2 3, PASS / TAKE…) and one
+line, with the keyboard keys under them and **Practice ›** to go and try it
+(Training for the five). The steps live in
+[`src/scenes/howTo.js`](src/scenes/howTo.js). An event's card, before you
+play, no longer lists the rules: just its controls in the order you use them
+(Run › Lean, Run › Aim › Throw…) and a ❓ How to play button that opens that
+event's steps over the card (any tap closes them; in live play the countdown
+carries on underneath). H on a keyboard opens them too.
 Keyboard: 1 / 2 / 3 or Q / E change tab, Esc goes back to Play.
 
 ## 4×100m relay
@@ -439,6 +450,8 @@ src/scenes/homeScene.js         the home screen: Athlete | Play | Squad tabs, sw
 src/scenes/home/                its panels: athletePanel.js (pick your athlete),
                                 playPanel.js (the events, tournament and settings), squadPanel.js (your squad, Practice)
 src/scenes/leaderboardScene.js  online leaderboards, a tab per event, with Race buttons
+src/scenes/tutorialScene.js     How to play: a tab per event with its steps, and Practice
+src/scenes/howTo.js             each event's steps and controls strip, and their icons (drawn with the game's pads)
 src/scenes/profileScene.js      your username (unique, saved in Firebase) and Google sign-in
 src/scenes/lobbyScene.js        the live waiting room (any event, or the tournament)
 src/meet/             squad meets (docs/meets.md): the rules shared with the meet server (rules, scoring,

@@ -25,7 +25,7 @@ let lastList = null;
 /**
  * The home screen's middle tab: where you play. Two big buttons, vs Computer
  * and Live, over your athlete warming up on the track; each opens its list.
- * Tuning (the owner only, storage.js canTune), Leaderboard and Profile along the top.
+ * Tuning (the owner only, storage.js canTune), Leaderboard, How to play and Profile along the top.
  *
  * vs Computer is four big buttons in a grid, each opening its own page:
  * - Amateur and Pro, a mini campaign each: six cards, the five events then the
@@ -135,6 +135,7 @@ export class PlayPanel {
     this.onShow();
     this.tuneButton = canTune() ? new Button({ label: '⚙ Tuning', w: 132, h: 44, color: PLAIN, onTap: () => flow.tuning(this.game) }) : null;
     this.onlineButton = new Button({ label: '📊 Leaderboard', w: 196, h: 44, color: PLAIN, onTap: () => flow.leaderboard(this.game) });
+    this.helpButton = new Button({ label: '❓ How to play', w: 180, h: 44, color: PLAIN, onTap: () => flow.tutorial(this.game) });
     // Your profile (username for the online leaderboard), top right.
     this.profileButton = new Button({ label: `👤 ${getPlayerName()}`, w: 190, h: 44, color: PLAIN, onTap: () => flow.profile(this.game) });
     this.fsButton = document.fullscreenEnabled ? new Button({ label: '⛶', w: 48, h: 44, color: PLAIN, onTap: () => toggleFullscreen() }) : null;
@@ -301,7 +302,11 @@ export class PlayPanel {
     this.backBtn.x = 14 + view.safe.l;
     if (this.fsButton) this.fsButton.x = view.w - 48 - 14 - view.safe.r;
     this.profileButton.x = (this.fsButton ? this.fsButton.x - 10 : view.w - 14 - view.safe.r) - this.profileButton.w;
-    for (const b of [this.tuneButton, this.onlineButton, this.backBtn, this.fsButton, this.profileButton]) if (b) b.y = top;
+    // How to play, next to the Leaderboard: just ❓ where the words won't fit.
+    const helpX = this.onlineButton.x + this.onlineButton.w + 10;
+    const roomy = helpX + 180 + 10 <= this.profileButton.x;
+    Object.assign(this.helpButton, { x: helpX, w: roomy ? 180 : 48, label: roomy ? '❓ How to play' : '❓' });
+    for (const b of [this.tuneButton, this.onlineButton, this.helpButton, this.backBtn, this.fsButton, this.profileButton]) if (b) b.y = top;
 
     // The two big buttons, side by side.
     const bigs = [this.offlineBig, this.liveBig];
@@ -361,7 +366,7 @@ export class PlayPanel {
     if (this.list === 'offline') return [this.backBtn, ...this.gridButtons];
     if (this.list === 'live') return [this.backBtn, ...this.liveButtons];
     if (this.list === 'special') return [this.backBtn, ...this.specialButtons, ...this.rivalButtons];
-    return [this.fsButton, this.tuneButton, this.onlineButton, this.profileButton, this.offlineBig, this.liveBig].filter(Boolean);
+    return [this.fsButton, this.tuneButton, this.onlineButton, this.helpButton, this.profileButton, this.offlineBig, this.liveBig].filter(Boolean);
   }
 
   /** `events`: this tab's taps and keys (the home screen has sorted out swipes). */
@@ -399,7 +404,7 @@ export class PlayPanel {
 
   renderButtons(ctx, view) {
     text(ctx, 'TRACK ROYALE', view.w / 2, 88, { size: 44, color: '#ffb400', shadow: true });
-    for (const b of [this.fsButton, this.tuneButton, this.onlineButton, this.profileButton, this.offlineBig, this.liveBig]) b?.draw(ctx);
+    for (const b of [this.fsButton, this.tuneButton, this.onlineButton, this.helpButton, this.profileButton, this.offlineBig, this.liveBig]) b?.draw(ctx);
 
     // Your athlete, warming up on the track.
     const top = this.trackTop;

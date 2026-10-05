@@ -35,7 +35,8 @@ const FIG_H = CONFIG.figure.height;
  *   strides stop and you carry your speed.
  * - Press and HOLD both: the javelin is drawn back and its tip rises (sparks
  *   gather at its tail) while you keep running (crossover steps). LET GO to
- *   throw: block, arm over the top, fold forward and drop onto your hands.
+ *   throw: block, arm over the top, fold forward over the front leg. You stop
+ *   dead where you let go, as in the original: no running on past the line.
  * - Too early and you waste the gap to the line; reach the line still holding,
  *   or let go past it: FOUL.
  * - The camera follows the javelin up over the stands and back down until it
@@ -198,7 +199,10 @@ export class Javelin {
     const vy = sp * Math.sin(th);
     this.shot = { t0: t, x0: r.x, v: r.v, deg, range, foul: r.x > 0, vx, vy, T: range / vx, outT: t + cfg.throwTime };
     this.stats.topSpeed = Math.max(this.stats.topSpeed, r.v);
-    r.finished = true; // brake at the line
+    // Stop dead where you let go (as in the original): the throw is a block,
+    // not a run on past the line, which would be a foul.
+    r.v = 0;
+    r.finished = true;
     for (let i = 0; i < 18; i++) this.spark(t, 1);
     navigator.vibrate?.(25);
     this.setState('throw');
@@ -402,7 +406,7 @@ export class Javelin {
       case 'overrun':
         return r.v > 2 ? { ...run(), arms: J.withdrawArms } : lerpPose({ ...run(), arms: J.withdrawArms }, POSES.stand, 1 - r.v / 2);
       default: {
-        // Let go: block, arm over the top, fold forward, down onto the hands, get up.
+        // Let go: block, arm over the top, fold forward over the front leg, straighten up. All on the spot.
         const s = this.shot;
         if (!s) return POSES.stand;
         const age = now - s.t0;
@@ -413,9 +417,8 @@ export class Javelin {
           [T * 0.45, J.brace],
           [T, J.release],
           [T + 0.16, J.follow],
-          [T + 0.4, J.lunge],
-          [T + 1.3, J.lunge],
-          [T + 1.8, { ...POSES.stand, hipX: J.lunge.hipX }],
+          [T + 0.6, J.follow],
+          [T + 1.1, { ...POSES.stand, hipX: J.follow.hipX }],
         ], age);
       }
     }

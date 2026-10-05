@@ -14,7 +14,7 @@ export class VaultRenderer extends RunwayRenderer {
   constructor(cfg, venue = venueFor()) {
     super(cfg.runway, { from: 0, to: 0 }, cfg.runwayZones, venue);
     this.cfg = cfg;
-    this.bar = null; // crossbar height (m): your best so far, or null
+    this.bar = null; // crossbar height (m), or null: the vault moves it (rising with you, stopping where you go over)
     this.lastHeight = null; // marker on the upright for the last vault (m)
     this.record = 6.95;
   }
@@ -122,12 +122,24 @@ export class VaultRenderer extends RunwayRenderer {
     if (this.bar != null) {
       const a = this.point(camera, view, this.cfg.uprightX, zF, this.bar);
       const b = this.point(camera, view, this.cfg.uprightX, zN, this.bar);
-      ctx.strokeStyle = '#fff';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(a.x, a.y);
-      ctx.lineTo(b.x, b.y);
-      ctx.stroke();
+      // Striped red and white with a dark edge, so it reads against the sky (seen end-on it's short).
+      const line = (color, width, dash = []) => {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = width;
+        ctx.setLineDash(dash);
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.stroke();
+      };
+      const stripe = Math.hypot(b.x - a.x, b.y - a.y) / 6;
+      ctx.save();
+      ctx.lineCap = 'round';
+      line('rgba(10,20,40,0.6)', 8);
+      ctx.lineCap = 'butt';
+      line('#fff', 5);
+      line('#e8281e', 5, [stripe, stripe]);
+      ctx.restore();
     }
   }
 

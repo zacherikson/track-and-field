@@ -15,7 +15,9 @@ import { GhostRun, GHOST_VERSION, MAX_EVENTS } from './ghost.js';
  * Their inputs arrive a little after they happen, so the replay is always a
  * moment behind. To show them where they really are now, the drawing carries
  * on at their current speed from the last step it knows (`dx`), and eases
- * back when the next update lands, so they don't jump.
+ * back when the next update lands, so they don't jump. Their legs carry on
+ * with it (`dphase`: the strides that distance takes), or they'd stop between
+ * updates and jump on when one lands.
  */
 const MAX_AHEAD = 0.75; // s: the furthest ahead of the known replay the drawing guesses
 const EASE = 8; // per s: how quickly the drawing settles onto a correction
@@ -30,6 +32,7 @@ export class LiveRun {
     this.heardAt = null; // this phone's clock (ms) at their last update
     this.shownX = null;
     this.dx = 0;
+    this.dphase = 0;
   }
 
   get done() {
@@ -69,6 +72,7 @@ export class LiveRun {
     this.shownX = this.shownX == null ? guess : this.shownX + r.v * dt;
     this.shownX += (guess - this.shownX) * (1 - Math.exp(-EASE * dt));
     this.dx = this.shownX - r.x;
+    this.dphase = (this.dx / (r.p.strideBase + r.p.stridePerMps * r.v)) * Math.PI * 2; // as Runner.update turns distance into stride phase
   }
 }
 

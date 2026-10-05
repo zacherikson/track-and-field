@@ -751,12 +751,13 @@ export class LaneRace {
     // Racing. A frame-by-frame ghost (or live runner) shows what it recorded.
     if (a.frame) return a.frame.pose;
     // Until an athlete reacts to the gun they hold the set position.
-    const d = r.x - r.startX; // meters out of the blocks
+    // (A live runner is drawn a little ahead of their replay, legs and all: liveRun.js.)
+    const d = r.x + (a.live?.dx ?? 0) - r.startX; // meters out of the blocks
     if (d <= 0 && r.v === 0 && !r.finished) return POSES.set;
     const amp = clamp(r.v / 11, 0.15, 1); // knee lift, back-kick and arm swing grow with speed
     // Drive phase: out of the blocks low and pitched forward, rising to upright.
     const drive = Math.pow(clamp(1 - d / this.cfg.driveDistance, 0, 1), 1.5);
-    const run = runPose(r.phase, amp, drive);
+    const run = runPose(r.phase + (a.live?.dphase ?? 0), amp, drive);
     if (r.mode === 'lean') return leanPose(run, r.leanAmount);
     // Explode out of the blocks: snap from set into the launch pose (ease-out:
     // fastest at the gun), then flow from the launch into the drive run.

@@ -4,6 +4,13 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Smooth legs on the other runners, live
+- In a live 100m (and a squad meet's) the other runners were drawn a little
+  ahead of their replay, so they'd be where they really are, but their legs
+  stayed with the replay: still between updates (84% of frames), then a jump
+  of up to a quarter stride when one landed. Their legs now carry on with
+  them (src/online/liveRun.js `dphase`), moving every frame.
+
 ## Tuning: harder to mash, a closer Pro field
 - `runner.coastDecel` 4.0 → 4.5 m/s² and `sprint100.targets.missSpeedLoss`
   1.7 → 2.1 m/s: falling behind the pace and wrong-side taps both cost more.

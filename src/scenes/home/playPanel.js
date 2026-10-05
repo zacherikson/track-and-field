@@ -23,20 +23,20 @@ const PULL_EVERY = 60000; // ms
 let lastList = null;
 
 /**
- * The home screen's middle tab: where you play. Three big buttons, vs Computer,
- * Live and Special Events, over your athlete warming up on the track; each opens its list.
+ * The home screen's middle tab: where you play. Two big buttons, vs Computer
+ * and Live, over your athlete warming up on the track; each opens its list.
  * Tuning (the owner only, storage.js canTune), Leaderboard and Profile along the top.
  *
- * vs Computer is three rows of cards, the five events then the tournament:
- * - Amateur and Pro, a mini campaign each: win an event (in any order) and its
- *   card is stamped BEATEN!; beat all five and the tournament opens; win that too.
- *   Pro stays locked until all of Amateur (tournament too) is beaten.
- * - Training: play anything on your own, no rivals (your ghost if GHOST is on), nothing ticked off.
- *   Campaigns never have a ghost.
+ * vs Computer is four big buttons in a grid, each opening its own page:
+ * - Amateur and Pro, a mini campaign each: six cards, the five events then the
+ *   tournament. Win an event (in any order) and its card is stamped BEATEN!;
+ *   beat all five and the tournament opens; win that too. Pro stays locked
+ *   until all of Amateur (tournament too) is beaten.
+ * - Training: the same six cards on your own, no rivals (your ghost if GHOST is on),
+ *   nothing ticked off. Campaigns never have a ghost.
+ * - Special Events: what doesn't fit the five (the 4x100m relay, the cycling
+ *   time trial), always against computer rivals at the level its RIVALS toggle says.
  * Live is the tournament and the five events against other people.
- * Special Events is what doesn't fit the five (the 4x100m relay, the cycling
- * time trial), always
- * against computer rivals at the level its RIVALS toggle says.
  */
 export class PlayPanel {
   constructor(home) {
@@ -45,14 +45,13 @@ export class PlayPanel {
   }
 
   enter() {
-    this.list = lastList; // null | 'offline' | 'live' | 'special'
+    this.list = lastList; // null | 'offline' (its grid) | 'amateur' | 'pro' | 'training' | 'special' | 'live'
     this.fade = 1; // 0 -> 1 as a list (or the buttons) come in
     this.phase = 0;
     this.demoX = 0;
     // The two big buttons.
     this.offlineBig = new BigButton({ label: '🤖 vs Computer', sub: 'Tournament + 5 events', color: '#e4572e', onTap: () => this.open('offline') });
     this.liveBig = new BigButton({ label: '🌐 Live', sub: 'Race people right now', color: '#1f8a58', onTap: () => this.open('live') });
-    this.specialBig = new BigButton({ label: '⭐ Special Events', sub: 'Relay · Time Trial', color: '#c2337a', onTap: () => this.open('special') });
     // Special Events: a card each, and who you race (remembered for the session).
     this.specialButtons = SPECIAL_EVENTS.map(
       (ev) =>
@@ -85,9 +84,10 @@ export class PlayPanel {
     this.styleRivals();
     this.warnT = 0; // a locked card tapped: why, over the track
     this.backBtn = new Button({ label: '‹ Back', w: 120, h: 44, size: 20, color: PLAIN, onTap: () => this.back() });
-    // vs Computer: a row of cards per section, the five events then the tournament.
+    // vs Computer: a page of cards per section, the five events then the tournament.
     this.sections = SECTIONS.map((spec) => {
       const sec = { ...spec };
+      sec.key = spec.level ?? 'training';
       sec.tiles = [
         ...EVENTS.map(
           (ev) =>
@@ -110,6 +110,11 @@ export class PlayPanel {
     this.training = this.sections.find((sec) => !sec.level);
     this.tourButton = this.training.tiles.at(-1);
     this.buttons = this.training.tiles.slice(0, -1);
+    // vs Computer's grid: a big button for each section, and Special Events.
+    this.gridButtons = [
+      ...this.sections.map((sec) => Object.assign(new BigButton({ label: sec.name, sub: '', color: sec.color, onTap: () => this.openSection(sec) }), { key: sec.key })),
+      Object.assign(new BigButton({ label: '⭐ Special Events', sub: 'Relay · Time Trial', color: '#c2337a', onTap: () => this.open('special') }), { key: 'special' }),
+    ];
     this.styleSections(takeFreshBeaten());
     // Live: the same, against other people (a waiting room first, online/live.js).
     this.liveButtons = [
@@ -161,6 +166,20 @@ export class PlayPanel {
     this.warnT = 0;
   }
 
+  /** A section's page from the grid (Pro: once all of Amateur is beaten). */
+  openSection(sec) {
+    if (sec.locked) {
+      const lock = this.lockOf(sec, sec.tiles[0].id);
+      return this.warn(lock.title, lock.detail);
+    }
+    this.open(sec.key);
+  }
+
+  /** The vs Computer section whose page is open, or null. */
+  get section() {
+    return this.sections.find((sec) => sec.key === this.list) ?? null;
+  }
+
   /** A section's tournament card: Training's, or a campaign's once its five events are beaten. */
   campaignTournament(sec) {
     if (this.refuse(sec, 'tournament')) return;
@@ -177,7 +196,8 @@ export class PlayPanel {
       const prev = this.sections.find((s) => s.level === sec.after);
       const beaten = getBeaten(prev.level);
       const left = prev.tiles.filter((t) => !beaten[t.id]);
-      if (left.length) return { title: `🔒 ${titleCase(sec.title)} is locked`, detail: `Beat the rest of ${titleCase(prev.title)} first: ${listOf(left)}.` };
+      const rest = left.length > 3 ? `${left.length} cards to go` : listOf(left); // a long list won't fit the card
+      if (left.length) return { title: `🔒 ${titleCase(sec.title)} is locked`, detail: `Beat the rest of ${titleCase(prev.title)} first: ${rest}.` };
     }
     if (sec.level && id === 'tournament') {
       const beaten = getBeaten(sec.level);
@@ -201,7 +221,7 @@ export class PlayPanel {
     this.warnT = detail ? 5 : 4;
   }
 
-  /** Opens a list: 'offline' (vs Computer), 'live' or 'special'. */
+  /** Opens a list: 'offline' (vs Computer's grid), one of its pages ('amateur', 'pro', 'training', 'special'), or 'live'. */
   open(list) {
     this.list = lastList = list;
     this.fade = 0;
@@ -211,10 +231,11 @@ export class PlayPanel {
     this.relayout();
   }
 
-  /** Back from a list to the big buttons. True if there was a list to leave (Esc). */
+  /** Back a step: from a vs Computer page to its grid, from a list to the big buttons. True if there was a list to leave (Esc). */
   back() {
     if (!this.list) return false;
-    this.list = lastList = null;
+    this.list = lastList = this.list === 'offline' || this.list === 'live' ? null : 'offline';
+    this.warnT = 0;
     this.fade = 0;
     this.relayout();
     return true;
@@ -255,7 +276,14 @@ export class PlayPanel {
     }
     const done = (level) => this.sections.find((sec) => sec.level === level).done;
     const pro = this.sections.find((sec) => sec.level === 'pro');
-    this.offlineBig.sub = `Amateur ${done('amateur')}/6 · Pro ${pro.locked ? '🔒' : `${done('pro')}/6`} · Training`;
+    this.offlineBig.sub = `Amateur ${done('amateur')}/6 · Pro ${pro.locked ? '🔒' : `${done('pro')}/6`} · Training · Special`;
+    for (const b of this.gridButtons) {
+      const sec = this.sections.find((x) => x.key === b.key);
+      if (!sec) continue;
+      const complete = sec.level && sec.done === sec.tiles.length;
+      b.sub = !sec.level ? 'Just you (and your ghost)' : sec.locked ? `🔒 Beat ${titleCase(sec.after)} first` : complete ? '★ Complete' : `${sec.done} / ${sec.tiles.length} beaten`;
+      b.color = sec.locked ? 'rgba(123,47,191,0.45)' : sec.color;
+    }
   }
 
   /** Training's tournament card: your best total. */
@@ -283,11 +311,15 @@ export class PlayPanel {
     this.profileButton.x = (this.fsButton ? this.fsButton.x - 10 : view.w - 14 - view.safe.r) - this.profileButton.w;
     for (const b of [this.tuneButton, this.onlineButton, this.backBtn, this.fsButton, this.profileButton]) if (b) b.y = top;
 
-    // The three big buttons, side by side.
-    const bigs = [this.offlineBig, this.liveBig, this.specialBig];
+    // The two big buttons, side by side.
+    const bigs = [this.offlineBig, this.liveBig];
     const bigGap = 18;
-    const bw = Math.min(300, (view.w - margin * 2 - bigGap * 2) / 3);
-    bigs.forEach((b, i) => Object.assign(b, { w: bw, h: 108, x: view.w / 2 - (bw * 3 + bigGap * 2) / 2 + i * (bw + bigGap), y: 150 }));
+    const bw = Math.min(340, (view.w - margin * 2 - bigGap) / 2);
+    bigs.forEach((b, i) => Object.assign(b, { w: bw, h: 108, x: view.w / 2 - (bw * 2 + bigGap) / 2 + i * (bw + bigGap), y: 150 }));
+
+    // vs Computer: its four big buttons, two by two.
+    const gw = Math.min(320, (view.w - margin * 2 - GRID_GAP) / 2);
+    this.gridButtons.forEach((b, i) => Object.assign(b, { w: gw, h: GRID_H, x: view.w / 2 - gw - GRID_GAP / 2 + (i % 2) * (gw + GRID_GAP), y: GRID_Y + Math.floor(i / 2) * (GRID_H + GRID_GAP) }));
 
     // Special Events: the cards in a row, the RIVALS toggle under them.
     const sw = Math.min(300, (view.w - margin * 2 - gapFor(this.specialButtons.length)) / this.specialButtons.length);
@@ -300,32 +332,36 @@ export class PlayPanel {
     const w = Math.min(260, (view.w - margin * 2 - gap * 2) / 3);
     const x0 = (view.w - (w * 3 + gap * 2)) / 2;
     this.liveButtons.forEach((b, i) => Object.assign(b, { w, h: 66, x: x0 + (i % 3) * (w + gap), y: LIST_Y + Math.floor(i / 3) * (66 + gap) }));
-    // vs Computer: a row of six cards per section, its name to the left.
+    // A vs Computer section's page: its six cards in a row (each section the same).
     const n = 6;
-    const labelW = Math.min(120, Math.floor((view.w - margin * 2) * 0.16));
-    const tw = Math.min(TILE_H + 30, (view.w - margin * 2 - labelW - 10 - (n - 1) * TILE_GAP) / n);
-    const rowW = labelW + 10 + n * tw + (n - 1) * TILE_GAP;
-    const rx = (view.w - rowW) / 2;
-    this.sections.forEach((sec, r) => {
-      sec.y = SECTION_Y + r * (TILE_H + 12);
-      sec.labelX = rx + labelW / 2;
-      sec.tiles.forEach((t, i) => Object.assign(t, { w: tw, h: TILE_H, x: rx + labelW + 10 + i * (tw + TILE_GAP), y: sec.y }));
-    });
-    // Its setting: GHOST (vs Computer, for Training).
-    Object.assign(this.ghostButton, { x: view.w / 2 - this.ghostButton.w / 2, y: OFFLINE_SETTINGS_Y });
+    const tw = Math.min(TILE_MAX, (view.w - margin * 2 - (n - 1) * TILE_GAP) / n);
+    this.tileH = Math.round(tw * 1.08);
+    const rx = (view.w - (n * tw + (n - 1) * TILE_GAP)) / 2;
+    for (const sec of this.sections) sec.tiles.forEach((t, i) => Object.assign(t, { w: tw, h: this.tileH, x: rx + i * (tw + TILE_GAP), y: TILES_Y }));
+    // Its setting: GHOST (Training).
+    Object.assign(this.ghostButton, { x: view.w / 2 - this.ghostButton.w / 2, y: TILES_Y + this.tileH + 34 });
 
-    // The track along the bottom: your athlete on the buttons screen, a runner under a list (Live has no settings row).
-    this.trackTop = !this.list ? 286 : this.list === 'live' ? SETTINGS_Y : this.settingsY + 44 + 14;
+    // The track along the bottom: your athlete on the buttons screen, a runner under a list.
+    const sec = this.section;
+    this.trackTop = !this.list
+      ? 286
+      : this.list === 'live'
+        ? SETTINGS_Y
+        : this.list === 'offline'
+          ? GRID_Y + 2 * GRID_H + GRID_GAP + 16
+          : sec?.level
+            ? TILES_Y + this.tileH + 22 // a campaign has no settings row
+            : this.settingsY + 44 + 14;
     this.trackBottom = bottom - 6;
-    // The warning line: over the track, or on vs Computer (its track is short) a card over the cards.
-    this.warnY = this.list === 'offline' ? POPUP_Y : this.trackTop + 28;
+    // The warning: over the track on Live; on vs Computer's pages (their track is short) a card over the buttons.
+    this.warnY = this.list === 'live' ? this.trackTop + 28 : this.list === 'offline' ? GRID_Y + GRID_H - 10 : TILES_Y + this.tileH / 2 - 22;
     this.view = view;
     this.bottom = bottom;
   }
 
   /** Top of the open list's settings row. */
   get settingsY() {
-    return this.list === 'live' ? SETTINGS_Y : this.list === 'special' ? SPECIAL_SETTINGS_Y : OFFLINE_SETTINGS_Y;
+    return this.list === 'live' ? SETTINGS_Y : this.list === 'special' ? SPECIAL_SETTINGS_Y : this.ghostButton.y;
   }
 
   get tiles() {
@@ -333,10 +369,12 @@ export class PlayPanel {
   }
 
   get allButtons() {
-    if (this.list === 'offline') return [this.backBtn, ...this.tiles, this.ghostButton];
+    const sec = this.section;
+    if (sec) return [this.backBtn, ...sec.tiles, ...(sec.level ? [] : [this.ghostButton])];
+    if (this.list === 'offline') return [this.backBtn, ...this.gridButtons];
     if (this.list === 'live') return [this.backBtn, ...this.liveButtons];
     if (this.list === 'special') return [this.backBtn, ...this.specialButtons, ...this.rivalButtons];
-    return [this.fsButton, this.tuneButton, this.onlineButton, this.profileButton, this.offlineBig, this.liveBig, this.specialBig].filter(Boolean);
+    return [this.fsButton, this.tuneButton, this.onlineButton, this.profileButton, this.offlineBig, this.liveBig].filter(Boolean);
   }
 
   /** `events`: this tab's taps and keys (the home screen has sorted out swipes). */
@@ -374,7 +412,7 @@ export class PlayPanel {
 
   renderButtons(ctx, view) {
     text(ctx, 'TRACK ROYALE', view.w / 2, 88, { size: 44, color: '#ffb400', shadow: true });
-    for (const b of [this.fsButton, this.tuneButton, this.onlineButton, this.profileButton, this.offlineBig, this.liveBig, this.specialBig]) b?.draw(ctx);
+    for (const b of [this.fsButton, this.tuneButton, this.onlineButton, this.profileButton, this.offlineBig, this.liveBig]) b?.draw(ctx);
 
     // Your athlete, warming up on the track.
     const top = this.trackTop;
@@ -392,19 +430,26 @@ export class PlayPanel {
   }
 
   renderList(ctx, view) {
-    if (this.list === 'special') return this.renderSpecial(ctx, view);
-    const offline = this.list === 'offline';
     this.backBtn.draw(ctx);
-    text(ctx, offline ? 'VS COMPUTER' : 'LIVE', view.w / 2, 36, { size: 30, color: offline ? '#ffb400' : '#59cd90', shadow: true });
-    this.drawTrack(ctx, view, this.trackTop, this.trackBottom - this.trackTop, true);
-    if (offline) this.renderSections(ctx);
-    else this.liveButtons.forEach((b) => b.draw(ctx));
+    const sec = this.section;
+    if (this.list === 'special') this.renderSpecial(ctx, view);
+    else if (sec) this.renderSection(ctx, view, sec);
+    else {
+      const offline = this.list === 'offline';
+      text(ctx, offline ? 'VS COMPUTER' : 'LIVE', view.w / 2, 36, { size: 30, color: offline ? '#ffb400' : '#59cd90', shadow: true });
+      this.drawTrack(ctx, view, this.trackTop, this.trackBottom - this.trackTop, true);
+      (offline ? this.gridButtons : this.liveButtons).forEach((b) => b.draw(ctx));
+    }
+    this.drawWarning(ctx, view);
+  }
+
+  /** Clash Royale style: say what's missing (on vs Computer, on a card over the buttons; on Live, over the track). */
+  drawWarning(ctx, view) {
     if (this.warnT > 0) {
-      // Clash Royale style: say what's missing, right over the track.
       ctx.save();
       ctx.globalAlpha *= Math.min(1, this.warnT * 2);
       const pw = Math.min(view.w - 40, 640);
-      if (offline) {
+      if (this.list !== 'live') {
         roundRect(ctx, view.w / 2 - pw / 2, this.warnY - 32, pw, this.warnDetail ? 92 : 64, 16);
         ctx.fillStyle = 'rgba(10,18,36,0.94)';
         ctx.fill();
@@ -416,14 +461,10 @@ export class PlayPanel {
       if (this.warnDetail) text(ctx, this.warnDetail, view.w / 2, this.warnY + 32, { size: 16, weight: 600, color: 'rgba(255,255,255,0.85)', maxWidth: pw - 32 });
       ctx.restore();
     }
-    if (!offline) return;
-    text(ctx, 'TRAINING GHOST', this.ghostButton.x + this.ghostButton.w / 2, this.settingsY - 14, { size: 13, weight: 700, color: DIM });
-    this.ghostButton.draw(ctx);
   }
 
   /** Special Events: the cards, and who you race in them. */
   renderSpecial(ctx, view) {
-    this.backBtn.draw(ctx);
     text(ctx, 'SPECIAL EVENTS', view.w / 2, 36, { size: 30, color: '#ff8cc6', shadow: true });
     this.drawTrack(ctx, view, this.trackTop, this.trackBottom - this.trackTop, true);
     this.specialButtons.forEach((b) => b.draw(ctx));
@@ -432,16 +473,17 @@ export class PlayPanel {
     this.rivalButtons.forEach((b) => b.draw(ctx));
   }
 
-  /** vs Computer: each section's name and progress, then its cards. */
-  renderSections(ctx) {
-    for (const sec of this.sections) {
-      const cy = sec.y + TILE_H / 2;
-      const complete = sec.level && sec.done === sec.tiles.length;
-      text(ctx, sec.title, sec.labelX, cy - 10, { size: 20, weight: 900, color: sec.locked ? DIM : sec.label, shadow: true, maxWidth: 116 });
-      const sub = !sec.level ? 'Just you' : sec.locked ? `🔒 Beat ${titleCase(sec.after)}` : complete ? '★ Complete' : `${sec.done} / ${sec.tiles.length} beaten`;
-      text(ctx, sub, sec.labelX, cy + 14, { size: 13, weight: 700, color: complete ? '#ffd35c' : DIM, maxWidth: 116 });
-      sec.tiles.forEach((t) => t.draw(ctx));
-    }
+  /** A vs Computer section's page: its name and progress, its cards, and (Training) GHOST. */
+  renderSection(ctx, view, sec) {
+    text(ctx, sec.title, view.w / 2, 36, { size: 30, color: sec.label, shadow: true });
+    const complete = sec.level && sec.done === sec.tiles.length;
+    const sub = !sec.level ? 'Just you: no rivals, nothing ticked off' : complete ? '★ Complete' : `${sec.done} / ${sec.tiles.length} beaten`;
+    text(ctx, sub, view.w / 2, 66, { size: 15, weight: 700, color: complete ? '#ffd35c' : DIM });
+    this.drawTrack(ctx, view, this.trackTop, this.trackBottom - this.trackTop, true);
+    sec.tiles.forEach((t) => t.draw(ctx));
+    if (sec.level) return;
+    text(ctx, 'TRAINING GHOST', this.ghostButton.x + this.ghostButton.w / 2, this.settingsY - 14, { size: 13, weight: 700, color: DIM });
+    this.ghostButton.draw(ctx);
   }
 
   /** A strip of track; `runner`: with your 100m runner going along it. */
@@ -495,17 +537,18 @@ const SETTINGS_Y = 270; // the Live list's settings row
 const SPECIAL_Y = 104; // top of the Special Events cards
 const SPECIAL_SETTINGS_Y = 238; // the Special Events RIVALS row
 const gapFor = (n) => (n - 1) * 16; // between the Special Events cards
-// vs Computer: the sections (level null: Training), top to bottom.
+// vs Computer: the sections (level null: Training), in grid order (Special Events comes after).
 const SECTIONS = [
-  { level: 'amateur', title: 'AMATEUR', color: '#e4352a', label: '#ff7a5c' },
-  { level: 'pro', title: 'PRO', color: '#7b2fbf', label: '#c08cff', after: 'amateur' }, // locked until all of Amateur is beaten
-  { level: null, title: 'TRAINING', color: '#2d6fa8', label: '#7cc4ff' },
+  { level: 'amateur', title: 'AMATEUR', name: '🥉 Amateur', color: '#e4352a', label: '#ff7a5c' },
+  { level: 'pro', title: 'PRO', name: '🥇 Pro', color: '#7b2fbf', label: '#c08cff', after: 'amateur' }, // locked until all of Amateur is beaten
+  { level: null, title: 'TRAINING', name: '🎯 Training', color: '#2d6fa8', label: '#7cc4ff' },
 ];
-const SECTION_Y = 66; // top of the first row of cards
-const TILE_H = 82;
-const TILE_GAP = 8;
-const OFFLINE_SETTINGS_Y = SECTION_Y + 3 * (TILE_H + 12) + 16; // the vs Computer settings row
-const POPUP_Y = SECTION_Y + 1.5 * (TILE_H + 12) - 22; // vs Computer: the warning card's line
+const GRID_Y = 66; // top of vs Computer's grid
+const GRID_H = 92;
+const GRID_GAP = 14;
+const TILES_Y = 92; // top of a section page's cards
+const TILE_MAX = 132; // a card's width at most
+const TILE_GAP = 10;
 
 function toggleFullscreen() {
   if (document.fullscreenElement) {

@@ -106,20 +106,22 @@ body parts into an athlete's sprite sheet (see [src/athletes/sprites/](src/athle
 ## The home screen
 
 Like Clash Royale: three tabs along the bottom, **Athlete | Play | Squad**. Tap
-one or swipe sideways to slide between them. The game opens on **Play**: three
-big buttons, **🤖 vs Computer**, **🌐 Live** and **⭐ Special Events**, over your
-athlete warming up on the track (tap them to change who it is). vs Computer and
-Live open the tournament and the five events (vs Computer with its Training
-Ghost toggle). Special
-Events opens the events that aren't part of the five (the 4×100m relay and the
-time trial), with a RIVALS toggle, Amateur or Pro. The Squad tab has ⚔ Practice:
-live events with just your squad (see Squads). ‹ Back (or Esc) returns to the
-buttons, and Menu after a race comes back to the list you raced from.
+one or swipe sideways to slide between them. The game opens on **Play**: two
+big buttons, **🤖 vs Computer** and **🌐 Live**, over your athlete warming up on
+the track (tap them to change who it is). Live opens the tournament and the
+five events. vs Computer opens four big buttons, two by two: **Amateur** and
+**Pro** (a campaign each: the five events and the tournament, Pro locked until
+Amateur is beaten), **Training** (the same on your own, with its Training Ghost
+toggle) and **⭐ Special Events** (the events that aren't part of the five, the
+4×100m relay and the time trial, with a RIVALS toggle, Amateur or Pro). The
+Squad tab has ⚔ Practice: live events with just your squad (see Squads).
+‹ Back (or Esc) goes back a step, and Menu after a race comes back to the
+page you raced from.
 Keyboard: 1 / 2 / 3 or Q / E change tab, Esc goes back to Play.
 
 ## 4×100m relay
 
-Under **Special Events**. Six teams of four on one long straight, in their
+Under vs Computer → **Special Events**. Six teams of four on one long straight, in their
 captain's kit; yours is captained by your athlete, who anchors. You run every leg with
 the 100m's green targets.
 
@@ -152,7 +154,7 @@ shows what a change does to team times and exchange grades.
 
 ## Time trial
 
-Under **Special Events**: 620 m of hilly road on a bike, against the clock,
+Under vs Computer → **Special Events**: 620 m of hilly road on a bike, against the clock,
 with your five rivals riding it alongside you as see-through ghosts. A flat
 start, an 8% climb, an 11% descent, a flat and a short kick to the line,
 drawn side on with the hills exaggerated so you can see them coming (the
@@ -315,7 +317,7 @@ Firebase console resets everyone's bests on it. Marks are kept to the
 hundredth, as they're shown (`roundMark` in `registry.js`), and tournament
 scores in whole points.
 
-Every attempt is also recorded. Turn **GHOST** on in the vs Computer list (it starts off)
+Every attempt is also recorded. Turn **GHOST** on under vs Computer → Training (it starts off)
 and your best one on the phone comes back as a see-through **ghost** ("Your
 best"): in the lane next to you in the 100m and hurdles, and on your runway,
 starting when your attempt starts, in the long jump, pole vault and javelin. In

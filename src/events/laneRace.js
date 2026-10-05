@@ -165,10 +165,13 @@ export class LaneRace {
 
   /** Your runner so far, for the others (the 100m: the same data as its ghost, plus how far it's got), and your result once you have it. */
   sendLive() {
+    // All sent once you're done. (Sending it again every step, at once, ran past
+    // the server's message limit, which then dropped the next event's `ready`.)
+    if (this.sentResult) return;
     const p = this.player;
     const done = p.mark != null || p.status !== 'ok';
     if (this.recorder) this.live.send({ run: this.recorder.data(null), n: this.stepN, done }, done);
-    if (done && !this.sentResult) {
+    if (done) {
       this.sentResult = true;
       this.stream?.pump(true);
       this.live.result(this.stage, p.mark != null ? { mark: p.mark } : { status: 'dnf' });

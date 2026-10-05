@@ -93,13 +93,21 @@ export class Hurdles110 extends LaneRace {
     return [mask];
   }
 
-  /** The ghost knocks down the hurdles its recording did, in its own lane (a live runner stumbles on from it as you hear). */
+  /**
+   * The ghost knocks down the hurdles its recording did, in its own lane. A live
+   * runner drawn now (followLive) trips there: from when their frame says they
+   * did (at takeoff, so the catch is at the bar), their hop cut short as yours is.
+   */
   onTraceFrame(a, f, rt) {
     const mask = f.pa[0];
-    this.positions.forEach((_, i) => {
+    this.positions.forEach((hx, i) => {
       if (!(mask & (1 << i)) || a.hurdles.knocked.has(i)) return;
       a.hurdles.knocked.set(i, this.goT + rt);
-      if (a.live) a.hurdles.tripT = this.game.time;
+      if (!a.live) return;
+      const h = a.hurdles;
+      h.tripT = this.goT + (a.live.drawnT ?? rt); // the frame that first shows it: their takeoff
+      h.trips++;
+      if (h.hop?.i === i) Object.assign(h.hop, { trip: true, x1: hx + 0.2 }); // as HurdleRun.update ends a tripping hop
     });
   }
 

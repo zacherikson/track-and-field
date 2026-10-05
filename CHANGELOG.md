@@ -10,9 +10,13 @@ Gameplay and tuning changes, newest first. When you change a number in
   one). They're now carried on at their speed to where they are, stride by
   stride, and their hops worked out here from where they are, over the same
   hurdles (a hop is a place on the track: HurdleRun). Measured: 1.18 → 0.20 m
-  behind. The cost: a trip reaches your phone a moment late, so a tripping
-  runner seems to clear the hurdle, then it falls and they stumble just past
-  it. Their lean at the line comes from how far their frames lean.
+  behind. A trip is decided at takeoff, 2 m before the bar, so it reaches
+  your phone (~150 ms) while they're still going up: their stumble starts
+  from when their frame says they tripped and their hop ends at the bar, as
+  yours would. Tested with a forced trip on two phones: the catch at +0.05 m
+  from the bar (was +1.39 m), the stumble 13 ms behind theirs (was 142 ms),
+  and drawn within 0.25 m of where they really were all through it. Their
+  lean at the line comes from how far their frames lean.
 - In a squad meet's or a practice's relay, the legs run on other phones were
   drawn a moment behind (from their frames, `delay` ≈ 0.1–0.3 s: up to 3 m at
   full speed), unless an exchange of yours was placing them. They now carry on

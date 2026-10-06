@@ -66,7 +66,6 @@ export class Game {
   /** Measure the screen again next frame, even if the canvas looks the same size (the insets may have moved). */
   remeasure() {
     if (window.scrollX || window.scrollY) window.scrollTo(0, 0);
-    fitBody();
     this.forceMeasure = true;
   }
 
@@ -157,37 +156,3 @@ export class Game {
     text(ctx, 'Track Royale plays in landscape', cx, view.h / 2 + 68, { size: 13, weight: 500, color: 'rgba(255,255,255,0.7)' });
   }
 }
-
-/**
- * The page (and so the canvas) fills the screen: index.html makes the body
- * `position: fixed; inset: 0`. But iOS can lay a home-screen app out a status
- * bar short of the screen after a launch or a return (an empty band along the
- * bottom), and measuring the page only finds the same short size. So check it
- * against the window and, for the app on the home screen, the screen itself
- * (when the window is the screen's full width it's its full height too), and
- * size the body by hand only while it's short.
- */
-export function fitBody(body = document.body) {
-  const want = screenFit();
-  body.style.height = ''; // the page's own size first (not the one set here last time)
-  if (want.h - body.clientHeight > 1) body.style.height = `${want.h}px`;
-}
-
-/** The size the game should fill (CSS px), as the window and the screen have it. */
-export function screenFit(win = window) {
-  const vv = win.visualViewport;
-  const w = Math.max(win.innerWidth, vv?.width ?? 0);
-  let h = Math.max(win.innerHeight, vv?.height ?? 0);
-  const app = win.navigator.standalone || win.matchMedia?.('(display-mode: standalone), (display-mode: fullscreen)').matches;
-  const sc = win.screen;
-  if (app && sc?.width && sc?.height) {
-    const long = Math.max(sc.width, sc.height);
-    const shortSide = Math.min(sc.width, sc.height);
-    const [sw, sh] = w > h ? [long, shortSide] : [shortSide, long];
-    // The full width of the screen, but not its height: the status bar's worth iOS left off.
-    if (Math.abs(w - sw) <= 2 && h < sh && sh - h <= STATUS_BAR_MAX) h = sh;
-  }
-  return { w, h };
-}
-
-const STATUS_BAR_MAX = 100; // CSS px: the most a status bar takes (larger: a smaller window, as on an iPad, not the bug)

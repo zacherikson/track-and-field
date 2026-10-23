@@ -213,11 +213,11 @@ block, logged in CHANGELOG.md as usual):
 | Now | Meet |
 |---|---|
 | `READY_WAIT` 20 s: wait for the slowest phone to be ready | Gone: the server schedules |
-| `EVENT_LEAD` 22 s between tournament events | ~11 s (results 8, title 3), late hits during the results |
-| `ROUND_LEAD` 6 s between field rounds | 3 s |
+| `EVENT_LEAD` 11 s between tournament events | ~11 s (results 8, title 3), late hits during the results |
+| `ROUND_LEAD` 3 s between field rounds | 3 s |
 | `LIVE_WAIT` 12 s / relay `liveWait` 25 s after you finish | Race cutoff from the gun |
 | `FINISH_WAIT` 30 s after your last field attempt | Round cutoff |
-| `START_DELAY` 10 s waiting-room countdown | 5 s after the lock |
+| `START_DELAY` 36 s waiting-room countdown (30 s open, or until everyone taps I'm ready) | 5 s after the lock |
 
 **Field round cutoff.** Each round, everyone in the flight attempts at
 the same moment (as live field events already do). The round ends when every

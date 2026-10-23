@@ -17,9 +17,10 @@ export { MAX_PLAYERS, CLOSE_BEFORE };
  *
  * `kind` is an event id or 'tournament' (tournament.js TOURNAMENT_KIND).
  * Whoever is in a kind's waiting room plays together. When a second player
- * arrives the server sets a start time (`startAt`, server clock, ms) a few
- * seconds ahead; everyone starts then. CLOSE_BEFORE that the room closes: the
- * next player to arrive starts a new one.
+ * arrives the server sets a start time (`startAt`, server clock, ms) half a
+ * minute ahead (liveRules.js START_DELAY); everyone starts then, or sooner
+ * once every player has tapped I'm ready. CLOSE_BEFORE the start the room
+ * closes: the next player to arrive starts a new one.
  *
  * In the room each player has a DOC, { v, name, athlete, left, s, t0, run, n,
  * done, f, res, ready, b, h }, which they patch and the server passes on (as in
@@ -43,8 +44,8 @@ export { MAX_PLAYERS, CLOSE_BEFORE };
  */
 const SEND_EVERY = 100; // ms between updates during a stage
 const READY_WAIT = 20000; // ms after the first player is ready for a stage that it starts without the others
-const ROUND_LEAD = 6000; // ms from everyone finishing a field-event round to the next one starting (a look at the marks first)
-export const EVENT_LEAD = 22000; // ms from everyone finishing a tournament event to the next one's start (standings and late hits, then its title card)
+const ROUND_LEAD = 3000; // ms from everyone finishing a field-event round to the next one starting (a look at the marks first)
+export const EVENT_LEAD = 11000; // ms from everyone finishing a tournament event to the next one's start (standings and late hits, then its title card)
 const HANDOVER = 3000; // ms the waiting room's socket stays open after you go to the event, so the server has closed the room with you in it
 
 let clockConn = null; // the live socket whose clock is the server's (the waiting room's, then the room's)
@@ -61,7 +62,7 @@ const lobbyPath = (squad) => (squad ? `/squad/${encodeURIComponent(squad.key)}` 
 
 /**
  * The waiting room for one event, or a tournament (`kind`). `onChange(view)` gets
- * { room, players: [{ uid, name, athlete, me }], startAt, setLen, closed, uid } whenever it changes.
+ * { room, players: [{ uid, name, athlete, ready, me }], startAt, setLen, closed, uid } whenever it changes.
  * `who` = the athlete you play as: { athlete } (a character id). `squad` ({ key, name }): that
  * squad's Practice room instead of a public one.
  */
@@ -101,9 +102,14 @@ export class Lobby {
   view() {
     const d = this.data;
     const uid = this.conn?.uid ?? null;
-    const players = (d?.players ?? []).map((p) => ({ uid: p.uid, name: p.name, athlete: p.athlete || null, at: p.at, me: p.uid === uid }));
+    const players = (d?.players ?? []).map((p) => ({ uid: p.uid, name: p.name, athlete: p.athlete || null, at: p.at, ready: !!p.ready, me: p.uid === uid }));
     const closed = !!d?.closed || (d?.startAt != null && serverNow() > d.startAt - CLOSE_BEFORE);
     return { room: d?.room ?? null, players, startAt: d?.startAt ?? null, setLen: d?.setLen ?? null, closed, uid };
+  }
+
+  /** You're ready to play (`on` false takes it back). Once everyone is, the room starts without waiting out the clock. */
+  ready(on = true) {
+    this.conn?.send({ t: 'ready', on });
   }
 
   /** Stops listening. `leave` also takes you out of the room; otherwise (going to the event) the socket stays a moment, so the room closes with you in it. */

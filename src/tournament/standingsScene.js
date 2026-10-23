@@ -9,7 +9,7 @@ import { flow } from '../flow.js';
 import { serverNow } from '../online/live.js';
 import { ResultsPanel } from '../brawl/aftermath.js';
 
-const TITLE_CARD = 8000; // ms before a live tournament's next event starts that its title card comes up
+const TITLE_CARD = 7000; // ms before a live tournament's next event starts that its title card comes up (online/live.js EVENT_LEAD: standings, then 3 s of title, then the 4 s on the track)
 
 /**
  * Between tournament events: this event's results with the points each mark

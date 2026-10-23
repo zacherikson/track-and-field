@@ -4,6 +4,24 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Live: a half-minute waiting room with I'm ready, and less standing around between events
+- **The waiting room stays open 30 s** once a second player arrives (it was
+  4 s: `START_DELAY` 10 s minus the 6 s `CLOSE_BEFORE` hand-over), so friends
+  have time to get in. `liveRules.js`: new `OPEN_FOR` 30 s, and `START_DELAY`
+  10 s → 36 s (`OPEN_FOR` + `CLOSE_BEFORE`).
+- **I'm ready.** Once someone else is in, an I'm ready button (Enter / Space on
+  a keyboard) sits beside Leave; tap again to take it back. Each ready player
+  gets a ✓. When every player in the room is ready, the server
+  (`lobbyCore.js` `ready`) brings the start forward and everyone goes at once;
+  anyone not ready holds the room until the 30 s run out, and the one player
+  not ready leaving starts the rest. Squad Practice rooms get it too.
+- **Between events, half the wait.** `online/live.js` `EVENT_LEAD` 22 s → 11 s
+  from everyone finishing a tournament event to the next one's gun (standings
+  4 s, the title card 3 s, READY / GET SET 4 s: `TITLE_CARD` 8 s → 7 s), and
+  `ROUND_LEAD` 6 s → 3 s between field-event rounds.
+- Needs the meet server redeployed for the 30 s and I'm ready; until then the
+  game still works against the old server (the button just does nothing).
+
 ## Orange pads: a hold registers like a tap, and they blink as in the original
 - **Holding the orange pads works.** Only the instant a finger went down used
   to count, inside a narrow window, so a deliberate press-and-hold often did

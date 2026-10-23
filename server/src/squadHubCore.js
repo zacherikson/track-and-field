@@ -16,7 +16,7 @@ const STALE_MEET = 3 * 60 * 1000; // ms without word from the squad's meet befor
  * (someone left the lobby) is filled by the next squadmate to tap Meet.
  *
  * It also runs the squad's PRACTICE waiting rooms (lobbyCore.js: `join` /
- * `leave`), and tells every Squad tab here which are open (`rooms`).
+ * `leave` / `ready`), and tells every Squad tab here which are open (`rooms`).
  *
  * `io`: { now(), loadSquad() -> { name, members: { uid: name } } | null,
  *         place(squad) -> meet id | null (Matchmaker + Meet.addSquad),
@@ -76,6 +76,7 @@ export class SquadHubCore {
     if (msg.t === 'signup') return this.signup(peer, msg);
     if (msg.t === 'join') return this.practice.join(peer, { ...msg, name: peer.name });
     if (msg.t === 'leave') return this.practice.leave(peer);
+    if (msg.t === 'ready') return this.practice.ready(peer, msg.on !== false);
     if (msg.t === 'unsignup') {
       this.forming = this.forming.filter((x) => x.uid !== peer.uid);
       this.changed();

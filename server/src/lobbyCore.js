@@ -7,8 +7,9 @@ import { MAX_PLAYERS, START_DELAY, CLOSE_BEFORE } from '../../src/online/liveRul
  *
  * Whoever is in a kind's waiting room plays together. When a second player
  * arrives it gets a start (`startAt`, server ms) START_DELAY ahead and a GET
- * SET length; dropping back to one player calls it off. CLOSE_BEFORE the
- * start it closes: its players are handed to a Room (io.openRoom), which runs
+ * SET length; dropping back to one player calls it off. Once every player has
+ * tapped I'm ready (`ready`) the start comes forward to CLOSE_BEFORE from now,
+ * so it closes straight away. CLOSE_BEFORE the start it closes: its players are handed to a Room (io.openRoom), which runs
  * the play, and the next player to arrive starts a new waiting room.
  *
  * `io`: { now(), newId(), openRoom(id, info), changed() }: `changed` says the
@@ -18,7 +19,7 @@ export class LobbyCore {
   constructor(io, kinds) {
     this.io = io;
     this.kinds = kinds;
-    this.nodes = new Map(); // kind -> { room, players: Map(peer -> { uid, name, athlete, at }), startAt, setLen }
+    this.nodes = new Map(); // kind -> { room, players: Map(peer -> { uid, name, athlete, at, ready }), startAt, setLen }
     this.where = new Map(); // peer -> the kind it's waiting for
   }
 
@@ -38,7 +39,7 @@ export class LobbyCore {
       node = { room: this.io.newId(), players: new Map(), startAt: null, setLen: null };
       this.nodes.set(kind, node);
     }
-    node.players.set(peer, { uid: peer.uid, name: String(msg.name ?? peer.name ?? '?').slice(0, 16), athlete: String(msg.athlete ?? '').slice(0, 24), at: now });
+    node.players.set(peer, { uid: peer.uid, name: String(msg.name ?? peer.name ?? '?').slice(0, 16), athlete: String(msg.athlete ?? '').slice(0, 24), at: now, ready: false });
     this.where.set(peer, kind);
     this.restart(node, now);
     this.changed(kind);
@@ -57,18 +58,32 @@ export class LobbyCore {
     if (announce) this.changed(kind);
   }
 
+  /** `peer` says it's ready to play (`on` false takes it back). Everyone ready: the start comes forward. */
+  ready(peer, on = true) {
+    const node = this.nodes.get(this.where.get(peer));
+    const p = node?.players.get(peer);
+    if (!p) return;
+    p.ready = !!on;
+    this.restart(node, this.io.now());
+    this.send(node);
+  }
+
   remove(node, peer) {
     node.players.delete(peer);
     this.where.delete(peer);
   }
 
-  /** Two or more players: the start is set. Fewer: it's off. */
+  /** Two or more players: the start is set, and brought forward once they're all ready. Fewer: it's off. */
   restart(node, now) {
-    if (node.players.size < 2) node.startAt = node.setLen = null;
-    else if (node.startAt == null) {
+    if (node.players.size < 2) {
+      node.startAt = node.setLen = null;
+      return;
+    }
+    if (node.startAt == null) {
       node.startAt = Math.round(now + START_DELAY);
       node.setLen = 1.1 + Math.random() * 1.2; // GET SET lasts a random time, as offline
     }
+    if ([...node.players.values()].every((p) => p.ready)) node.startAt = Math.min(node.startAt, Math.round(now + CLOSE_BEFORE));
   }
 
   /** Closes the rooms whose start is near. */

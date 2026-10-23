@@ -55,6 +55,52 @@ test('lobby: closes CLOSE_BEFORE the start and hands its players to a Room; the 
   assert.deepEqual(c.last('waiting').players.map((p) => p.uid), ['c']);
 });
 
+test('lobby: the waiting room stays open 30 s after the second player arrives', () => {
+  const w = lobby();
+  w.core.join(peer('a'), { kind: 'sprint100' });
+  const b = peer('b');
+  w.core.join(b, { kind: 'sprint100' });
+  assert.equal(b.last('waiting').startAt - CLOSE_BEFORE - w.t, 30000);
+});
+
+test('lobby: once everyone taps ready it closes straight away; anyone not ready holds it', () => {
+  const w = lobby();
+  const [a, b, c] = ['a', 'b', 'c'].map(peer);
+  w.core.join(a, { kind: 'tournament' });
+  w.core.ready(a); // ready on your own: nothing to start yet
+  assert.equal(a.last('waiting').startAt, null);
+  w.core.join(b, { kind: 'tournament' });
+  const startAt = b.last('waiting').startAt;
+  assert.deepEqual(b.last('waiting').players.map((p) => p.ready), [true, false]);
+  w.core.join(c, { kind: 'tournament' });
+  w.core.ready(b);
+  w.t += 1000;
+  w.core.tick();
+  assert.equal(c.last('waiting').startAt, startAt, 'c is not ready: the clock runs on');
+  assert.equal(w.opened.length, 0);
+  // Taking it back, then ready again.
+  w.core.ready(c);
+  assert.equal(c.last('waiting').startAt, w.t + CLOSE_BEFORE);
+  w.core.tick();
+  assert.equal(w.opened.length, 1);
+  assert.equal(w.opened[0].info.startAt, w.t + CLOSE_BEFORE);
+  assert.equal(a.last('waiting').closed, true);
+});
+
+test('lobby: the one player not ready leaving starts the rest', () => {
+  const w = lobby();
+  const [a, b, c] = ['a', 'b', 'c'].map(peer);
+  for (const p of [a, b, c]) w.core.join(p, { kind: 'javelin' });
+  w.core.ready(a);
+  w.core.ready(b);
+  w.core.ready(c, false);
+  assert.equal(w.core.nodes.get('javelin').startAt, w.t + START_DELAY);
+  w.core.leave(c);
+  assert.equal(a.last('waiting').startAt, w.t + CLOSE_BEFORE);
+  w.core.tick();
+  assert.deepEqual(w.opened[0].info.players.map((p) => p.uid), ['a', 'b']);
+});
+
 test('lobby: a full room keeps its start; the next player gets a new room', () => {
   const w = lobby();
   const ps = Array.from({ length: MAX_PLAYERS + 1 }, (_, i) => peer(`p${i}`));

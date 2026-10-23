@@ -197,6 +197,7 @@ export class Lobby extends DurableObject {
       onMessage: (peer, msg) => {
         if (msg.t === 'join') this.core.join(peer, msg);
         else if (msg.t === 'leave') this.core.leave(peer);
+        else if (msg.t === 'ready') this.core.ready(peer, msg.on !== false);
       },
       onClose: (peer) => this.core.leave(peer),
     });

@@ -1,4 +1,6 @@
-import { Button, text, roundRect } from '../core/ui.js';
+import { Button, text, slab, chamfer, titlePlate, PAL } from '../core/ui.js';
+import { drawIcon } from '../core/icons.js';
+import { olympic } from '../render/posterScenery.js';
 import { CHARACTERS } from '../athletes/roster.js';
 import { eventById } from '../events/registry.js';
 import { Lobby, MAX_PLAYERS, CLOSE_BEFORE, serverNow } from '../online/live.js';
@@ -24,9 +26,9 @@ export class LobbyScene {
   }
 
   enter() {
-    this.backBtn = new Button({ label: 'Leave', w: 160, h: 50, color: 'rgba(255,255,255,0.18)', onTap: () => this.leave() });
-    this.retryBtn = new Button({ label: 'Try again', w: 180, h: 50, onTap: () => this.join() });
-    this.readyBtn = new Button({ label: 'I’m ready', w: 200, h: 50, color: '#2a9d5c', onTap: () => this.toggleReady() });
+    this.backBtn = new Button({ label: 'Leave', icon: 'back', w: 160, h: 54, color: PAL.ink2, lip: PAL.inkShade, onTap: () => this.leave() });
+    this.retryBtn = new Button({ label: 'Try again', w: 180, h: 54, color: PAL.orange, lip: PAL.orangeShade, onTap: () => this.join() });
+    this.readyBtn = new Button({ label: 'I’m ready', w: 200, h: 54, color: PAL.liveGreen, lip: PAL.liveShade, onTap: () => this.toggleReady() });
     this.view = null;
     this.age = 0;
     this.layout(this.game.view);
@@ -73,8 +75,8 @@ export class LobbyScene {
   layout(view) {
     // Leave on its own in the middle, or beside I'm ready.
     const pair = this.canReady();
-    Object.assign(this.backBtn, { x: pair ? view.w / 2 - 190 : view.w / 2 - 80, y: 440 });
-    Object.assign(this.readyBtn, { x: view.w / 2 - 10, y: 440 });
+    Object.assign(this.backBtn, { x: pair ? view.w / 2 - 190 : view.w / 2 - 80, y: 436 });
+    Object.assign(this.readyBtn, { x: view.w / 2 - 10, y: 436 });
     Object.assign(this.retryBtn, { x: view.w / 2 - 90, y: 300 });
   }
 
@@ -96,8 +98,11 @@ export class LobbyScene {
     }
     this.layout(this.game.view);
     const me0 = this.view?.players.find((p) => p.me);
-    this.readyBtn.label = me0?.ready ? 'Ready ✓' : 'I’m ready';
-    this.readyBtn.color = me0?.ready ? 'rgba(42,157,92,0.45)' : '#2a9d5c';
+    // Ready: gold with a check (tap again to take it back).
+    this.readyBtn.label = me0?.ready ? 'Ready' : 'I’m ready';
+    this.readyBtn.icon = me0?.ready ? 'check' : null;
+    this.readyBtn.color = me0?.ready ? PAL.gold : PAL.liveGreen;
+    this.readyBtn.lip = me0?.ready ? PAL.goldShade : PAL.liveShade;
     this.buttons().forEach((b) => b.update(dt));
     // The room has closed with you in it: to the event.
     const v = this.view;
@@ -111,24 +116,23 @@ export class LobbyScene {
   }
 
   render(ctx, view) {
-    ctx.fillStyle = '#12203a';
-    ctx.fillRect(0, 0, view.w, view.h);
-    text(ctx, `${this.squad ? '⚔ PRACTICE' : 'LIVE'} · ${this.title.toUpperCase()}`, view.w / 2, 40, { size: 28, color: '#ffb400', shadow: true });
-    if (this.squad) text(ctx, `${this.squad.name} only`, view.w / 2, 66, { size: 14, weight: 700, color: 'rgba(255,255,255,0.6)' });
+    // Live's venue: the stadium at night; the room on a cream card in front of it.
+    olympic(ctx, 0, 0, view.w, view.h, { trackH: 130, night: true });
+    titlePlate(ctx, view, `${this.squad ? 'PRACTICE' : 'LIVE'} · ${this.title.toUpperCase()}`, this.squad ? `${this.squad.name} only` : '', { face: PAL.gold, ink: PAL.ink });
     const w = Math.min(520, view.w - 40);
     const x0 = view.w / 2 - w / 2;
-    roundRect(ctx, x0, 80, w, 340, 16);
-    ctx.fillStyle = 'rgba(255,255,255,0.06)';
-    ctx.fill();
+    const top = 96;
+    const h = 326;
+    slab(ctx, x0, top, w, h, { face: PAL.cream, lip: PAL.creamShade, lipH: 6, c: 8 });
 
-    const line = (s, y, o = {}) => text(ctx, s, view.w / 2, y, { size: 18, weight: 500, color: 'rgba(255,255,255,0.8)', maxWidth: w - 30, ...o });
+    const line = (s, y, o = {}) => text(ctx, s, view.w / 2, y, { size: 19, font: 'body', weight: 600, color: PAL.muted, maxWidth: w - 30, ...o });
     if (this.state === 'error') {
-      line('Can’t reach the waiting room right now.', 240);
+      line('Can’t reach the waiting room right now.', 250);
       this.buttons().forEach((b) => b.draw(ctx));
       return;
     }
     if (this.state === 'joining' || !this.view) {
-      line(`Joining the waiting room${'.'.repeat(1 + (Math.floor(this.age * 3) % 3))}`, 250);
+      line(`Joining the waiting room${'.'.repeat(1 + (Math.floor(this.age * 3) % 3))}`, 258);
       return this.backBtn.draw(ctx);
     }
 
@@ -136,32 +140,36 @@ export class LobbyScene {
     const left = v.startAt == null ? null : Math.max(0, Math.ceil((v.startAt - CLOSE_BEFORE - serverNow()) / 1000));
     const readyN = v.players.filter((p) => p.ready).length;
     const allReady = v.players.length > 1 && readyN === v.players.length;
-    if (left == null) line(this.squad ? 'Waiting for a squadmate to join…' : 'Waiting for another player to join…', 118, { size: 20, color: '#fff' });
-    else if (allReady) line('Everyone’s ready!', 118, { size: 30, color: '#59cd90', weight: 800 });
-    else line(`Starts in ${left}`, 118, { size: 30, color: '#59cd90', weight: 800 });
+    const big = { size: 40, font: 'display', track: 2, color: PAL.liveShade };
+    if (left == null) line(this.squad ? 'Waiting for a squadmate to join…' : 'Waiting for another player to join…', top + 38, { size: 22, weight: 800, color: PAL.ink });
+    else if (allReady) line('EVERYONE’S READY!', top + 38, big);
+    else line(`STARTS IN ${left}`, top + 38, big);
     const sub = left == null ? `${v.players.length} of ${MAX_PLAYERS} players` : `${v.players.length} of ${MAX_PLAYERS} players · ${readyN} ready · starts when everyone is`;
-    line(sub, 150, { size: 15, color: 'rgba(255,255,255,0.55)' });
+    line(sub, top + 72, { size: 16 });
 
+    // The players, one row each (yours gold).
     v.players.forEach((p, i) => {
-      const y = 196 + i * 44;
-      if (p.me) {
-        roundRect(ctx, x0 + 16, y - 18, w - 32, 36, 10);
-        ctx.fillStyle = 'rgba(255,180,0,0.18)';
-        ctx.fill();
-      }
+      const y = top + 116 + i * 44;
+      const rx = x0 + 16;
+      const rw = w - 32;
+      ctx.fillStyle = p.me ? PAL.gold : i % 2 ? PAL.cream : '#EFE2C3';
+      chamfer(ctx, rx, y - 19, rw, 38, 4);
+      ctx.fill();
       const colors = (CHARACTERS.find((c) => c.id === p.athlete) ?? CHARACTERS[0]).colors;
       ctx.fillStyle = colors.shirt;
-      ctx.beginPath();
-      ctx.arc(x0 + 40, y, 8, 0, Math.PI * 2);
+      chamfer(ctx, rx + 12, y - 9, 18, 18, 3);
       ctx.fill();
-      text(ctx, p.me ? `${p.name} (you)` : p.name, x0 + 60, y, { size: 18, align: 'left', weight: p.me ? 800 : 600, maxWidth: w - 190 });
-      if (p.ready) text(ctx, '✓ Ready', x0 + w - 32, y, { size: 16, align: 'right', weight: 800, color: '#59cd90' });
+      text(ctx, p.me ? `${p.name} (you)` : p.name, rx + 42, y + 1, { size: 19, font: 'body', align: 'left', weight: p.me ? 800 : 700, color: PAL.ink, maxWidth: rw - 160 });
+      if (p.ready) {
+        text(ctx, 'READY', rx + rw - 14, y + 1, { size: 20, font: 'display', align: 'right', track: 1, color: p.me ? PAL.ink : PAL.liveShade });
+        drawIcon(ctx, 'check', rx + rw - 82, y, 20, p.me ? PAL.ink : PAL.liveShade);
+      }
     });
     // A gentle pulse while it's just you.
     if (v.players.length < 2) {
       const k = 0.5 + 0.5 * Math.sin(this.age * 3);
-      const tip = this.squad ? `Your squadmates see it on their Squad tab: they tap Join` : `Tell a friend to tap ${this.title} in the Online row`;
-      line(tip, 390, { size: 15, color: `rgba(255,255,255,${(0.35 + 0.3 * k).toFixed(2)})` });
+      const tip = this.squad ? `Your squadmates see it on their Squad tab: they tap Join` : `Tell a friend to tap ${this.title} in the Live row`;
+      line(tip, top + h - 34, { size: 16, color: `rgba(122,110,85,${(0.55 + 0.45 * k).toFixed(2)})` });
     }
     this.buttons().forEach((b) => b.draw(ctx));
   }

@@ -288,7 +288,7 @@ export class PlayPanel {
       const sec = this.sections.find((x) => x.key === b.key);
       if (!sec) continue;
       const complete = sec.level && sec.done === sec.tiles.length;
-      b.sub = !sec.level ? 'Just you (and your ghost)' : sec.locked ? `Beat ${titleCase(sec.after)} first` : complete ? '★ Complete' : `${sec.done} / ${sec.tiles.length} beaten`;
+      b.sub = !sec.level ? 'Just you (and your ghost)' : sec.locked ? `Beat ${titleCase(sec.after)} first` : complete ? 'Complete' : `${sec.done} / ${sec.tiles.length} beaten`;
       b.locked = sec.locked;
     }
   }
@@ -311,7 +311,7 @@ export class PlayPanel {
     this.backBtn.x = 14 + view.safe.l;
     if (this.fsButton) this.fsButton.x = view.w - 48 - 14 - view.safe.r;
     this.profileButton.x = (this.fsButton ? this.fsButton.x - 10 : view.w - 14 - view.safe.r) - this.profileButton.w;
-    // How to play, next to the Leaderboard: just ❓ where the words won't fit.
+    // How to play, next to the Leaderboard: just its icon where the words won't fit.
     const helpX = this.onlineButton.x + this.onlineButton.w + 8;
     const roomy = helpX + 172 + 10 <= this.profileButton.x;
     Object.assign(this.helpButton, { x: helpX, w: roomy ? 172 : 48, label: roomy ? 'How to play' : '' });
@@ -496,7 +496,7 @@ export class PlayPanel {
   /** A vs Computer section's page: its name, venue and progress, its cards, and (Training) GHOST. */
   renderSection(ctx, view, sec) {
     const complete = sec.level && sec.done === sec.tiles.length;
-    const status = !sec.level ? 'Just you: no rivals, nothing ticked off' : complete ? '★ Complete' : `${sec.done} / ${sec.tiles.length} beaten`;
+    const status = !sec.level ? 'Just you: no rivals, nothing ticked off' : complete ? 'Complete' : `${sec.done} / ${sec.tiles.length} beaten`;
     titlePlate(ctx, view, sec.title, `${VENUES[sec.key].name} · ${status}`);
     sec.tiles.forEach((t) => t.draw(ctx));
     if (sec.level) return;

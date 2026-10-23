@@ -1,4 +1,5 @@
-import { text, roundRect, FONT } from '../core/ui.js';
+import { text, roundRect, chamfer, FONT, FONT_DISPLAY, FONT_BODY, PAL } from '../core/ui.js';
+import { drawIcon as drawSymbol } from '../core/icons.js';
 import { GREEN, ORANGE, drawPad, drawNumberButton, drawX } from '../render/pads.js';
 
 /**
@@ -11,8 +12,8 @@ import { GREEN, ORANGE, drawPad, drawNumberButton, drawX } from '../render/pads.
  * Icons (drawIcon): 'tap' a green target, 'both' the two orange pads, 'hold'
  * them held, 'letgo' them let go, 'wrong' the red ✕, 'nums' the hurdles'
  * 1 2 3, 'blue' the relay's button (with `label`), 'spark' the pole's spark,
- * 'gears' the shifters, 'angle' the javelin's angle, or `badge` (any short
- * text, or an emoji) in a pill.
+ * 'gears' the shifters, 'angle' the javelin's angle, `badge` (a few
+ * characters: ×3) or `symbol` (a core/icons.js icon) on a small plate.
  */
 export const HOW_TO = {
   sprint100: {
@@ -35,7 +36,7 @@ export const HOW_TO = {
     ],
     steps: [
       { icon: 'nums', text: 'At GO and at every hurdle, three buttons appear: tap 1, 2, 3.' },
-      { badge: '⚡', text: 'The faster you clear a set, the faster you run to the next hurdle.' },
+      { symbol: 'star', text: 'The faster you clear a set, the faster you run to the next hurdle.' },
       { icon: 'wrong', text: 'A wrong number, or a set not done in time, and you trip on the next hurdle.' },
       { icon: 'both', text: 'After the last hurdle the pads turn orange: press both to lean.' },
     ],
@@ -96,7 +97,7 @@ export const HOW_TO = {
       { icon: 'blue', glyph: 'PASS', text: 'Your teammate sets off as you get close. In the blue zone, tap PASS.' },
       { icon: 'blue', glyph: 'TAKE', text: 'Then TAKE as they come into reach: when the ring meets the button.' },
       { icon: 'wrong', text: 'Too soon and they grab air. No pass by the end of the zone and you both stop to swap.' },
-      { badge: '📱', text: 'In a squad meet your four each run one leg, on their own phones.' },
+      { symbol: 'live', text: 'In a squad meet your four each run one leg, on their own phones.' },
     ],
     keys: '← → run · Space for PASS, TAKE and the anchor’s lean',
   },
@@ -111,7 +112,7 @@ export const HOW_TO = {
       { icon: 'gears', text: 'Shift with the blue buttons: − for the climb, + for the flat. Keep the PEDALS needle in the green.' },
       { icon: 'hold', text: 'Downhill, hold both pads to tuck.' },
       { icon: 'both', text: 'In the last stretch, press both to throw the bike at the line.' },
-      { badge: '👻', text: 'Your rivals ride with you as ghosts. Time checks at the top and the bottom.' },
+      { symbol: 'people', text: 'Your rivals ride with you as ghosts. Time checks at the top and the bottom.' },
     ],
     keys: '← → pedal · ↑ ↓ shift · hold Space to tuck',
   },
@@ -122,6 +123,7 @@ const BLUE = { hi: '#bfe0ff', mid: '#2f80ff', lo: '#1347b8' };
 /** One step's (or strip item's) icon, centred at (x, y), about `r` in radius. */
 export function drawIcon(ctx, item, x, y, r) {
   if (item.badge) return drawBadge(ctx, item.badge, x, y, r);
+  if (item.symbol) return drawBadge(ctx, '', x, y, r, item.symbol);
   switch (item.icon) {
     case 'tap':
       return drawPad(ctx, GREEN, x, y, r);
@@ -211,15 +213,17 @@ export function drawIcon(ctx, item, x, y, r) {
   }
 }
 
-function drawBadge(ctx, label, x, y, r) {
-  const size = Math.round(r * 0.8);
-  ctx.font = `900 ${size}px ${FONT}`;
-  const w = Math.max(r * 1.6, ctx.measureText(label).width + size);
+/** A few characters (or a core/icons.js `symbol`) in gold on a small ink plate. */
+function drawBadge(ctx, label, x, y, r, symbol = null) {
+  const size = Math.round(r * 0.9);
+  ctx.font = `900 ${size}px ${FONT_DISPLAY}`;
+  const w = Math.max(r * 1.6, symbol ? 0 : ctx.measureText(label).width + size);
   const h = r * 1.3;
-  roundRect(ctx, x - w / 2, y - h / 2, w, h, h / 2);
-  ctx.fillStyle = 'rgba(255,255,255,0.14)';
+  ctx.fillStyle = PAL.ink3;
+  chamfer(ctx, x - w / 2, y - h / 2, w, h, 4);
   ctx.fill();
-  text(ctx, label, x, y + 1, { size, weight: 900, color: '#ffd35c' });
+  if (symbol) drawSymbol(ctx, symbol, x, y, h * 0.8, PAL.gold);
+  else text(ctx, label, x, y + 1, { size, font: 'display', color: PAL.gold });
 }
 
 /** A word on a dark pill across the middle of the pads (HOLD, LET GO). */
@@ -252,15 +256,15 @@ export function drawSteps(ctx, id, x, y, w, rowH = 58) {
   how.steps.forEach((s, i) => {
     const cy = y + i * rowH + rowH / 2;
     drawIcon(ctx, s, iconX, cy, r);
-    wrapText(ctx, s.text, tx, cy, w - (tx - x) - 10, { size: 18, weight: 600, color: '#e6eefc' });
+    wrapText(ctx, s.text, tx, cy, w - (tx - x) - 10, { size: 19, weight: 600, font: 'body', color: PAL.cream });
   });
-  text(ctx, `Keyboard: ${how.keys}`, x + w / 2, y + how.steps.length * rowH + 22, { size: 14, weight: 500, color: 'rgba(255,255,255,0.55)', maxWidth: w - 20 });
+  text(ctx, `Keyboard: ${how.keys}`, x + w / 2, y + how.steps.length * rowH + 22, { size: 16, font: 'body', weight: 600, color: 'rgba(245,234,208,0.6)', maxWidth: w - 20 });
 }
 
 /** Left-aligned text in at most two lines, centred on `cy`. */
 function wrapText(ctx, str, x, cy, maxW, style) {
   const opts = { ...style, align: 'left' };
-  ctx.font = `${style.weight} ${style.size}px ${FONT}`;
+  ctx.font = `${style.weight} ${style.size}px ${style.font === 'body' ? FONT_BODY : FONT}`;
   if (ctx.measureText(str).width <= maxW) return text(ctx, str, x, cy, { ...opts, maxWidth: maxW });
   const words = str.split(' ');
   let line = '';

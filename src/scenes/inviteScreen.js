@@ -2,6 +2,7 @@ import { setPlayerName, cleanName } from '../core/storage.js';
 import { connectSDK, claimedUsername, setUsername } from '../online/firebase.js';
 import { loadMySquad, loadSquad, joinSquad, leaveSquad, setInvite, SQUAD_MAX } from '../online/squads.js';
 import { flow } from '../flow.js';
+import { ICONS } from '../core/icons.js';
 
 /**
  * The invite screen: what a squad invite link opens (online/squads.js
@@ -9,7 +10,8 @@ import { flow } from '../flow.js';
  * username (pick one, or keep yours); one Join button, which saves the name
  * and joins; then "You're in". An HTML card over the game (a real text box
  * for the name is much nicer on a phone than anything drawn on canvas), like
- * the tuning panel.
+ * the tuning panel. Styled like the canvas menus (core/ui.js PAL, the two
+ * fonts, cut corners, hard lips), with the icons inline as SVG.
  *
  * Not now leaves the invite on the Squad tab, to join from there later.
  */
@@ -123,29 +125,30 @@ class InviteScreen {
     const typed = this.root.querySelector('input')?.value;
     const s = this.squad;
     const card = (body) => `<div class="inv-card">${body}</div>`;
+    const kicker = (words) => `<p class="inv-kicker">${icon('invite')}<span>${words}</span></p>`;
     const btn = (act, label, kind = '') => `<button type="button" class="inv-btn ${kind}" data-act="${act}"${this.busy ? ' disabled' : ''}>${label}</button>`;
     let html;
     switch (this.step) {
       case 'loading':
-        html = card(`<p class="inv-kicker">📨 ${this.from ? `${esc(this.from)} invited you` : 'You’re invited'}</p><p class="inv-dim">Opening your invite…</p>`);
+        html = card(`${kicker(this.from ? `${esc(this.from)} invited you` : 'You’re invited')}<p class="inv-dim">Opening your invite…</p>`);
         break;
       case 'offline':
-        html = card(`<p class="inv-kicker">📨 You’re invited</p><p class="inv-dim">Couldn’t load your invite. Check your connection.</p><div class="inv-row">${btn('later', 'Not now', 'inv-plain')}${btn('retry', 'Try again', 'inv-go')}</div>`);
+        html = card(`${kicker('You’re invited')}<p class="inv-dim">Couldn’t load your invite. Check your connection.</p><div class="inv-row">${btn('later', 'Not now', 'inv-plain')}${btn('retry', 'Try again', 'inv-go')}</div>`);
         break;
       case 'gone':
-        html = card(`<p class="inv-kicker">📨 You were invited</p><p class="inv-title">${esc(s?.name ?? 'That squad')} has closed</p><p class="inv-dim">You can start your own squad, or find another, on the Squad tab.</p><div class="inv-row">${btn('go', 'Go to the game', 'inv-go')}</div>`);
+        html = card(`${kicker('You were invited')}<p class="inv-title">${esc(s?.name ?? 'That squad')} has closed</p><p class="inv-dim">You can start your own squad, or find another, on the Squad tab.</p><div class="inv-row">${btn('go', 'Go to the game', 'inv-go')}</div>`);
         break;
       case 'already':
-        html = card(`<p class="inv-kicker">📨 ${this.from ? `${esc(this.from)} invited you` : 'You’re invited'}</p><p class="inv-title">You’re already in ${esc(s.name)}</p>${members(s)}<div class="inv-row">${btn('go', 'Let’s go', 'inv-go')}</div>`);
+        html = card(`${kicker(this.from ? `${esc(this.from)} invited you` : 'You’re invited')}<p class="inv-title">You’re already in ${esc(s.name)}</p>${members(s)}<div class="inv-row">${btn('go', 'Let’s go', 'inv-go')}</div>`);
         break;
       case 'done':
-        html = card(`<p class="inv-big">🎉</p><p class="inv-title">You’re in ${esc(s.name)}!</p>${members(s)}<div class="inv-row">${btn('go', 'Let’s go', 'inv-go')}</div>`);
+        html = card(`<p class="inv-big">${icon('check')}</p><p class="inv-title">You’re in ${esc(s.name)}!</p>${members(s)}<div class="inv-row">${btn('go', 'Let’s go', 'inv-go')}</div>`);
         break;
       default: {
         const full = s.size >= SQUAD_MAX;
         const value = typed ?? this.claimed ?? '';
         html = card(`
-          <p class="inv-kicker">📨 ${this.from ? `${esc(this.from)} invited you to join` : 'You’re invited to join'}</p>
+          ${kicker(this.from ? `${esc(this.from)} invited you to join` : 'You’re invited to join')}
           <p class="inv-title">${esc(s.name)}</p>
           ${members(s)}
           <label class="inv-label" for="inv-name">${this.claimed ? 'Your username' : 'Pick a username'}</label>
@@ -163,8 +166,8 @@ class InviteScreen {
 
 /** "12/30 members: Zach, Bolt, Flo Jo and 9 more". */
 function members(s) {
-  const names = s.members.map((m) => `${m.leader ? '👑 ' : ''}${m.name}`);
-  const shown = names.slice(0, 4).map(esc).join(', ');
+  const names = s.members.map((m) => `${m.leader ? icon('captain') : ''}${esc(m.name)}`);
+  const shown = names.slice(0, 4).join(', ');
   const rest = names.length > 4 ? ` and ${names.length - 4} more` : '';
   return `<p class="inv-dim">${s.size}/${SQUAD_MAX} members: ${shown}${rest}</p>`;
 }
@@ -187,35 +190,51 @@ function joinError(e, name, squad) {
 
 const esc = (v) => String(v).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
+/** A core/icons.js icon as inline SVG, in the text's colour. */
+const icon = (id) => `<svg class="inv-icon" viewBox="0 0 48 48" aria-hidden="true"><path d="${ICONS[id]}"/></svg>`;
+
 let styled = false;
 function injectStyles() {
   if (styled) return;
   styled = true;
   const css = document.createElement('style');
+  // PAL in core/ui.js: ink #26224F (lip #17143A), ink2 #3A3577, cream #F5EAD0 (lip #E2D2AE), muted #7A6E55,
+  // gold #F2B632, live green #2E8B57 (lip #1F6640). Cut corners and hard lips, no blur, no gradients.
+  const cut = (c) => `clip-path: polygon(${c}px 0, calc(100% - ${c}px) 0, 100% ${c}px, 100% calc(100% - ${c}px), calc(100% - ${c}px) 100%, ${c}px 100%, 0 calc(100% - ${c}px), 0 ${c}px);`;
   css.textContent = `
     .inv { position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center;
       padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
-      box-sizing: border-box; overflow-y: auto; touch-action: pan-y; background: rgba(6, 12, 28, 0.82);
-      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #fff; }
-    .inv-card { width: 100%; max-width: 460px; margin: auto; box-sizing: border-box; padding: 16px 22px 18px; text-align: center;
-      background: linear-gradient(#1d3a66, #12203a); border: 2px solid #ffb400; border-radius: 18px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5); }
+      box-sizing: border-box; overflow-y: auto; touch-action: pan-y; background: rgba(23, 20, 58, 0.86);
+      font-family: "Barlow Semi Condensed", "Arial Narrow", system-ui, sans-serif; font-weight: 600; color: #26224F; }
+    .inv-card { width: 100%; max-width: 460px; margin: auto; box-sizing: border-box; padding: 0 22px 24px; text-align: center;
+      background: #F5EAD0; box-shadow: inset 0 -7px 0 #E2D2AE; ${cut(10)} }
     .inv-card p { margin: 0; }
-    .inv-kicker { font-size: 13px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: #ffd35c; }
-    .inv-title { margin: 4px 0 2px !important; font-size: 30px; font-weight: 800; color: #ffb400; text-shadow: 2px 3px 0 rgba(0, 0, 0, 0.45); overflow-wrap: anywhere; }
-    .inv-big { font-size: 34px; line-height: 1.1; }
-    .inv-dim { font-size: 14px; color: rgba(255, 255, 255, 0.7); margin-top: 4px !important; }
-    .inv-label { display: block; margin: 12px 0 6px; font-size: 13px; font-weight: 700; color: rgba(255, 255, 255, 0.7); text-align: left; }
-    .inv input { width: 100%; box-sizing: border-box; padding: 10px 12px; font: 600 18px system-ui, -apple-system, sans-serif; color: #fff;
-      background: rgba(255, 255, 255, 0.1); border: 2px solid rgba(255, 255, 255, 0.25); border-radius: 12px; outline: none;
+    .inv-icon { width: 1.15em; height: 1.15em; fill: currentColor; vertical-align: -0.2em; margin-right: 0.3em; }
+    .inv-kicker { display: flex; align-items: center; justify-content: center; margin: 0 -22px 12px !important; padding: 9px 16px;
+      background: #26224F; color: #F5EAD0; font: 900 19px "Big Shoulders Display", "Arial Narrow", Impact, sans-serif;
+      letter-spacing: 1.5px; text-transform: uppercase; }
+    .inv-kicker .inv-icon { color: #F2B632; }
+    .inv-title { margin: 4px 0 2px !important; font: 900 38px/1.05 "Big Shoulders Display", "Arial Narrow", Impact, sans-serif;
+      letter-spacing: 1.5px; text-transform: uppercase; color: #26224F; overflow-wrap: anywhere; }
+    .inv-big { margin-top: 18px !important; font-size: 56px; line-height: 1; color: #2E8B57; }
+    .inv-big .inv-icon { margin: 0; }
+    .inv-dim { font-size: 16px; color: #7A6E55; margin-top: 6px !important; }
+    .inv-dim .inv-icon { width: 1em; height: 1em; margin-right: 0.15em; color: #26224F; }
+    .inv-label { display: block; margin: 14px 0 6px; font: 900 17px "Big Shoulders Display", "Arial Narrow", Impact, sans-serif;
+      letter-spacing: 1.5px; text-transform: uppercase; color: #26224F; text-align: left; }
+    .inv input { width: 100%; box-sizing: border-box; padding: 10px 12px; font: 700 20px "Barlow Semi Condensed", "Arial Narrow", system-ui, sans-serif;
+      color: #26224F; background: #FBF3DF; border: 2px solid #E2D2AE; border-radius: 0; outline: none; ${cut(5)}
       -webkit-user-select: text; user-select: text; touch-action: manipulation; }
-    .inv input:focus { border-color: #ffb400; }
-    .inv-note { min-height: 18px; margin-top: 6px !important; font-size: 13px; color: rgba(255, 255, 255, 0.6); text-align: left; }
-    .inv-warn { color: #ffb35c; font-weight: 600; }
-    .inv-row { display: flex; gap: 10px; margin-top: 14px; }
-    .inv-btn { flex: 1; min-height: 48px; padding: 0 14px; border: 0; border-radius: 14px; font: 800 18px system-ui, -apple-system, sans-serif;
-      color: #fff; cursor: pointer; touch-action: manipulation; }
-    .inv-go { flex: 2; background: #2bb673; }
-    .inv-plain { background: rgba(255, 255, 255, 0.15); }
+    .inv input:focus { border-color: #F2B632; }
+    .inv-note { min-height: 18px; margin-top: 6px !important; font-size: 15px; color: #7A6E55; text-align: left; }
+    .inv-warn { color: #B9542A; font-weight: 700; }
+    .inv-row { display: flex; gap: 10px; margin-top: 16px; }
+    .inv-btn { flex: 1; min-height: 52px; padding: 0 14px 5px; border: 0; border-radius: 0; cursor: pointer; touch-action: manipulation;
+      font: 900 21px "Big Shoulders Display", "Arial Narrow", Impact, sans-serif; letter-spacing: 1px; text-transform: uppercase;
+      color: #F5EAD0; ${cut(6)} }
+    .inv-btn:active { padding-bottom: 0; padding-top: 4px; box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.25) !important; }
+    .inv-go { flex: 2; background: #2E8B57; box-shadow: inset 0 -5px 0 #1F6640; }
+    .inv-plain { background: #3A3577; box-shadow: inset 0 -5px 0 #17143A; }
     .inv-btn:disabled { opacity: 0.6; }
   `;
   document.head.append(css);

@@ -1,4 +1,4 @@
-import { text, roundRect } from '../core/ui.js';
+import { text, chamfer, slab, PAL } from '../core/ui.js';
 import { getDifficulty } from '../core/storage.js';
 import { Brawl } from './brawl.js';
 import { BrawlControls } from './controls.js';
@@ -150,7 +150,7 @@ export class Aftermath {
 
 /**
  * The results (or tournament standings) over the late hits: the rows up top,
- * over the stands, on a light see-through panel, and the scene's two buttons
+ * over the stands, on a cream sheet under an ink title strip, and the scene's two buttons
  * right at the bottom, on the ad boards below the track, so the track itself
  * is left clear for the fighting. It fades in, so the results just show up
  * over the event.
@@ -163,8 +163,8 @@ export class ResultsPanel {
    */
   constructor(buttons, title, rows) {
     Object.assign(this, { buttons, title, rows });
-    // Over the busy ad boards a see-through Menu / Quit wouldn't read: solid dark instead.
-    if (buttons[1]) buttons[1].color = 'rgba(18,32,58,0.92)';
+    // Over the busy ad boards: solid ink.
+    if (buttons[1]) Object.assign(buttons[1], { color: PAL.ink, lip: PAL.inkShade });
     this.age = 0;
   }
 
@@ -198,23 +198,26 @@ export class ResultsPanel {
     const { x, y, w } = this;
     ctx.save();
     ctx.globalAlpha = Math.min(1, this.age / 0.25);
-    roundRect(ctx, x, y, w, this.h, 14);
-    ctx.fillStyle = 'rgba(12,22,44,0.45)';
+    slab(ctx, x, y, w, this.h + 5, { face: PAL.cream, lip: PAL.creamShade, lipH: 5, c: 7 });
+    ctx.fillStyle = PAL.ink;
+    chamfer(ctx, x, y, w, this.head, 7);
     ctx.fill();
-    text(ctx, this.title(), x + w / 2, y + 20, { size: 15, weight: 800, color: 'rgba(255,255,255,0.9)', maxWidth: w - 24, shadow: true });
-    const size = Math.round(this.rowH * 0.58);
+    ctx.fillRect(x, y + this.head / 2, w, this.head / 2);
+    text(ctx, this.title(), x + w / 2, y + this.head / 2 + 1, { size: 20, font: 'display', track: 1.5, color: PAL.cream, maxWidth: w - 24 });
+    const size = Math.round(this.rowH * 0.62);
     rows.forEach((r, i) => {
       const ry = y + this.head + i * this.rowH + this.rowH / 2;
-      if (r.isPlayer) {
-        roundRect(ctx, x + 6, ry - this.rowH / 2 + 1, w - 12, this.rowH - 2, 8);
-        ctx.fillStyle = 'rgba(255,180,0,0.28)';
-        ctx.fill();
+      // Zebra rows; yours gold.
+      if (r.isPlayer || i % 2) {
+        ctx.fillStyle = r.isPlayer ? PAL.gold : '#EFE2C3';
+        ctx.fillRect(x, ry - this.rowH / 2, w, this.rowH);
       }
-      text(ctx, r.place, x + 26, ry, { size, shadow: true });
+      text(ctx, r.place, x + 26, ry + 1, { size: size + 2, font: 'display', color: PAL.ink });
       ctx.fillStyle = r.colors.shirt;
-      ctx.fillRect(x + 44, ry - size * 0.5, 5, size);
-      text(ctx, r.name, x + 58, ry, { size, align: 'left', weight: r.isPlayer ? 800 : 600, color: r.gold ? '#ffb400' : '#fff', shadow: true, maxWidth: w - 180 });
-      text(ctx, r.value, x + w - 16, ry, { size, align: 'right', shadow: true });
+      ctx.fillRect(x + 44, ry - size * 0.5, 6, size);
+      // Live: the other people in the race in orange, the computer's runners in ink.
+      text(ctx, r.name, x + 60, ry + 1, { size, font: 'body', align: 'left', weight: r.isPlayer ? 800 : 700, color: r.gold && !r.isPlayer ? PAL.orangeShade : PAL.ink, maxWidth: w - 180 });
+      text(ctx, r.value, x + w - 16, ry + 1, { size, font: 'body', weight: 800, align: 'right', color: PAL.ink });
     });
     this.buttons.forEach((b) => b?.draw(ctx));
     ctx.restore();

@@ -1,7 +1,8 @@
 import { CONFIG } from '../../config.js';
-import { Button, text, roundRect, chamfer, slab, shade, PAL, FONT_BODY, FONT_DISPLAY } from '../../core/ui.js';
+import { Button, text, chamfer, slab, PAL, FONT_BODY, FONT_DISPLAY } from '../../core/ui.js';
 import { drawIcon } from '../../core/icons.js';
-import { pinebrook, track, wordmark } from '../../render/posterScenery.js';
+import { pinebrook, westfield, olympic, track, bands, wordmark } from '../../render/posterScenery.js';
+import { VENUES } from '../../render/venues.js';
 import { drawFigure, runPose } from '../../athletes/stickFigure.js';
 import { EVENTS, SPECIAL_EVENTS, formatMark } from '../../events/registry.js';
 import { canTune, getBest, getGhostOn, setGhostOn, getPlayerName, setCampaign, getBeaten, takeFreshBeaten, getSpecialLevel, setSpecialLevel } from '../../core/storage.js';
@@ -13,8 +14,6 @@ import { syncProgress } from '../../online/progress.js';
 import { EventTile } from './eventTile.js';
 
 const SHORT = { sprint100: '100m', longjump: 'Long jump', hurdles110: 'Hurdles', polevault: 'Pole vault', javelin: 'Javelin' };
-const DIM = 'rgba(255,255,255,0.6)';
-const PLAIN = 'rgba(255,255,255,0.15)';
 
 // When the menu last fetched your progress from your account (see enter()).
 let lastPull = -Infinity;
@@ -57,13 +56,12 @@ export class PlayPanel {
     // Special Events: a card each, and who you race (remembered for the session).
     this.specialButtons = SPECIAL_EVENTS.map(
       (ev) =>
-        new Button({
+        new BigButton({
           label: ev.name,
           sub: `Best ${formatMark(ev, getBest(ev.id))}`,
-          w: 300,
-          h: 96,
-          size: 28,
-          color: '#c2337a',
+          icon: ev.id,
+          color: PAL.magenta,
+          lip: PAL.magentaShade,
           enabled: ev.available,
           onTap: () => {
             setCampaign(null); // nothing to tick off: never a campaign
@@ -75,8 +73,9 @@ export class PlayPanel {
       (level) =>
         new Button({
           label: level === 'pro' ? 'Pro' : 'Amateur',
-          w: 120,
-          h: 44,
+          w: level === 'pro' ? 88 : 100,
+          h: 48,
+          size: 19,
           onTap: () => {
             setSpecialLevel(level);
             this.styleRivals();
@@ -97,6 +96,7 @@ export class PlayPanel {
               id: ev.id,
               name: SHORT[ev.id] ?? ev.name,
               color: sec.color,
+              lip: sec.lip,
               enabled: ev.available,
               onTap: () => {
                 if (this.refuse(sec, ev.id)) return;
@@ -106,7 +106,7 @@ export class PlayPanel {
             }),
         ),
         // A campaign ends in its tournament (Training is the five events on their own).
-        ...(sec.level ? [new EventTile({ id: 'tournament', name: 'Tournament', color: sec.color, onTap: () => this.campaignTournament(sec) })] : []),
+        ...(sec.level ? [new EventTile({ id: 'tournament', name: 'Tournament', color: PAL.gold, lip: PAL.goldShade, onTap: () => this.campaignTournament(sec) })] : []),
       ];
       return sec;
     });
@@ -114,20 +114,20 @@ export class PlayPanel {
     this.buttons = this.training.tiles;
     // vs Computer's grid: a big button for each section, and Special Events.
     this.gridButtons = [
-      ...this.sections.map((sec) => Object.assign(new BigButton({ label: sec.name, sub: '', icon: sec.icon, color: sec.color, onTap: () => this.openSection(sec) }), { key: sec.key })),
-      Object.assign(new BigButton({ label: 'Special Events', sub: 'Relay · Time Trial', icon: 'special', color: PAL.magenta, lip: PAL.magentaShade, onTap: () => this.open('special') }), { key: 'special' }),
+      ...this.sections.map((sec) => Object.assign(new VenueCard({ label: sec.name, place: VENUES[sec.key].name, venue: sec.vignette, color: sec.color, lip: sec.lip, onTap: () => this.openSection(sec) }), { key: sec.key })),
+      Object.assign(new VenueCard({ label: 'Special Events', sub: 'Relay · Time Trial', icon: 'special', venue: specialVignette, color: PAL.magenta, lip: PAL.magentaShade, onTap: () => this.open('special') }), { key: 'special' }),
     ];
     this.styleSections(takeFreshBeaten());
     // Live: the same six cards as a campaign's, against other people (a waiting room first, online/live.js).
     this.liveButtons = [
-      ...EVENTS.map((ev) => new EventTile({ id: ev.id, name: SHORT[ev.id] ?? ev.name, color: '#2bb673', enabled: ev.available, onTap: () => flow.live(this.game, ev.id) })),
-      new EventTile({ id: 'tournament', name: 'Tournament', color: TOUR_COLOR.live, onTap: () => flow.live(this.game, TOURNAMENT_KIND) }),
+      ...EVENTS.map((ev) => new EventTile({ id: ev.id, name: SHORT[ev.id] ?? ev.name, color: PAL.liveGreen, lip: PAL.liveShade, enabled: ev.available, onTap: () => flow.live(this.game, ev.id) })),
+      new EventTile({ id: 'tournament', name: 'Tournament', color: PAL.gold, lip: PAL.goldShade, onTap: () => flow.live(this.game, TOURNAMENT_KIND) }),
     ];
     // Your ghost (Training only): race your best attempt in every event (remembered on this device).
     this.ghostButton = new Button({
       label: '',
-      w: 110,
-      h: 44,
+      w: 68,
+      h: 46,
       onTap: () => {
         setGhostOn(!getGhostOn());
         this.styleGhost();
@@ -201,12 +201,12 @@ export class PlayPanel {
       const beaten = getBeaten(prev.level);
       const left = prev.tiles.filter((t) => !beaten[t.id]);
       const rest = left.length > 3 ? `${left.length} cards to go` : listOf(left); // a long list won't fit the card
-      if (left.length) return { title: `🔒 ${titleCase(sec.title)} is locked`, detail: `Beat the rest of ${titleCase(prev.title)} first: ${rest}.` };
+      if (left.length) return { title: `${titleCase(sec.title)} is locked`, detail: `Beat the rest of ${titleCase(prev.title)} first: ${rest}.` };
     }
     if (sec.level && id === 'tournament') {
       const beaten = getBeaten(sec.level);
       const left = sec.tiles.filter((t) => t.id !== 'tournament' && !beaten[t.id]);
-      if (left.length) return { title: '🔒 Tournament locked', detail: `Beat ${listOf(left)} in ${titleCase(sec.title)} to unlock it.` };
+      if (left.length) return { title: 'Tournament locked', detail: `Beat ${listOf(left)} in ${titleCase(sec.title)} to unlock it.` };
     }
     return null;
   }
@@ -261,7 +261,11 @@ export class PlayPanel {
 
   styleRivals() {
     const level = getSpecialLevel();
-    for (const b of this.rivalButtons) b.color = (b.label === 'Pro') === (level === 'pro') ? '#c2337a' : PLAIN;
+    for (const b of this.rivalButtons) {
+      const on = (b.label === 'Pro') === (level === 'pro');
+      b.color = on ? PAL.cream : PAL.ink2; // a segmented control: the one picked is cream
+      b.lip = on ? PAL.creamShade : PAL.inkShade;
+    }
   }
 
   /** The campaign cards: BEATEN! stamps, the locked tournaments; `fresh` ({ level, id }) is stamped in. */
@@ -285,15 +289,15 @@ export class PlayPanel {
       if (!sec) continue;
       const complete = sec.level && sec.done === sec.tiles.length;
       b.sub = !sec.level ? 'Just you (and your ghost)' : sec.locked ? `Beat ${titleCase(sec.after)} first` : complete ? '★ Complete' : `${sec.done} / ${sec.tiles.length} beaten`;
-      b.color = sec.locked ? PAL.ink3 : sec.color;
-      b.lip = sec.locked ? PAL.inkShade : null;
+      b.locked = sec.locked;
     }
   }
 
   styleGhost() {
     const on = getGhostOn();
     this.ghostButton.label = on ? 'On' : 'Off';
-    this.ghostButton.color = on ? '#e4572e' : PLAIN;
+    this.ghostButton.color = on ? PAL.gold : PAL.cream;
+    this.ghostButton.lip = on ? PAL.goldShade : PAL.creamShade;
   }
 
   /** `bottom`: the top of the tab bar. */
@@ -319,36 +323,34 @@ export class PlayPanel {
     const bw = Math.min(372, (view.w - margin * 2 - bigGap) / 2);
     bigs.forEach((b, i) => Object.assign(b, { w: bw, h: 116, x: view.w / 2 - (bw * 2 + bigGap) / 2 + i * (bw + bigGap), y: 150 }));
 
-    // vs Computer: its four big buttons, two by two.
-    const gw = Math.min(320, (view.w - margin * 2 - GRID_GAP) / 2);
+    // vs Computer: its four venue cards, two by two.
+    const gw = Math.min(380, (view.w - margin * 2 - GRID_GAP) / 2);
     this.gridButtons.forEach((b, i) => Object.assign(b, { w: gw, h: GRID_H, x: view.w / 2 - gw - GRID_GAP / 2 + (i % 2) * (gw + GRID_GAP), y: GRID_Y + Math.floor(i / 2) * (GRID_H + GRID_GAP) }));
 
     // Special Events: the cards in a row, the RIVALS toggle under them.
-    const sw = Math.min(300, (view.w - margin * 2 - gapFor(this.specialButtons.length)) / this.specialButtons.length);
+    const sw = Math.min(330, (view.w - margin * 2 - gapFor(this.specialButtons.length)) / this.specialButtons.length);
     const sx = view.w / 2 - (sw * this.specialButtons.length + gapFor(this.specialButtons.length)) / 2;
-    this.specialButtons.forEach((b, i) => Object.assign(b, { w: sw, h: 96, x: sx + i * (sw + 16), y: SPECIAL_Y }));
-    this.rivalButtons.forEach((b, i) => Object.assign(b, { x: view.w / 2 - b.w - 4 + i * (b.w + 8), y: SPECIAL_SETTINGS_Y }));
+    this.specialButtons.forEach((b, i) => Object.assign(b, { w: sw, h: 112, x: sx + i * (sw + 18), y: SPECIAL_Y }));
+    // RIVALS on an ink plate, the two choices side by side after it.
+    Object.assign(this.rivalButtons[0], { x: view.w / 2 - 56, y: SPECIAL_SETTINGS_Y });
+    Object.assign(this.rivalButtons[1], { x: view.w / 2 + 50, y: SPECIAL_SETTINGS_Y });
 
     // A vs Computer section's page, and Live: six cards in a row (each the same).
     const n = 6;
     const tw = Math.min(TILE_MAX, (view.w - margin * 2 - (n - 1) * TILE_GAP) / n);
-    this.tileH = Math.round(tw * 1.08);
+    this.tileH = Math.round(tw);
     for (const row of [...this.sections.map((sec) => sec.tiles), this.liveButtons]) {
       const rx = (view.w - (row.length * tw + (row.length - 1) * TILE_GAP)) / 2; // Training's five, centred
       row.forEach((t, i) => Object.assign(t, { w: tw, h: this.tileH, x: rx + i * (tw + TILE_GAP), y: TILES_Y }));
     }
-    // Its setting: GHOST (Training).
-    Object.assign(this.ghostButton, { x: view.w / 2 - this.ghostButton.w / 2, y: TILES_Y + this.tileH + 34 });
+    // Its setting: GHOST (Training), a cream OFF / ON slab on an ink plate.
+    Object.assign(this.ghostButton, { x: view.w / 2 + 22, y: Math.max(TILES_Y + this.tileH + 24, GHOST_Y) });
 
     // The track along the bottom: your athlete on the buttons screen, a runner under a list.
     const sec = this.section;
     this.trackTop = !this.list
       ? 300 // Pinebrook's track, under the big buttons
-      : this.list === 'offline'
-        ? GRID_Y + 2 * GRID_H + GRID_GAP + 16
-        : sec?.level || this.list === 'live'
-          ? TILES_Y + this.tileH + 22 // a campaign and Live have no settings row
-          : this.settingsY + 44 + 14;
+      : Math.max(LIST_TRACK, (this.list === 'training' ? this.ghostButton.y + 60 : TILES_Y + this.tileH + 22)); // the venue's track, under the cards
     this.trackBottom = bottom - 6;
     // The warning: a card over the buttons (the track under them is short).
     this.warnY = this.list === 'offline' ? GRID_Y + GRID_H - 10 : TILES_Y + this.tileH / 2 - 22;
@@ -397,8 +399,8 @@ export class PlayPanel {
   }
 
   render(ctx, view) {
-    // The buttons stand in Pinebrook Park, its track along the bottom (it stays put as they fade in).
-    if (!this.list) pinebrook(ctx, 0, 0, view.w, this.bottom, { trackH: this.bottom - this.trackTop, clouds: CLOUDS });
+    // Each page stands in its venue, the track along the bottom (it stays put as the buttons fade in).
+    this.drawBackdrop(ctx, view);
     // A list (or the buttons) comes in from a little below, fading up.
     const e = 1 - (1 - this.fade) ** 3;
     ctx.save();
@@ -425,74 +427,201 @@ export class PlayPanel {
     nameTag(ctx, me.name, x, ground + 18);
   }
 
+  /**
+   * The page's scenery, the track along the bottom: Pinebrook Park behind the
+   * big buttons and Training, Westfield High behind Amateur, Olympic Stadium
+   * behind Pro and Special Events (and at night behind Live); vs Computer's
+   * grid on plain ink bands.
+   */
+  drawBackdrop(ctx, view) {
+    const h = this.bottom;
+    const trackH = h - this.trackTop;
+    const list = this.list;
+    if (!list) return pinebrook(ctx, 0, 0, view.w, h, { trackH, clouds: CLOUDS });
+    if (list === 'offline') {
+      bands(ctx, 0, 0, view.w, this.trackTop - 30, [PAL.ink, PAL.ink2]);
+      return track(ctx, 0, this.trackTop, view.w, trackH, { face: PAL.brick });
+    }
+    if (list === 'amateur') return westfield(ctx, 0, 0, view.w, h, { trackH });
+    if (list === 'training') return pinebrook(ctx, 0, 0, view.w, h, { trackH, clouds: TRAINING_CLOUDS });
+    olympic(ctx, 0, 0, view.w, h, { trackH, night: list === 'live' });
+  }
+
   renderList(ctx, view) {
     this.backBtn.draw(ctx);
     const sec = this.section;
     if (this.list === 'special') this.renderSpecial(ctx, view);
     else if (sec) this.renderSection(ctx, view, sec);
     else if (this.list === 'live') {
-      text(ctx, 'LIVE', view.w / 2, 36, { size: 30, color: '#59cd90', shadow: true });
-      text(ctx, 'Race people right now: a waiting room first', view.w / 2, 66, { size: 15, weight: 700, color: DIM });
-      this.drawTrack(ctx, view, this.trackTop, this.trackBottom - this.trackTop, true);
+      titlePlate(ctx, view, 'LIVE', 'Race people right now: a waiting room first');
       this.liveButtons.forEach((b) => b.draw(ctx));
     } else {
-      text(ctx, 'VS COMPUTER', view.w / 2, 36, { size: 30, color: '#ffb400', shadow: true });
-      this.drawTrack(ctx, view, this.trackTop, this.trackBottom - this.trackTop, true);
+      titlePlate(ctx, view, 'VS COMPUTER');
       this.gridButtons.forEach((b) => b.draw(ctx));
     }
+    this.drawRunner(ctx, view);
     this.drawWarning(ctx, view);
   }
 
-  /** Clash Royale style: say what's missing, on a card over the buttons. */
+  /** Clash Royale style: say what's missing, on an ink card over the buttons, with a lock. */
   drawWarning(ctx, view) {
     if (this.warnT <= 0) return;
     ctx.save();
     ctx.globalAlpha *= Math.min(1, this.warnT * 2);
     const pw = Math.min(view.w - 40, 640);
-    roundRect(ctx, view.w / 2 - pw / 2, this.warnY - 32, pw, this.warnDetail ? 92 : 64, 16);
-    ctx.fillStyle = 'rgba(10,18,36,0.94)';
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    text(ctx, this.warnMsg, view.w / 2, this.warnY, { size: 22, weight: 800, color: '#fff', shadow: true, maxWidth: pw - 32 });
-    if (this.warnDetail) text(ctx, this.warnDetail, view.w / 2, this.warnY + 32, { size: 16, weight: 600, color: 'rgba(255,255,255,0.85)', maxWidth: pw - 32 });
+    const ph = this.warnDetail ? 92 : 64;
+    slab(ctx, view.w / 2 - pw / 2, this.warnY - 32, pw, ph + 6, { face: PAL.ink, lip: PAL.inkShade, lipH: 6, c: 8 });
+    ctx.font = `900 26px ${FONT_DISPLAY}`;
+    ctx.letterSpacing = '1px';
+    const tw = Math.min(pw - 80, ctx.measureText(this.warnMsg.toUpperCase()).width);
+    ctx.letterSpacing = '0px';
+    drawIcon(ctx, 'lock', view.w / 2 - tw / 2 - 18, this.warnY, 26, PAL.gold);
+    text(ctx, this.warnMsg.toUpperCase(), view.w / 2 + 16, this.warnY + 1, { size: 26, font: 'display', track: 1, color: PAL.cream, maxWidth: pw - 80 });
+    if (this.warnDetail) text(ctx, this.warnDetail, view.w / 2, this.warnY + 32, { size: 17, font: 'body', weight: 600, color: 'rgba(245,234,208,0.85)', maxWidth: pw - 32 });
     ctx.restore();
   }
 
-  /** Special Events: the cards, and who you race in them. */
+  /** Special Events: the cards, and who you race in them (RIVALS, on an ink plate). */
   renderSpecial(ctx, view) {
-    text(ctx, 'SPECIAL EVENTS', view.w / 2, 36, { size: 30, color: '#ff8cc6', shadow: true });
-    this.drawTrack(ctx, view, this.trackTop, this.trackBottom - this.trackTop, true);
+    titlePlate(ctx, view, 'SPECIAL EVENTS');
     this.specialButtons.forEach((b) => b.draw(ctx));
-    const [a, p] = this.rivalButtons;
-    text(ctx, 'RIVALS', (a.x + p.x + p.w) / 2, this.settingsY - 14, { size: 13, weight: 700, color: DIM });
+    const ry = this.settingsY;
+    ctx.fillStyle = PAL.ink;
+    chamfer(ctx, view.w / 2 - 150, ry - 8, 300, 66, 6);
+    ctx.fill();
+    text(ctx, 'RIVALS', view.w / 2 - 100, ry + 23, { size: 20, font: 'display', track: 2, color: PAL.cream });
     this.rivalButtons.forEach((b) => b.draw(ctx));
   }
 
-  /** A vs Computer section's page: its name and progress, its cards, and (Training) GHOST. */
+  /** A vs Computer section's page: its name, venue and progress, its cards, and (Training) GHOST. */
   renderSection(ctx, view, sec) {
-    text(ctx, sec.title, view.w / 2, 36, { size: 30, color: sec.label, shadow: true });
     const complete = sec.level && sec.done === sec.tiles.length;
-    const sub = !sec.level ? 'Just you: no rivals, nothing ticked off' : complete ? '★ Complete' : `${sec.done} / ${sec.tiles.length} beaten`;
-    text(ctx, sub, view.w / 2, 66, { size: 15, weight: 700, color: complete ? '#ffd35c' : DIM });
-    this.drawTrack(ctx, view, this.trackTop, this.trackBottom - this.trackTop, true);
+    const status = !sec.level ? 'Just you: no rivals, nothing ticked off' : complete ? '★ Complete' : `${sec.done} / ${sec.tiles.length} beaten`;
+    titlePlate(ctx, view, sec.title, `${VENUES[sec.key].name} · ${status}`);
     sec.tiles.forEach((t) => t.draw(ctx));
     if (sec.level) return;
-    text(ctx, 'TRAINING GHOST', this.ghostButton.x + this.ghostButton.w / 2, this.settingsY - 14, { size: 13, weight: 700, color: DIM });
-    this.ghostButton.draw(ctx);
+    const g = this.ghostButton;
+    ctx.fillStyle = PAL.ink;
+    chamfer(ctx, g.x - 120, g.y - 6, 196, 58, 6);
+    ctx.fill();
+    text(ctx, 'TRAINING GHOST', g.x - 60, g.y + 21, { size: 18, font: 'display', track: 1, color: PAL.cream, maxWidth: 100 });
+    g.draw(ctx);
   }
 
-  /** A strip of track; `runner`: with your 100m runner going along it. */
-  drawTrack(ctx, view, top, h, runner = false) {
+  /** Your athlete running along the page's track. */
+  drawRunner(ctx, view) {
+    const top = this.trackTop;
+    const h = this.trackBottom - top;
     if (h < 30) return;
-    track(ctx, 0, top, view.w, h, { face: PAL.brick });
-    if (!runner) return;
     const { me } = this;
     const ppm = 30; // the demo runner keeps its own small scale
     const span = view.w + 120;
     const sx = ((this.demoX * ppm) % span) - 60;
-    drawFigure(ctx, sx, top + h - 10, CONFIG.figure.height * ppm * heightOf(me.colors), runPose(this.runPhase ?? 0, 1), me.colors);
+    const ground = top + h - 14;
+    ctx.fillStyle = 'rgba(38,34,79,0.35)';
+    ctx.beginPath();
+    ctx.ellipse(sx, ground + 2, 18, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    drawFigure(ctx, sx, ground, Math.min(74, h - 24) * heightOf(me.colors), runPose(this.runPhase ?? 0, 1), me.colors, ground);
+  }
+}
+
+/**
+ * A page's title: display type on a skewed ink banner with a gold wedge
+ * behind it, and an optional `sub` line on a cream pill under it.
+ */
+function titlePlate(ctx, view, title, sub = '', y = 34) {
+  const cx = view.w / 2;
+  ctx.font = `900 34px ${FONT_DISPLAY}`;
+  ctx.letterSpacing = '2px';
+  const w = ctx.measureText(title).width + 44;
+  ctx.letterSpacing = '0px';
+  ctx.fillStyle = PAL.gold;
+  ctx.beginPath();
+  ctx.moveTo(cx - w / 2 - 16, y - 18);
+  ctx.lineTo(cx + w / 2 + 16, y - 18);
+  ctx.lineTo(cx + w / 2 + 4, y + 18);
+  ctx.lineTo(cx - w / 2 - 4, y + 18);
+  ctx.fill();
+  ctx.fillStyle = PAL.ink;
+  ctx.beginPath();
+  ctx.moveTo(cx - w / 2, y - 22);
+  ctx.lineTo(cx + w / 2, y - 22);
+  ctx.lineTo(cx + w / 2 - 8, y + 22);
+  ctx.lineTo(cx - w / 2 - 8, y + 22);
+  ctx.fill();
+  text(ctx, title, cx - 4, y + 1, { size: 34, font: 'display', track: 2, color: PAL.cream });
+  if (!sub) return;
+  ctx.font = `700 16px ${FONT_BODY}`;
+  const sw = Math.min(view.w - 40, ctx.measureText(sub).width + 24);
+  ctx.fillStyle = PAL.cream;
+  chamfer(ctx, cx - sw / 2, y + 26, sw, 24, 3);
+  ctx.fill();
+  text(ctx, sub, cx, y + 38.5, { size: 16, font: 'body', weight: 700, color: PAL.ink, maxWidth: sw - 16 });
+}
+
+/**
+ * A vs Computer card: a slab with a vignette of its venue at the left
+ * (`venue(ctx, x, y, w, h)`; an `icon` on a plate over it, for Special
+ * Events), then its label, the venue's `place` name in gold and the `sub`
+ * status line. `locked`: a lock badge in the corner (it still says why when tapped).
+ */
+class VenueCard extends Button {
+  constructor(opts) {
+    super(opts);
+    this.place = opts.place ?? '';
+    this.venue = opts.venue;
+    this.locked = false;
+  }
+
+  draw(ctx) {
+    const { face, lip, ink } = this.paint();
+    const lipH = 6;
+    const pressed = this.pressT > 0;
+    const { x, w, h } = this;
+    slab(ctx, x, this.y, w, h, { face, lip, lipH, c: 8, pressed });
+    const y = this.y + (pressed ? lipH - 1 : 0);
+    const fh = h - lipH;
+    const vw = Math.min(150, Math.round(w * 0.4));
+    ctx.save();
+    chamfer(ctx, x, y, vw, fh, 8);
+    ctx.clip();
+    this.venue(ctx, x, y, vw, fh);
+    ctx.restore();
+    ctx.fillStyle = lip;
+    ctx.fillRect(x + vw, y, 4, fh);
+    if (this.icon) {
+      ctx.fillStyle = lip;
+      chamfer(ctx, x + vw / 2 - 34, y + fh / 2 - 34, 68, 68, 5);
+      ctx.fill();
+      drawIcon(ctx, this.icon, x + vw / 2, y + fh / 2, 46, ink);
+    }
+    const tx = x + vw + 20;
+    const mw = x + w - 14 - tx - (this.locked ? 34 : 0);
+    text(ctx, this.label.toUpperCase(), tx, y + fh * 0.32, { size: Math.min(40, Math.round(fh * 0.36)), font: 'display', align: 'left', track: 1, color: ink, maxWidth: mw });
+    if (this.place) text(ctx, this.place.toUpperCase(), tx + 1, y + fh * 0.6, { size: 18, font: 'display', align: 'left', track: 1.5, color: PAL.gold, maxWidth: mw });
+    text(ctx, this.sub, tx, y + fh * (this.place ? 0.82 : 0.68), { size: 17, font: 'body', weight: 700, align: 'left', color: 'rgba(245,234,208,0.9)', maxWidth: x + w - 14 - tx });
+    if (this.locked) {
+      ctx.fillStyle = PAL.ink;
+      chamfer(ctx, x + w - 40, y + 8, 32, 32, 4);
+      ctx.fill();
+      drawIcon(ctx, 'lock', x + w - 24, y + 24, 22, PAL.cream);
+    }
+  }
+}
+
+/** Special Events' vignette: magenta stripes. */
+function specialVignette(ctx, x, y, w, h) {
+  ctx.fillStyle = PAL.magentaShade;
+  ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = PAL.magenta;
+  for (let i = -2; i < 8; i++) {
+    ctx.beginPath();
+    ctx.moveTo(x + i * 30, y + h);
+    ctx.lineTo(x + i * 30 + 14, y + h);
+    ctx.lineTo(x + i * 30 + 64, y);
+    ctx.lineTo(x + i * 30 + 50, y);
+    ctx.fill();
   }
 }
 
@@ -556,6 +685,10 @@ const CLOUDS = [
   [0.9, 0.3, 0.085],
   [0.62, 0.075, 0.05],
 ];
+const TRAINING_CLOUDS = [
+  [0.07, 0.42, 0.07],
+  [0.93, 0.4, 0.075],
+];
 
 /** "AMATEUR" -> "Amateur". */
 function titleCase(s) {
@@ -568,22 +701,23 @@ function listOf(tiles) {
   return names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`;
 }
 
-const TOUR_COLOR = { live: '#1f8a58' };
-const SPECIAL_Y = 104; // top of the Special Events cards
-const SPECIAL_SETTINGS_Y = 238; // the Special Events RIVALS row
-const gapFor = (n) => (n - 1) * 16; // between the Special Events cards
+const SPECIAL_Y = 92; // top of the Special Events cards
+const SPECIAL_SETTINGS_Y = 240; // the Special Events RIVALS row
+const gapFor = (n) => (n - 1) * 18; // between the Special Events cards
 // vs Computer: the sections (level null: Training), in grid order (Special Events comes after).
 const SECTIONS = [
-  { level: 'amateur', title: 'AMATEUR', name: 'Amateur', icon: 'medal', color: PAL.brick, label: '#ff7a5c' },
-  { level: 'pro', title: 'PRO', name: 'Pro', icon: 'medal', color: PAL.blue, label: '#9fbaf0', after: 'amateur' }, // locked until all of Amateur is beaten
-  { level: null, title: 'TRAINING', name: 'Training', icon: 'training', color: PAL.deep, label: '#9fd28a' },
+  { level: 'amateur', title: 'AMATEUR', name: 'Amateur', color: PAL.brick, lip: PAL.brickShade, vignette: (c, x, y, w, h) => westfield(c, x - 60, y - 10, w + 120, h + 30, { trackH: 22 }) },
+  { level: 'pro', title: 'PRO', name: 'Pro', color: PAL.blue, lip: PAL.blueShade, after: 'amateur', vignette: (c, x, y, w, h) => olympic(c, x - 30, y - 6, w + 60, h + 12, { trackH: 16 }) }, // locked until all of Amateur is beaten
+  { level: null, title: 'TRAINING', name: 'Training', color: PAL.deep, lip: PAL.deeper, vignette: (c, x, y, w, h) => pinebrook(c, x - 40, y, w + 80, h + 16, { trackH: 22, clouds: [[0.5, 0.18, 0.12]] }) },
 ];
-const GRID_Y = 66; // top of vs Computer's grid
-const GRID_H = 92;
-const GRID_GAP = 14;
-const TILES_Y = 92; // top of a section page's cards
+const GRID_Y = 92; // top of vs Computer's grid
+const GRID_H = 118;
+const GRID_GAP = 18;
+const TILES_Y = 96; // top of a section page's cards
 const TILE_MAX = 132; // a card's width at most
-const TILE_GAP = 10;
+const TILE_GAP = 12;
+const GHOST_Y = 252; // Training's GHOST row
+const LIST_TRACK = 330; // where a page's track starts
 
 function toggleFullscreen() {
   if (document.fullscreenElement) {

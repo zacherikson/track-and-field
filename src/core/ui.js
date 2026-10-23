@@ -187,3 +187,50 @@ export class Button {
     if (this.sub) text(ctx, this.sub, this.x + this.w / 2, cy + 15, { size: 14, font: 'body', weight: 600, color: ink, maxWidth: this.w - 14 });
   }
 }
+
+/**
+ * A page's title, centred at the top: display type on a skewed banner (`face`,
+ * ink by default) over a gold wedge, and an optional `sub` line on a cream pill under it.
+ */
+export function titlePlate(ctx, view, title, sub = '', { y = 34, face = PAL.ink, ink = PAL.cream, maxW = view.w - 40 } = {}) {
+  const cx = view.w / 2;
+  ctx.font = `900 34px ${FONT_DISPLAY}`;
+  ctx.letterSpacing = '2px';
+  const w = Math.min(maxW, ctx.measureText(title).width + 44);
+  ctx.letterSpacing = '0px';
+  ctx.fillStyle = face === PAL.gold ? PAL.goldShade : PAL.gold;
+  ctx.beginPath();
+  ctx.moveTo(cx - w / 2 - 16, y - 18);
+  ctx.lineTo(cx + w / 2 + 16, y - 18);
+  ctx.lineTo(cx + w / 2 + 4, y + 18);
+  ctx.lineTo(cx - w / 2 - 4, y + 18);
+  ctx.fill();
+  ctx.fillStyle = face;
+  ctx.beginPath();
+  ctx.moveTo(cx - w / 2, y - 22);
+  ctx.lineTo(cx + w / 2, y - 22);
+  ctx.lineTo(cx + w / 2 - 8, y + 22);
+  ctx.lineTo(cx - w / 2 - 8, y + 22);
+  ctx.fill();
+  text(ctx, title, cx - 4, y + 1, { size: 34, font: 'display', track: 2, color: ink, maxWidth: w - 40 });
+  if (!sub) return;
+  ctx.font = `700 16px ${FONT_BODY}`;
+  const sw = Math.min(view.w - 40, ctx.measureText(sub).width + 24);
+  ctx.fillStyle = PAL.cream;
+  chamfer(ctx, cx - sw / 2, y + 26, sw, 24, 3);
+  ctx.fill();
+  text(ctx, sub, cx, y + 38.5, { size: 16, font: 'body', weight: 700, color: PAL.ink, maxWidth: sw - 16 });
+}
+
+/** An athlete's name on a small ink tag, centred on (x, y). */
+export function nameTag(ctx, name, x, y, size = 20) {
+  const label = name.toUpperCase();
+  ctx.font = `900 ${size}px ${FONT_DISPLAY}`;
+  ctx.letterSpacing = '1px';
+  const w = ctx.measureText(label).width + 22;
+  ctx.letterSpacing = '0px';
+  ctx.fillStyle = PAL.ink;
+  chamfer(ctx, x - w / 2, y - size * 0.65, w, size * 1.3, 4);
+  ctx.fill();
+  text(ctx, label, x, y + 1, { size, font: 'display', track: 1, color: PAL.cream });
+}

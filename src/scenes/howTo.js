@@ -275,15 +275,19 @@ function wrapText(ctx, str, x, cy, maxW, style) {
   text(ctx, words.slice(i).join(' '), x, cy + lh / 2, { ...opts, maxWidth: maxW });
 }
 
-/** The event card's controls strip: each control's icon, its word under it, arrows between, centred on (cx, y). */
-export function drawStrip(ctx, id, cx, y) {
+/**
+ * The event card's controls strip: each control's icon, its word under it,
+ * arrows between, centred on (cx, y), at most `width` wide. `ink` / `arrow`:
+ * the words' and arrows' colours; `font`: ui.js text()'s (the poster card: 'display').
+ */
+export function drawStrip(ctx, id, cx, y, { width = 450, ink = '#fff', arrow = 'rgba(255,255,255,0.45)', font } = {}) {
   const strip = HOW_TO[id]?.strip ?? [];
-  const gap = 150;
+  const gap = strip.length > 1 ? Math.min(150, (width - 70) / (strip.length - 1)) : 0;
   const x0 = cx - ((strip.length - 1) * gap) / 2;
   strip.forEach((s, i) => {
     const x = x0 + i * gap;
     drawIcon(ctx, s, x, y, 30);
-    text(ctx, s.label, x, y + 48, { size: 18, weight: 800, color: '#fff' });
-    if (i) text(ctx, '›', x - gap / 2, y, { size: 34, weight: 900, color: 'rgba(255,255,255,0.45)' });
+    text(ctx, font ? s.label.toUpperCase() : s.label, x, y + 48, { size: font ? 22 : 18, weight: font ? undefined : 800, font, track: font ? 1 : 0, color: ink });
+    if (i) text(ctx, '›', x - gap / 2, y, { size: 34, weight: 900, color: arrow });
   });
 }

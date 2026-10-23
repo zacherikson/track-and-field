@@ -1,5 +1,5 @@
 import { CONFIG } from '../../config.js';
-import { Button, text, chamfer, slab, PAL, FONT_BODY, FONT_DISPLAY } from '../../core/ui.js';
+import { Button, text, chamfer, slab, titlePlate, nameTag, PAL, FONT_BODY, FONT_DISPLAY } from '../../core/ui.js';
 import { drawIcon } from '../../core/icons.js';
 import { pinebrook, westfield, olympic, track, bands, wordmark } from '../../render/posterScenery.js';
 import { VENUES } from '../../render/venues.js';
@@ -527,40 +527,6 @@ export class PlayPanel {
 }
 
 /**
- * A page's title: display type on a skewed ink banner with a gold wedge
- * behind it, and an optional `sub` line on a cream pill under it.
- */
-function titlePlate(ctx, view, title, sub = '', y = 34) {
-  const cx = view.w / 2;
-  ctx.font = `900 34px ${FONT_DISPLAY}`;
-  ctx.letterSpacing = '2px';
-  const w = ctx.measureText(title).width + 44;
-  ctx.letterSpacing = '0px';
-  ctx.fillStyle = PAL.gold;
-  ctx.beginPath();
-  ctx.moveTo(cx - w / 2 - 16, y - 18);
-  ctx.lineTo(cx + w / 2 + 16, y - 18);
-  ctx.lineTo(cx + w / 2 + 4, y + 18);
-  ctx.lineTo(cx - w / 2 - 4, y + 18);
-  ctx.fill();
-  ctx.fillStyle = PAL.ink;
-  ctx.beginPath();
-  ctx.moveTo(cx - w / 2, y - 22);
-  ctx.lineTo(cx + w / 2, y - 22);
-  ctx.lineTo(cx + w / 2 - 8, y + 22);
-  ctx.lineTo(cx - w / 2 - 8, y + 22);
-  ctx.fill();
-  text(ctx, title, cx - 4, y + 1, { size: 34, font: 'display', track: 2, color: PAL.cream });
-  if (!sub) return;
-  ctx.font = `700 16px ${FONT_BODY}`;
-  const sw = Math.min(view.w - 40, ctx.measureText(sub).width + 24);
-  ctx.fillStyle = PAL.cream;
-  chamfer(ctx, cx - sw / 2, y + 26, sw, 24, 3);
-  ctx.fill();
-  text(ctx, sub, cx, y + 38.5, { size: 16, font: 'body', weight: 700, color: PAL.ink, maxWidth: sw - 16 });
-}
-
-/**
  * A vs Computer card: a slab with a vignette of its venue at the left
  * (`venue(ctx, x, y, w, h)`; an `icon` on a plate over it, for Special
  * Events), then its label, the venue's `place` name in gold and the `sub`
@@ -665,18 +631,6 @@ export class BigButton extends Button {
     const subInk = ink === PAL.cream ? 'rgba(245,234,208,0.85)' : ink;
     lines.forEach((l, i) => text(ctx, l, tx, y + fh * (two ? 0.66 : 0.74) + i * 20, { size: 17, font: 'body', weight: 600, align: 'left', color: subInk, maxWidth: mw }));
   }
-}
-
-/** Your athlete's name on an ink tag. */
-function nameTag(ctx, name, x, y) {
-  ctx.font = `900 20px ${FONT_DISPLAY}`;
-  ctx.letterSpacing = '1px';
-  const w = ctx.measureText(name.toUpperCase()).width + 22;
-  ctx.letterSpacing = '0px';
-  ctx.fillStyle = PAL.ink;
-  chamfer(ctx, x - w / 2, y - 13, w, 26, 4);
-  ctx.fill();
-  text(ctx, name.toUpperCase(), x, y + 1, { size: 20, font: 'display', track: 1, color: PAL.cream });
 }
 
 /** Pinebrook's clouds behind the big buttons: [x, y, size] as shares of the backdrop. */

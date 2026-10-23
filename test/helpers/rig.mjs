@@ -8,7 +8,7 @@ let NOW = 0; // wall ms
 globalThis.performance = { now: () => NOW };
 globalThis.window = { innerWidth: 960, addEventListener: (type, f) => (listeners[type] ??= []).push(f) };
 globalThis.document = { addEventListener: () => {} };
-globalThis.navigator = {};
+Object.defineProperty(globalThis, 'navigator', { value: {}, configurable: true, writable: true }); // Node 21+ has a read-only global navigator
 globalThis.location = { search: '', hostname: 'localhost' };
 globalThis.localStorage ??= { getItem: () => null, setItem: () => {}, removeItem: () => {} };
 

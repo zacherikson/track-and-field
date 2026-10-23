@@ -60,14 +60,14 @@ export class SquadPanel {
     this.inviteJoinBtn = new Button({ label: 'Join', w: 84, h: 32, size: 17, color: '#2bb673', onTap: () => this.invite && openInvite(this.game, { key: this.invite.key }) });
     this.dismissBtn = new Button({ label: '✕', w: 36, h: 32, size: 16, color: PLAIN, onTap: () => this.dropInvite() });
     // Practice: the big button, the events it offers, and your squadmates' open rooms.
-    this.practiceBtn = new BigButton({ label: '⚔ Practice', sub: 'Race your squad live', color: '#d98a00', onTap: () => this.openPicker() });
+    this.practiceBtn = new BigButton({ label: 'Practice', sub: 'Race your squad live', icon: 'practice', color: '#d98a00', onTap: () => this.openPicker() });
     this.picking = false;
     this.pickBtns = PRACTICE_KINDS.map(
       (k) => new Button({ label: k.label, sub: k.sub, w: 160, h: 70, size: 20, color: k.color, onTap: () => this.practice(k.kind) }),
     );
     this.cancelBtn = new Button({ label: 'Cancel', w: 140, h: 44, size: 19, color: PLAIN, onTap: () => this.back() });
     // Meet: the button, and the squad's sign-up as its SquadHub has it ({ forming, meet }).
-    this.meetBtn = new BigButton({ label: '🏟 Meet', sub: 'Squads vs squads', color: '#2f6fd8', onTap: () => this.goMeet() });
+    this.meetBtn = new BigButton({ label: 'Meet', sub: 'Squads vs squads', icon: 'meet', color: '#2f6fd8', onTap: () => this.goMeet() });
     this.meetView = null;
     this.meetWatch = null; // { key, conn }
     this.rooms = []; // open practice rooms, from the squad's hub on the meet server (watchMeet)

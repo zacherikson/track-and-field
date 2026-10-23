@@ -1,5 +1,7 @@
 import { CONFIG } from '../../config.js';
-import { Button, text, roundRect } from '../../core/ui.js';
+import { Button, text, roundRect, chamfer, slab, shade, PAL, FONT_BODY, FONT_DISPLAY } from '../../core/ui.js';
+import { drawIcon } from '../../core/icons.js';
+import { pinebrook, track, wordmark } from '../../render/posterScenery.js';
 import { drawFigure, runPose } from '../../athletes/stickFigure.js';
 import { EVENTS, SPECIAL_EVENTS, formatMark } from '../../events/registry.js';
 import { canTune, getBest, getGhostOn, setGhostOn, getPlayerName, setCampaign, getBeaten, takeFreshBeaten, getSpecialLevel, setSpecialLevel } from '../../core/storage.js';
@@ -50,8 +52,8 @@ export class PlayPanel {
     this.phase = 0;
     this.demoX = 0;
     // The two big buttons.
-    this.offlineBig = new BigButton({ label: '🤖 vs Computer', sub: 'Tournament + 5 events', color: '#e4572e', onTap: () => this.open('offline') });
-    this.liveBig = new BigButton({ label: '🌐 Live', sub: 'Race people right now', color: '#1f8a58', onTap: () => this.open('live') });
+    this.offlineBig = new BigButton({ label: 'vs Computer', sub: 'Tournament + 5 events', icon: 'vscomputer', color: PAL.orange, lip: PAL.orangeShade, onTap: () => this.open('offline') });
+    this.liveBig = new BigButton({ label: 'Live', sub: 'Race people right now', icon: 'live', color: PAL.liveGreen, lip: PAL.liveShade, onTap: () => this.open('live') });
     // Special Events: a card each, and who you race (remembered for the session).
     this.specialButtons = SPECIAL_EVENTS.map(
       (ev) =>
@@ -83,7 +85,7 @@ export class PlayPanel {
     );
     this.styleRivals();
     this.warnT = 0; // a locked card tapped: why, over the track
-    this.backBtn = new Button({ label: '‹ Back', w: 120, h: 44, size: 20, color: PLAIN, onTap: () => this.back() });
+    this.backBtn = new Button({ label: 'Back', icon: 'back', look: 'chip', w: 112, h: 46, onTap: () => this.back() });
     // vs Computer: a page of cards per section, the five events then the tournament.
     this.sections = SECTIONS.map((spec) => {
       const sec = { ...spec };
@@ -112,8 +114,8 @@ export class PlayPanel {
     this.buttons = this.training.tiles;
     // vs Computer's grid: a big button for each section, and Special Events.
     this.gridButtons = [
-      ...this.sections.map((sec) => Object.assign(new BigButton({ label: sec.name, sub: '', color: sec.color, onTap: () => this.openSection(sec) }), { key: sec.key })),
-      Object.assign(new BigButton({ label: '⭐ Special Events', sub: 'Relay · Time Trial', color: '#c2337a', onTap: () => this.open('special') }), { key: 'special' }),
+      ...this.sections.map((sec) => Object.assign(new BigButton({ label: sec.name, sub: '', icon: sec.icon, color: sec.color, onTap: () => this.openSection(sec) }), { key: sec.key })),
+      Object.assign(new BigButton({ label: 'Special Events', sub: 'Relay · Time Trial', icon: 'special', color: PAL.magenta, lip: PAL.magentaShade, onTap: () => this.open('special') }), { key: 'special' }),
     ];
     this.styleSections(takeFreshBeaten());
     // Live: the same six cards as a campaign's, against other people (a waiting room first, online/live.js).
@@ -133,12 +135,14 @@ export class PlayPanel {
     });
     this.styleGhost();
     this.onShow();
-    this.tuneButton = canTune() ? new Button({ label: '⚙ Tuning', w: 132, h: 44, color: PLAIN, onTap: () => flow.tuning(this.game) }) : null;
-    this.onlineButton = new Button({ label: '📊 Leaderboard', w: 196, h: 44, color: PLAIN, onTap: () => flow.leaderboard(this.game) });
-    this.helpButton = new Button({ label: '❓ How to play', w: 180, h: 44, color: PLAIN, onTap: () => flow.tutorial(this.game) });
+    // The top bar's chips: ink slabs with an icon.
+    const chip = (o) => new Button({ look: 'chip', h: 46, ...o });
+    this.tuneButton = canTune() ? chip({ label: 'Tuning', icon: 'tuning', w: 132, onTap: () => flow.tuning(this.game) }) : null;
+    this.onlineButton = chip({ label: 'Leaderboard', icon: 'leaderboard', w: 176, onTap: () => flow.leaderboard(this.game) });
+    this.helpButton = chip({ label: 'How to play', icon: 'howto', w: 172, onTap: () => flow.tutorial(this.game) });
     // Your profile (username for the online leaderboard), top right.
-    this.profileButton = new Button({ label: `👤 ${getPlayerName()}`, w: 190, h: 44, color: PLAIN, onTap: () => flow.profile(this.game) });
-    this.fsButton = document.fullscreenEnabled ? new Button({ label: '⛶', w: 48, h: 44, color: PLAIN, onTap: () => toggleFullscreen() }) : null;
+    this.profileButton = chip({ label: getPlayerName(), icon: 'profile', w: 200, onTap: () => flow.profile(this.game) });
+    this.fsButton = document.fullscreenEnabled ? chip({ label: '', icon: 'fullscreen', w: 48, onTap: () => toggleFullscreen() }) : null;
     // Your bests come from the online boards: catch up with them, then show them.
     syncBests()
       .then((changed) => changed && this.game.scene === this.home && this.showBests())
@@ -275,13 +279,14 @@ export class PlayPanel {
     }
     const done = (level) => this.sections.find((sec) => sec.level === level).done;
     const pro = this.sections.find((sec) => sec.level === 'pro');
-    this.offlineBig.sub = `Amateur ${done('amateur')}/6 · Pro ${pro.locked ? '🔒' : `${done('pro')}/6`} · Training · Special`;
+    this.offlineBig.sub = `Amateur ${done('amateur')}/6 · Pro ${pro.locked ? 'locked' : `${done('pro')}/6`} · Training · Special`;
     for (const b of this.gridButtons) {
       const sec = this.sections.find((x) => x.key === b.key);
       if (!sec) continue;
       const complete = sec.level && sec.done === sec.tiles.length;
-      b.sub = !sec.level ? 'Just you (and your ghost)' : sec.locked ? `🔒 Beat ${titleCase(sec.after)} first` : complete ? '★ Complete' : `${sec.done} / ${sec.tiles.length} beaten`;
-      b.color = sec.locked ? 'rgba(123,47,191,0.45)' : sec.color;
+      b.sub = !sec.level ? 'Just you (and your ghost)' : sec.locked ? `Beat ${titleCase(sec.after)} first` : complete ? '★ Complete' : `${sec.done} / ${sec.tiles.length} beaten`;
+      b.color = sec.locked ? PAL.ink3 : sec.color;
+      b.lip = sec.locked ? PAL.inkShade : null;
     }
   }
 
@@ -294,7 +299,7 @@ export class PlayPanel {
   /** `bottom`: the top of the tab bar. */
   layout(view, bottom) {
     const margin = 24 + Math.max(view.safe.l, view.safe.r);
-    const top = 14 + view.safe.t;
+    const top = 12 + view.safe.t;
 
     // Top bar: Tuning, Leaderboard ... Profile, fullscreen (the buttons); Back (a list).
     if (this.tuneButton) this.tuneButton.x = 14 + view.safe.l;
@@ -303,16 +308,16 @@ export class PlayPanel {
     if (this.fsButton) this.fsButton.x = view.w - 48 - 14 - view.safe.r;
     this.profileButton.x = (this.fsButton ? this.fsButton.x - 10 : view.w - 14 - view.safe.r) - this.profileButton.w;
     // How to play, next to the Leaderboard: just ❓ where the words won't fit.
-    const helpX = this.onlineButton.x + this.onlineButton.w + 10;
-    const roomy = helpX + 180 + 10 <= this.profileButton.x;
-    Object.assign(this.helpButton, { x: helpX, w: roomy ? 180 : 48, label: roomy ? '❓ How to play' : '❓' });
+    const helpX = this.onlineButton.x + this.onlineButton.w + 8;
+    const roomy = helpX + 172 + 10 <= this.profileButton.x;
+    Object.assign(this.helpButton, { x: helpX, w: roomy ? 172 : 48, label: roomy ? 'How to play' : '' });
     for (const b of [this.tuneButton, this.onlineButton, this.helpButton, this.backBtn, this.fsButton, this.profileButton]) if (b) b.y = top;
 
     // The two big buttons, side by side.
     const bigs = [this.offlineBig, this.liveBig];
-    const bigGap = 18;
-    const bw = Math.min(340, (view.w - margin * 2 - bigGap) / 2);
-    bigs.forEach((b, i) => Object.assign(b, { w: bw, h: 108, x: view.w / 2 - (bw * 2 + bigGap) / 2 + i * (bw + bigGap), y: 150 }));
+    const bigGap = 22;
+    const bw = Math.min(372, (view.w - margin * 2 - bigGap) / 2);
+    bigs.forEach((b, i) => Object.assign(b, { w: bw, h: 116, x: view.w / 2 - (bw * 2 + bigGap) / 2 + i * (bw + bigGap), y: 150 }));
 
     // vs Computer: its four big buttons, two by two.
     const gw = Math.min(320, (view.w - margin * 2 - GRID_GAP) / 2);
@@ -338,7 +343,7 @@ export class PlayPanel {
     // The track along the bottom: your athlete on the buttons screen, a runner under a list.
     const sec = this.section;
     this.trackTop = !this.list
-      ? 286
+      ? 300 // Pinebrook's track, under the big buttons
       : this.list === 'offline'
         ? GRID_Y + 2 * GRID_H + GRID_GAP + 16
         : sec?.level || this.list === 'live'
@@ -392,6 +397,8 @@ export class PlayPanel {
   }
 
   render(ctx, view) {
+    // The buttons stand in Pinebrook Park, its track along the bottom (it stays put as they fade in).
+    if (!this.list) pinebrook(ctx, 0, 0, view.w, this.bottom, { trackH: this.bottom - this.trackTop, clouds: CLOUDS });
     // A list (or the buttons) comes in from a little below, fading up.
     const e = 1 - (1 - this.fade) ** 3;
     ctx.save();
@@ -403,22 +410,19 @@ export class PlayPanel {
   }
 
   renderButtons(ctx, view) {
-    text(ctx, 'TRACK ROYALE', view.w / 2, 88, { size: 44, color: '#ffb400', shadow: true });
+    wordmark(ctx, view.w / 2, 94, 58);
     for (const b of [this.fsButton, this.tuneButton, this.onlineButton, this.helpButton, this.profileButton, this.offlineBig, this.liveBig]) b?.draw(ctx);
 
-    // Your athlete, warming up on the track.
-    const top = this.trackTop;
-    const h = this.trackBottom - top;
-    this.drawTrack(ctx, view, top, h);
+    // Your athlete, warming up on the track, their name on an ink tag.
     const { me } = this;
     const x = view.w / 2;
-    const ground = top + h - 30;
-    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    const ground = this.bottom - 40;
+    ctx.fillStyle = 'rgba(38,34,79,0.35)';
     ctx.beginPath();
     ctx.ellipse(x, ground + 2, 26, 6, 0, 0, Math.PI * 2);
     ctx.fill();
-    drawFigure(ctx, x, ground, Math.min(150, h - 46) * heightOf(me.colors), runPose(this.phase, 0.12), me.colors, ground);
-    text(ctx, me.name, x, ground + 17, { size: 15, weight: 800, color: '#fff' });
+    drawFigure(ctx, x, ground, Math.min(124, ground - this.trackTop - 10) * heightOf(me.colors), runPose(this.phase, 0.12), me.colors, ground);
+    nameTag(ctx, me.name, x, ground + 18);
   }
 
   renderList(ctx, view) {
@@ -482,11 +486,7 @@ export class PlayPanel {
   /** A strip of track; `runner`: with your 100m runner going along it. */
   drawTrack(ctx, view, top, h, runner = false) {
     if (h < 30) return;
-    ctx.fillStyle = '#b8452c';
-    ctx.fillRect(0, top, view.w, h);
-    ctx.fillStyle = 'rgba(255,255,255,0.7)';
-    ctx.fillRect(0, top, view.w, 2);
-    ctx.fillRect(0, top + h - 2, view.w, 2);
+    track(ctx, 0, top, view.w, h, { face: PAL.brick });
     if (!runner) return;
     const { me } = this;
     const ppm = 30; // the demo runner keeps its own small scale
@@ -496,22 +496,66 @@ export class PlayPanel {
   }
 }
 
-/** One of the big buttons (here, and the Squad tab's Practice): a big label with a line under it, and a bottom edge so it stands up. */
+/**
+ * One of the big buttons (here, and the Squad tab's Practice and Meet): a slab
+ * with its icon on a darker plate at the left, the label in display type and
+ * the sub line under it (wrapped onto two lines at a " · " if it won't fit).
+ */
 export class BigButton extends Button {
   draw(ctx) {
-    const inset = this.pressT > 0 ? 3 : 0;
-    const { x, y, w, h } = this;
-    roundRect(ctx, x + inset, y + inset + 5, w - inset * 2, h - inset * 2, 18);
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
-    ctx.fill();
-    roundRect(ctx, x + inset, y + inset + (inset ? 3 : 0), w - inset * 2, h - inset * 2, 18);
-    ctx.fillStyle = this.color;
-    ctx.fill();
-    const cy = y + h / 2 + (inset ? 3 : 0);
-    text(ctx, this.label, x + w / 2, cy - 12, { size: 32, weight: 800, shadow: true, maxWidth: w - 24 });
-    text(ctx, this.sub, x + w / 2, cy + 24, { size: 15, weight: 600, color: 'rgba(255,255,255,0.88)', maxWidth: w - 24 });
+    const { face, lip, ink } = this.paint();
+    const lipH = 6;
+    const pressed = this.pressT > 0;
+    const { x, w, h } = this;
+    slab(ctx, x, this.y, w, h, { face, lip, lipH, c: 8, pressed });
+    const y = this.y + (pressed ? lipH - 1 : 0);
+    const fh = h - lipH;
+    let tx = x + 18;
+    if (this.icon) {
+      const pw = Math.min(84, fh - 24);
+      ctx.fillStyle = lip;
+      chamfer(ctx, x + 12, y + (fh - pw) / 2, pw, pw, 5);
+      ctx.fill();
+      drawIcon(ctx, this.icon, x + 12 + pw / 2, y + fh / 2, pw * 0.62, ink);
+      tx = x + pw + 28;
+    }
+    const mw = x + w - 12 - tx;
+    ctx.font = `600 17px ${FONT_BODY}`;
+    let lines = [];
+    if (this.sub) {
+      if (ctx.measureText(this.sub).width <= mw) lines = [this.sub];
+      else {
+        const parts = this.sub.split(' · ');
+        const k = Math.ceil(parts.length / 2);
+        lines = [parts.slice(0, k).join(' · '), parts.slice(k).join(' · ')].filter(Boolean);
+      }
+    }
+    const two = lines.length > 1;
+    const size = Math.min(40, Math.round(fh * 0.36));
+    text(ctx, this.label.toUpperCase(), tx, y + fh * (two ? 0.34 : lines.length ? 0.4 : 0.52), { size, font: 'display', align: 'left', track: 1, color: ink, maxWidth: mw });
+    const subInk = ink === PAL.cream ? 'rgba(245,234,208,0.85)' : ink;
+    lines.forEach((l, i) => text(ctx, l, tx, y + fh * (two ? 0.66 : 0.74) + i * 20, { size: 17, font: 'body', weight: 600, align: 'left', color: subInk, maxWidth: mw }));
   }
 }
+
+/** Your athlete's name on an ink tag. */
+function nameTag(ctx, name, x, y) {
+  ctx.font = `900 20px ${FONT_DISPLAY}`;
+  ctx.letterSpacing = '1px';
+  const w = ctx.measureText(name.toUpperCase()).width + 22;
+  ctx.letterSpacing = '0px';
+  ctx.fillStyle = PAL.ink;
+  chamfer(ctx, x - w / 2, y - 13, w, 26, 4);
+  ctx.fill();
+  text(ctx, name.toUpperCase(), x, y + 1, { size: 20, font: 'display', track: 1, color: PAL.cream });
+}
+
+/** Pinebrook's clouds behind the big buttons: [x, y, size] as shares of the backdrop. */
+const CLOUDS = [
+  [0.07, 0.36, 0.075],
+  [0.9, 0.3, 0.085],
+  [0.62, 0.075, 0.05],
+];
 
 /** "AMATEUR" -> "Amateur". */
 function titleCase(s) {
@@ -530,9 +574,9 @@ const SPECIAL_SETTINGS_Y = 238; // the Special Events RIVALS row
 const gapFor = (n) => (n - 1) * 16; // between the Special Events cards
 // vs Computer: the sections (level null: Training), in grid order (Special Events comes after).
 const SECTIONS = [
-  { level: 'amateur', title: 'AMATEUR', name: '🥉 Amateur', color: '#e4352a', label: '#ff7a5c' },
-  { level: 'pro', title: 'PRO', name: '🥇 Pro', color: '#7b2fbf', label: '#c08cff', after: 'amateur' }, // locked until all of Amateur is beaten
-  { level: null, title: 'TRAINING', name: '🎯 Training', color: '#2d6fa8', label: '#7cc4ff' },
+  { level: 'amateur', title: 'AMATEUR', name: 'Amateur', icon: 'medal', color: PAL.brick, label: '#ff7a5c' },
+  { level: 'pro', title: 'PRO', name: 'Pro', icon: 'medal', color: PAL.blue, label: '#9fbaf0', after: 'amateur' }, // locked until all of Amateur is beaten
+  { level: null, title: 'TRAINING', name: 'Training', icon: 'training', color: PAL.deep, label: '#9fd28a' },
 ];
 const GRID_Y = 66; // top of vs Computer's grid
 const GRID_H = 92;

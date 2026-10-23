@@ -113,7 +113,7 @@ export class ResultScene {
     if (this.backdrop) {
       this.backdrop.lateRender(ctx, view);
       this.panel.draw(ctx, view);
-      this.backdrop.after?.drawControls(ctx, view, false); // the how-to line would sit under the buttons
+      this.backdrop.after?.drawControls(ctx, view);
       return;
     }
     ctx.fillStyle = '#12203a';

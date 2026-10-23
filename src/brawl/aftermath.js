@@ -7,7 +7,6 @@ import { LiveBrawl } from './liveBrawl.js';
 import { woundsOf } from './wounds.js';
 import { LAYOUT } from '../render/track.js';
 
-const HINT = 6; // s the how-to line shows
 const JOIN_EASE = 0.35; // s to ease from how someone was standing in the event into the late hits
 
 /**
@@ -23,8 +22,7 @@ const JOIN_EASE = 0.35; // s to ease from how someone was standing in the event 
  *   update(dt, t)   one step
  *   render(ctx, view, extras)  the venue and everyone in it; `extras` = the
  *                   event's athletes still finishing ([{ d, draw(ctx) }])
- *   drawControls(ctx, view, hint)  your stick and buttons, over everything
- *                   (and the how-to line along the bottom, unless `hint` is false)
+ *   drawControls(ctx, view)  your stick and buttons, over everything
  *   exit()          leaving (live: off the others' screens)
  */
 export class Aftermath {
@@ -138,18 +136,11 @@ export class Aftermath {
     this.brawl.render(ctx, view, extras);
   }
 
-  drawControls(ctx, view, hint = true) {
+  drawControls(ctx, view) {
     ctx.save();
     ctx.globalAlpha = Math.min(1, this.age / 0.3); // they fade in as you come to a stop
     this.controls.draw(ctx, view);
     ctx.restore();
-    if (hint && this.age < HINT) {
-      ctx.globalAlpha = Math.min(1, this.age / 0.3, (HINT - this.age) / 0.6);
-      text(ctx, 'Drag on the left to walk · PUNCH, KICK, SLAM · hold 😀 to emote', view.w / 2, view.h - 24 - view.safe.b, {
-        size: 14, color: '#fff', shadow: true, maxWidth: view.w - 460,
-      });
-      ctx.globalAlpha = 1;
-    }
   }
 
   exit() {

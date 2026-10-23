@@ -137,7 +137,7 @@ export class MeetStandingsScene {
     this.drawPlaces(ctx, x0, s.t + 10, placesW, room);
     this.drawSquads(ctx, x0 + placesW + 12, s.t + 10, squadsW, room);
     this.buttons.forEach((b) => b.draw(ctx));
-    if (this.backdrop) this.backdrop.after?.drawControls(ctx, view, false);
+    if (this.backdrop) this.backdrop.after?.drawControls(ctx, view);
     if (meet.lostText && !meet.final) text(ctx, meet.lostText, view.w / 2, view.h - 76 - s.b, { size: 17, weight: 700, color: '#ffb35c', shadow: true, maxWidth: view.w - 40 });
   }
 

@@ -5,6 +5,7 @@ import { text, roundRect } from '../core/ui.js';
 import { player as chosenPlayer, rivals as rivalRoster, heightOf, REFEREE } from '../athletes/roster.js';
 import { drawFigure, lerpPose, sampleTrack, handPos, JAVELIN_POSES, POSES } from '../athletes/stickFigure.js';
 import { RunUp } from './runUp.js';
+import { Thumbs } from '../core/thumbs.js';
 import { runUpSpeed, runUpPose } from './runUpRules.js';
 import { liveRandom } from '../core/random.js';
 import { angleAt, flightRange, rivalThrow } from './javelinRules.js';
@@ -55,6 +56,7 @@ export class Javelin {
     this.level = getDifficulty();
     this.lv = { ...CONFIG.ai[this.level], ...this.cfg.ai[this.level] };
     this.wantsReleases = true; // press-and-hold controls
+    this.thumbs = new Thumbs(); // which thumbs are down, strides included
   }
 
   enter() {
@@ -107,7 +109,7 @@ export class Javelin {
     this.round++;
     const t = this.now;
     this.runner = this.runUp.begin(-this.cfg.runway, t, liveRandom(this.live, this.live?.stage(this.ev.id, this.round), 'targets')); // live: this round's run-up targets are the same for everyone
-    this.down = { L: null, R: null }; // thumbs down: { id, t }
+    this.thumbs.reset();
     this.holdT = null; // both thumbs down: drawing the javelin back
     this.shot = null; // after letting go: { t0, x0, v, deg, range, foul, vx, vy, T, outT }
     this.flightT = null; // when the flight shot started
@@ -143,8 +145,9 @@ export class Javelin {
     for (const e of this.game.input.consume(end)) {
       if (e.type === 'down' && this.hitExit(e)) return flow.menu(this.game);
       if (e.type === 'key' && e.code === 'Escape') return flow.menu(this.game);
+      this.thumbs.track(e, (x) => this.side(x)); // every press and lift, strides too
       if (this.state === 'mark') {
-        if (end - this.stateT > 0.4 && (e.type === 'down' || e.code === 'Enter' || e.code === 'Space')) return this.next();
+        if (end - this.stateT > 0.4 && (e.type === 'down' || (e.type === 'key' && (e.code === 'Enter' || e.code === 'Space')))) return this.next();
         continue;
       }
       if (this.state === 'flight' && (e.code === 'Enter' || (e.type === 'down' && Math.hypot(e.x - this.ffBtn.x, e.y - this.ffBtn.y) < this.ffBtn.r + 10))) {
@@ -156,6 +159,7 @@ export class Javelin {
       if (e.type === 'down' || e.type === 'key') this.press(side, e);
       else this.lift(side, e);
     }
+    this.holdGates();
     this.simulate(dt, t);
     this.runUp.update(end);
   }
@@ -167,18 +171,20 @@ export class Javelin {
       return;
     }
     if (this.state !== 'run' || this.holdT != null) return;
-    const id = e.id ?? e.code;
-    if (side === 'BOTH') this.down = { L: { id, t }, R: { id, t } };
-    else this.down[side] = { id, t };
-    const { L, R } = this.down;
-    if (L && R && Math.abs(L.t - R.t) <= this.cfg.chordWindow) this.holdT = t;
-    else if (L && R) this.holdT = t; // both down, however far apart: you're holding
+    // Both down, however far apart (one pressed since the pads lit; the other
+    // may still be down from the last stride): you're holding.
+    if (this.thumbs.both(this.runUp.armT) != null) this.holdT = t;
   }
 
   lift(side, e) {
-    const id = e.id ?? e.code;
-    for (const s of ['L', 'R']) if (this.down[s]?.id === id) this.down[s] = null;
-    if (this.state === 'run' && this.holdT != null && (this.down.L == null || this.down.R == null)) this.letGo(e.t);
+    if (this.state === 'run' && this.holdT != null && !this.thumbs.bothDown) this.letGo(e.t);
+  }
+
+  /** A hold, checked every step: both thumbs down in the zone and not yet holding (the event loop takes presses as they come). */
+  holdGates() {
+    if (this.state !== 'run' || this.runUp.striding || this.holdT != null) return;
+    const t2 = this.thumbs.both(this.runUp.armT);
+    if (t2 != null) this.holdT = Math.max(t2, this.now);
   }
 
   stride(side, t) {
@@ -219,7 +225,7 @@ export class Javelin {
     }
     if (this.state === 'run') {
       // Throw zone: strides stop, the pads turn orange and blink.
-      if (this.runUp.striding && -r.x <= cfg.zoneDistance) this.runUp.enterZone(t);
+      if (this.runUp.striding && -r.x <= cfg.zoneDistance) this.runUp.enterZone(t, end);
       if (this.holdT != null) this.spark(t, Math.min(1, (end - this.holdT) / 1.2));
       if (r.x > cfg.overrun) {
         // Reached the line still holding (or never pressed): foul.

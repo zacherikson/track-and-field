@@ -78,8 +78,9 @@ export const CONFIG = {
    */
   dip: {
     promptDistance: 20, // m before the line where strides stop and the orange lean pads show
-    chordWindow: 0.06, // s; left + right presses this close together count as both thumbs
-    armDelay: 0.3, // s after entering the zone before a lean can trigger (stray stride taps)
+    chordWindow: 0.06, // s; left + right presses this close together count as both thumbs (a snap tap); held down they count however far apart
+    armDelay: 0.3, // s after entering the zone before a lean can trigger (stray stride taps); thumbs held down from before then lean right at armDelay
+    blink: { period: 0.6, on: 0.3 }, // s: the orange lean pads blink, as in the original (looks only: presses count lit or not)
     reach: 1.0, // m the chest gets ahead of the hips at full lean
     torsoLead: 0.15, // m the chest is ahead of the hips running upright (timing uses the torso, like real track)
     riseTime: 0.32, // s to reach full lean (smooth, committed dip)
@@ -322,8 +323,8 @@ export const CONFIG = {
       { from: 4, to: 0.2, color: '#e8281e' }, // red: jump now
     ],
     zoneDistance: 12, // m before the line where the pads turn orange: strides stop, press both to take off
-    blink: { period: 0.36, on: 0.24 }, // s: the orange takeoff pads blink, as in the original
-    chordWindow: 0.08, // s: left + right presses this close together count as both
+    blink: { period: 0.6, on: 0.3 }, // s: the orange takeoff pads blink, as in the original
+    chordWindow: 0.08, // s: left + right presses this close together count as both (a snap tap); holding both down counts however far apart they landed
     overrun: 0.4, // m past the line without jumping and it's a foul
     jump: {
       keepX: 0.8, // share of run-up speed kept forward at takeoff
@@ -365,6 +366,12 @@ export const CONFIG = {
       carryX: 0.8, // forward speed after a perfect stretch, as a share of your takeoff speed
       kickY: 1.4, // m/s hop upward
       window: 0.95, // real s the pads stay up after the top of the jump; the later you press, the weaker the kick
+      grace: 0.12, // s: a press this long before the top of the jump, still held at the top, stretches right at the top
+      // Both thumbs held down all the way from takeoff: false = no stretch (you
+      // must press again near the top: the skill); true = stretch at the top,
+      // with the kick scaled by holdThroughK. Design call, open with Zachary.
+      holdThrough: false,
+      holdThroughK: 0.5,
     },
     // Rivals: run-up pace from CONFIG.ai, plus where they take off relative to
     // the line (negative = over it: foul) and how late they stretch.
@@ -400,8 +407,8 @@ export const CONFIG = {
       { from: 20, to: 10, color: '#ffd21f' },
       { from: 10, to: 0.1, color: '#e8281e' },
     ],
-    blink: { period: 0.36, on: 0.24 }, // s: the orange pads blink until you press
-    chordWindow: 0.12, // s: left + right presses this close together count as both
+    blink: { period: 0.6, on: 0.3 }, // s: the orange pads blink until you press
+    chordWindow: 0.12, // s: not used: both thumbs down counts however far apart they landed (core/thumbs.js)
     // Held: the javelin's angle climbs from `start` at `rate` deg/s, up to `max`.
     // The best release angle is `best`; efficiency falls to 0 at `spread` deg off it.
     angle: { start: 8, rate: 22, max: 78, best: 36, spread: 42 },
@@ -436,9 +443,14 @@ export const CONFIG = {
       { from: 12, to: 8, color: '#ff8a1c' },
       { from: 8, to: 4.2, color: '#e8281e' },
     ],
-    blink: { period: 0.36, on: 0.24 }, // s: the orange pads blink while the spark runs down
-    chordWindow: 0.12, // s: left + right presses this close together count as both
-    press: { window: 0.2, miss: 0.35 }, // s either side of the plant: plant quality falls to 0 at `window`; no press within `miss` and you run through (no height)
+    blink: { period: 0.6, on: 0.3 }, // s: the orange pads blink while the spark runs down
+    chordWindow: 0.12, // s: not used: both thumbs down counts however far apart they landed (core/thumbs.js)
+    // s either side of the plant: plant quality falls to 0 at `window`; no press within `miss` and you run through (no height).
+    // Both thumbs held from before `miss` (pressed too early): the plant still
+    // registers when the window opens. earlyHoldOnTime false = it scores as
+    // pressed at the window's start (`miss` early: plant quality 0); true = as
+    // pressed right on the plant. Design call, open with Zachary.
+    press: { window: 0.2, miss: 0.35, earlyHoldOnTime: false },
     spark: { climbTime: 0.6 }, // s for the spark to climb back up the pole while you hold
     // Best release: `lead` s after the spark reaches your hands (covers the ~0.15 s between
     // seeing it get there and your finger actually leaving the screen); quality falls to 0

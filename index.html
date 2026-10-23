@@ -26,7 +26,9 @@
     body { position: fixed; inset: 0; }
     /* Sized from the fixed body (the visible screen), not 100vh/dvh, which iOS
        can leave stale after launching or rotating a home-screen app. */
-    canvas { display: block; position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
+    /* The callout and selection again on the canvas itself: some WebViews don't
+       pass them down to it, and a held pad (long jump, lean) must never pop one. */
+    canvas { display: block; position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
     /* Probe element: lets JS read the notch / home-indicator safe-area insets. */
     #safe-probe {
       position: fixed; visibility: hidden; pointer-events: none;

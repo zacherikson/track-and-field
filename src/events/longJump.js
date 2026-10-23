@@ -5,6 +5,7 @@ import { text, roundRect } from '../core/ui.js';
 import { player as chosenPlayer, rivals as rivalRoster, heightOf, REFEREE } from '../athletes/roster.js';
 import { drawFigure, runPose, lerpPose, sampleTrack, handPos, JUMP_POSES, POSES } from '../athletes/stickFigure.js';
 import { RunUp } from './runUp.js';
+import { Thumbs } from '../core/thumbs.js';
 import { runUpSpeed, runUpPose } from './runUpRules.js';
 import { liveRandom } from '../core/random.js';
 import { flightPath, rivalJump } from './longJumpRules.js';
@@ -31,9 +32,13 @@ const FLOP = { hit: 0.32, getUp: 1.3 }; // s after landing: face hits the sand; 
  *   you off.
  * - `zoneDistance` before the board the pads turn orange and BLINK: strides
  *   stop and you carry your speed. Press BOTH to take off. Measured from the
- *   foul line (front of the board), so jump late but not over it.
+ *   foul line (front of the board), so jump late but not over it. A hold
+ *   counts as soon as both thumbs are down (one pressed since the pads lit),
+ *   however far apart they landed (core/thumbs.js).
  * - At the top of the jump the orange pads come back: press both for the
- *   STRETCH. The sooner, the further.
+ *   STRETCH. The sooner, the further. A thumb still down from the takeoff
+ *   counts once the other is pressed near the top (`stretch.grace`); both
+ *   held all the way from takeoff don't (`stretch.holdThrough`).
  * - You land in the sand, sit, get up; your mark (or FOUL) is shown. Tap to go on.
  *
  * States: 'ready' (standing, first target up) → 'run' → 'air' → 'landed' →
@@ -46,6 +51,8 @@ export class LongJump {
     this.cfg = CONFIG.longJump;
     this.level = getDifficulty();
     this.lv = { ...CONFIG.ai[this.level], ...this.cfg.ai[this.level] };
+    this.wantsReleases = true; // the orange pads take holds: Input queues the lifts too (core/thumbs.js)
+    this.thumbs = new Thumbs();
   }
 
   enter() {
@@ -97,6 +104,7 @@ export class LongJump {
     const t = this.now;
     this.runner = this.runUp.begin(-this.cfg.runway, t, liveRandom(this.live, this.live?.stage(this.ev.id, this.round), 'targets')); // live: this round's run-up targets are the same for everyone
     this.press = { L: -Infinity, R: -Infinity };
+    this.thumbs.reset();
     this.jump = null; // { x0, v, t0, path, apexT, stretchT, stretchK, foul, hipX, hipY, landT, markX }
     this.mark = null; // this round's result: { mark } or { foul: true }
     this.puff = [];
@@ -118,6 +126,7 @@ export class LongJump {
 
   mapInput(e) {
     if (e.type === 'down') return e.x < this.game.view.w / 2 ? 'L' : 'R';
+    if (e.type !== 'key') return null; // lifts ('up', 'keyup') only go to the thumbs
     if (LEFT_KEYS.includes(e.code)) return 'L';
     if (RIGHT_KEYS.includes(e.code)) return 'R';
     if (BOTH_KEYS.includes(e.code)) return 'BOTH';
@@ -139,21 +148,42 @@ export class LongJump {
     for (const e of this.game.input.consume(end)) {
       if (e.type === 'down' && this.hitExit(e)) return flow.menu(this.game);
       if (e.type === 'key' && e.code === 'Escape') return flow.menu(this.game);
+      this.thumbs.track(e, (x) => this.mapInput(x)); // every press and lift, strides too
       if (this.state === 'mark') {
-        if (end - this.stateT > 0.4 && (e.type === 'down' || e.code === 'Enter' || e.code === 'Space')) return this.next();
+        if (end - this.stateT > 0.4 && (e.type === 'down' || (e.type === 'key' && (e.code === 'Enter' || e.code === 'Space')))) return this.next();
         continue;
       }
       const action = this.mapInput(e);
       if (action == null) continue;
       if ((this.state === 'ready' || this.state === 'run') && this.runUp.striding) this.stride(action, e.t);
       else if (this.state === 'run' && !this.runUp.striding) {
-        if (this.chord(action, e.t)) this.takeoff(e.t);
+        // A snap chord, or both thumbs now down (one pressed since the pads lit).
+        if (this.chord(action, e.t) || this.thumbs.both(this.runUp.armT) != null) this.takeoff(e.t);
       } else if (this.state === 'air' && e.t >= this.jump.apexT && this.jump.stretchT == null) {
-        if (this.chord(action, e.t)) this.stretch(e.t);
+        if (this.chord(action, e.t) || this.thumbs.both(this.jump.apexT - this.cfg.stretch.grace) != null) this.stretch(e.t);
       }
     }
+    this.holdGates(end);
     this.simulate(dt, t);
     this.runUp.update(end);
+  }
+
+  /**
+   * Holds, checked every step (`end`: the end of this step), not just when a
+   * finger goes down: thumbs that are down when a gate opens count as a press
+   * then. A snap tap has already been taken by the event loop.
+   */
+  holdGates(end) {
+    if (this.state === 'run' && !this.runUp.striding) {
+      const t2 = this.thumbs.both(this.runUp.armT);
+      if (t2 != null) this.takeoff(Math.max(t2, this.now));
+    } else if (this.state === 'air' && this.jump.stretchT == null && end >= this.jump.apexT) {
+      const j = this.jump;
+      const s = this.cfg.stretch;
+      const t2 = this.thumbs.both(j.apexT - s.grace);
+      if (t2 != null) this.stretch(Math.max(t2, j.apexT));
+      else if (s.holdThrough && this.thumbs.both(this.runUp.armT) != null) this.stretch(j.apexT, s.holdThroughK); // held since takeoff
+    }
   }
 
   stride(side, t) {
@@ -170,10 +200,10 @@ export class LongJump {
     this.setState('air');
   }
 
-  /** Both thumbs at the top of the jump: throw yourself forward, from here. */
-  stretch(t) {
+  /** Both thumbs at the top of the jump: throw yourself forward, from here (`kScale`: of the kick). */
+  stretch(t, kScale = 1) {
     const j = this.jump;
-    const path = flightPath({ takeoffX: j.x0, v: j.v, stretchDelay: t - j.apexT }, this.cfg);
+    const path = flightPath({ takeoffX: j.x0, v: j.v, stretchDelay: t - j.apexT, kScale }, this.cfg);
     if (path.k <= 0) return; // too late: nothing left to gain
     j.path = path;
     j.stretchT = t;
@@ -188,7 +218,7 @@ export class LongJump {
     if (this.state === 'ready' || this.state === 'run' || this.state === 'overrun') {
       r.update(dt, t);
       // Takeoff zone: strides stop, the pads turn orange and blink.
-      if (this.state === 'run' && this.runUp.striding && -r.x <= cfg.zoneDistance) this.runUp.enterZone(t);
+      if (this.state === 'run' && this.runUp.striding && -r.x <= cfg.zoneDistance) this.runUp.enterZone(t, t + dt);
       if (this.state === 'run' && r.x > cfg.overrun) {
         // Ran over the line without jumping: foul.
         this.mark = { foul: true };

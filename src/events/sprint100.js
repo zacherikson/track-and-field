@@ -2,7 +2,7 @@ import { CONFIG } from '../config.js';
 import { LaneRace } from './laneRace.js';
 import { StrideTargets } from './strideTargets.js';
 import { liveRandom } from '../core/random.js';
-import { ORANGE, drawPad, drawX } from '../render/pads.js';
+import { ORANGE, blinkLit, drawPad, drawX } from '../render/pads.js';
 import { drawDrop, drawHitRing } from '../render/targetPads.js';
 import { isReplayable } from '../online/ghost.js';
 import { pickGhost } from '../online/ghosts.js';
@@ -127,7 +127,8 @@ export class Sprint100 extends LaneRace {
     if (mode === 'run' && this.target) {
       drawDrop(ctx, this.pads[this.target], now - this.spawnT, CONFIG.sprint100.pads);
       if (now - this.missT < CONFIG.sprint100.pads.missX) drawX(ctx, this.pads[this.missSide].home.x, this.pads[this.missSide].home.y);
-    } else if (mode === 'carry') {
+    } else if (mode === 'carry' && blinkLit(now - this.carryT, CONFIG.dip.blink)) {
+      // The lean pads blink, as in the original (looks only: a press counts lit or not).
       drawPad(ctx, ORANGE, this.pads.L.home.x, this.pads.L.home.y, this.pads.L.r);
       drawPad(ctx, ORANGE, this.pads.R.home.x, this.pads.R.home.y, this.pads.R.r);
     }

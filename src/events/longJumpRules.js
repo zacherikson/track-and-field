@@ -59,10 +59,12 @@ export function flightClock({ rate: s, ramp: r }) {
  *   `jump.reach` ahead of them. Both scale with the stretch quality, and the
  *   later you press the more you've already crumpled.
  * `stretchDelay`: s after the top of the jump that you pressed (null = never).
+ * `kScale`: scales the stretch quality (1; less for a held-through stretch,
+ * CONFIG.longJump.stretch.holdThroughK).
  * Times in and out are REAL (slow-motion) seconds since takeoff.
  * Returns { k, apex, stretchAt, time, at(t) -> {x, y} hips, markX, collapse }.
  */
-export function flightPath({ takeoffX, v, stretchDelay = null }, cfg) {
+export function flightPath({ takeoffX, v, stretchDelay = null, kScale = 1 }, cfg) {
   const j = cfg.jump;
   const s = cfg.stretch;
   const c = j.collapse;
@@ -80,7 +82,7 @@ export function flightPath({ takeoffX, v, stretchDelay = null }, cfg) {
   };
   const tCollapse = ta + Math.sqrt((2 * (top.y + c.landDrop)) / g);
   const apex = clock.toReal(ta);
-  let k = stretchQuality(stretchDelay, s);
+  let k = stretchQuality(stretchDelay, s) * kScale;
   const ts = k > 0 ? clock.toPhys(apex + stretchDelay) : Infinity;
   if (ts >= tCollapse) k = 0; // too late: already in the sand
   if (k === 0) {

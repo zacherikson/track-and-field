@@ -4,6 +4,64 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Orange pads: a hold registers like a tap, and they blink as in the original
+- **Holding the orange pads works.** Only the instant a finger went down used
+  to count, inside a narrow window, so a deliberate press-and-hold often did
+  nothing however long you held it: in the long jump and the lean the thumbs
+  had to land within 0.08 s / 0.06 s of each other (a hold usually lands them
+  further apart: no takeoff, an overrun foul, no lean); a thumb still down from
+  the last stride was never counted (long jump, pole vault, javelin); thumbs
+  down as the lean pads lit never leaned; a pole vault hold started before the
+  plant window balked; holding from the takeoff never stretched. A quick
+  re-tap worked, which is why it felt like you had to tap them.
+  New `src/core/thumbs.js` keeps which thumbs are down from every press and
+  lift (the long jump and the lane races now get the lifts too:
+  `wantsReleases`), and each orange pad is checked every step: both thumbs
+  down, at least one pressed since the pads lit, with no timing window for a
+  hold. A snap tap goes through exactly as before. Releases are unchanged:
+  the pole vault release, the javelin throw and the javelin's angles.
+  - Long jump takeoff: as soon as both are down; a thumb from the run-up
+    counts once the other is pressed in the zone. Both already down when the
+    pads lit and never pressed again: still no takeoff (overrun foul).
+  - Long jump stretch: a press up to `stretch.grace` (new, 0.12 s) before the
+    top, still held at the top, stretches right at the top; a thumb held since
+    the takeoff counts once the other is pressed then. Both held all the way
+    from takeoff: no stretch (new `stretch.holdThrough` false; true stretches
+    at the top at `holdThroughK` 0.5 of the kick). Open with Zachary.
+  - Finish lean (100m, hurdles, relay anchor): thumbs held from the start of
+    the zone lean at `armDelay` (0.3 s); presses before then still don't lean
+    on their own (stray stride taps).
+  - Pole vault: a hold from before the plant window plants as it opens instead
+    of balking. It scores as pressed then, `press.miss` early, so plant quality
+    0 (new `press.earlyHoldOnTime` false; true scores it as on the plant). Open
+    with Zachary.
+  - Javelin: a thumb from the run-up counts once the other is pressed.
+  - Key releases now reach the 100m, hurdles, relay and long jump: they only go
+    to the thumbs and the late hits (whose stick and walking keys now let go
+    in the race scene too), never to strides, the countdown or "next round".
+    A Space keyup no longer advances the mark banner in the pole vault or javelin.
+  - Hardening: `selectstart` blocked, the callout and selection turned off on
+    the canvas itself, and a `touchcancel` (an iOS edge gesture) shows as
+    "cancel" on the tap markers; it still ends a hold and counts in
+    `stats.cancels`.
+- **Blink** (physics audit items 1–4: the original's pads are on 0.30 s, off
+  ~0.30 s, in every event): `longJump.blink`, `javelin.blink`,
+  `poleVault.blink` `{ period 0.36, on 0.24 }` → `{ period 0.6, on 0.3 }`. The
+  lean pads in the 100m and hurdles (and the relay anchor's) were steady; they
+  now blink with the new `dip.blink` `{ period 0.6, on 0.3 }`. Looks only:
+  a press counts in the off half too. The long jump's stretch pads at the top
+  of the jump stay steady.
+- `javelin.chordWindow` and `poleVault.chordWindow` (0.12) are no longer read:
+  both down counts however far apart. `longJump.chordWindow` (0.08) and
+  `dip.chordWindow` (0.06) still take a snap tap whose first thumb has already
+  lifted.
+- Tests: test/orangePad.test.mjs runs the real long jump, pole vault, javelin,
+  100m and hurdles scenes through the real Input with synthetic touches and
+  keys (test/helpers/), for the spec's 22 cases, plus test/thumbs.test.mjs.
+  13 of them fail on the previous build. The 100m and a long jump run-up give
+  the same hits, misses and times as before for the same taps, and a held
+  lean replays exactly from the ghost. `node tools/simulate.mjs` is unchanged.
+
 ## How to play, shorter event cards, arms, javelin stop, rising vault bar
 - **How to play**: a new screen (❓ on the Play tab) with a page per event,
   each step an icon of the control as it looks in the race plus one line

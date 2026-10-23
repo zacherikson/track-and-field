@@ -5,6 +5,7 @@ import { text, roundRect } from '../core/ui.js';
 import { player as chosenPlayer, rivals as rivalRoster, heightOf } from '../athletes/roster.js';
 import { drawFigure, lerpPose, sampleTrack, handPos, vaultSwingPose, wrapNear, VAULT_POSES, POSES } from '../athletes/stickFigure.js';
 import { RunUp } from './runUp.js';
+import { Thumbs } from '../core/thumbs.js';
 import { runUpSpeed, runUpPose } from './runUpRules.js';
 import { liveRandom } from '../core/random.js';
 import { pressQuality, releaseQuality, releaseTarget, vaultHeight, rivalVault } from './poleVaultRules.js';
@@ -67,7 +68,10 @@ function swingKey(u, col) {
  *   down and a spark runs from your hands to its tip, reaching it as the tip
  *   plants in the box.
  * - Press and HOLD both at the plant. The spark climbs back up the pole; let
- *   go as it reaches your hands. You swing up the bending pole, push off the
+ *   go as it reaches your hands. Thumbs already down when the plant window
+ *   opens (one pressed since the pads lit, the other maybe still down from
+ *   the last stride) plant then: an early hold registers, scored by
+ *   `press.earlyHoldOnTime` (core/thumbs.js). You swing up the bending pole, push off the
  *   top, arch over the bar and drop onto the mat. The camera rises with you,
  *   and so does the bar (as in the original): it waits at `bar.rest`, rides
  *   up with your hips and stops at the height you clear. Every attempt starts
@@ -84,6 +88,7 @@ export class PoleVault {
     this.level = getDifficulty();
     this.lv = { ...CONFIG.ai[this.level], ...this.cfg.ai[this.level] };
     this.wantsReleases = true; // hold-and-release controls
+    this.thumbs = new Thumbs(); // which thumbs are down, strides included
   }
 
   enter() {
@@ -145,7 +150,7 @@ export class PoleVault {
     this.round++;
     const t = this.now;
     this.runner = this.runUp.begin(-this.cfg.runway, t, liveRandom(this.live, this.live?.stage(this.ev.id, this.round), 'targets')); // live: this round's run-up targets are the same for everyone
-    this.down = { L: null, R: null }; // thumbs currently down: { id, t }
+    this.thumbs.reset();
     this.holdT = null; // both thumbs down (the plant press)
     this.releaseT = null;
     this.plantT = null;
@@ -185,8 +190,9 @@ export class PoleVault {
     for (const e of this.game.input.consume(end)) {
       if (e.type === 'down' && this.hitExit(e)) return flow.menu(this.game);
       if (e.type === 'key' && e.code === 'Escape') return flow.menu(this.game);
+      this.thumbs.track(e, (x) => this.side(x)); // every press and lift, strides too
       if (this.state === 'mark') {
-        if (end - this.stateT > 0.4 && (e.type === 'down' || e.code === 'Enter' || e.code === 'Space')) return this.next();
+        if (end - this.stateT > 0.4 && (e.type === 'down' || (e.type === 'key' && (e.code === 'Enter' || e.code === 'Space')))) return this.next();
         continue;
       }
       const side = this.side(e);
@@ -194,6 +200,7 @@ export class PoleVault {
       if (e.type === 'down' || e.type === 'key') this.press(side, e);
       else this.lift(side, e);
     }
+    this.holdGates();
     this.simulate(dt, t);
     this.runUp.update(end);
   }
@@ -205,18 +212,28 @@ export class PoleVault {
       return;
     }
     if (this.holdT != null || !(this.state === 'run' || this.state === 'vault')) return;
-    const id = e.id ?? e.code;
-    if (side === 'BOTH') this.down = { L: { id, t }, R: { id, t } };
-    else this.down[side] = { id, t };
-    const { L, R } = this.down;
-    // Both thumbs down: the plant press, if it's close enough to the plant.
-    if (L && R && this.canPlant(t)) this.holdT = t;
+    // Both thumbs down (one pressed since the pads lit): the plant press, if it's close enough to the plant.
+    if (this.thumbs.both(this.runUp.armT) != null && this.canPlant(t)) this.holdT = t;
   }
 
   lift(side, e) {
-    const id = e.id ?? e.code;
-    for (const s of ['L', 'R']) if (this.down[s]?.id === id) this.down[s] = null;
-    if (this.holdT != null && this.releaseT == null && (this.down.L == null || this.down.R == null)) this.release(e.t);
+    if (this.holdT != null && this.releaseT == null && !this.thumbs.bothDown) this.release(e.t);
+  }
+
+  /**
+   * A hold, checked every step: thumbs down from before the plant window
+   * (pressed too early) plant when it opens instead of being lost. Scored as
+   * pressed then (`press.miss` early: plant quality 0), or with
+   * `press.earlyHoldOnTime` as pressed right on the plant.
+   */
+  holdGates() {
+    if (this.holdT != null || !((this.state === 'run' && !this.runUp.striding) || this.state === 'vault')) return;
+    const t2 = this.thumbs.both(this.runUp.armT);
+    if (t2 == null) return;
+    const t = this.now;
+    if (!this.cfg.press.earlyHoldOnTime) {
+      if (this.canPlant(t)) this.holdT = Math.max(t2, t);
+    } else if (this.state === 'vault' && this.canPlant(t)) this.holdT = Math.max(t2, this.plantT);
   }
 
   /** A press counts from `press.miss` before the plant (predicted from your speed) until that long after it. */
@@ -294,7 +311,7 @@ export class PoleVault {
       r.update(dt, t);
       this.hip = { x: r.x, y: 0.5 * this.figH };
       // Plant zone: strides stop, the pads turn orange, the pole comes down.
-      if (this.state === 'run' && this.runUp.striding && this.plantX - r.x <= cfg.zoneDistance) this.runUp.enterZone(t);
+      if (this.state === 'run' && this.runUp.striding && this.plantX - r.x <= cfg.zoneDistance) this.runUp.enterZone(t, end);
       if (this.state === 'run' && r.x >= this.plantX) this.plant(end);
     } else if (this.state === 'vault') {
       const vt = this.vault;

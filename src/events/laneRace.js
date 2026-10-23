@@ -19,6 +19,7 @@ import { LiveRun } from '../online/liveRun.js';
 import { LiveTrace, TraceStream } from '../online/liveTrace.js';
 import { Venue } from '../brawl/venue.js';
 import { Aftermath } from '../brawl/aftermath.js';
+import { Thumbs } from '../core/thumbs.js';
 
 
 /**
@@ -63,6 +64,10 @@ export class LaneRace {
     this.cfg = cfg;
     this.level = getDifficulty(); // 'amateur' | 'pro': the campaign's
     this.difficulty = CONFIG.ai[this.level];
+    // The lean pads take holds: Input queues finger lifts and key releases too.
+    // They only go to the thumbs and the late hits' controls, never to strides.
+    this.wantsReleases = true;
+    this.thumbs = new Thumbs();
   }
 
   enter() {
@@ -236,6 +241,7 @@ export class LaneRace {
     this.camera.snapTo(this.player.runner.x);
     this.dipPress = null;
     this.carryT = Infinity;
+    this.thumbs.reset();
   }
 
   onResize(view) {
@@ -301,7 +307,13 @@ export class LaneRace {
     for (const e of this.game.input.consume(end)) {
       if (e.type === 'down' && this.hitExit(e)) return flow.menu(this.game);
       if (e.type === 'key' && e.code === 'Escape') return flow.menu(this.game);
+      this.thumbs.track(e, (x) => this.thumbSide(x));
       if (this.after?.handle(e)) continue; // stopped after the line: your late hits controls
+      if (e.type === 'up' || e.type === 'keyup') {
+        // Lifts: only the thumbs (and the late hits) want them. A touch the phone took back shows on the tap markers.
+        if (e.cancel && CONFIG.debug.tapMarkers) this.tapLog.push({ x: e.x, y: e.y, t: e.t, result: 'cancel' });
+        continue;
+      }
       if (this.state === 'waiting') {
         // Any tap or key starts READY / GET SET / GO (a live race starts itself).
         if (!this.live && (e.type === 'down' || this.mapInput(e) != null || e.code === 'Enter')) this.startCountdown(e.t);
@@ -318,6 +330,12 @@ export class LaneRace {
       if (mode === 'carry') this.logTap(e, this.onDipAction(action, e) ?? 'lean zone');
       else if (mode === 'run') this.logTap(e, this.onPlayerAction(action, e.t, e));
       else this.logTap(e, 'after lean');
+    }
+
+    // A lean held down: both thumbs down in the lean zone (one pressed since it
+    // began) lean as soon as the zone is armed, not only at the press.
+    if (this.state === 'race' && this.player.runner.mode === 'carry' && Number.isFinite(this.carryT) && t >= this.carryT + CONFIG.dip.armDelay) {
+      if (this.thumbs.both(this.carryT) != null) this.player.runner.lean();
     }
 
     // 3. Simulation.
@@ -468,21 +486,36 @@ export class LaneRace {
     return [];
   }
 
+  /** The thumb a press is ('L' | 'R' | 'BOTH' for the lean key | null), for the thumbs: by screen half, whatever the event's buttons. */
+  thumbSide(e) {
+    if (e.type === 'down') return e.x < this.game.view.w / 2 ? 'L' : 'R';
+    const a = this.mapInput(e);
+    if (a === 'DIP') return 'BOTH';
+    if (a === 'L' || a === 0) return 'L';
+    if (a === 'R' || a === 2) return 'R';
+    return null;
+  }
+
   /**
    * Finish lean input. Strides don't count in the lean zone: press BOTH thumbs
-   * together (within chordWindow) to lean. Space / Up arrow on a keyboard.
+   * to lean, together (within chordWindow) or one after the other and held.
+   * Space / Up arrow on a keyboard. Presses in the first `armDelay` of the
+   * zone don't lean (stray stride taps), but thumbs still down then lean
+   * right away (the hold check in update).
    */
   onDipAction(action, e) {
     const dip = CONFIG.dip;
-    if (e.t - this.carryT < dip.armDelay) return 'lean zone'; // stray stride taps as the zone begins
+    if (e.t - this.carryT < dip.armDelay) return 'lean zone'; // stray stride taps as the zone begins (a hold still counts: see update)
     if (action === 'DIP') {
       this.player.runner.lean();
       return 'lean';
     }
+    if (action !== 'L' && action !== 'R') return 'lean zone';
     this.dipPress ??= { L: -Infinity, R: -Infinity };
     this.dipPress[action] = e.t;
     const other = action === 'L' ? 'R' : 'L';
-    if (e.t - this.dipPress[other] <= dip.chordWindow && this.player.runner.lean()) return 'lean';
+    const chord = e.t - this.dipPress[other] <= dip.chordWindow;
+    if ((chord || this.thumbs.both(this.carryT) != null) && this.player.runner.lean()) return 'lean';
     return 'lean zone';
   }
 

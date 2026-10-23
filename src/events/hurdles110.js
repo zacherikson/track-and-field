@@ -4,7 +4,7 @@ import { LaneRace } from './laneRace.js';
 import { ButtonSet, HurdleRun, HurdleAI, hurdlePositions } from './hurdleRules.js';
 import { liveRandom } from '../core/random.js';
 import { hurdlePose, tripPose } from '../athletes/stickFigure.js';
-import { ORANGE, RIM, drawPad, drawX, drawNumberButton } from '../render/pads.js';
+import { ORANGE, RIM, blinkLit, drawPad, drawX, drawNumberButton } from '../render/pads.js';
 import { isTrace } from '../online/trace.js';
 import { pickGhost } from '../online/ghosts.js';
 
@@ -235,7 +235,8 @@ export class Hurdles110 extends LaneRace {
         drawNumberButton(ctx, x, y, r, n);
         ctx.restore();
       });
-    } else if (mode === 'carry') {
+    } else if (mode === 'carry' && blinkLit(now - this.carryT, CONFIG.dip.blink)) {
+      // The lean pads blink, as in the original (looks only: a press counts lit or not).
       drawPad(ctx, ORANGE, this.slotPos[0].x, this.slotPos[0].y, r);
       drawPad(ctx, ORANGE, this.slotPos[2].x, this.slotPos[2].y, r);
     }

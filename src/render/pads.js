@@ -5,6 +5,15 @@ export const GREEN = { hi: '#b6ff8a', mid: '#39e626', lo: '#0f9e1c' };
 export const ORANGE = { hi: '#ffe08a', mid: '#ff9d14', lo: '#d9580a' };
 export const RIM = '#eaf8ff'; // a pad's white rim; also its echoes and hit outline
 
+/**
+ * True on the lit half of the orange pads' blink: `age` s since they appeared,
+ * `blink` = { period, on } (CONFIG.longJump.blink, CONFIG.dip.blink, ...).
+ * Looks only: the pads take presses all the time they're up, lit or not.
+ */
+export function blinkLit(age, blink) {
+  return age >= 0 && age % blink.period < blink.on;
+}
+
 /** A glossy candy button: gradient body, darker rim, thick white ring, highlight. */
 export function drawPad(ctx, pal, x, y, r) {
   ctx.save();

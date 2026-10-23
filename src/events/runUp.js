@@ -1,7 +1,7 @@
 import { CONFIG } from '../config.js';
 import { Runner } from '../athletes/runner.js';
 import { StrideTargets } from './strideTargets.js';
-import { ORANGE, drawPad, drawX } from '../render/pads.js';
+import { ORANGE, blinkLit, drawPad, drawX } from '../render/pads.js';
 import { drawDrop, drawHitRing } from '../render/targetPads.js';
 
 /**
@@ -44,6 +44,7 @@ export class RunUp {
     this.missSide = null;
     this.missT = -Infinity;
     this.zoneT = null; // when the targets stopped for the event's zone
+    this.armT = null; // presses from this time on are presses on the orange pads (see enterZone)
     return this.runner;
   }
 
@@ -70,9 +71,15 @@ export class RunUp {
     return result;
   }
 
-  /** The event's zone, at t: the targets stop and you carry your speed in. */
-  enterZone(t) {
+  /**
+   * The event's zone, at t: the targets stop and you carry your speed in.
+   * `armT`: the end of the step that found it (the default t). Presses up to
+   * then were taken as strides, so the orange pads' "pressed since they lit"
+   * (Thumbs.both) starts there.
+   */
+  enterZone(t, armT = t) {
     this.zoneT = t;
+    this.armT = armT;
     this.judge.target = null;
     this.runner.carry();
   }
@@ -84,7 +91,7 @@ export class RunUp {
 
   /** True on the zone's orange blink (`blink`: the event's { period, on }). */
   blinkOn(now, blink) {
-    return this.zoneT != null && (now - this.zoneT) % blink.period < blink.on;
+    return this.zoneT != null && blinkLit(now - this.zoneT, blink);
   }
 
   /** The target to hit (and an X on a miss), while `running` and still on the targets. */

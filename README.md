@@ -388,6 +388,7 @@ src/flow.js           scene transitions: home → intro → event → result
 src/core/
   game.js             game loop (fixed timestep), view scaling, scene switching
   input.js            raw multi-touch + mouse + keyboard queue with precise timestamps
+  thumbs.js           which thumbs are down (presses and lifts): the orange pads take holds as well as taps
   camera.js           side-scroll camera with smoothing + look-ahead
   ui.js, math.js, storage.js
 src/athletes/
@@ -460,7 +461,8 @@ src/meet/             squad meets (docs/meets.md): the rules shared with the mee
 src/events/meetRelay.js  a meet's 4x100m relay: one leg per phone, exchanges decided by the taker's phone
 src/online/net.js     the meet server connection; meetSession.js: a meet as the events see a live room
 server/               the meet server: Cloudflare Worker + Durable Objects (server/README.md)
-test/                 the meet rules' tests (node --test test/*.test.mjs)
+test/                 tests (node --test test/*.test.mjs): meet rules, run-up, relay, and the orange pads
+                      (orangePad.test.mjs drives the real event scenes through the real Input, test/helpers/rig.mjs)
 src/tuning/           in-game tuning panel (params list, saved overrides, live estimates)
 tools/simulate.mjs    headless tuning simulator
 tools/ghostcheck.mjs  checks that recorded runs replay to the exact same time

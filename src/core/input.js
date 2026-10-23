@@ -49,6 +49,7 @@ export class Input {
     document.addEventListener('gesturestart', block, opts);
     document.addEventListener('dblclick', block, opts);
     document.addEventListener('contextmenu', block, opts);
+    document.addEventListener('selectstart', block, opts); // a held pad must never start a text selection
   }
 
   /** Counters for the results screen. `lagMax`: worst ms from a touch to the game handling it. */
@@ -117,18 +118,21 @@ export class Input {
 
   onTouchCancel(e) {
     // The phone took these touches back (a system gesture, usually from a screen edge).
+    // Treated as lifts (a hold ends there), marked `cancel` for the tap markers.
     this.stats.cancels += e.changedTouches.length;
-    this.pushUps(e);
+    this.pushUps(e, true);
   }
 
   /** Finger lifts, for scenes that need holds. Lifts count wherever they happen. */
-  pushUps(e) {
+  pushUps(e, cancel = false) {
     for (const t of e.changedTouches) this.pointers.delete('t' + t.identifier);
     if (!this.wantReleases) return;
     const wall = this.wallTime(e);
     for (const t of e.changedTouches) {
       const p = this.toLogical(t.clientX, t.clientY);
-      this.queue.push({ type: 'up', x: p.x, y: p.y, id: 't' + t.identifier, wall });
+      const ev = { type: 'up', x: p.x, y: p.y, id: 't' + t.identifier, wall };
+      if (cancel) ev.cancel = true;
+      this.queue.push(ev);
     }
   }
 

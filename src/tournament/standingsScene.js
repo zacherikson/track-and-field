@@ -1,4 +1,5 @@
-import { Button, text, roundRect } from '../core/ui.js';
+import { Button, text, slab, chamfer, PAL, FONT_DISPLAY } from '../core/ui.js';
+import { drawIcon } from '../core/icons.js';
 import { ordinal } from '../core/math.js';
 import { formatMark } from '../events/registry.js';
 import { submitBest, saveGhostIfBetter, getCampaign, markBeaten } from '../core/storage.js';
@@ -71,21 +72,21 @@ export class StandingsScene {
     this.buttons = this.final
       ? [
           tournament.live
-            ? new Button({ label: 'Play live again', color: '#2bb673', onTap: () => flow.live(this.game, TOURNAMENT_KIND, tournament.live.squad) })
-            : new Button({ label: 'New tournament', color: '#2bb673', onTap: () => flow.tournament(this.game) }),
-          new Button({ label: '📊 Leaderboard', color: 'rgba(255,255,255,0.18)', onTap: () => flow.leaderboard(this.game, tournament.board) }),
-          new Button({ label: 'Menu', color: 'rgba(255,255,255,0.18)', onTap: () => flow.menu(this.game, tournament.live?.squad ? 'squad' : 'play') }),
+            ? new Button({ label: 'Play live again', color: PAL.liveGreen, lip: PAL.liveShade, onTap: () => flow.live(this.game, TOURNAMENT_KIND, tournament.live.squad) })
+            : new Button({ label: 'New tournament', icon: 'tournament', color: PAL.liveGreen, lip: PAL.liveShade, onTap: () => flow.tournament(this.game) }),
+          new Button({ label: 'Leaderboard', icon: 'leaderboard', color: PAL.ink2, lip: PAL.inkShade, onTap: () => flow.leaderboard(this.game, tournament.board) }),
+          new Button({ label: 'Menu', icon: 'back', color: PAL.ink2, lip: PAL.inkShade, onTap: () => flow.menu(this.game, tournament.live?.squad ? 'squad' : 'play') }),
         ]
       : [
-          new Button({ label: `Next: ${next.name}  ›`, color: '#2bb673', onTap: () => !this.live && this.goNext() }),
-          new Button({ label: 'Quit', color: 'rgba(255,255,255,0.18)', onTap: () => flow.menu(this.game) }),
+          new Button({ label: `Next: ${next.name}`, icon: next.id, color: PAL.liveGreen, lip: PAL.liveShade, onTap: () => !this.live && this.goNext() }),
+          new Button({ label: 'Quit', color: PAL.ink2, lip: PAL.inkShade, onTap: () => flow.menu(this.game) }),
         ];
     if (this.backdrop) {
       // Over the late hits: just the standings and the two buttons.
       this.buttons = [this.buttons[0], this.buttons[this.buttons.length - 1]];
       this.panel = new ResultsPanel(
         this.buttons,
-        () => (this.final ? `🏆 ${this.table[0].name.toUpperCase()} WINS · ${this.campaignWin ? `${getCampaign().toUpperCase()} TOURNAMENT BEATEN!` : 'FINAL STANDINGS'}` : `OVERALL AFTER ${tournament.history.length} OF ${ORDER.length} · ${this.ev.name.toUpperCase()}`),
+        () => (this.final ? `${this.table[0].name.toUpperCase()} WINS · ${this.campaignWin ? `${getCampaign().toUpperCase()} TOURNAMENT BEATEN!` : 'FINAL STANDINGS'}` : `OVERALL AFTER ${tournament.history.length} OF ${ORDER.length} · ${this.ev.name.toUpperCase()}`),
         () =>
           this.table.map((t, i) => {
             const pts = this.rows.find((r) => (r.isPlayer ? 'you' : r.key ?? r.name) === t.key)?.pts;
@@ -170,25 +171,31 @@ export class StandingsScene {
       this.backdrop.after?.drawControls(ctx, view);
       return;
     }
-    ctx.fillStyle = '#12203a';
+    ctx.fillStyle = PAL.ink;
     ctx.fillRect(0, 0, view.w, view.h);
     const n = tournament.history.length;
     const cx = view.w / 2;
+    const CREAM = (a) => `rgba(245,234,208,${a})`;
     if (this.final) {
       const champ = this.table[0];
       const flash = 0.7 + 0.3 * Math.sin(this.age * 6);
-      text(ctx, 'TOURNAMENT CHAMPION', cx, 34, { size: 18, color: 'rgba(255,255,255,0.7)' });
-      text(ctx, `🏆 ${champ.name}`, cx, 76, { size: 44, color: champ.isPlayer ? `rgba(255,180,0,${flash})` : '#fff', shadow: true });
+      text(ctx, 'TOURNAMENT CHAMPION', cx, 30, { size: 22, font: 'display', track: 2, color: CREAM(0.75) });
+      const name = champ.name.toUpperCase();
+      ctx.font = `900 48px ${FONT_DISPLAY}`;
+      const nw = Math.min(view.w - 120, ctx.measureText(name).width);
+      const col = champ.isPlayer ? `rgba(242,182,50,${flash})` : PAL.cream;
+      drawIcon(ctx, 'tournament', cx - nw / 2 - 28, 74, 44, PAL.gold);
+      text(ctx, name, cx + 22, 76, { size: 48, font: 'display', track: 2, color: col, maxWidth: view.w - 140 });
       const me = this.table.find((t) => t.isPlayer);
       const line = champ.isPlayer
         ? `You win with ${me.total} points!${this.campaignWin ? ` ${getCampaign() === 'pro' ? 'Pro' : 'Amateur'} tournament beaten!` : ''}${tournament.newBest ? ' New best score!' : ''}`
         : `You finished ${ordinal(this.myPlace)} with ${me.total} points${tournament.newBest ? ' · new best score!' : ''}`;
-      text(ctx, line, cx, 114, { size: 18, weight: 600, color: champ.isPlayer ? '#ffd35c' : 'rgba(255,255,255,0.85)' });
+      text(ctx, line, cx, 114, { size: 20, font: 'body', weight: 700, color: champ.isPlayer ? PAL.gold : CREAM(0.85), maxWidth: view.w - 40 });
     } else {
-      text(ctx, `TOURNAMENT · EVENT ${n} OF ${ORDER.length}`, cx, 34, { size: 18, color: 'rgba(255,255,255,0.7)' });
-      text(ctx, this.ev.name.toUpperCase(), cx, 72, { size: 40, color: '#ffb400', shadow: true });
+      text(ctx, `TOURNAMENT · EVENT ${n} OF ${ORDER.length}`, cx, 30, { size: 20, font: 'display', track: 2, color: CREAM(0.75) });
+      text(ctx, this.ev.name.toUpperCase(), cx, 72, { size: 48, font: 'display', track: 2, color: PAL.gold });
       const vs = this.vsBest == null ? '' : this.vsBest >= 0 ? ` · ${this.vsBest} ahead of your best` : ` · ${-this.vsBest} behind your best`;
-      text(ctx, `+${this.myPts} points · ${ordinal(this.myPlace)} overall${vs}`, cx, 110, { size: 20, weight: 600, maxWidth: view.w - 40 });
+      text(ctx, `+${this.myPts} points · ${ordinal(this.myPlace)} overall${vs}`, cx, 110, { size: 21, font: 'body', weight: 700, color: PAL.cream, maxWidth: view.w - 40 });
     }
 
     const top = 136;
@@ -196,66 +203,75 @@ export class StandingsScene {
     const colW = Math.min(420, (view.w - 60) / 2);
     const lx = cx - colW - 10;
     const rx = cx + 10;
-    const rowH = Math.min(44, (bottom - top - 64) / 6); // leaves room for the online line
+    const rowH = Math.min(44, (bottom - top - 78) / 6); // leaves room for the online line
 
     // Left: this event (or, at the end, points per event).
-    this.panel(ctx, lx, top, colW, bottom - top, this.final ? 'POINTS PER EVENT' : 'THIS EVENT');
+    this.drawPanel(ctx, lx, top, colW, bottom - top, this.final ? 'POINTS PER EVENT' : 'THIS EVENT', rowH);
     if (this.final) {
       const me = this.table.find((t) => t.isPlayer);
       tournament.history.forEach(({ ev, rows }, i) => {
         const r = rows.find((k) => k.isPlayer);
-        const y = top + 50 + i * rowH;
-        text(ctx, ev.name, lx + 18, y, { size: 17, align: 'left', weight: 600 });
-        text(ctx, r.status === 'ok' ? formatMark(ev, r.mark) : r.status.toUpperCase(), lx + colW - 110, y, { size: 16, align: 'right', weight: 500, color: 'rgba(255,255,255,0.75)' });
-        text(ctx, String(r.pts), lx + colW - 18, y, { size: 18, align: 'right' });
+        const y = top + 44 + rowH / 2 + i * rowH;
+        drawIcon(ctx, ev.id, lx + 28, y, 24, PAL.ink);
+        text(ctx, ev.name, lx + 48, y + 1, { size: 18, font: 'body', align: 'left', weight: 700, color: PAL.ink });
+        text(ctx, r.status === 'ok' ? formatMark(ev, r.mark) : r.status.toUpperCase(), lx + colW - 110, y + 1, { size: 17, font: 'body', align: 'right', weight: 600, color: PAL.muted });
+        text(ctx, String(r.pts), lx + colW - 18, y + 1, { size: 19, font: 'body', weight: 800, align: 'right', color: PAL.ink });
       });
-      const y = top + 50 + tournament.history.length * rowH;
-      text(ctx, 'Total', lx + 18, y, { size: 18, align: 'left', weight: 800, color: '#ffd35c' });
-      text(ctx, String(me.total), lx + colW - 18, y, { size: 20, align: 'right', color: '#ffd35c' });
+      const y = top + 44 + rowH / 2 + tournament.history.length * rowH;
+      ctx.fillStyle = PAL.gold;
+      ctx.fillRect(lx, y - rowH / 2, colW, rowH);
+      text(ctx, 'TOTAL', lx + 18, y + 1, { size: 22, font: 'display', align: 'left', track: 1.5, color: PAL.ink });
+      text(ctx, String(me.total), lx + colW - 18, y + 1, { size: 22, font: 'display', align: 'right', color: PAL.ink });
     } else {
       const sorted = [...this.rows].sort((a, b) => b.pts - a.pts);
       sorted.forEach((r, i) => {
-        const y = top + 50 + i * rowH;
+        const y = top + 44 + rowH / 2 + i * rowH;
         this.rowBg(ctx, r, lx, y, colW, rowH);
         this.nameCell(ctx, r, lx, y, i);
-        text(ctx, r.status === 'ok' ? formatMark(this.ev, r.mark) : r.status.toUpperCase(), lx + colW - 100, y, { size: 16, align: 'right', weight: 500, color: 'rgba(255,255,255,0.75)' });
-        text(ctx, `+${r.pts}`, lx + colW - 16, y, { size: 18, align: 'right' });
+        text(ctx, r.status === 'ok' ? formatMark(this.ev, r.mark) : r.status.toUpperCase(), lx + colW - 100, y + 1, { size: 17, font: 'body', align: 'right', weight: 600, color: PAL.muted });
+        text(ctx, `+${r.pts}`, lx + colW - 16, y + 1, { size: 19, font: 'body', weight: 800, align: 'right', color: PAL.ink });
       });
     }
 
-    if (this.online) text(ctx, this.online, lx + colW / 2, bottom - 16, { size: 13, weight: 500, color: 'rgba(255,255,255,0.65)', maxWidth: colW - 24 });
+    if (this.online) text(ctx, this.online, lx + colW / 2, bottom - 15, { size: 15, font: 'body', weight: 600, color: PAL.muted, maxWidth: colW - 24 });
 
     // Right: overall standings.
-    this.panel(ctx, rx, top, colW, bottom - top, this.final ? 'FINAL STANDINGS' : `OVERALL AFTER ${n} OF ${ORDER.length}`);
+    this.drawPanel(ctx, rx, top, colW, bottom - top, this.final ? 'FINAL STANDINGS' : `OVERALL AFTER ${n} OF ${ORDER.length}`, rowH);
     this.table.forEach((t, i) => {
-      const y = top + 50 + i * rowH;
+      const y = top + 44 + rowH / 2 + i * rowH;
       this.rowBg(ctx, t, rx, y, colW, rowH);
       this.nameCell(ctx, t, rx, y, i);
-      text(ctx, String(t.total), rx + colW - 16, y, { size: 19, align: 'right' });
+      text(ctx, String(t.total), rx + colW - 16, y + 1, { size: 20, font: 'body', weight: 800, align: 'right', color: PAL.ink });
     });
 
     this.buttons.forEach((b) => b.draw(ctx));
   }
 
-  panel(ctx, x, y, w, h, title) {
-    roundRect(ctx, x, y, w, h, 16);
-    ctx.fillStyle = 'rgba(255,255,255,0.06)';
+  /** A cream sheet with an ink title strip and zebra rows from `rowH`. */
+  drawPanel(ctx, x, y, w, h, title, rowH) {
+    slab(ctx, x, y, w, h, { face: PAL.cream, lip: PAL.creamShade, lipH: 5, c: 7 });
+    ctx.fillStyle = PAL.ink2; // ink2: it stands off the ink behind
+    chamfer(ctx, x, y, w, 40, 7);
     ctx.fill();
-    text(ctx, title, x + w / 2, y + 22, { size: 14, weight: 700, color: 'rgba(255,255,255,0.6)' });
+    ctx.fillRect(x, y + 20, w, 20);
+    text(ctx, title, x + w / 2, y + 21, { size: 20, font: 'display', track: 1.5, color: PAL.cream, maxWidth: w - 20 });
+    for (let i = 1; y + 44 + (i + 1) * rowH < y + h - 5; i += 2) {
+      ctx.fillStyle = '#EFE2C3';
+      ctx.fillRect(x, y + 44 + i * rowH, w, rowH);
+    }
   }
 
   rowBg(ctx, r, x, y, w, h) {
     if (!r.isPlayer) return;
-    roundRect(ctx, x + 6, y - h / 2 + 2, w - 12, h - 4, 10);
-    ctx.fillStyle = 'rgba(255,180,0,0.18)';
-    ctx.fill();
+    ctx.fillStyle = PAL.gold;
+    ctx.fillRect(x, y - h / 2, w, h);
   }
 
   nameCell(ctx, r, x, y, i) {
-    text(ctx, String(i + 1), x + 24, y, { size: 18 });
+    text(ctx, String(i + 1), x + 24, y + 1, { size: 22, font: 'display', color: PAL.ink });
     ctx.fillStyle = r.colors.shirt;
     ctx.fillRect(x + 42, y - 9, 6, 18);
-    // The other players in a live tournament are named in gold, as on the track.
-    text(ctx, r.name, x + 56, y, { size: 18, align: 'left', weight: r.isPlayer ? 800 : 600, color: r.live || r.key ? '#ffb400' : '#fff' });
+    // The other people in a live tournament are named in orange (gold on the track).
+    text(ctx, r.name, x + 56, y + 1, { size: 19, font: 'body', align: 'left', weight: r.isPlayer ? 800 : 700, color: !r.isPlayer && (r.live ?? !!r.key) ? PAL.orangeShade : PAL.ink });
   }
 }

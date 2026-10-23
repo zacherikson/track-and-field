@@ -1,4 +1,6 @@
-import { Button, text, roundRect } from '../core/ui.js';
+import { Button, text, slab, chamfer, titlePlate, PAL } from '../core/ui.js';
+import { drawIcon } from '../core/icons.js';
+import { range, hill } from '../render/posterScenery.js';
 import { getBest } from '../core/storage.js';
 import { Conn, meetServer } from '../online/net.js';
 import { serverNow } from '../online/live.js';
@@ -9,10 +11,9 @@ import { flow } from '../flow.js';
 import { meet } from './meet.js';
 import { SQUAD_SIZE, MAX_SQUADS, MEET_ORDER, EVENT_NAMES } from './rules.js';
 
-const GOLD = '#ffb400';
-const OK = '#59cd90';
-const DIM = 'rgba(255,255,255,0.6)';
-const PLAIN = 'rgba(255,255,255,0.18)';
+const GOLD = PAL.gold;
+const OK = '#7fd8a0';
+const DIM = 'rgba(245,234,208,0.62)';
 
 /** Why a squad was sent back from a lobby, as the server says it (meetCore.js). */
 const WITHDRAWN = {
@@ -31,7 +32,7 @@ const WITHDRAWN = {
  * the first four make the team. With four, the squad is put in a meet lobby.
  *
  * LOBBY: the squads in the meet (up to six) with their four and their meet
- * captain (👑, picked at random). Captains press Ready; with everyone ready
+ * captain (picked at random). Captains press Ready; with everyone ready
  * and fewer than six squads, captains get Start early, and when every captain
  * has pressed it the meet starts with the squads there. Six all ready start
  * at once.
@@ -52,9 +53,9 @@ export class MeetScene {
     this.age = 0;
     this.note = null; // { text, color }
     this.signup = null; // the SquadHub's view: { forming: [{ uid, name }], meet }
-    this.leaveBtn = new Button({ label: 'Leave', w: 140, h: 48, size: 20, color: PLAIN, onTap: () => this.leave() });
-    this.readyBtn = new Button({ label: 'Ready', w: 190, h: 56, size: 24, color: '#2bb673', onTap: () => this.toggleReady() });
-    this.earlyBtn = new Button({ label: 'Start early', w: 210, h: 56, size: 22, color: '#d98a00', onTap: () => meet.send({ t: 'startEarly' }) });
+    this.leaveBtn = new Button({ label: 'Leave', icon: 'back', look: 'chip', w: 112, h: 46, onTap: () => this.leave() });
+    this.readyBtn = new Button({ label: 'Ready', icon: 'check', w: 190, h: 56, size: 24, color: PAL.liveGreen, lip: PAL.liveShade, onTap: () => this.toggleReady() });
+    this.earlyBtn = new Button({ label: 'Start early', w: 210, h: 56, size: 22, color: PAL.gold, lip: PAL.goldShade, onTap: () => meet.send({ t: 'startEarly' }) });
     this.unwatch = meet.on(() => this.onMeet());
     if (this.waiting || meet.active) return;
     if (!meetServer()) {
@@ -135,7 +136,9 @@ export class MeetScene {
     if (this.game.scene !== this) return;
     const s = this.mySquad();
     this.readyBtn.label = s?.ready ? 'Not ready' : 'Ready';
-    this.readyBtn.color = s?.ready ? PLAIN : '#2bb673';
+    this.readyBtn.icon = s?.ready ? null : 'check';
+    this.readyBtn.color = s?.ready ? PAL.ink2 : PAL.liveGreen;
+    this.readyBtn.lip = s?.ready ? PAL.inkShade : PAL.liveShade;
     this.readyBtn.enabled = !!s && s.roster.length === SQUAD_SIZE;
     // The meet's on: to its first event's title card, or (back in) the next event you're in.
     if (meet.active && meet.session) this.onTo();
@@ -170,15 +173,22 @@ export class MeetScene {
   }
 
   render(ctx, view) {
-    ctx.fillStyle = '#12203a';
+    ctx.fillStyle = PAL.ink;
     ctx.fillRect(0, 0, view.w, view.h);
+    // A low range of darker ink along the bottom, as on the Squad tab.
+    const b = view.h;
+    const pts = [[-0.02, 40], [0.14, 130], [0.28, 60], [0.44, 150], [0.6, 70], [0.77, 140], [1.02, 50]];
+    range(ctx, pts.map(([f, h]) => [f * view.w, b - h]), b, PAL.ink2, '#312C6A', null);
+    hill(ctx, -0.09 * view.w, 0.51 * view.w, b - 44, b + 2, PAL.ink3);
+    hill(ctx, 0.43 * view.w, 1.11 * view.w, b - 34, b + 2, '#433D85');
     const cx = view.w / 2;
-    text(ctx, '🏟 SQUAD MEET', cx, 34 + view.safe.t, { size: 28, color: GOLD, shadow: true });
+    const sub = !(meet.active && meet.lobby) && !(meet.active || this.waiting) && this.squad ? this.squad.name : '';
+    titlePlate(ctx, view, 'SQUAD MEET', sub, { y: 34 + view.safe.t, face: PAL.gold, ink: PAL.ink });
     Object.assign(this.leaveBtn, { x: 14 + view.safe.l, y: 12 + view.safe.t });
     if (meet.active && meet.lobby) this.renderLobby(ctx, view);
     else if (meet.active || this.waiting) this.line(ctx, view, meet.state === 'reconnecting' ? 'Reconnecting…' : `Joining the meet${this.dots()}`, 240);
     else this.renderSignup(ctx, view);
-    if (this.note) text(ctx, this.note.text, cx, view.h - 24 - view.safe.b, { size: 16, weight: 600, color: this.note.color, maxWidth: view.w - 40 });
+    if (this.note) text(ctx, this.note.text, cx, view.h - 24 - view.safe.b, { size: 18, font: 'body', color: this.note.color, maxWidth: view.w - 40 });
     this.buttons().forEach((b) => b.draw(ctx));
   }
 
@@ -187,7 +197,7 @@ export class MeetScene {
   }
 
   line(ctx, view, s, y, o = {}) {
-    text(ctx, s, view.w / 2, y, { size: 20, weight: 600, color: '#fff', maxWidth: view.w - 40, ...o });
+    text(ctx, s, view.w / 2, y, { size: 21, font: 'body', weight: 700, color: PAL.cream, maxWidth: view.w - 40, ...o });
   }
 
   /** Your squad's four places, filling up. */
@@ -195,7 +205,6 @@ export class MeetScene {
     const cx = view.w / 2;
     if (!this.hub) return;
     const st = this.hub.state;
-    this.line(ctx, view, `${this.squad.name}`, 72 + view.safe.t, { size: 18, color: DIM });
     if (st !== 'open' && !this.signup) return this.line(ctx, view, st === 'reconnecting' ? 'Reconnecting…' : `Connecting${this.dots()}`, 240);
     const names = this.signup?.forming ?? [];
     const w = Math.min(560, view.w - 40);
@@ -203,19 +212,14 @@ export class MeetScene {
     for (let i = 0; i < SQUAD_SIZE; i++) {
       const x = cx - w / 2 + i * (slotW + 12);
       const n = names[i];
-      roundRect(ctx, x, 150, slotW, 90, 14);
-      ctx.fillStyle = n ? 'rgba(89,205,144,0.22)' : 'rgba(255,255,255,0.06)';
-      ctx.fill();
-      if (n?.uid === this.hub.uid) {
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = GOLD;
-        ctx.stroke();
-      }
-      text(ctx, n ? n.name : 'Open', x + slotW / 2, 195, { size: 18, weight: n ? 800 : 500, color: n ? '#fff' : DIM, maxWidth: slotW - 12 });
+      // A place: cream once taken (yours gold), an ink2 slot while open.
+      const me = n?.uid === this.hub.uid;
+      slab(ctx, x, 150, slotW, 90, { face: me ? PAL.gold : n ? PAL.cream : PAL.ink2, lip: me ? PAL.goldShade : n ? PAL.creamShade : PAL.inkShade, lipH: 5, c: 7 });
+      text(ctx, n ? n.name : 'OPEN', x + slotW / 2, 193, n ? { size: 21, font: 'body', weight: 800, color: PAL.ink, maxWidth: slotW - 12 } : { size: 22, font: 'display', track: 2, color: DIM });
     }
-    this.line(ctx, view, `${names.length} of ${SQUAD_SIZE} signed up${names.length < SQUAD_SIZE ? this.dots() : ''}`, 120, { size: 22, color: names.length === SQUAD_SIZE ? OK : '#fff' });
+    this.line(ctx, view, `${names.length} OF ${SQUAD_SIZE} SIGNED UP${names.length < SQUAD_SIZE ? this.dots() : ''}`, 116, { size: 30, font: 'display', weight: 900, track: 2, color: names.length === SQUAD_SIZE ? OK : PAL.cream });
     const tip = names.length < SQUAD_SIZE ? 'The first four in make the team. Your squadmates see it on their Squad tab and tap Meet.' : 'Finding a meet…';
-    this.line(ctx, view, tip, 290, { size: 15, weight: 500, color: DIM });
+    this.line(ctx, view, tip, 284, { size: 17, weight: 600, color: DIM });
   }
 
   /** The squads in the meet, the captains' buttons, then the countdown and the lanes. */
@@ -233,19 +237,19 @@ export class MeetScene {
       const first = l.firstStart ?? meet.events[0]?.start;
       const left = first == null ? null : Math.max(0, Math.ceil((first - titleCard - serverNow()) / 1000));
       status = { text: left == null ? 'The meet is on!' : `The meet starts in ${Math.max(1, left)}`, color: OK, size: 26 };
-    } else if (l.squads.length < 2) status = { text: `Waiting for another squad${this.dots()}`, color: '#fff', size: 20 };
+    } else if (l.squads.length < 2) status = { text: `Waiting for another squad${this.dots()}`, color: PAL.cream, size: 20 };
     else if (l.canStartEarly) {
       const votes = l.squads.filter((s) => s.vote).length;
       const left = l.voteUntil ? Math.max(0, Math.ceil((l.voteUntil - serverNow()) / 1000)) : null;
       status = { text: `Everyone’s ready! Start early: ${votes} of ${l.squads.length} captains${left != null && votes ? ` · ${left}s` : ''}`, color: GOLD, size: 20 };
     } else {
       const ready = l.squads.filter((s) => s.ready).length;
-      status = { text: `${l.squads.length} of ${MAX_SQUADS} squads · ${ready} ready · six ready start at once`, color: '#fff', size: 18 };
+      status = { text: `${l.squads.length} of ${MAX_SQUADS} squads · ${ready} ready · six ready start at once`, color: PAL.cream, size: 18 };
     }
-    text(ctx, status.text, cx, 70 + view.safe.t, { size: status.size, color: status.color, maxWidth: view.w - 40 });
+    text(ctx, status.text, cx, 78 + view.safe.t, { size: status.size, font: 'body', weight: 800, color: status.color, maxWidth: view.w - 40 });
 
     // One row a squad.
-    const top = 98 + view.safe.t;
+    const top = 100 + view.safe.t;
     const bottom = view.h - 100 - view.safe.b;
     const rowH = Math.min(52, (bottom - top) / Math.max(1, squads.length));
     const w = Math.min(820, view.w - 30);
@@ -253,23 +257,23 @@ export class MeetScene {
     squads.forEach((s, i) => {
       const y = top + i * rowH;
       const mine = s.roster.some((m) => m.uid === meet.uid);
-      roundRect(ctx, x0, y + 3, w, rowH - 6, 10);
-      ctx.fillStyle = mine ? 'rgba(255,180,0,0.16)' : 'rgba(255,255,255,0.06)';
-      ctx.fill();
-      const cy = y + rowH / 2;
+      // A cream row a squad (yours gold), its lane on a chip in its colour once the lanes are drawn.
+      slab(ctx, x0, y + 3, w, rowH - 6, { face: mine ? PAL.gold : PAL.cream, lip: mine ? PAL.goldShade : PAL.creamShade, lipH: 4, c: 5 });
+      const cy = y + 3 + (rowH - 10) / 2;
       if (locked) {
         ctx.fillStyle = s.color ?? GOLD;
-        roundRect(ctx, x0 + 8, y + 8, 40, rowH - 16, 8);
+        chamfer(ctx, x0 + 8, y + 9, 40, rowH - 20, 4);
         ctx.fill();
-        text(ctx, String(s.lane), x0 + 28, cy, { size: 18, color: '#12203a' });
+        text(ctx, String(s.lane), x0 + 28, cy + 1, { size: 22, font: 'display', color: PAL.ink });
       }
       const nameX = x0 + (locked ? 58 : 14);
-      text(ctx, s.name, nameX, cy, { size: 18, align: 'left', color: mine ? '#ffd35c' : '#fff', maxWidth: w * 0.22 });
-      const people = s.roster.map((m) => `${m.uid === s.captain ? '👑' : ''}${m.name}${m.connected === false ? ' (away)' : ''}`).join(' · ');
-      text(ctx, people + (s.roster.length < SQUAD_SIZE ? ` · ${SQUAD_SIZE - s.roster.length} open` : ''), x0 + w * 0.3, cy, { size: 14, weight: 600, align: 'left', color: DIM, maxWidth: w * 0.5 });
+      text(ctx, s.name, nameX, cy + 1, { size: 20, font: 'body', weight: 800, align: 'left', color: PAL.ink, maxWidth: w * 0.22 });
+      const people = s.roster.map((m) => `${m.name}${m.uid === s.captain ? ' (captain)' : ''}${m.connected === false ? ' (away)' : ''}`).join(' · ');
+      text(ctx, people + (s.roster.length < SQUAD_SIZE ? ` · ${SQUAD_SIZE - s.roster.length} open` : ''), x0 + w * 0.3, cy + 1, { size: 16, font: 'body', weight: 600, align: 'left', color: PAL.muted, maxWidth: w * 0.5 });
       if (!locked) {
-        const chip = s.vote ? { t: 'START EARLY ✓', c: GOLD } : s.ready ? { t: 'READY ✓', c: OK } : s.roster.length < SQUAD_SIZE ? { t: `${s.roster.length}/${SQUAD_SIZE}`, c: '#ffb35c' } : { t: 'NOT READY', c: DIM };
-        text(ctx, chip.t, x0 + w - 14, cy, { size: 15, align: 'right', color: chip.c });
+        const chip = s.vote ? { t: 'START EARLY', c: PAL.goldShade, check: true } : s.ready ? { t: 'READY', c: PAL.liveShade, check: true } : s.roster.length < SQUAD_SIZE ? { t: `${s.roster.length}/${SQUAD_SIZE}`, c: PAL.orangeShade } : { t: 'NOT READY', c: PAL.muted };
+        const cw = text(ctx, chip.t, x0 + w - 14, cy + 1, { size: 19, font: 'display', track: 1, align: 'right', color: chip.c });
+        if (chip.check) drawIcon(ctx, 'check', x0 + w - 28 - cw, cy, 20, chip.c);
       }
     });
 
@@ -284,8 +288,8 @@ export class MeetScene {
       const mine = this.mySquad();
       const cap = mine && meet.members.get(mine.captain)?.name;
       const hint = this.captain ? 'You’re your squad’s meet captain: press Ready when your four are set.' : cap ? `${cap} is your meet captain: they press Ready.` : '';
-      if (!btns.length) text(ctx, hint, cx, view.h - 60 - view.safe.b, { size: 16, weight: 600, color: DIM, maxWidth: view.w - 40 });
+      if (!btns.length) text(ctx, hint, cx, view.h - 60 - view.safe.b, { size: 18, font: 'body', weight: 700, color: PAL.cream, maxWidth: view.w - 40 });
     }
-    if (locked) text(ctx, `${EVENT_NAMES[MEET_ORDER[0]]} first, then the long jump, hurdles, pole vault, javelin and the 4×100m relay.`, cx, view.h - 60 - view.safe.b, { size: 15, weight: 500, color: DIM, maxWidth: view.w - 40 });
+    if (locked) text(ctx, `${EVENT_NAMES[MEET_ORDER[0]]} first, then the long jump, hurdles, pole vault, javelin and the 4×100m relay.`, cx, view.h - 60 - view.safe.b, { size: 17, font: 'body', weight: 700, color: PAL.cream, maxWidth: view.w - 40 });
   }
 }

@@ -1,20 +1,19 @@
-import { Button, text, roundRect } from '../core/ui.js';
+import { Button, text, slab, titlePlate, PAL } from '../core/ui.js';
 import { EVENTS, SPECIAL_EVENTS } from '../events/registry.js';
 import { setCampaign } from '../core/storage.js';
 import { flow } from '../flow.js';
 import { drawSteps } from './howTo.js';
 
-const DIM = 'rgba(255,255,255,0.15)';
 const TAB_LABELS = { sprint100: '100m', longjump: 'Long jump', hurdles110: 'Hurdles', polevault: 'Pole vault', javelin: 'Javelin', relay4x100: '4×100m', timetrial: 'Time trial' };
 // Every event, the five then the special ones (read when needed: the registry may still be loading when this is).
 const list = () => [...EVENTS, ...SPECIAL_EVENTS];
-const BOX_Y = 104;
-const BOX_H = 360;
+const BOX_Y = 122;
+const BOX_H = 340;
 
 let lastId = null; // the tab you looked at last, for the next visit
 
 /**
- * How to Play (the Play tab's ❓ button): a tab per event, the five then the
+ * How to Play (the Play tab's How to play button): a tab per event, the five then the
  * special events, each with its steps (howTo.js) and a Practice button that
  * takes you to its card (Training for the five). Back goes to the Play tab.
  */
@@ -25,9 +24,9 @@ export class TutorialScene {
 
   enter() {
     this.list = list();
-    this.backBtn = new Button({ label: '‹ Back', w: 110, h: 40, size: 19, color: DIM, onTap: () => flow.menu(this.game) });
-    this.playBtn = new Button({ label: 'Practice ›', w: 200, h: 50, color: '#2bb673', onTap: () => this.practice() });
-    this.tabs = this.list.map((ev) => new Button({ label: TAB_LABELS[ev.id] ?? ev.name, h: 38, size: 16, onTap: () => this.show(ev.id) }));
+    this.backBtn = new Button({ label: 'Back', icon: 'back', look: 'chip', w: 112, h: 46, onTap: () => flow.menu(this.game) });
+    this.playBtn = new Button({ label: 'Practice', icon: 'next', w: 210, h: 54, color: PAL.liveGreen, lip: PAL.liveShade, onTap: () => this.practice() });
+    this.tabs = this.list.map((ev) => new Button({ label: TAB_LABELS[ev.id] ?? ev.name, icon: ev.id, h: 40, size: 16, color: PAL.ink2, onTap: () => this.show(ev.id) }));
     this.show(this.id);
     this.layout(this.game.view);
   }
@@ -38,7 +37,11 @@ export class TutorialScene {
 
   show(id) {
     this.id = lastId = id;
-    this.tabs.forEach((t, i) => (t.color = this.list[i].id === id ? '#e4572e' : 'rgba(255,255,255,0.12)'));
+    this.tabs.forEach((t, i) => {
+      const on = this.list[i].id === id;
+      t.color = on ? PAL.cream : PAL.ink2; // the event showing is cream
+      t.lip = on ? PAL.creamShade : PAL.inkShade;
+    });
   }
 
   /** Off to this event's card: Training for the five (no rivals), a special event at its RIVALS level. */
@@ -56,12 +59,12 @@ export class TutorialScene {
   }
 
   layout(view) {
-    Object.assign(this.backBtn, { x: 14 + view.safe.l, y: 8 });
+    Object.assign(this.backBtn, { x: 14 + view.safe.l, y: 10 });
     const gap = 6;
     const tabsW = Math.min(900, view.w - 32 - view.safe.l - view.safe.r);
     const tw = (tabsW - gap * (this.tabs.length - 1)) / this.tabs.length;
-    this.tabs.forEach((t, i) => Object.assign(t, { x: view.w / 2 - tabsW / 2 + i * (tw + gap), y: 56, w: tw }));
-    Object.assign(this.playBtn, { x: view.w / 2 - this.playBtn.w / 2, y: BOX_Y + BOX_H + 12 });
+    this.tabs.forEach((t, i) => Object.assign(t, { x: view.w / 2 - tabsW / 2 + i * (tw + gap), y: 70, w: tw }));
+    Object.assign(this.playBtn, { x: view.w / 2 - this.playBtn.w / 2, y: BOX_Y + BOX_H + 10 });
   }
 
   get buttons() {
@@ -83,16 +86,14 @@ export class TutorialScene {
   }
 
   render(ctx, view) {
-    ctx.fillStyle = '#12203a';
+    ctx.fillStyle = PAL.ink;
     ctx.fillRect(0, 0, view.w, view.h);
-    text(ctx, 'HOW TO PLAY', view.w / 2, 28, { size: 26, color: '#ffb400', shadow: true });
+    titlePlate(ctx, view, 'HOW TO PLAY', '', { y: 32, face: PAL.gold, ink: PAL.ink });
     const w = this.boxW;
     const x0 = view.w / 2 - w / 2;
-    roundRect(ctx, x0, BOX_Y, w, BOX_H, 16);
-    ctx.fillStyle = 'rgba(255,255,255,0.06)';
-    ctx.fill();
-    text(ctx, this.ev.name.toUpperCase(), view.w / 2, BOX_Y + 26, { size: 22, color: '#fff' });
-    drawSteps(ctx, this.id, x0 + 10, BOX_Y + 46, w - 20, 54);
+    slab(ctx, x0, BOX_Y, w, BOX_H, { face: PAL.ink2, lip: PAL.inkShade, lipH: 6, c: 8 });
+    text(ctx, this.ev.name.toUpperCase(), view.w / 2, BOX_Y + 28, { size: 28, font: 'display', track: 2, color: PAL.gold });
+    drawSteps(ctx, this.id, x0 + 10, BOX_Y + 48, w - 20, 54);
     this.buttons.forEach((b) => b.draw(ctx));
   }
 }

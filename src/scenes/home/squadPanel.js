@@ -1,4 +1,6 @@
-import { Button, text, roundRect } from '../../core/ui.js';
+import { Button, text, slab, chamfer, titlePlate, PAL, FONT_DISPLAY } from '../../core/ui.js';
+import { drawIcon } from '../../core/icons.js';
+import { range, hill } from '../../render/posterScenery.js';
 import { cleanName, getPlayerName } from '../../core/storage.js';
 import { cachedSquad, loadMySquad, topSquads, searchSquads, createSquad, joinSquad, leaveSquad, kickFromSquad, SQUAD_MAX, inviteLink, getInvite, setInvite, squadInfo } from '../../online/squads.js';
 import { prewarmSDK } from '../../online/firebase.js';
@@ -11,11 +13,8 @@ import { Conn, meetServer } from '../../online/net.js';
 import { BigButton } from './playPanel.js';
 
 const WARN = '#ffb35c';
-const OK = '#59cd90';
-const DIM = 'rgba(255,255,255,0.6)';
-const PLAIN = 'rgba(255,255,255,0.15)';
-
-const GOLD = '#ffb400';
+const OK = '#7fd8a0';
+const DIM = 'rgba(245,234,208,0.62)';
 
 /**
  * The home screen's right tab: your squad (online/squads.js). In one: its name
@@ -23,14 +22,14 @@ const GOLD = '#ffb400';
  * a member to kick them out. Not in one: start a
  * squad, or find one and join it; a squad you've been invited to comes first.
  *
- * PRACTICE (in a squad), like a Clash Royale friendly battle: the big ⚔
+ * PRACTICE (in a squad), like a Clash Royale friendly battle: the big
  * Practice button opens the events to pick from (the five, the 4x100m relay,
  * the tournament), and picking one opens a live waiting room only your squad
  * sees (online/live.js, squadlobby/). While it's open it's on every member's
  * Squad tab, next to the button, with Join.
  *
  * MEET (in a squad): squads against squads on the meet server (docs/meets.md).
- * The 🏟 Meet button signs you up (meet/meetScene.js); the first four make the
+ * The Meet button signs you up (meet/meetScene.js); the first four make the
  * squad's team. While this tab shows, it follows the squad's sign-up (its
  * SquadHub), so the button says who's signed up and whether a meet is on.
  */
@@ -47,27 +46,27 @@ export class SquadPanel {
     this.status = null; // { text, color, profile } (profile: offer the Profile button)
     this.busy = false;
     this.loadedAt = -Infinity;
-    this.createBtn = new Button({ label: '＋ Start a squad', w: 210, h: 44, size: 19, onTap: () => this.create() });
-    this.findBtn = new Button({ label: '🔍 Find by name', w: 200, h: 44, size: 19, color: '#3a6fd8', onTap: () => this.find() });
-    this.topBtn = new Button({ label: 'Biggest', w: 120, h: 44, size: 19, color: PLAIN, onTap: () => this.loadList(null) });
-    this.profileBtn = new Button({ label: '👤 Pick a username', w: 220, h: 44, size: 19, color: PLAIN, onTap: () => flow.profile(this.game, 'squad') });
-    this.retryBtn = new Button({ label: 'Try again', w: 160, h: 44, size: 19, color: PLAIN, onTap: () => this.refresh() });
-    this.leaveBtn = new Button({ label: 'Leave', w: 110, h: 40, size: 18, color: PLAIN, onTap: () => this.leave() });
-    this.inviteBtn = new Button({ label: '📨 Invite', w: 140, h: 40, size: 18, color: '#2bb673', onTap: () => this.share() });
+    this.createBtn = new Button({ label: 'Start a squad', icon: 'plus', w: 220, h: 50, size: 21, color: PAL.orange, lip: PAL.orangeShade, onTap: () => this.create() });
+    this.findBtn = new Button({ label: 'Find by name', icon: 'search', w: 220, h: 50, size: 21, color: PAL.blue, lip: PAL.blueShade, onTap: () => this.find() });
+    this.topBtn = new Button({ label: 'Biggest', icon: 'people', w: 150, h: 50, size: 21, color: PAL.ink2, onTap: () => this.loadList(null) });
+    this.profileBtn = new Button({ label: 'Pick a username', icon: 'profile', w: 240, h: 50, size: 21, color: PAL.ink2, onTap: () => flow.profile(this.game, 'squad') });
+    this.retryBtn = new Button({ label: 'Try again', w: 170, h: 50, size: 21, color: PAL.ink2, onTap: () => this.refresh() });
+    this.leaveBtn = new Button({ label: 'Leave', w: 112, h: 46, size: 19, color: PAL.ink2, onTap: () => this.leave() });
+    this.inviteBtn = new Button({ label: 'Invite', icon: 'invite', w: 140, h: 46, size: 19, color: PAL.liveGreen, lip: PAL.liveShade, onTap: () => this.share() });
     this.joinBtns = [];
     // The squad you've been invited to, offered at the top: { key, name, size }.
     this.invite = null;
-    this.inviteJoinBtn = new Button({ label: 'Join', w: 84, h: 32, size: 17, color: '#2bb673', onTap: () => this.invite && openInvite(this.game, { key: this.invite.key }) });
-    this.dismissBtn = new Button({ label: '✕', w: 36, h: 32, size: 16, color: PLAIN, onTap: () => this.dropInvite() });
+    this.inviteJoinBtn = new Button({ label: 'Join', w: 76, h: 36, size: 18, color: PAL.liveGreen, lip: PAL.liveShade, onTap: () => this.invite && openInvite(this.game, { key: this.invite.key }) });
+    this.dismissBtn = new Button({ label: '', icon: 'close', look: 'chip', w: 40, h: 36, onTap: () => this.dropInvite() });
     // Practice: the big button, the events it offers, and your squadmates' open rooms.
-    this.practiceBtn = new BigButton({ label: '⚔ Practice', sub: 'Race your squad live', color: '#d98a00', onTap: () => this.openPicker() });
+    this.practiceBtn = new BigButton({ label: 'Practice', sub: 'Race your squad live', icon: 'practice', color: PAL.orange, lip: PAL.orangeShade, onTap: () => this.openPicker() });
     this.picking = false;
     this.pickBtns = PRACTICE_KINDS.map(
-      (k) => new Button({ label: k.label, sub: k.sub, w: 160, h: 70, size: 20, color: k.color, onTap: () => this.practice(k.kind) }),
+      (k) => new Button({ label: k.label, sub: k.sub, icon: k.kind, w: 160, h: 70, size: 20, color: k.color, lip: k.lip, onTap: () => this.practice(k.kind) }),
     );
-    this.cancelBtn = new Button({ label: 'Cancel', w: 140, h: 44, size: 19, color: PLAIN, onTap: () => this.back() });
+    this.cancelBtn = new Button({ label: 'Cancel', w: 140, h: 46, size: 19, color: PAL.ink2, onTap: () => this.back() });
     // Meet: the button, and the squad's sign-up as its SquadHub has it ({ forming, meet }).
-    this.meetBtn = new BigButton({ label: '🏟 Meet', sub: 'Squads vs squads', color: '#2f6fd8', onTap: () => this.goMeet() });
+    this.meetBtn = new BigButton({ label: 'Meet', sub: 'Squads vs squads', icon: 'meet', color: PAL.blue, lip: PAL.blueShade, onTap: () => this.goMeet() });
     this.meetView = null;
     this.meetWatch = null; // { key, conn }
     this.rooms = []; // open practice rooms, from the squad's hub on the meet server (watchMeet)
@@ -244,7 +243,7 @@ export class SquadPanel {
         if (this.list.q !== q) return; // another list was asked for since
         this.list.rows = rows;
         this.joinBtns = rows.map(
-          (r) => new Button({ label: r.size >= SQUAD_MAX ? 'Full' : 'Join', w: 84, h: 32, size: 17, enabled: r.size < SQUAD_MAX, color: '#2bb673', onTap: () => this.join(r) }),
+          (r) => new Button({ label: r.size >= SQUAD_MAX ? 'Full' : 'Join', w: 76, h: 36, size: 18, enabled: r.size < SQUAD_MAX, color: PAL.liveGreen, lip: PAL.liveShade, onTap: () => this.join(r) }),
         );
       })
       .catch((e) => {
@@ -365,20 +364,21 @@ export class SquadPanel {
     const gap = 12;
     let x = view.w / 2 - (btns.reduce((s, b) => s + b.w, 0) + gap * (btns.length - 1)) / 2;
     for (const b of btns) {
-      Object.assign(b, { x, y: 82 });
+      Object.assign(b, { x, y: 74 });
       x += b.w + gap;
     }
     const cols = this.contentW >= 700 ? 2 : 1;
     const colGap = 16;
     const rowW = (this.contentW - colGap * (cols - 1)) / cols;
     // The squad you've been invited to, across the top, then the rest.
-    this.inviteBox = this.invite ? { x: this.x0, y: LIST_Y, w: this.contentW, h: ROW_H } : null;
+    const top = LIST_Y + (this.status ? 24 : 0); // a status line goes under the buttons
+    this.inviteBox = this.invite ? { x: this.x0, y: top, w: this.contentW, h: ROW_H } : null;
     if (this.inviteBox) {
       const k = this.inviteBox;
       Object.assign(this.dismissBtn, { x: k.x + k.w - this.dismissBtn.w - 6, y: k.y + 6 });
-      Object.assign(this.inviteJoinBtn, { x: this.dismissBtn.x - 84 - 8, y: k.y + 6 });
+      Object.assign(this.inviteJoinBtn, { x: this.dismissBtn.x - 76 - 8, y: k.y + 6 });
     }
-    this.listY = LIST_Y + (this.invite ? ROW_H + 38 : 0);
+    this.listY = top + (this.invite ? ROW_H + 38 : 0);
     const perCol = Math.max(1, Math.floor((bottom - 8 - this.listY + ROW_GAP) / (ROW_H + ROW_GAP)));
     this.rowBoxes = (this.list.rows ?? []).slice(0, perCol * cols).map((r, i) => ({
       r,
@@ -387,7 +387,7 @@ export class SquadPanel {
       w: rowW,
       h: ROW_H,
     }));
-    this.rowBoxes.forEach((k, i) => Object.assign(this.joinBtns[i], { x: k.x + k.w - 84 - 6, y: k.y + 6 }));
+    this.rowBoxes.forEach((k, i) => Object.assign(this.joinBtns[i], { x: k.x + k.w - 76 - 8, y: k.y + 6 }));
   }
 
   /**
@@ -412,7 +412,8 @@ export class SquadPanel {
           w: 76,
           h: 36,
           size: 18,
-          color: '#2bb673',
+          color: PAL.liveGreen,
+          lip: PAL.liveShade,
           enabled: !k.r.full || k.r.mine,
           x: k.x + k.w - 76 - 10,
           y: k.y + (k.h - 36) / 2,
@@ -423,7 +424,7 @@ export class SquadPanel {
     const cw = Math.min(this.contentW, 760);
     const cols = 4;
     const bw = (cw - 40 - (cols - 1) * 12) / cols;
-    this.pickCard = { x: view.w / 2 - cw / 2, y: 64, w: cw, h: 332 };
+    this.pickCard = { x: view.w / 2 - cw / 2, y: 64, w: cw, h: 340 };
     const rows = Math.ceil(this.pickBtns.length / cols);
     this.pickBtns.forEach((btn, i) => {
       const row = Math.floor(i / cols);
@@ -482,73 +483,84 @@ export class SquadPanel {
   }
 
   render(ctx, view) {
+    this.drawBackdrop(ctx, view);
     if (this.mine) return this.renderSquad(ctx, view, this.mine);
-    text(ctx, 'SQUADS', view.w / 2, 34, { size: 30, color: '#ffb400', shadow: true });
-    if (this.status) text(ctx, this.status.text, view.w / 2, 62, { size: 15, weight: 600, color: this.status.color, maxWidth: view.w - 40 });
+    titlePlate(ctx, view, 'SQUADS', '', { face: PAL.gold, ink: PAL.ink });
     if (this.mine === undefined && !this.loadError) {
-      text(ctx, 'Loading…', view.w / 2, 200, { size: 18, weight: 600, color: DIM });
+      text(ctx, 'Loading…', view.w / 2, 200, { size: 19, font: 'body', color: DIM });
       return;
     }
     this.buttonRow().forEach((b) => b.draw(ctx));
+    if (this.status) text(ctx, this.status.text, view.w / 2, 146, { size: 17, font: 'body', color: this.status.color, maxWidth: view.w - 40 });
     if (this.loadError) {
-      text(ctx, this.loadError, view.w / 2, 200, { size: 18, weight: 600, color: WARN, maxWidth: view.w - 40 });
+      text(ctx, this.loadError, view.w / 2, 200, { size: 19, font: 'body', color: WARN, maxWidth: view.w - 40 });
       return;
     }
     if (this.inviteBox) {
       const k = this.inviteBox;
-      text(ctx, 'YOU’RE INVITED', k.x, k.y - 14, { size: 13, weight: 800, align: 'left', color: '#ffd35c' });
-      roundRect(ctx, k.x, k.y, k.w, k.h, 10);
-      ctx.fillStyle = 'rgba(255,180,0,0.18)';
-      ctx.fill();
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = '#ffb400';
-      ctx.stroke();
-      text(ctx, `📨 ${this.invite.name}`, k.x + 14, k.y + k.h / 2, { size: 18, align: 'left', color: '#ffd35c', maxWidth: k.w - 260 });
-      text(ctx, `👥 ${this.invite.size}/${SQUAD_MAX}`, this.inviteJoinBtn.x - 14, k.y + k.h / 2, { size: 14, weight: 600, align: 'right', color: DIM });
+      text(ctx, 'YOU’RE INVITED', k.x, k.y - 14, { size: 18, font: 'display', align: 'left', track: 2, color: PAL.gold });
+      slab(ctx, k.x, k.y, k.w, k.h, { face: PAL.gold, lip: PAL.goldShade, lipH: 4, c: 5 });
+      const cy = k.y + (k.h - 4) / 2;
+      drawIcon(ctx, 'invite', k.x + 24, cy, 24, PAL.ink);
+      text(ctx, this.invite.name, k.x + 44, cy + 1, { size: 21, font: 'body', weight: 800, align: 'left', color: PAL.ink, maxWidth: k.w - 260 });
+      this.drawCount(ctx, this.inviteJoinBtn.x - 12, cy, this.invite.size, PAL.ink);
       this.inviteJoinBtn.draw(ctx);
       this.dismissBtn.draw(ctx);
     }
-    text(ctx, this.list.title, this.x0, this.listY - 14, { size: 13, weight: 700, align: 'left', color: DIM, maxWidth: this.contentW });
+    text(ctx, this.list.title, this.x0, this.listY - 14, { size: 18, font: 'display', align: 'left', track: 2, color: PAL.gold, maxWidth: this.contentW });
     const { rows, error } = this.list;
     const msg = error ?? (!rows ? 'Loading…' : !rows.length ? (this.list.q ? 'No squads by that name yet. Start it yourself!' : 'No squads yet. Start the first one!') : null);
-    if (msg) text(ctx, msg, view.w / 2, this.listY + 40, { size: 17, weight: 600, color: error ? WARN : DIM, maxWidth: view.w - 40 });
+    if (msg) text(ctx, msg, view.w / 2, this.listY + 40, { size: 19, font: 'body', color: error ? WARN : DIM, maxWidth: view.w - 40 });
     this.rowBoxes?.forEach((k, i) => {
-      roundRect(ctx, k.x, k.y, k.w, k.h, 10);
-      ctx.fillStyle = 'rgba(255,255,255,0.07)';
-      ctx.fill();
-      text(ctx, k.r.name, k.x + 14, k.y + k.h / 2, { size: 18, align: 'left', maxWidth: k.w - 190 });
-      text(ctx, `👥 ${k.r.size}/${SQUAD_MAX}`, k.x + k.w - 100, k.y + k.h / 2, { size: 14, weight: 600, align: 'right', color: DIM });
+      slab(ctx, k.x, k.y, k.w, k.h, { face: PAL.cream, lip: PAL.creamShade, lipH: 4, c: 5 });
+      const cy = k.y + (k.h - 4) / 2;
+      text(ctx, k.r.name, k.x + 16, cy + 1, { size: 21, font: 'body', weight: 800, align: 'left', color: PAL.ink, maxWidth: k.w - 190 });
+      this.drawCount(ctx, this.joinBtns[i].x - 12, cy, k.r.size, PAL.muted);
       this.joinBtns[i].draw(ctx);
     });
   }
 
+  /** A squad's head count, right-aligned at `right`: the people icon and "4/30". */
+  drawCount(ctx, right, cy, n, color) {
+    const w = text(ctx, `${n}/${SQUAD_MAX}`, right, cy + 1, { size: 17, font: 'body', weight: 800, align: 'right', color });
+    drawIcon(ctx, 'people', right - w - 14, cy, 20, color);
+  }
+
+  /** Ink, with a low faceted range of darker ink along the bottom. */
+  drawBackdrop(ctx, view) {
+    const b = this.bottom;
+    const w = view.w;
+    const pts = [[-0.02, 40], [0.14, 150], [0.28, 70], [0.44, 170], [0.6, 80], [0.77, 160], [1.02, 60]];
+    range(ctx, pts.map(([f, h]) => [f * w, b - h]), b, PAL.ink2, '#312C6A', null);
+    hill(ctx, -0.09 * w, 0.51 * w, b - 50, b + 2, PAL.ink3);
+    hill(ctx, 0.43 * w, 1.11 * w, b - 40, b + 2, '#433D85');
+  }
+
   renderSquad(ctx, view, s) {
-    text(ctx, s.name, view.w / 2, 40, { size: 34, color: '#ffb400', shadow: true, maxWidth: view.w - 2 * (Math.max(this.inviteBtn.w, this.leaveBtn.w) + 40) });
     const leader = s.members.find((m) => m.leader);
-    text(ctx, `${s.size}/${SQUAD_MAX} members${leader ? ` · led by ${leader.name}` : ''}`, view.w / 2, 72, { size: 15, weight: 600, color: DIM, maxWidth: view.w - 40 });
+    titlePlate(ctx, view, s.name.toUpperCase(), `${s.size}/${SQUAD_MAX} members${leader ? ` · led by ${leader.name}` : ''}`, { face: PAL.gold, ink: PAL.ink, maxW: view.w - 2 * (Math.max(this.inviteBtn.w, this.leaveBtn.w) + 40) });
     this.inviteBtn.draw(ctx);
     this.leaveBtn.draw(ctx);
 
     const leading = this.leading;
     const { boxes, more } = this.memberGrid(s);
     boxes.forEach(({ m, x, y, w, h }) => {
-      roundRect(ctx, x, y, w, h, 10);
-      ctx.fillStyle = m.me ? 'rgba(255,180,0,0.18)' : 'rgba(255,255,255,0.07)';
-      ctx.fill();
-      if (m.me) {
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = '#ffb400';
-        ctx.stroke();
-      }
+      slab(ctx, x, y, w, h, { face: m.me ? PAL.gold : PAL.cream, lip: m.me ? PAL.goldShade : PAL.creamShade, lipH: 4, c: 5 });
+      const cy = y + (h - 4) / 2;
       const kickable = leading && !m.me;
-      text(ctx, `${m.leader ? '👑 ' : ''}${m.name}${m.me ? ' (you)' : ''}`, x + 12, y + h / 2, { size: 16, weight: m.me ? 800 : 600, align: 'left', color: m.me ? '#ffd35c' : '#fff', maxWidth: w - (kickable ? 44 : 20) });
-      if (kickable) text(ctx, '✕', x + w - 18, y + h / 2, { size: 15, color: DIM });
+      let tx = x + 12;
+      if (m.leader) {
+        drawIcon(ctx, 'captain', x + 22, cy, 22, PAL.ink);
+        tx = x + 38;
+      }
+      text(ctx, `${m.name}${m.me ? ' (you)' : ''}`, tx, cy + 1, { size: 18, font: 'body', weight: m.me ? 800 : 700, align: 'left', color: PAL.ink, maxWidth: x + w - tx - (kickable ? 34 : 10) });
+      if (kickable) drawIcon(ctx, 'close', x + w - 18, cy, 18, PAL.muted);
     });
-    if (more) text(ctx, `+${more.n} more`, more.x + 12, more.y + more.h / 2, { size: 16, align: 'left', color: DIM });
+    if (more) text(ctx, `+${more.n} more`, more.x + 12, more.y + more.h / 2, { size: 18, font: 'body', align: 'left', color: DIM });
     this.renderPractice(ctx, view);
     const elsewhere = this.invite && this.invite.key !== s.key ? { text: `You’re invited to ${this.invite.name}. Leave ${s.name} to join it.`, color: WARN } : null;
     const hint = this.status ?? elsewhere;
-    if (hint) text(ctx, hint.text, view.w / 2, this.bottom - 16, { size: 14, weight: 500, color: hint.color, maxWidth: view.w - 40 });
+    if (hint) text(ctx, hint.text, view.w / 2, this.bottom - 16, { size: 16, font: 'body', color: hint.color, maxWidth: view.w - 40 });
     if (this.picking) this.renderPicker(ctx, view);
   }
 
@@ -557,37 +569,41 @@ export class SquadPanel {
     this.meetBtn.draw(ctx);
     this.practiceBtn.draw(ctx);
     if (!this.roomBoxes.length) return;
-    const pulse = 0.55 + 0.45 * Math.sin(this.age * 4);
+    const pulse = 0.5 + 0.5 * Math.sin(this.age * 4);
     this.roomBoxes.forEach((k, i) => {
       const r = k.r;
-      roundRect(ctx, k.x, k.y, k.w, k.h, 12);
-      ctx.fillStyle = 'rgba(255,180,0,0.16)';
-      ctx.fill();
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = r.full && !r.mine ? 'rgba(255,180,0,0.4)' : `rgba(255,180,0,${pulse.toFixed(2)})`;
-      ctx.stroke();
-      const tw = k.w - 76 - 30;
+      const open = !r.full || r.mine;
+      slab(ctx, k.x, k.y, k.w, k.h, { face: PAL.cream, lip: PAL.creamShade, lipH: 5, c: 6 });
+      // A gold edge that pulses while you can still get in.
+      ctx.fillStyle = PAL.gold;
+      ctx.globalAlpha = open ? 0.55 + 0.45 * pulse : 0.5;
+      ctx.fillRect(k.x, k.y, 6, k.h - 5);
+      ctx.globalAlpha = 1;
+      const tw = k.w - 76 - 40;
       const who = r.mine ? 'You’re in' : r.players.length > 1 ? `${r.host} +${r.players.length - 1}` : r.host;
-      text(ctx, `⚔ ${who}`, k.x + 12, k.y + 24, { size: 17, align: 'left', color: '#ffd35c', maxWidth: tw });
-      text(ctx, `${kindName(r.kind)} · ${r.players.length}/${MAX_PLAYERS}`, k.x + 12, k.y + 50, { size: 14, weight: 600, align: 'left', color: 'rgba(255,255,255,0.8)', maxWidth: tw });
+      drawIcon(ctx, 'practice', k.x + 28, k.y + 24, 22, PAL.orange);
+      text(ctx, who, k.x + 44, k.y + 25, { size: 19, font: 'body', weight: 800, align: 'left', color: PAL.ink, maxWidth: tw - 24 });
+      text(ctx, `${kindName(r.kind)} · ${r.players.length}/${MAX_PLAYERS}`, k.x + 18, k.y + 50, { size: 16, font: 'body', weight: 600, align: 'left', color: PAL.muted, maxWidth: tw });
       this.roomBtns[i].draw(ctx);
     });
     const more = this.rooms.length - this.roomBoxes.length;
-    if (more > 0) text(ctx, `+${more} more`, this.x0 + this.contentW, this.practiceY - 10, { size: 13, weight: 700, align: 'right', color: DIM });
+    if (more > 0) text(ctx, `+${more} more`, this.x0 + this.contentW, this.practiceY - 10, { size: 16, font: 'body', align: 'right', color: DIM });
   }
 
-  /** Practice's events, over the tab. */
+  /** Practice's events, on an ink card over the tab. */
   renderPicker(ctx, view) {
-    ctx.fillStyle = 'rgba(4,8,20,0.72)';
+    ctx.fillStyle = 'rgba(23,20,58,0.78)';
     ctx.fillRect(0, 0, view.w, this.bottom);
     const k = this.pickCard;
-    roundRect(ctx, k.x, k.y, k.w, k.h, 18);
-    ctx.fillStyle = 'rgba(14,26,52,0.98)';
-    ctx.fill();
-    ctx.lineWidth = 2.5;
-    ctx.strokeStyle = GOLD;
-    ctx.stroke();
-    text(ctx, '⚔ PRACTICE', view.w / 2, k.y + 30, { size: 26, color: GOLD, shadow: true });
+    slab(ctx, k.x, k.y, k.w, k.h, { face: PAL.ink, lip: PAL.inkShade, lipH: 7, c: 10 });
+    ctx.fillStyle = PAL.gold;
+    ctx.fillRect(k.x + 10, k.y, k.w - 20, 5);
+    ctx.font = `900 30px ${FONT_DISPLAY}`;
+    ctx.letterSpacing = '2px';
+    const tw = ctx.measureText('PRACTICE').width;
+    ctx.letterSpacing = '0px';
+    drawIcon(ctx, 'practice', view.w / 2 - tw / 2 - 20, k.y + 38, 30, PAL.gold);
+    text(ctx, 'PRACTICE', view.w / 2 + 14, k.y + 39, { size: 30, font: 'display', track: 2, color: PAL.cream });
     this.pickBtns.forEach((b) => b.draw(ctx));
     this.cancelBtn.draw(ctx);
   }
@@ -612,16 +628,16 @@ export class SquadPanel {
   }
 }
 
-const LIST_Y = 160; // top of the list of squads
-const ROW_H = 44;
+const LIST_Y = 164; // top of the list of squads
+const ROW_H = 48;
 const ROW_GAP = 8;
 const PRACTICE_H = 72; // the Practice button and the open rooms beside it
 
 /** What Practice offers: the five events, the 4x100m relay, and the tournament (no `kind`: Solo or Team, as the Play tab has it). */
 const PRACTICE_KINDS = [
-  ...EVENTS.map((ev) => ({ kind: ev.id, label: ev.name, sub: FIELD.has(ev.id) ? 'Three rounds' : 'Race', color: '#2bb673' })),
-  { kind: 'relay4x100', label: '4×100m Relay', sub: 'Your squad vs a computer squad', color: '#c2337a' },
-  { kind: TOURNAMENT_KIND, label: '🏆 Tournament', sub: '5 events', color: '#1f8a58' },
+  ...EVENTS.map((ev) => ({ kind: ev.id, label: ev.name, sub: FIELD.has(ev.id) ? 'Three rounds' : 'Race', color: PAL.liveGreen, lip: PAL.liveShade })),
+  { kind: 'relay4x100', label: '4×100m Relay', sub: 'Your squad vs a computer squad', color: PAL.magenta, lip: PAL.magentaShade },
+  { kind: TOURNAMENT_KIND, label: 'Tournament', sub: '5 events', color: PAL.gold, lip: PAL.goldShade },
 ];
 
 /** A practice room's event, by name. */

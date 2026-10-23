@@ -8,6 +8,7 @@ import { CHARACTERS } from './athletes/roster.js';
 import { preloadSprites } from './athletes/sprites.js';
 import { takeInviteLink } from './online/squads.js';
 import { openInvite } from './scenes/inviteScreen.js';
+import { loadFonts } from './core/ui.js';
 
 // Apply any settings saved from the in-game tuning panel before the first race.
 // Only the owner tunes; everyone else plays the shipped numbers (settings a
@@ -20,6 +21,9 @@ const invite = takeInviteLink();
 
 // Back from Google's sign-in page: finish signing in on the Profile screen.
 const signingIn = finishGoogleSignIn();
+
+// The menus' fonts, before the first frame, so the canvas never draws (and measures) the fallback.
+await loadFonts();
 
 const game = new Game(document.getElementById('game'));
 game.start(signingIn ? new ProfileScene(signingIn) : new HomeScene(invite ? 'squad' : 'play'));

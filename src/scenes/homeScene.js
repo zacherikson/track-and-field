@@ -1,4 +1,5 @@
-import { text, roundRect } from '../core/ui.js';
+import { text, PAL, FONT_DISPLAY } from '../core/ui.js';
+import { drawIcon } from '../core/icons.js';
 import { chooseGhost } from '../online/ghost.js';
 import { AthletePanel } from './home/athletePanel.js';
 import { PlayPanel } from './home/playPanel.js';
@@ -7,9 +8,9 @@ import { SquadPanel } from './home/squadPanel.js';
 /** The home screen's tabs, left to right. */
 export const TABS = ['athlete', 'play', 'squad'];
 const TAB_LOOK = [
-  { icon: '👟', label: 'Athlete' },
-  { icon: '🏁', label: 'Play' },
-  { icon: '🛡️', label: 'Squad' },
+  { icon: 'athlete', label: 'Athlete' },
+  { icon: 'play', label: 'Play' },
+  { icon: 'squad', label: 'Squad' },
 ];
 
 const BAR_H = 58; // the tab bar, above the bottom safe area
@@ -127,10 +128,8 @@ export class HomeScene {
   }
 
   render(ctx, view) {
-    const g = ctx.createLinearGradient(0, 0, 0, view.h);
-    g.addColorStop(0, '#0d1830');
-    g.addColorStop(1, '#1d3a66');
-    ctx.fillStyle = g;
+    // Flat ink; a panel paints its own scenery over it (Play: Pinebrook Park).
+    ctx.fillStyle = PAL.ink;
     ctx.fillRect(0, 0, view.w, view.h);
 
     this.panels.forEach((p, i) => {
@@ -142,27 +141,41 @@ export class HomeScene {
       ctx.restore();
     });
 
-    // The tab bar.
-    ctx.fillStyle = 'rgba(6,12,28,0.94)';
+    // The tab bar: ink under a gold rule; the tab you're on is a cream
+    // trapezoid that rises out of it, capped in gold.
+    ctx.fillStyle = PAL.ink;
     ctx.fillRect(0, this.barTop, view.w, view.h - this.barTop);
-    ctx.fillStyle = 'rgba(255,255,255,0.12)';
-    ctx.fillRect(0, this.barTop, view.w, 2);
+    ctx.fillStyle = PAL.gold;
+    ctx.fillRect(0, this.barTop, view.w, 3);
     this.tabBoxes.forEach((b, i) => {
       const on = i === this.tab;
-      const inset = this.tabPressT[i] > 0 ? 3 : 0;
+      const sink = this.tabPressT[i] > 0 ? 3 : 0;
       if (on) {
-        roundRect(ctx, b.x + 4 + inset, b.y - 8 + inset, b.w - 8 - inset * 2, b.h + 2 - inset * 2, 12);
-        ctx.fillStyle = '#2a5292';
+        const top = b.y - 10 + sink;
+        ctx.fillStyle = PAL.cream;
+        ctx.beginPath();
+        ctx.moveTo(b.x + 8, top);
+        ctx.lineTo(b.x + b.w - 8, top);
+        ctx.lineTo(b.x + b.w - 2, b.y + b.h);
+        ctx.lineTo(b.x + 2, b.y + b.h);
+        ctx.closePath();
         ctx.fill();
-        ctx.lineWidth = 2.5;
-        ctx.strokeStyle = '#ffb400';
-        ctx.stroke();
+        ctx.fillStyle = PAL.gold;
+        ctx.fillRect(b.x + 8, top, b.w - 16, 5);
       }
-      const cx = b.x + b.w / 2;
-      const cy = b.y + b.h / 2 - (on ? 4 : 0);
+      const ink = on ? PAL.ink : 'rgba(245,234,208,0.62)';
       const { icon, label } = TAB_LOOK[i];
-      text(ctx, icon, cx, cy - 9, { size: on ? 24 : 20 });
-      text(ctx, label, cx, cy + 15, { size: 13, weight: 800, color: on ? '#ffd35c' : 'rgba(255,255,255,0.6)' });
+      const size = on ? 24 : 21;
+      const cy = b.y + b.h / 2 - 1 + sink;
+      // Icon and label side by side, centred in the tab.
+      ctx.font = `900 ${size}px ${FONT_DISPLAY}`;
+      ctx.letterSpacing = '1px';
+      const lw = ctx.measureText(label.toUpperCase()).width;
+      ctx.letterSpacing = '0px';
+      const iconS = on ? 28 : 24;
+      const x0 = b.x + b.w / 2 - (iconS + 8 + lw) / 2;
+      drawIcon(ctx, icon, x0 + iconS / 2, cy - 1, iconS, ink);
+      text(ctx, label.toUpperCase(), x0 + iconS + 8, cy, { size, font: 'display', align: 'left', track: 1, color: ink });
     });
   }
 }

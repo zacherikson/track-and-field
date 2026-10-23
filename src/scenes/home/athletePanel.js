@@ -1,16 +1,16 @@
 import { CONFIG } from '../../config.js';
-import { text, roundRect } from '../../core/ui.js';
+import { text, slab, chamfer, titlePlate, PAL } from '../../core/ui.js';
+import { pinebrook } from '../../render/posterScenery.js';
 import { drawFigure, runPose, POSES } from '../../athletes/stickFigure.js';
 import { CHARACTERS, myAthlete, heightOf } from '../../athletes/roster.js';
 import { setCharacter } from '../../core/storage.js';
 
-const GOLD = '#ffb400';
-const DIM = 'rgba(255,255,255,0.6)';
 
 /**
  * The home screen's left tab: your athlete, who does every event. Along the
- * top, them warming up with their name, tagline and height; below, everyone,
- * and tapping one makes them yours. Remembered on this device and your
+ * top, a cream card in a flat spotlight: them warming up in Pinebrook Park,
+ * their shirt colour, name, tagline and height; below, on a band, everyone as
+ * cream cards (yours gold), and tapping one makes them yours. Remembered on this device and your
  * account (online/progress.js).
  */
 export class AthletePanel {
@@ -28,14 +28,14 @@ export class AthletePanel {
   /** `bottom`: the top of the tab bar. */
   layout(view, bottom) {
     const margin = 20 + Math.max(view.safe.l, view.safe.r);
-    const gap = 10;
+    const gap = 12;
     const n = CHARACTERS.length;
     const cw = Math.min(130, (view.w - margin * 2 - gap * (n - 1)) / n);
     const ctotal = cw * n + gap * (n - 1);
-    const ch = Math.min(130, bottom - CARDS_Y - 14);
+    const ch = Math.min(160, bottom - CARDS_Y - 14);
     this.cards.forEach((k, i) => Object.assign(k, { x: (view.w - ctotal) / 2 + i * (cw + gap), y: CARDS_Y, w: cw, h: ch }));
-    const sw = Math.min(560, view.w - margin * 2);
-    this.spot = { x: view.w / 2 - sw / 2, y: 60, w: sw, h: CARDS_Y - 60 - 24 };
+    const sw = Math.min(580, view.w - margin * 2);
+    this.spot = { x: view.w / 2 - sw / 2, y: 66, w: sw, h: BAND_Y - 66 - 16 };
     this.bottom = bottom;
   }
 
@@ -69,58 +69,72 @@ export class AthletePanel {
   }
 
   render(ctx, view) {
-    text(ctx, 'YOUR ATHLETE', view.w / 2, 34, { size: 30, color: GOLD, shadow: true });
+    // A flat spotlight from the top onto your card.
+    ctx.fillStyle = PAL.ink2;
+    ctx.beginPath();
+    ctx.moveTo(view.w / 2 - 60, 0);
+    ctx.lineTo(view.w / 2 + 60, 0);
+    ctx.lineTo(view.w / 2 + 330, BAND_Y - 2);
+    ctx.lineTo(view.w / 2 - 330, BAND_Y - 2);
+    ctx.fill();
+    titlePlate(ctx, view, 'YOUR ATHLETE', '', { face: PAL.gold, ink: PAL.ink });
     const me = myAthlete();
     this.renderSpot(ctx, me);
-    const top = CARDS_Y - 14;
-    ctx.fillStyle = 'rgba(0,0,0,0.18)';
-    ctx.fillRect(0, top, view.w, this.bottom - top);
-    ctx.fillStyle = 'rgba(255,255,255,0.12)';
-    ctx.fillRect(0, top, view.w, 2);
+    // Everyone, on a band with a gold rule.
+    ctx.fillStyle = PAL.ink2;
+    ctx.fillRect(0, BAND_Y, view.w, this.bottom - BAND_Y);
+    ctx.fillStyle = PAL.gold;
+    ctx.fillRect(0, BAND_Y, view.w, 3);
     for (const k of this.cards) this.drawCard(ctx, k, k.c === me);
   }
 
-  /** Your athlete running on the spot, with their name, tagline and height. */
+  /** Your athlete's card: them warming up in Pinebrook Park, their shirt colour, name, tagline and height. */
   renderSpot(ctx, c) {
     const b = this.spot;
-    roundRect(ctx, b.x, b.y, b.w, b.h, 18);
-    ctx.fillStyle = this.flashT > 0 ? 'rgba(89,205,144,0.3)' : 'rgba(255,255,255,0.07)';
-    ctx.fill();
-    ctx.lineWidth = this.flashT > 0 ? 4 : 2;
-    ctx.strokeStyle = this.flashT > 0 ? '#59cd90' : 'rgba(255,180,0,0.5)';
-    ctx.stroke();
-    const fx = b.x + Math.min(90, b.w * 0.18);
-    const ground = b.y + b.h - 16;
-    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    const lipH = 6;
+    slab(ctx, b.x, b.y, b.w, b.h, { face: this.flashT > 0 ? '#FBF3DF' : PAL.cream, lip: PAL.creamShade, lipH, c: 8 });
+    const fh = b.h - lipH;
+    const vw = Math.min(180, b.w * 0.32);
+    ctx.save();
+    chamfer(ctx, b.x, b.y, vw, fh, 8);
+    ctx.clip();
+    pinebrook(ctx, b.x - 60, b.y - 20, vw + 120, fh + 20, { trackH: 34, clouds: [[0.5, 0.2, 0.09]] });
+    ctx.restore();
+    ctx.fillStyle = shirtBar(c);
+    ctx.fillRect(b.x + vw, b.y, 8, fh);
+    const fx = b.x + vw / 2;
+    const ground = b.y + fh - 16;
+    ctx.fillStyle = 'rgba(38,34,79,0.35)';
     ctx.beginPath();
-    ctx.ellipse(fx, ground + 2, 30, 6, 0, 0, Math.PI * 2);
+    ctx.ellipse(fx, ground + 2, 26, 6, 0, 0, Math.PI * 2);
     ctx.fill();
-    drawFigure(ctx, fx, ground, Math.min(130, b.h - 24) * heightOf(c.colors), runPose(this.phase * 0.8, 0.9), c.colors, ground);
-    const tx = fx + Math.min(90, b.w * 0.18);
-    const tw = b.x + b.w - 20 - tx;
-    const cy = b.y + b.h / 2;
-    text(ctx, c.name, tx, cy - 30, { size: 34, align: 'left', color: GOLD, shadow: true, maxWidth: tw });
-    text(ctx, c.tagline, tx, cy + 6, { size: 16, weight: 600, align: 'left', color: '#fff', maxWidth: tw });
-    text(ctx, `${(CONFIG.figure.height * heightOf(c.colors)).toFixed(2)} m`, tx, cy + 34, { size: 15, weight: 600, align: 'left', color: DIM, maxWidth: tw });
+    drawFigure(ctx, fx, ground, Math.min(112, fh - 24) * heightOf(c.colors), runPose(this.phase * 0.8, 0.9), c.colors, ground);
+    const tx = b.x + vw + 30;
+    const tw = b.x + b.w - 16 - tx;
+    text(ctx, c.name.toUpperCase(), tx, b.y + fh * 0.3, { size: 50, font: 'display', align: 'left', track: 2, color: PAL.ink, maxWidth: tw });
+    text(ctx, c.tagline, tx + 2, b.y + fh * 0.6, { size: 19, font: 'body', align: 'left', color: PAL.ink, maxWidth: tw });
+    text(ctx, `${(CONFIG.figure.height * heightOf(c.colors)).toFixed(2)} m`, tx + 2, b.y + fh * 0.8, { size: 17, font: 'body', align: 'left', color: PAL.muted, maxWidth: tw });
   }
 
-  /** An athlete card; `on`: yours (lit, and warming up). */
+  /** An athlete card: cream, with their shirt colour along the top; `on`: yours (gold, and warming up). */
   drawCard(ctx, k, on) {
     const { c } = k;
-    const inset = k.pressT > 0 ? 3 : 0;
-    roundRect(ctx, k.x + inset, k.y + inset, k.w - inset * 2, k.h - inset * 2, 12);
-    ctx.fillStyle = on ? 'rgba(255,180,0,0.18)' : 'rgba(255,255,255,0.07)';
-    ctx.fill();
-    ctx.lineWidth = on ? 4 : 1.5;
-    ctx.strokeStyle = on ? GOLD : 'rgba(255,255,255,0.18)';
-    ctx.stroke();
-    roundRect(ctx, k.x + 8, k.y + 8, k.w - 16, 5, 2.5);
-    ctx.fillStyle = c.colors.shirt;
-    ctx.fill();
-    const ground = k.y + k.h - 28;
-    drawFigure(ctx, k.x + k.w / 2, ground, Math.min(72, k.h - 48) * heightOf(c.colors), on ? runPose(this.phase, 0.6) : POSES.stand, c.colors, ground);
-    text(ctx, c.name, k.x + k.w / 2, k.y + k.h - 13, { size: 15, weight: on ? 800 : 600, color: on ? '#ffd35c' : '#fff', maxWidth: k.w - 10 });
+    const lipH = 5;
+    const pressed = k.pressT > 0;
+    slab(ctx, k.x, k.y, k.w, k.h, { face: on ? PAL.gold : PAL.cream, lip: on ? PAL.goldShade : PAL.creamShade, lipH, c: 7, pressed });
+    const y = k.y + (pressed ? lipH - 1 : 0);
+    ctx.fillStyle = shirtBar(c);
+    ctx.fillRect(k.x, y + 10, k.w, 8);
+    const ground = y + k.h - lipH - 36;
+    drawFigure(ctx, k.x + k.w / 2, ground, Math.min(76, k.h - 64) * heightOf(c.colors), on ? runPose(this.phase, 0.6) : POSES.stand, c.colors, ground);
+    text(ctx, c.name.toUpperCase(), k.x + k.w / 2, y + k.h - lipH - 16, { size: Math.min(21, Math.round(k.w * 0.17)), font: 'display', track: 1, color: PAL.ink, maxWidth: k.w - 12 });
   }
 }
 
-const CARDS_Y = 228; // top of the row of athlete cards
+/** A shirt colour that shows on cream (a white shirt goes darker). */
+function shirtBar(c) {
+  return /^#f[0-9a-f]f[0-9a-f]f[0-9a-f]$/i.test(c.colors.shirt) || c.colors.shirt.toLowerCase() === '#ffffff' ? '#C9C3B2' : c.colors.shirt;
+}
+
+const BAND_Y = 228; // top of the band of athlete cards
+const CARDS_Y = 244; // top of the athlete cards

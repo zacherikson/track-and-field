@@ -1,4 +1,4 @@
-import { Button, text, roundRect } from '../core/ui.js';
+import { Button, text, slab, chamfer, titlePlate, PAL } from '../core/ui.js';
 import { getPlayerName, setPlayerName, cleanName, forgetProgress } from '../core/storage.js';
 import { setUsername, accountInfo, startGoogleSignIn, signOut } from '../online/firebase.js';
 import { forgetBests, postBests } from '../online/bests.js';
@@ -7,8 +7,7 @@ import { renameInSquad } from '../online/squads.js';
 import { flow } from '../flow.js';
 
 const WARN = '#ffb35c';
-const OK = '#59cd90';
-const DIM = 'rgba(255,255,255,0.6)';
+const OK = '#7fd8a0';
 
 /**
  * Your profile: the username shown on the online leaderboard, and your
@@ -32,10 +31,9 @@ export class ProfileScene {
   }
 
   enter() {
-    const dim = 'rgba(255,255,255,0.18)';
-    this.changeBtn = new Button({ label: 'Change name', w: 200, h: 56, onTap: () => this.change() });
-    this.accountBtn = new Button({ label: 'Sign in with Google', w: 250, h: 56, color: '#3a6fd8', enabled: false, onTap: () => this.accountTap() });
-    this.backBtn = new Button({ label: 'Back', w: 130, h: 56, color: dim, onTap: () => flow.menu(this.game, this.backTab) });
+    this.changeBtn = new Button({ label: 'Change name', w: 200, h: 56, size: 24, color: PAL.orange, lip: PAL.orangeShade, onTap: () => this.change() });
+    this.accountBtn = new Button({ label: 'Sign in with Google', w: 260, h: 56, size: 24, color: PAL.blue, lip: PAL.blueShade, enabled: false, onTap: () => this.accountTap() });
+    this.backBtn = new Button({ label: 'Back', w: 188, h: 56, size: 24, color: PAL.ink2, lip: PAL.inkShade, onTap: () => flow.menu(this.game, this.backTab) });
     this.status = null; // { text, color }
     this.saving = false;
     this.busy = false; // signing in or out
@@ -67,7 +65,7 @@ export class ProfileScene {
       return;
     }
     this.saving = true;
-    this.status = { text: 'Saving…', color: 'rgba(255,255,255,0.7)' };
+    this.status = { text: 'Saving…', color: 'rgba(245,234,208,0.75)' };
     setUsername(name)
       .then(async (renamedBoards) => {
         setPlayerName(name);
@@ -100,7 +98,7 @@ export class ProfileScene {
   /** Off to Google's sign-in page; it comes back to this screen (finishSignIn). */
   signIn() {
     this.busy = true;
-    this.status = { text: 'Opening Google…', color: 'rgba(255,255,255,0.7)' };
+    this.status = { text: 'Opening Google…', color: 'rgba(245,234,208,0.75)' };
     // Back from Google's page without signing in (the browser kept this page as it was).
     addEventListener('pageshow', (e) => {
       if (!e.persisted) return;
@@ -117,7 +115,7 @@ export class ProfileScene {
 
   finishSignIn(signingIn) {
     this.busy = true;
-    this.status = { text: 'Signing in…', color: 'rgba(255,255,255,0.7)' };
+    this.status = { text: 'Signing in…', color: 'rgba(245,234,208,0.75)' };
     signingIn
       .then(async ({ switched }) => {
         // What you did as a guest goes on the leaderboard now (only where it beats your entry).
@@ -149,7 +147,7 @@ export class ProfileScene {
     this.game.input.clear();
     if (!sure) return;
     this.busy = true;
-    this.status = { text: 'Signing out…', color: 'rgba(255,255,255,0.7)' };
+    this.status = { text: 'Signing out…', color: 'rgba(245,234,208,0.75)' };
     signOut()
       .then(() => {
         forgetBests();
@@ -169,13 +167,14 @@ export class ProfileScene {
   layout(view) {
     const signedIn = this.account && this.account !== 'offline' && !this.account.guest;
     this.accountBtn.label = signedIn ? 'Sign out' : 'Sign in with Google';
-    this.accountBtn.w = signedIn ? 160 : 250;
-    this.accountBtn.color = signedIn ? 'rgba(255,255,255,0.18)' : '#3a6fd8';
+    this.accountBtn.w = signedIn ? 170 : 260;
+    this.accountBtn.color = signedIn ? PAL.ink2 : PAL.blue;
+    this.accountBtn.lip = signedIn ? PAL.inkShade : PAL.blueShade;
     const btns = [this.changeBtn, this.accountBtn, this.backBtn];
     const gap = 16;
     let x = view.w / 2 - (btns.reduce((s, b) => s + b.w, 0) + gap * (btns.length - 1)) / 2;
     for (const b of btns) {
-      Object.assign(b, { x, y: 440 });
+      Object.assign(b, { x, y: 400 });
       x += b.w + gap;
     }
   }
@@ -192,29 +191,43 @@ export class ProfileScene {
   }
 
   render(ctx, view) {
-    ctx.fillStyle = '#12203a';
+    ctx.fillStyle = PAL.ink;
     ctx.fillRect(0, 0, view.w, view.h);
-    text(ctx, 'PROFILE', view.w / 2, 50, { size: 26, color: '#ffb400', shadow: true });
+    titlePlate(ctx, view, 'PROFILE', '', { y: 40, face: PAL.gold, ink: PAL.ink });
 
-    const w = Math.min(560, view.w - 40);
+    // Your username, on a race bib: cream, an orange band, pin holes at the corners.
+    const w = Math.min(500, view.w - 40);
     const x0 = view.w / 2 - w / 2;
     const cx = view.w / 2;
-    roundRect(ctx, x0, 80, w, 150, 16);
-    ctx.fillStyle = 'rgba(255,255,255,0.06)';
+    const by = 84;
+    const bh = 150;
+    ctx.fillStyle = PAL.inkShade;
+    chamfer(ctx, x0 + 6, by + 7, w, bh, 8);
     ctx.fill();
-    text(ctx, 'USERNAME', cx, 108, { size: 13, weight: 700, color: DIM });
-    text(ctx, getPlayerName(), cx, 152, { size: 44, color: '#fff', maxWidth: w - 40 });
-    text(ctx, 'Shown on the online leaderboard. No two players can have the same name.', cx, 202, { size: 14, weight: 500, color: DIM, maxWidth: w - 30 });
+    ctx.fillStyle = PAL.cream;
+    chamfer(ctx, x0, by, w, bh, 8);
+    ctx.fill();
+    ctx.fillStyle = PAL.orange;
+    ctx.fillRect(x0, by + 16, w, 26);
+    text(ctx, 'USERNAME', cx, by + 30, { size: 18, font: 'display', track: 3, color: PAL.cream });
+    ctx.fillStyle = PAL.creamShade;
+    for (const [px, py] of [[x0 + 14, by + 12], [x0 + w - 14, by + 12], [x0 + 14, by + bh - 12], [x0 + w - 14, by + bh - 12]]) {
+      ctx.beginPath();
+      ctx.arc(px, py, 5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    text(ctx, getPlayerName().toUpperCase(), cx, by + 84, { size: 56, font: 'display', track: 2, color: PAL.ink, maxWidth: w - 50 });
+    text(ctx, 'Shown on the online leaderboard. No two players can have the same name.', cx, by + 124, { size: 16, font: 'body', weight: 600, color: PAL.muted, maxWidth: w - 30 });
 
-    roundRect(ctx, x0, 246, w, 124, 16);
-    ctx.fillStyle = 'rgba(255,255,255,0.06)';
-    ctx.fill();
-    text(ctx, 'ACCOUNT', cx, 274, { size: 13, weight: 700, color: DIM });
+    // Your account.
+    const ay = 256;
+    slab(ctx, x0, ay, w, 96, { face: PAL.ink2, lip: PAL.inkShade, lipH: 5, c: 7 });
+    text(ctx, 'ACCOUNT', cx, ay + 18, { size: 16, font: 'display', track: 3, color: PAL.gold });
     const [line, note] = accountLines(this.account);
-    text(ctx, line, cx, 308, { size: 20, weight: 700, color: '#fff', maxWidth: w - 30 });
-    text(ctx, note, cx, 342, { size: 14, weight: 500, color: DIM, maxWidth: w - 30 });
+    text(ctx, line, cx, ay + 45, { size: 26, font: 'body', weight: 800, color: PAL.cream, maxWidth: w - 30 });
+    text(ctx, note, cx, ay + 72, { size: 15, font: 'body', weight: 600, color: 'rgba(245,234,208,0.75)', maxWidth: w - 30 });
 
-    if (this.status) text(ctx, this.status.text, cx, 404, { size: 17, weight: 600, color: this.status.color, maxWidth: view.w - 40 });
+    if (this.status) text(ctx, this.status.text, cx, 375, { size: 18, font: 'body', color: this.status.color, maxWidth: view.w - 40 });
 
     this.changeBtn.enabled = !this.saving && !this.busy;
     this.accountBtn.enabled = !this.saving && !this.busy && !!this.account && this.account !== 'offline';

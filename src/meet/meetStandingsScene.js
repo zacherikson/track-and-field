@@ -1,4 +1,4 @@
-import { Button, text, roundRect } from '../core/ui.js';
+import { Button, text, slab, chamfer, PAL } from '../core/ui.js';
 import { formatMark, eventById } from '../events/registry.js';
 import { submitBest, saveGhostIfBetter } from '../core/storage.js';
 import { postMark } from '../online/post.js';
@@ -11,8 +11,6 @@ import { meet } from './meet.js';
 import { formatPoints } from './scoring.js';
 import { MEET_ORDER } from './rules.js';
 
-const GOLD = '#ffb400';
-const DIM = 'rgba(255,255,255,0.7)';
 
 /**
  * Between a meet's events, over the event's late hits (the backdrop): this
@@ -45,9 +43,10 @@ export class MeetStandingsScene {
       postMark(this.ev, me.mark, run, () => {});
     }
     const last = this.index + 1 >= MEET_ORDER.length;
-    this.nextBtn = new Button({ label: '…', color: '#2bb673', onTap: () => {} }); // counts down: the next event comes by itself
-    this.menuBtn = new Button({ label: 'Leave meet', color: 'rgba(18,32,58,0.92)', onTap: () => this.leave() });
-    this.againBtn = new Button({ label: 'Meet again', color: '#2bb673', onTap: () => this.again() });
+    this.nextBtn = new Button({ label: '…', color: PAL.liveGreen, lip: PAL.liveShade, onTap: () => {} }); // counts down: the next event comes by itself
+    // Over the event's ad boards ink reads best; on plain ink it needs ink2.
+    this.menuBtn = new Button({ label: 'Leave meet', color: this.backdrop ? PAL.ink : PAL.ink2, lip: PAL.inkShade, onTap: () => this.leave() });
+    this.againBtn = new Button({ label: 'Meet again', icon: 'meet', color: PAL.liveGreen, lip: PAL.liveShade, onTap: () => this.again() });
     this.last = last;
     this.layout(this.game.view);
   }
@@ -126,7 +125,7 @@ export class MeetStandingsScene {
   render(ctx, view) {
     if (this.backdrop) this.backdrop.lateRender(ctx, view);
     else {
-      ctx.fillStyle = '#12203a';
+      ctx.fillStyle = PAL.ink;
       ctx.fillRect(0, 0, view.w, view.h);
     }
     const s = view.safe;
@@ -138,7 +137,11 @@ export class MeetStandingsScene {
     this.drawSquads(ctx, x0 + placesW + 12, s.t + 10, squadsW, room);
     this.buttons.forEach((b) => b.draw(ctx));
     if (this.backdrop) this.backdrop.after?.drawControls(ctx, view);
-    if (meet.lostText && !meet.final) text(ctx, meet.lostText, view.w / 2, view.h - 76 - s.b, { size: 17, weight: 700, color: '#ffb35c', shadow: true, maxWidth: view.w - 40 });
+    if (meet.lostText && !meet.final) {
+      const w = Math.min(view.w - 40, 620);
+      slab(ctx, view.w / 2 - w / 2, view.h - 96 - s.b, w, 40, { face: PAL.ink, lip: PAL.inkShade, lipH: 4, c: 5 });
+      text(ctx, meet.lostText, view.w / 2, view.h - 78 - s.b, { size: 18, font: 'body', weight: 700, color: '#ffb35c', maxWidth: w - 20 });
+    }
   }
 
   /** This event: the overall places once the server has them (else your heat), or the final standings. */
@@ -159,7 +162,7 @@ export class MeetStandingsScene {
         return {
           place: r.place != null ? String(r.place) : '–',
           name: relay ? who : `${who}${r.heat != null ? ` · H${r.heat + 1}` : ''}`,
-          color: sq?.color ?? '#fff',
+          color: sq?.color ?? PAL.ink3,
           value: `${r.mark != null ? formatMark(this.ev, r.mark) : 'NM'}${r.pts ? `  +${formatPoints(r.pts)}` : ''}`,
           me: relay ? r.id === meet.me?.squad : r.id === meet.uid,
         };
@@ -169,7 +172,7 @@ export class MeetStandingsScene {
       rows = this.results.map((r, i) => ({
         place: r.status === 'ok' ? String(i + 1) : '–',
         name: r.name,
-        color: r.colors?.shirt ?? '#fff',
+        color: r.colors?.shirt ?? PAL.ink3,
         value: r.status === 'ok' ? formatMark(this.ev, r.mark) : r.status.toUpperCase(),
         me: r.isPlayer,
       }));
@@ -181,41 +184,37 @@ export class MeetStandingsScene {
   drawSquads(ctx, x, y, w, room) {
     const st = meet.final?.standings ?? meet.standings ?? [];
     const done = !!meet.final;
-    const title = done ? `🏆 ${meet.squads.get(st[0]?.squad)?.name?.toUpperCase() ?? ''} WIN` : `SQUADS · AFTER ${meet.results.filter(Boolean).length} OF ${MEET_ORDER.length}`;
+    const title = done ? `${meet.squads.get(st[0]?.squad)?.name?.toUpperCase() ?? ''} WIN` : `SQUADS · AFTER ${meet.results.filter(Boolean).length} OF ${MEET_ORDER.length}`;
     const rows = st.map((r) => {
       const sq = meet.squads.get(r.squad);
-      return { place: String(r.rank), name: sq?.name ?? r.squad, color: sq?.color ?? '#fff', value: formatPoints(r.total), me: r.squad === meet.me?.squad };
+      return { place: String(r.rank), name: sq?.name ?? r.squad, color: sq?.color ?? PAL.ink3, value: formatPoints(r.total), me: r.squad === meet.me?.squad };
     });
     this.panel(ctx, x, y, w, room, title, rows, done);
   }
 
+  /** A cream sheet under a title strip (gold for the winners, else ink), zebra rows, yours gold. */
   panel(ctx, x, y, w, room, title, rows, gold = false) {
-    const head = 30;
+    const head = 32;
     const rowH = Math.max(20, Math.min(28, (room - head - 8) / Math.max(1, rows.length)));
     const h = head + rows.length * rowH + 8;
-    roundRect(ctx, x, y, w, h, 12);
-    ctx.fillStyle = 'rgba(12,22,44,0.72)';
+    slab(ctx, x, y, w, h + 5, { face: PAL.cream, lip: PAL.creamShade, lipH: 5, c: 7 });
+    ctx.fillStyle = gold ? PAL.gold : this.backdrop ? PAL.ink : PAL.ink2;
+    chamfer(ctx, x, y, w, head, 7);
     ctx.fill();
-    if (gold) {
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = GOLD;
-      ctx.stroke();
-    }
-    text(ctx, title, x + w / 2, y + 17, { size: 13, weight: 800, color: gold ? GOLD : 'rgba(255,255,255,0.9)', maxWidth: w - 16 });
-    const size = Math.round(rowH * 0.56);
+    ctx.fillRect(x, y + head / 2, w, head / 2);
+    text(ctx, title, x + w / 2, y + head / 2 + 1, { size: 18, font: 'display', track: 1, color: gold ? PAL.ink : PAL.cream, maxWidth: w - 16 });
+    const size = Math.round(rowH * 0.62);
     rows.forEach((r, i) => {
       const ry = y + head + i * rowH + rowH / 2;
-      if (r.me) {
-        roundRect(ctx, x + 4, ry - rowH / 2 + 1, w - 8, rowH - 2, 7);
-        ctx.fillStyle = 'rgba(255,180,0,0.25)';
-        ctx.fill();
+      if (r.me || i % 2) {
+        ctx.fillStyle = r.me ? PAL.gold : '#EFE2C3';
+        ctx.fillRect(x, ry - rowH / 2, w, rowH);
       }
-      text(ctx, r.place, x + 18, ry, { size, shadow: true });
+      text(ctx, r.place, x + 18, ry + 1, { size: size + 2, font: 'display', color: PAL.ink });
       ctx.fillStyle = r.color;
-      ctx.fillRect(x + 32, ry - size * 0.5, 5, size);
-      text(ctx, r.name, x + 44, ry, { size, align: 'left', weight: r.me ? 800 : 600, color: r.me ? '#ffd35c' : '#fff', shadow: true, maxWidth: w * 0.55 });
-      text(ctx, r.value, x + w - 10, ry, { size, align: 'right', shadow: true, color: DIM });
+      ctx.fillRect(x + 32, ry - size * 0.5, 6, size);
+      text(ctx, r.name, x + 46, ry + 1, { size, font: 'body', align: 'left', weight: r.me ? 800 : 700, color: PAL.ink, maxWidth: w * 0.55 });
+      text(ctx, r.value, x + w - 10, ry + 1, { size, font: 'body', weight: 700, align: 'right', color: PAL.muted });
     });
   }
 }
-

@@ -102,7 +102,7 @@ export class IntroScene {
     const lit = (fn, opts = {}) => (ctx, x, y, w, h) => fn(ctx, x, y, w, h, { trackH: 120, ...opts });
     if (this.live) return { draw: lit(olympic, { night: !this.meet }), plate: PAL.liveGreen };
     if (SPECIAL_EVENTS.some((e) => e.id === this.ev.id)) return { draw: lit(olympic), plate: PAL.magenta };
-    if (survival.active) return { draw: survival.round <= 2 ? lit(westfield) : lit(olympic), plate: PAL.survival }; // as render/venues.js venueFor
+    if (survival.active) return { draw: survival.round <= 1 ? lit(westfield) : lit(olympic), plate: PAL.survival }; // as render/venues.js venueFor
     const level = getCampaign();
     if (level === 'amateur') return { draw: lit(westfield), plate: PAL.brick };
     if (level === 'pro') return { draw: lit(olympic), plate: PAL.blue };

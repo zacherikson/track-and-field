@@ -7,11 +7,12 @@ import { seededRandom } from '../src/core/random.js';
 
 const SECTIONS = ['longJump', 'javelin', 'poleVault', 'hurdles110'];
 
-test('the rival starts easier than Amateur, is Pro by round 4, and keeps getting better without end', () => {
-  assert.ok(skillFor(1) < 0);
-  assert.equal(skillFor(2), 0);
-  assert.equal(skillFor(4), 1);
+test('the rival: Amateur in round 1, a weak Pro in 2, a strong Pro in 3, then better every round by less each time', () => {
+  assert.equal(skillFor(1), 0);
+  assert.ok(skillFor(2) > 0.5 && skillFor(2) < 1, 'round 2: a weak Pro');
+  assert.ok(skillFor(3) > 1, 'round 3: a strong Pro');
   for (let r = 1; r < 40; r++) assert.ok(skillFor(r + 1) > skillFor(r), `round ${r + 1} harder than ${r}`);
+  for (let r = 3; r < 40; r++) assert.ok(skillFor(r + 2) - skillFor(r + 1) < skillFor(r + 1) - skillFor(r), `round ${r + 2} a smaller step than ${r + 1}`);
   assert.ok(skillFor(60) < CONFIG.survival.ceiling);
 });
 
@@ -43,8 +44,8 @@ test('aiLevel: the named level outside a run, blended in one', () => {
   survival.end();
   assert.equal(aiLevel(CONFIG.ai, 'pro'), CONFIG.ai.pro);
   survival.start(seededRandom('x'));
-  survival.round = 4;
-  assert.deepEqual(aiLevel(CONFIG.ai, 'amateur'), CONFIG.ai.pro); // round 4: Pro, whatever the name says
+  survival.round = 1;
+  assert.deepEqual(aiLevel(CONFIG.ai, 'pro'), CONFIG.ai.amateur); // round 1: Amateur, whatever the name says
   survival.end();
 });
 

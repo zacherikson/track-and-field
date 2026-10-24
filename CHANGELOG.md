@@ -17,9 +17,21 @@ Gameplay and tuning changes, newest first. When you change a number in
 - Play: on the track either side of your athlete, in the far lanes (your own
   athlete never takes part); the vs Computer pages too. Athlete: along the
   bottom under the cards. Squad: on the hills, until you're in a squad.
-- New `src/scenes/home/sideshow.js`, built from the late hits' poses
+- **Eight more**, sixteen in all: a false start (the gun goes off and the
+  early one hits the deck; the other one wins), a cartoon fight cloud that
+  spits three of them out flat (they get up, glare, and dive back in), a pole
+  vaulter who clonks the referee on the way past and again on the way back,
+  a winner dropkicked at the line by the runner-up (who leaves with the gold),
+  the referee chasing someone who turns round and flexes (now he's the one
+  running), a sleeping referee who gets hurdled, tripped over, and gives out
+  a red card for it, a conga line he ends up joining, and a relay handover
+  where the new runner sprints off the wrong way. Less wait between skits
+  (1–3.5 s, was 1.5–5 s).
+- New `src/scenes/home/sideshow.js` (the stage and the scheduling) and
+  `skits.js` (the skits), built from the late hits' poses
   (`brawl/poses.js`) and the events' (`stickFigure.js`); no gameplay change.
-  `tools/sideshow.html` plays every skit, scrubbable.
+  `tools/sideshow.html` plays every skit, scrubbable; `test/sideshow.test.mjs`
+  plays each one through, both ways round, on a narrow and a wide screen.
 
 ## Live: a half-minute waiting room with I'm ready, and less standing around between events
 - **The waiting room stays open 30 s** once a second player arrives (it was

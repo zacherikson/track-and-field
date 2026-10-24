@@ -16,7 +16,7 @@
 <body>
 <h1>The home screens' sideshow skits (src/scenes/home/sideshow.js)</h1>
 <p>Every skit, one per row, on a strip of track. Serve the repo and open /tools/sideshow.html. Drag the slider to scrub, or tick Play. Options: ?t=3.2 (a moment), ?mirror (play them the other way round), ?skit=bodySlam (just one), ?h=110 (figure height, px).</p>
-<div class="bar"><label><input type="checkbox" id="play"> Play</label><input type="range" id="t" min="0" max="16" step="0.02"><span id="tl"></span></div>
+<div class="bar"><label><input type="checkbox" id="play"> Play</label><input type="range" id="t" min="0" max="20" step="0.02"><span id="tl"></span></div>
 <canvas id="c"></canvas>
 <script type="module">
 import { SKITS, Stage } from '../src/scenes/home/sideshow.js';
@@ -59,7 +59,7 @@ slider.oninput = draw;
 let last = performance.now();
 (function loop(now) {
   if (document.getElementById('play').checked) {
-    slider.value = (Number(slider.value) + (now - last) / 1000) % 16;
+    slider.value = (Number(slider.value) + (now - last) / 1000) % 20;
     draw();
   }
   last = now;

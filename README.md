@@ -136,15 +136,24 @@ referee for showing a red card, a body slam, two fighters who both deck the
 referee when he steps in, a dance-off that ends in a kick, a baton thief and a
 flying tackle that misses, a hurdler who takes the second hurdle with their
 face and kicks it into next week, a javelin that lands at the referee's feet,
-and a long jump that ends face first, a red flag and the referee booted. On
+a long jump that ends face first, a red flag and the referee booted, a false
+start (the starter's gun goes off and they hit the deck), a cartoon fight
+cloud, a pole vaulter who clonks the referee coming and going, a race winner
+dropkicked at the line by the runner-up (who leaves with the gold), the
+referee chasing someone until they turn round and flex, a sleeping referee
+who gets hurdled, tripped over, and hands out a red card for it, a conga line
+the referee ends up joining, and a relay handover that sprints off the wrong
+way. On
 Play they're on the track, in the far lanes either side of your athlete (who
 never takes part); on Athlete along the bottom under the cards; on Squad on
 the hills (not once you're in a squad: Practice is there). Each skit plays
 either way round, two at a time, a few seconds apart. They're only scenery:
 nothing to tap. The skits are in
-[`src/scenes/home/sideshow.js`](src/scenes/home/sideshow.js), built from the
-late hits' fight poses and the events' own; `tools/sideshow.html` plays every
-one side by side, with a slider to scrub through them.
+[`src/scenes/home/skits.js`](src/scenes/home/skits.js) (built from the late
+hits' fight poses and the events' own), played by
+[`sideshow.js`](src/scenes/home/sideshow.js); `tools/sideshow.html` plays every
+one side by side, with a slider to scrub through them, and
+`test/sideshow.test.mjs` checks each plays through to the end.
 
 ## 4×100m relay
 
@@ -466,7 +475,7 @@ src/scenes/inviteScreen.js      the invite screen a squad invite link opens: pic
 src/scenes/homeScene.js         the home screen: Athlete | Play | Squad tabs, swipes, the tab bar
 src/scenes/home/                its panels: athletePanel.js (pick your athlete),
                                 playPanel.js (the events, tournament and settings), squadPanel.js (your squad, Practice),
-                                sideshow.js (the skits in the background of all three)
+                                sideshow.js + skits.js (the skits in the background of all three)
 src/scenes/leaderboardScene.js  online leaderboards, a tab per event, with Race buttons
 src/scenes/tutorialScene.js     How to play: a tab per event with its steps, and Practice
 src/scenes/howTo.js             each event's steps and controls strip, and their icons (drawn with the game's pads)
@@ -478,7 +487,7 @@ src/meet/             squad meets (docs/meets.md): the rules shared with the mee
 src/events/meetRelay.js  a meet's 4x100m relay: one leg per phone, exchanges decided by the taker's phone
 src/online/net.js     the meet server connection; meetSession.js: a meet as the events see a live room
 server/               the meet server: Cloudflare Worker + Durable Objects (server/README.md)
-test/                 tests (node --test test/*.test.mjs): meet rules, run-up, relay, and the orange pads
+test/                 tests (node --test test/*.test.mjs): meet rules, run-up, relay, the orange pads, the sideshow's skits
                       (orangePad.test.mjs drives the real event scenes through the real Input, test/helpers/rig.mjs)
 src/tuning/           in-game tuning panel (params list, saved overrides, live estimates)
 tools/simulate.mjs    headless tuning simulator

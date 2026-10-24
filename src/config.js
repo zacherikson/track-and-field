@@ -455,8 +455,8 @@ export const CONFIG = {
     // to the bottom hand (about shoulder width, as real vaulters hold it).
     // dropShare: how much of the plant zone the tip takes to come down to (nearly) level, as in
     // the original: down early, then the spark crawls along the low pole to the plant.
-    pole: { length: 4.5, gripY: 2.0, carryAngle: 0.8, grip: 0.55, dropShare: 0.35 },
-    zoneDistance: 17, // m before the plant: orange pads, strides stop, the pole tip drops to the box and the spark runs down it (about 1.5 s, as in the original)
+    pole: { length: 4.5, gripY: 2.0, carryAngle: 0.698132, grip: 0.55, dropShare: 0.5 },
+    zoneDistance: 18, // m before the plant: orange pads, strides stop, the pole tip drops to the box and the spark runs down it (about 1.5 s at 42 km/h, as in the original)
     // Runway edge stripes, in m before the box (the plant is about 4.1 m out).
     runwayZones: [
       { from: 22, to: 16, color: '#ffd21f' },
@@ -470,22 +470,22 @@ export const CONFIG = {
     // registers when the window opens. earlyHoldOnTime false = it scores as
     // pressed at the window's start (`miss` early: plant quality 0); true = as
     // pressed right on the plant. Design call, open with Zachary.
-    press: { window: 0.2, miss: 0.35, earlyHoldOnTime: false },
+    press: { window: 0.5, miss: 0.38, earlyHoldOnTime: false },
     // s for the spark to climb back up the pole: from the plant (or your press, if later)
     // to your hands. The best release is the moment it gets there.
     spark: { climbTime: 0.8 },
-    release: { window: 0.18 }, // s either side of the spark reaching your hands: release quality falls to 0
+    release: { window: 0.5 }, // s either side of the spark reaching your hands: release quality falls to 0
     // Height cleared = min + (max - min) × score. The score weighs speed, plant and release
     // (each 0..1) by their weights, as shares of the three's total. Speed counts 0 at
     // `slowSpeed` m/s at the plant and 1 at `fastSpeed`.
-    height: { min: 3.7, max: 6.4, speedWeight: 0.5, plantWeight: 0.25, releaseWeight: 0.25, slowSpeed: 8, fastSpeed: 12.5 },
+    height: { min: 2.95, max: 6.4, speedWeight: 0.6, plantWeight: 0.2, releaseWeight: 0.2, slowSpeed: 5.75, fastSpeed: 12.5 },
     // How much the pole bends mid-swing (share of its length). A weak vault also leaves it bent
     // at the top, so you're only as high as your mark. The swing takes as long as the spark's
     // climb: you're at the top, upside down, as it reaches your hands.
-    swing: { bend: 0.3 },
+    swing: { bend: 0.21 },
     // Off the pole (from the original, not gravity): rise while turning to face
     // the bar, hang face down over it, drop onto the mat (s).
-    flight: { rise: 0.4, hang: 0.5, fall: 0.5 },
+    flight: { rise: 0.4, hang: 0.7, fall: 0.6 },
     // Layout from real vaulting (and reference photos): the standards stand just
     // past the back of the box and the mat starts right behind the box, so you
     // take off under one pole length from the bar.
@@ -500,7 +500,7 @@ export const CONFIG = {
     // topFrac: the camera rises to keep the vaulter at least this far down the screen.
     // zoom: closer in than the other events, from the top of the screen, so the runway sits
     // low (as in the original) and there's room above for the vault.
-    camera: { topFrac: 0.3, zoom: 1.25 },
+    camera: { topFrac: 0.3, zoom: 1 },
     ai: {
       amateur: { cadence: [2.7, 3.4], pressErr: 0.18, releaseErr: 0.2, missChance: 0.07 },
       pro: { cadence: [3.7, 4.5], pressErr: 0.08, releaseErr: 0.1, missChance: 0.03 },

@@ -11,7 +11,7 @@ import * as S from './helpers/scenes.mjs';
 import { run100, runUpLJ } from './helpers/strideRuns.mjs';
 import { CONFIG } from '../src/config.js';
 import { blinkLit } from '../src/render/pads.js';
-import { releaseTarget } from '../src/events/poleVaultRules.js';
+import { releaseTarget, pressQuality } from '../src/events/poleVaultRules.js';
 import { BrawlControls } from '../src/brawl/controls.js';
 import { seededRandom } from '../src/core/random.js';
 import { replayMark } from '../src/online/ghost.js';
@@ -174,12 +174,12 @@ test('#13 pole vault: a tap, 0.5 s or 2 s hold at the plant plants; release at t
   assert.notEqual(v.sc.state, 'balk');
 });
 
-test('#14 pole vault: a hold started 0.5 s before the plant plants as the window opens (no balk); plant quality 0, or on time with earlyHoldOnTime', () => {
+test('#14 pole vault: a hold started 0.5 s before the plant plants as the window opens (no balk); scored as pressed then, or on time with earlyHoldOnTime', () => {
   assert.equal(CONFIG.poleVault.press.earlyHoldOnTime, false);
   let v = vault((rig, z) => both(rig, z + P - 0.5, 2));
   assert.notEqual(v.sc.state, 'balk');
   assert.ok(Math.abs(v.hold - (P - CONFIG.poleVault.press.miss)) < 0.03, `hold ${v.hold} vs window open ${P - CONFIG.poleVault.press.miss}`);
-  assert.equal(v.sc.vault.pq, 0);
+  near(v.sc.vault.pq, pressQuality(-CONFIG.poleVault.press.miss, CONFIG.poleVault.press), 0.05, 'scored as pressed as the window opens');
   assert.ok(!v.sc.mark?.fail);
   withConfig(CONFIG.poleVault.press, { earlyHoldOnTime: true }, () => {
     v = vault((rig, z) => both(rig, z + P - 0.5, 2));

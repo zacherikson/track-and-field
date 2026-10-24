@@ -4,6 +4,19 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Pole vault: Rawnald's tuning as the defaults
+From the in-game tuning panel:
+- `height.min` 3.70 → 2.95 m; weights speed / plant / release 0.50 / 0.25 /
+  0.25 → 0.60 / 0.20 / 0.20; `height.slowSpeed` 8 → 5.75 m/s.
+- `zoneDistance` 17 → 18 m; `press.window` 0.20 → 0.50 s; `press.miss`
+  0.35 → 0.38 s; `release.window` 0.18 → 0.50 s.
+- `pole.carryAngle` 0.80 → 0.698 rad (40°); `pole.dropShare` 0.35 → 0.50;
+  `camera.zoom` 1.25 → 1.00; `swing.bend` 0.30 → 0.21; `flight.hang` 0.5 →
+  0.7 s; `flight.fall` 0.5 → 0.6 s.
+- Test #14 now expects a hold from before the window to score as pressed when
+  it opens (no longer always 0, now the plant window is wider than the
+  run-through).
+
 ## Pole vault: a slower plant, the runway low on the screen
 - **The plant isn't rushed any more.** Timed from the original: about 1.5 s
   from the orange pads to the plant, with the pole down to nearly level in the

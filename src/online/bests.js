@@ -1,4 +1,4 @@
-import { BOARDS } from '../events/registry.js';
+import { BOARDS, SURVIVAL_BOARD } from '../events/registry.js';
 import { getBest, setBest, getGhost, setGhost, getBestTournament, saveBestTournament, addTopMark, forgetTopMarks, getCampaign, getSpecialLevel } from '../core/storage.js';
 import { player } from '../athletes/roster.js';
 import { changes } from '../tuning/store.js';
@@ -57,10 +57,14 @@ const beats = (board, a, b) => (board.lowerIsBetter ? a < b : a > b);
 export async function syncBests() {
   if (!isSignedIn()) return false;
   const started = posts;
-  const entries = await myEntries(BOARDS.map((b) => b.id)).catch(() => null);
+  // A board the database doesn't let us read yet (a new one, before its rules are
+  // published: firestore.rules) fails the whole read: then without the newest.
+  const ids = BOARDS.map((b) => b.id);
+  const entries = await myEntries(ids).catch(() => myEntries(ids.filter((id) => id !== SURVIVAL_BOARD.id)).catch(() => null));
   if (!entries || posts !== started) return false;
   let changed = false;
   for (const board of BOARDS) {
+    if (!entries.has(board.id)) continue; // not read: keep what's here
     const entry = entries.get(board.id);
     const mark = entry?.mark ?? null;
     const saved = getBest(board.id);
@@ -74,6 +78,7 @@ export async function syncBests() {
       if (best && (mark == null || beats(board, best.total, mark))) saveBestTournament(null);
       continue;
     }
+    if (board.points) continue; // no recordings
     await syncGhost(board, entry);
   }
   return changed;

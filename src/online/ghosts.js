@@ -1,6 +1,7 @@
 import { getGhost, getGhostOn, getBestTournament, getCampaign } from '../core/storage.js';
 import { tournament } from '../tournament/tournament.js';
 import { chosenGhost } from './ghost.js';
+import { survival } from '../survival/survival.js';
 
 /**
  * Which recording races as a ghost in event `ev`, as { name, data, overlay }, or null:
@@ -13,7 +14,7 @@ import { chosenGhost } from './ghost.js';
  * old, or from the network).
  */
 export function pickGhost(ev, valid) {
-  if (getCampaign()) return null;
+  if (getCampaign() || survival.active) return null; // racing a rival: no ghost
   if (tournament.active) {
     const g = getGhostOn() ? getBestTournament()?.events?.[ev.id]?.ghost : null;
     return valid(g) ? { name: 'Best tournament', data: g, overlay: true } : null;

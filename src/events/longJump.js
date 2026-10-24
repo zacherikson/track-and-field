@@ -1,4 +1,5 @@
 import { CONFIG } from '../config.js';
+import { aiLevel } from '../survival/survival.js';
 import { Camera } from '../core/camera.js';
 import { clamp, rand, shuffle } from '../core/math.js';
 import { text, roundRect } from '../core/ui.js';
@@ -50,7 +51,7 @@ export class LongJump {
     this.ev = ev;
     this.cfg = CONFIG.longJump;
     this.level = getDifficulty();
-    this.lv = { ...CONFIG.ai[this.level], ...this.cfg.ai[this.level] };
+    this.lv = { ...aiLevel(CONFIG.ai, this.level), ...aiLevel(this.cfg.ai, this.level) }; // survival: blended to the rival's skill
     this.wantsReleases = true; // the orange pads take holds: Input queues the lifts too (core/thumbs.js)
     this.thumbs = new Thumbs();
   }

@@ -160,7 +160,7 @@ export class ResultsPanel {
   /**
    * @param buttons  [main, other]: the scene's Buttons (Race again / Next, and Menu / Quit)
    * @param title    () => string
-   * @param rows     () => [{ place, name, colors, value, isPlayer, gold }]
+   * @param rows     () => [{ place, name, colors, value, isPlayer, gold }] (no `colors`: no shirt bar)
    */
   constructor(buttons, title, rows) {
     Object.assign(this, { buttons, title, rows });
@@ -232,8 +232,10 @@ export class ResultsPanel {
         ctx.fillRect(x, ry - this.rowH / 2, w, this.rowH);
       }
       text(ctx, r.place, x + 18, ry + 1, { size: size + 2, font: 'display', color: PAL.ink });
-      ctx.fillStyle = r.colors.shirt;
-      ctx.fillRect(x + 34, ry - size * 0.45, 6, size * 0.9);
+      if (r.colors) {
+        ctx.fillStyle = r.colors.shirt;
+        ctx.fillRect(x + 34, ry - size * 0.45, 6, size * 0.9);
+      }
       // Live: the other people in the race in orange, the computer's runners in ink.
       text(ctx, r.name, x + NAME_X, ry + 1, { size, font: 'body', align: 'left', weight: r.isPlayer ? 800 : 700, color: r.gold && !r.isPlayer ? PAL.orangeShade : PAL.ink, maxWidth: this.nameW + 2 });
       text(ctx, r.value, x + w - 14, ry + 1, { size, font: 'body', weight: 800, align: 'right', color: PAL.ink });

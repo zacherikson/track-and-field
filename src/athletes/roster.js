@@ -1,5 +1,6 @@
 import { getCharacter, getCustom } from '../core/storage.js';
 import { athleteFromCode } from './custom.js';
+import { survival } from '../survival/survival.js';
 
 /**
  * The athletes (original characters). You pick one (the Athlete tab) and they
@@ -61,6 +62,7 @@ export function heightOf(colors) {
  * the lanes still read apart.
  */
 export function rivals(eventId) {
+  if (survival.active) return [survival.rival]; // survival: just him
   const me = player(eventId);
   const others = CHARACTERS.filter((c) => c !== me);
   if (!me.custom) return others;

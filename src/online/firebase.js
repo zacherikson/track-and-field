@@ -493,7 +493,7 @@ async function renameOnBoards(name) {
 }
 
 // Every board (registry.js BOARDS ids; firestore.rules lists the same).
-const ONLINE_EVENTS = ['sprint100', 'longjump', 'hurdles110', 'polevault', 'javelin', 'tournament', 'teamtournament'];
+const ONLINE_EVENTS = ['sprint100', 'longjump', 'hurdles110', 'polevault', 'javelin', 'tournament', 'teamtournament', 'survival'];
 
 /** The key a name is claimed under: names are unique regardless of case. */
 export const nameKey = (name) => name.toLowerCase();

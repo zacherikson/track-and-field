@@ -117,7 +117,11 @@ export const SPECIAL_EVENTS = [
 // The tournament's online leaderboard (total decathlon points). Not playable
 // on its own, so it isn't in EVENTS. (The Team Tournament's board,
 // 'teamtournament', is retired: still in the database, no longer shown.)
-export const TOURNAMENT_BOARD = { id: 'tournament', name: 'Tournament', unit: 'pts', lowerIsBetter: false, online: true, tournament: true };
+export const TOURNAMENT_BOARD = { id: 'tournament', name: 'Tournament', unit: 'pts', lowerIsBetter: false, online: true, points: true, tournament: true };
+
+// Survival's online leaderboard (src/survival/survival.js): a run's total points.
+// `points`: a board of point totals, with no recordings (`tournament` is the tournament's own: its ghosts).
+export const SURVIVAL_BOARD = { id: 'survival', name: 'Survival', unit: 'pts', lowerIsBetter: false, online: true, points: true };
 
 /** Any playable event (the five, or a special one) by id. */
 export function eventById(id) {
@@ -125,7 +129,7 @@ export function eventById(id) {
 }
 
 /** Every online leaderboard, in menu order. */
-export const BOARDS = [...EVENTS, TOURNAMENT_BOARD];
+export const BOARDS = [...EVENTS, TOURNAMENT_BOARD, SURVIVAL_BOARD];
 
 /**
  * A mark as it's kept and compared everywhere (results, personal bests, the

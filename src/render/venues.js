@@ -1,4 +1,5 @@
 import { getCampaign } from '../core/storage.js';
+import { survival } from '../survival/survival.js';
 
 /**
  * Where each mode is played: Training is a rundown community track in the
@@ -173,5 +174,6 @@ export const VENUES = { training: TRAINING, amateur: AMATEUR, pro: PRO };
  */
 export function venueFor(live = false) {
   if (live) return PRO;
+  if (survival.active) return survival.round <= 2 ? AMATEUR : PRO; // survival: the high school, then the big stadium from round 3
   return VENUES[getCampaign()] ?? TRAINING;
 }

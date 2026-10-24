@@ -1,4 +1,5 @@
 import { CONFIG } from '../config.js';
+import { aiLevel } from '../survival/survival.js';
 import { clamp } from '../core/math.js';
 import { LaneRace } from './laneRace.js';
 import { ButtonSet, HurdleRun, HurdleAI, hurdlePositions } from './hurdleRules.js';
@@ -36,7 +37,7 @@ export class Hurdles110 extends LaneRace {
   constructor(ev) {
     super(ev, { ...CONFIG.sprint100, ...CONFIG.hurdles110 });
     // Same rival skill levels, with set-reading speeds for hurdles and the same miss price as you.
-    this.difficulty = { ...CONFIG.ai[this.level], ...this.cfg.ai[this.level], missSpeedLoss: this.cfg.missSpeedLoss };
+    this.difficulty = { ...aiLevel(CONFIG.ai, this.level), ...aiLevel(this.cfg.ai, this.level), missSpeedLoss: this.cfg.missSpeedLoss };
     this.traceProps = ev.traceProps; // one number per frame: the hurdles knocked down so far (a bit each)
   }
 

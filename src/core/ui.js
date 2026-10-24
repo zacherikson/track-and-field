@@ -23,6 +23,7 @@ export const PAL = {
   brick: '#C2452F', brickShade: '#93321F', // Amateur, the track
   blue: '#3B6CC2', blueShade: '#2A4F93', // Pro, Find, Google
   magenta: '#C2407E', magentaShade: '#8F2C5C', // Special Events
+  survival: '#A8232D', survivalShade: '#761820', // Survival
   deep: '#2E6B3C', deeper: '#21502D', // Training
   peri: '#8FA3E0', sky: '#A9BAEA', lav: '#C4B8E6', mtn: '#7E78C2', mtnShade: '#6A63B0', snow: '#E9E4F5', // scenery
   chart: '#C9D64B', green: '#7FB342',

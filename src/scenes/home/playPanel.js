@@ -4,7 +4,7 @@ import { drawIcon } from '../../core/icons.js';
 import { pinebrook, westfield, olympic, track, bands, wordmark } from '../../render/posterScenery.js';
 import { VENUES } from '../../render/venues.js';
 import { drawFigure, runPose } from '../../athletes/stickFigure.js';
-import { EVENTS, SPECIAL_EVENTS, formatMark } from '../../events/registry.js';
+import { EVENTS, SPECIAL_EVENTS, SURVIVAL_BOARD, formatMark } from '../../events/registry.js';
 import { canTune, getBest, getGhostOn, setGhostOn, getPlayerName, setCampaign, getBeaten, takeFreshBeaten, getSpecialLevel, setSpecialLevel } from '../../core/storage.js';
 import { myAthlete, heightOf } from '../../athletes/roster.js';
 import { TOURNAMENT_KIND } from '../../tournament/tournament.js';
@@ -118,6 +118,8 @@ export class PlayPanel {
     this.gridButtons = [
       ...this.sections.map((sec) => Object.assign(new VenueCard({ label: sec.name, place: VENUES[sec.key].name, venue: sec.vignette, color: sec.color, lip: sec.lip, onTap: () => this.openSection(sec) }), { key: sec.key })),
       Object.assign(new VenueCard({ label: 'Special Events', sub: 'Relay · Time Trial', icon: 'special', venue: specialVignette, color: PAL.magenta, lip: PAL.magentaShade, onTap: () => this.open('special') }), { key: 'special' }),
+      // Survival: you against one rival, round after round, until you lose an event (survival/survival.js).
+      Object.assign(new VenueCard({ label: 'Survival', sub: '', icon: 'survival', venue: survivalVignette, color: PAL.survival, lip: PAL.survivalShade, onTap: () => flow.survival(this.game) }), { key: 'survival' }),
     ];
     this.styleSections(takeFreshBeaten());
     // Live: the same six cards as a campaign's, against other people (a waiting room first, online/live.js).
@@ -286,7 +288,9 @@ export class PlayPanel {
     }
     const done = (level) => this.sections.find((sec) => sec.level === level).done;
     const pro = this.sections.find((sec) => sec.level === 'pro');
-    this.offlineBig.sub = `Amateur ${done('amateur')}/6 · Pro ${pro.locked ? 'locked' : `${done('pro')}/6`} · Training · Special`;
+    this.offlineBig.sub = `Amateur ${done('amateur')}/6 · Pro ${pro.locked ? 'locked' : `${done('pro')}/6`} · Training · Special · Survival`;
+    const best = getBest(SURVIVAL_BOARD.id);
+    this.gridButtons.find((b) => b.key === 'survival').sub = best ? `Best ${best} pts` : 'Beat one rival, round after round';
     for (const b of this.gridButtons) {
       const sec = this.sections.find((x) => x.key === b.key);
       if (!sec) continue;
@@ -327,8 +331,17 @@ export class PlayPanel {
     bigs.forEach((b, i) => Object.assign(b, { w: bw, h: 116, x: view.w / 2 - (bw * 2 + bigGap) / 2 + i * (bw + bigGap), y: 150 }));
 
     // vs Computer: its four venue cards, two by two.
-    const gw = Math.min(380, (view.w - margin * 2 - GRID_GAP) / 2);
-    this.gridButtons.forEach((b, i) => Object.assign(b, { w: gw, h: GRID_H, x: view.w / 2 - gw - GRID_GAP / 2 + (i % 2) * (gw + GRID_GAP), y: GRID_Y + Math.floor(i / 2) * (GRID_H + GRID_GAP) }));
+    // Three across where they fit (the three venues, then Special Events and Survival centred under them), else two.
+    const cols = view.w - margin * 2 >= 3 * 300 + 2 * GRID_GAP ? 3 : 2;
+    const rows = Math.ceil(this.gridButtons.length / cols);
+    const gh = cols === 3 ? GRID_H : Math.min(GRID_H, (LIST_TRACK + 40 - GRID_Y - (rows - 1) * GRID_GAP) / rows);
+    const gw = Math.min(380, (view.w - margin * 2 - GRID_GAP * (cols - 1)) / cols);
+    this.gridButtons.forEach((b, i) => {
+      const row = Math.floor(i / cols);
+      const inRow = Math.min(cols, this.gridButtons.length - row * cols);
+      const x0 = view.w / 2 - (inRow * gw + (inRow - 1) * GRID_GAP) / 2;
+      Object.assign(b, { w: gw, h: gh, x: x0 + (i % cols) * (gw + GRID_GAP), y: GRID_Y + row * (gh + GRID_GAP) });
+    });
 
     // Special Events: the cards in a row, the RIVALS toggle under them.
     const sw = Math.min(330, (view.w - margin * 2 - gapFor(this.specialButtons.length)) / this.specialButtons.length);
@@ -597,6 +610,11 @@ class VenueCard extends Button {
 }
 
 /** Special Events' vignette: magenta stripes. */
+/** Survival's card: the big stadium at night, under floodlights. */
+function survivalVignette(ctx, x, y, w, h) {
+  olympic(ctx, x - 30, y - 6, w + 60, h + 12, { trackH: 16, night: true });
+}
+
 function specialVignette(ctx, x, y, w, h) {
   ctx.fillStyle = PAL.magentaShade;
   ctx.fillRect(x, y, w, h);

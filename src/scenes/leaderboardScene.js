@@ -13,9 +13,9 @@ const BOX_Y = 124; // Global: top of the cream sheet
 const TOP = BOX_Y + 22; // its first row's middle
 const HEADER_H = 64; // the ink2 band along the top
 
-const TAB_LABELS = { sprint100: '100m', longjump: 'Long jump', hurdles110: 'Hurdles', polevault: 'Pole vault', javelin: 'Javelin', tournament: 'Tournament' };
+const TAB_LABELS = { sprint100: '100m', longjump: 'Long jump', hurdles110: 'Hurdles', polevault: 'Pole vault', javelin: 'Javelin', tournament: 'Tournament', survival: 'Survival' };
 /** Each board's colour: its column header on Mine. */
-const BOARD_FACE = { sprint100: PAL.orange, longjump: PAL.deep, hurdles110: PAL.brick, polevault: PAL.blue, javelin: PAL.magenta, tournament: PAL.gold };
+const BOARD_FACE = { sprint100: PAL.orange, longjump: PAL.deep, hurdles110: PAL.brick, polevault: PAL.blue, javelin: PAL.magenta, tournament: PAL.gold, survival: PAL.survival };
 const ZEBRA = '#EFE2C3'; // every other row on a cream sheet
 
 let lastBoard = null; // the tab you looked at last, for the menu's Leaderboard button
@@ -259,7 +259,7 @@ export class LeaderboardScene {
       if (this.signInError) text(ctx, this.signInError, view.w / 2, 400, { size: 17, font: 'body', color: PAL.brick, maxWidth: w - 30 });
     } else if (this.state === 'loading') this.drawLoading(ctx, x0, w);
     else if (this.state === 'error') mid('Can’t reach the online leaderboard right now.');
-    else if (!this.rows.length) mid(this.board.tournament ? `No scores yet. Finish a ${this.board.name.toLowerCase()} to be first!` : `No marks yet. Finish a ${this.board.name} to be first!`);
+    else if (!this.rows.length) mid(this.board.tournament ? `No scores yet. Finish a ${this.board.name.toLowerCase()} to be first!` : this.board.points ? `No scores yet. Play ${this.board.name} to be first!` : `No marks yet. Finish a ${this.board.name} to be first!`);
     else {
       this.rows.forEach((r, i) => {
         const y = this.rowY(i);

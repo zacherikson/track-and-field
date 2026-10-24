@@ -15,6 +15,7 @@ import { throwMark, rivalThrow } from '../src/events/javelinRules.js';
 import { Exchange, exchangeSpot, LEG } from '../src/events/relayRules.js';
 import { runUpSpeed } from '../src/events/runUpRules.js';
 import { Bike, BikeAI, buildCourse, gearFor, idealThrow } from '../src/events/cyclingRules.js';
+import { skillFor, blend } from '../src/survival/survival.js';
 
 const STEP = CONFIG.loop.fixedStep;
 const D = CONFIG.sprint100.distance;
@@ -532,4 +533,33 @@ for (const level of ['amateur', 'pro']) {
     return CC.maxTime;
   }).sort((a, b) => a - b);
   console.log(`${level.padEnd(8)} rival median ${times[100].toFixed(2)}s, best ${times[0].toFixed(2)}s`);
+}
+
+// ---------------------------------------------------------------- survival
+// The one rival, round by round (CONFIG.survival): his median mark in each
+// event (field events: best of the attempts; how often he has none).
+console.log('\nSURVIVAL (the one rival, round by round: median marks; NM = no mark at all)');
+for (const round of [1, 2, 3, 4, 5, 6, 8, 10, 15, 20]) {
+  const sk = skillFor(round);
+  const mix = (t) => blend(t.amateur, t.pro, sk);
+  const key = `survival${round}`;
+  CONFIG.ai[key] = mix(CONFIG.ai);
+  HC.ai[key] = mix(HC.ai);
+  const med = (arr) => [...arr].sort((a, b) => a - b)[Math.floor(arr.length / 2)];
+  const sprint = med(Array.from({ length: 200 }, () => aiRace(CONFIG.ai[key])));
+  const hurdles = med(Array.from({ length: 150 }, () => hurdleAiRace(key)));
+  const field = (cfg, attempt, runUpAt, failed) => {
+    const lv = { ...mix(CONFIG.ai), ...mix(cfg.ai) };
+    const runUp = () => runUpAt(0, lv);
+    const bests = Array.from({ length: 200 }, () => {
+      const ok = Array.from({ length: cfg.rounds }, () => attempt(lv, cfg, runUp)).filter((j) => !failed(j)).map((j) => j.mark);
+      return ok.length ? Math.max(...ok) : 0;
+    });
+    const marks = bests.filter((b) => b > 0);
+    return `${(marks.length ? med(marks) : 0).toFixed(2)}m${marks.length < bests.length ? ` (NM ${Math.round((100 * (bests.length - marks.length)) / bests.length)}%)` : ''}`;
+  };
+  const lj = field(LJ, rivalJump, ljRunUp, (j) => j.foul);
+  const pv = field(PV, rivalVault, pvRunUp, (j) => j.fail);
+  const jv = field(JV, rivalThrow, jvRunUp, (j) => j.foul);
+  console.log(`round ${String(round).padStart(2)}  skill ${sk.toFixed(2).padStart(5)}   100m ${sprint.toFixed(2)}s   hurdles ${hurdles.toFixed(2)}s   long jump ${lj}   pole vault ${pv}   javelin ${jv}`);
 }

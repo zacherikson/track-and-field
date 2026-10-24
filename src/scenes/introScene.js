@@ -14,6 +14,7 @@ import { meet } from '../meet/meet.js';
 import { formatPoints } from '../meet/scoring.js';
 import { MEET_ORDER } from '../meet/rules.js';
 import { drawStrip, drawSteps, stepsHeight } from './howTo.js';
+import { survival } from '../survival/survival.js';
 
 const ON_TRACK = 4000; // ms before a live event starts that it's shown (the gun's READY / GET SET, or a round's countdown)
 
@@ -25,7 +26,10 @@ const ON_TRACK = 4000; // ms before a live event starts that it's shown (the gun
  * Tap to start. In a live tournament it counts down instead, and the event
  * starts at the same moment for everyone (online/live.js).
  *
- * Top left, Back (Quit in a tournament) goes to the menu. How to play opens
+ * In survival: the round, your points, and who you're up against (a new
+ * name each round).
+ *
+ * Top left, Back (Quit in a tournament or a survival run) goes to the menu. How to play opens
  * the event's steps over the card (not a screen of their own, so a live
  * countdown carries on underneath); any tap closes them.
  */
@@ -40,7 +44,7 @@ export class IntroScene {
     this.meet = meet.active;
     this.backBtn = tournament.live || this.meet
       ? null
-      : new Button({ label: tournament.active ? 'Quit' : 'Back', icon: 'back', look: 'chip', w: 104, h: 44, onTap: () => flow.menu(this.game) });
+      : new Button({ label: tournament.active || survival.active ? 'Quit' : 'Back', icon: 'back', look: 'chip', w: 104, h: 44, onTap: () => flow.menu(this.game) });
     this.howBtn = new Button({ label: 'How to play', icon: 'howto', w: 184, h: 48, size: 20, color: PAL.ink, lip: PAL.inkShade, onTap: () => (this.howOpen = true) });
     // Tap to start, as a real button (a live event: its countdown, on ink).
     this.startBtn = new Button({ label: 'Tap to start', w: 280, h: 56, size: 27, color: PAL.orange, lip: PAL.orangeShade });
@@ -98,6 +102,7 @@ export class IntroScene {
     const lit = (fn, opts = {}) => (ctx, x, y, w, h) => fn(ctx, x, y, w, h, { trackH: 120, ...opts });
     if (this.live) return { draw: lit(olympic, { night: !this.meet }), plate: PAL.liveGreen };
     if (SPECIAL_EVENTS.some((e) => e.id === this.ev.id)) return { draw: lit(olympic), plate: PAL.magenta };
+    if (survival.active) return { draw: survival.round <= 2 ? lit(westfield) : lit(olympic), plate: PAL.survival }; // as render/venues.js venueFor
     const level = getCampaign();
     if (level === 'amateur') return { draw: lit(westfield), plate: PAL.brick };
     if (level === 'pro') return { draw: lit(olympic), plate: PAL.blue };
@@ -135,6 +140,8 @@ export class IntroScene {
       const mine = meet.standings?.find((r) => r.squad === meet.me?.squad);
       const pts = mine ? ` · ${meet.mySquad?.name ?? ''} ${formatPoints(mine.total)} pts` : '';
       top(`SQUAD MEET · EVENT ${meet.index + 1} OF ${MEET_ORDER.length}${pts}`);
+    } else if (survival.active) {
+      top(`SURVIVAL · ROUND ${survival.round} · EVENT ${survival.index + 1} OF ${survival.order.length} · ${survival.total} pts`);
     } else if (tournament.active) {
       const me = tournament.standings().find((t) => t.isPlayer);
       const pts = me ? ` · ${me.total} pts` : '';
@@ -153,6 +160,10 @@ export class IntroScene {
     text(ctx, `World Record  ${formatMark(this.ev, this.ev.record)}`, cx, py + 152, { size: 24, font: 'body', weight: 800, color: PAL.ink, maxWidth: rw - 30 });
     text(ctx, `Your Best  ${formatMark(this.ev, this.best)}`, cx, py + 182, { size: 19, font: 'body', weight: 600, color: PAL.muted });
     if (this.meet) text(ctx, this.meetLine(), cx, py + 212, { size: 17, font: 'body', weight: 800, color: PAL.orangeShade, maxWidth: rw - 30 });
+    if (survival.active) {
+      const fresh = survival.index === 0 && survival.round > 1 ? ' · a new rival, and better' : '';
+      text(ctx, `vs ${survival.rival.name}${fresh}`, cx, py + 212, { size: 19, font: 'body', weight: 800, color: PAL.survival, maxWidth: rw - 30 });
+    }
     drawStrip(ctx, this.ev.id, cx, py + 250, { width: rw - 20, ink: PAL.ink, arrow: '#9D9070', font: 'display' });
 
     Object.assign(this.howBtn, { x: cx - this.howBtn.w / 2, y: py + 326 });

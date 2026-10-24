@@ -1,4 +1,5 @@
 import { CONFIG } from '../config.js';
+import { aiLevel } from '../survival/survival.js';
 import { Camera } from '../core/camera.js';
 import { rand, shuffle, clamp } from '../core/math.js';
 import { text, roundRect } from '../core/ui.js';
@@ -63,7 +64,7 @@ export class LaneRace {
     this.ev = ev;
     this.cfg = cfg;
     this.level = getDifficulty(); // 'amateur' | 'pro': the campaign's
-    this.difficulty = CONFIG.ai[this.level];
+    this.difficulty = aiLevel(CONFIG.ai, this.level); // survival: blended to the rival's skill
     // The lean pads take holds: Input queues finger lifts and key releases too.
     // They only go to the thumbs and the late hits' controls, never to strides.
     this.wantsReleases = true;
@@ -107,6 +108,8 @@ export class LaneRace {
     // Live: the other players in the lanes nearest yours, and nobody else (so every phone has the same results).
     const others = this.live ? this.live.others : [];
     const liveLanes = new Map(nearestLanes(cfg.playerLane, cfg.lanes).slice(0, others.length).map((lane, i) => [lane, others[i]]));
+    // Fewer rivals than lanes (survival's one): in the lanes nearest yours.
+    const rivalLanes = new Set(nearestLanes(cfg.playerLane, cfg.lanes).slice(0, rivals.length));
     const athletes = [];
     for (let lane = 1; lane <= cfg.lanes; lane++) {
       if (lane === ghostLane) {
@@ -118,7 +121,7 @@ export class LaneRace {
         continue;
       }
       const isPlayer = lane === cfg.playerLane;
-      if ((this.live || !hasRivals()) && !isPlayer) continue; // Training: just you (and your ghost)
+      if ((this.live || !hasRivals() || !rivalLanes.has(lane)) && !isPlayer) continue; // Training: just you (and your ghost)
       const who = isPlayer ? chosenPlayer(this.ev.id) : rivals.pop();
       const runner = new Runner(this.runnerParams, undefined, cfg.startX); // event-specific physics, if any
       athletes.push({

@@ -4,6 +4,30 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Survival mode
+- **New: vs Computer → Survival**, as in the original. You against one
+  computer rival (a new athlete: big, in red), the five events a round in a
+  random order. Beat him in all five and the next round starts, against the
+  same rival under a new Russian first name, a little better. Lose any event
+  and it's game over. Every event scores decathlon points, as in the
+  tournament, added up over the run; the game over page shows rounds
+  survived, events won, your total and your best.
+- **His level**: round 1 easier than the Amateur rivals, round 2 Amateur,
+  round 4 Pro, then on towards near perfect, without end
+  (`CONFIG.survival` skill [-0.6, 0, 0.5, 1], then a fifth of the way to 1.9
+  each round). Every rival setting is blended between its Amateur and Pro
+  values, or carried on past them (`survival.js` blend). `tools/simulate.mjs`
+  has a Survival table of his marks by round: a strong player should last to
+  about round 6 to 8 (the long jump goes first).
+- A tie keeps you in; no mark loses unless he has none either.
+- **Survival leaderboard** (total points), a new tab on the Leaderboard.
+  Needs the new `firestore.rules` pasted into the Firebase console (it adds
+  the `survival` board, up to 1,000,000 points); until then posting and
+  reading it fail quietly.
+- Venues: Westfield High for rounds 1 and 2, then the Olympic Stadium. The
+  vs Computer page lays its five cards out three across (two on a narrow
+  screen). New `test/survival.test.mjs`.
+
 ## Results in the corner; the javelin's mark line stands straight
 - **The results over the late hits move to the top right**, so the middle
   of the screen is clear for the fighting. The text stays big enough to read

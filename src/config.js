@@ -239,6 +239,21 @@ export const CONFIG = {
   },
 
   /**
+   * SURVIVAL (src/survival/survival.js): you against one rival, the five events
+   * a round in a random order, until you lose one. The rival gets better each
+   * round: `skill` is where he is between the Amateur rivals (0) and the Pro
+   * ones (1) in round 1, 2, 3...; after the list he keeps climbing, by `climb`
+   * of the way left to `ceiling` each round (beyond Pro: near perfect).
+   * Every rival setting is blended (or carried on past either end) between
+   * its Amateur and Pro values (survival.js blend).
+   */
+  survival: {
+    skill: [-0.6, 0, 0.5, 1], // rounds 1-4: easier than Amateur, Amateur, between, Pro
+    ceiling: 1.9,
+    climb: 0.2,
+  },
+
+  /**
    * SQUAD MEETS (docs/meets.md; the meet server, server/, reads these too).
    * The server runs a meet's clock: every stage starts at a set time and has
    * a cutoff, and the meet moves on as soon as every result is in (or the

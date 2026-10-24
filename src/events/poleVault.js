@@ -1,4 +1,5 @@
 import { CONFIG } from '../config.js';
+import { aiLevel } from '../survival/survival.js';
 import { Camera } from '../core/camera.js';
 import { clamp, damp, rand, shuffle } from '../core/math.js';
 import { text, roundRect } from '../core/ui.js';
@@ -86,7 +87,7 @@ export class PoleVault {
     this.ev = ev;
     this.cfg = CONFIG.poleVault;
     this.level = getDifficulty();
-    this.lv = { ...CONFIG.ai[this.level], ...this.cfg.ai[this.level] };
+    this.lv = { ...aiLevel(CONFIG.ai, this.level), ...aiLevel(this.cfg.ai, this.level) }; // survival: blended to the rival's skill
     this.wantsReleases = true; // hold-and-release controls
     this.thumbs = new Thumbs(); // which thumbs are down, strides included
   }

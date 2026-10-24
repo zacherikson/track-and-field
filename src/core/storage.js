@@ -1,5 +1,6 @@
 // Tiny localStorage wrapper. Storage can throw (private mode, quota, disabled),
 // so every access is guarded and the game still works without persistence.
+import { survival } from '../survival/survival.js';
 const KEY = 'trackroyale.v1';
 
 /** Moves data saved under the game's old name (Thumbathlon) to its new key, once. */
@@ -223,11 +224,12 @@ export function getSpecialLevel() {
 
 /** Whether computer rivals race: only in a campaign. */
 export function hasRivals() {
-  return campaign != null;
+  return campaign != null || survival.active;
 }
 
 /** Rival difficulty, 'amateur' or 'pro': the campaign's. */
 export function getDifficulty() {
+  if (survival.active) return survival.skill >= 0.5 ? 'pro' : 'amateur'; // the nearer (the events blend it: survival.js aiLevel)
   return campaign ?? 'amateur';
 }
 

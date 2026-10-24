@@ -112,11 +112,12 @@ Like Clash Royale: three tabs along the bottom, **Athlete | Play | Squad**. Tap
 one or swipe sideways to slide between them. The game opens on **Play**: two
 big buttons, **🤖 vs Computer** and **🌐 Live**, over your athlete warming up on
 the track (tap them to change who it is). Live opens the tournament and the
-five events. vs Computer opens four big buttons, two by two: **Amateur** and
+five events. vs Computer opens five big buttons (three across, or two on a narrow screen): **Amateur** and
 **Pro** (a campaign each: the five events and the tournament, Pro locked until
 Amateur is beaten), **Training** (the five events on your own, no tournament, with its Training
 Ghost toggle) and **⭐ Special Events** (the events that aren't part of the five, the
-4×100m relay and the time trial, with a RIVALS toggle, Amateur or Pro). The
+4×100m relay and the time trial, with a RIVALS toggle, Amateur or Pro) and
+**Survival** (you against one rival until you lose an event: see Survival). The
 Squad tab has ⚔ Practice: live events with just your squad (see Squads).
 ‹ Back (or Esc) goes back a step, and Menu after a race comes back to the
 page you raced from.
@@ -157,6 +158,30 @@ hits' fight poses and the events' own), played by
 [`sideshow.js`](src/scenes/home/sideshow.js); `tools/sideshow.html` plays every
 one side by side, with a slider to scrub through them, and
 `test/sideshow.test.mjs` checks each plays through to the end.
+
+## Survival
+
+Under vs Computer → **Survival**, as in the original: you against one
+computer rival. A round is the five events in a random order; beat him in all
+five and the next round starts, against the same big athlete in red under a
+new (Russian) first name, a little better than before. Lose any event and it's
+game over. Every event scores decathlon points, as in the tournament, and they
+add up over the whole run: your total goes on the **Survival** leaderboard,
+and the game over screen shows how many rounds you survived and events you
+won.
+
+- Beating him: a better mark (your best of the attempts against his in the
+  field events). The same mark to the hundredth is a tie, and a tie keeps you
+  in; no mark at all (a DNF, three fouls) loses unless he has none either.
+- Round 1 he's easier than the Amateur rivals, round 2 he's Amateur, round 4
+  Pro, and after that he keeps getting better without end (`CONFIG.survival`:
+  every rival setting is blended between its Amateur and Pro values, or
+  carried on past them). `node tools/simulate.mjs` prints his marks round by
+  round: a strong player should last to about round 6 to 8.
+- Rounds 1 and 2 are at Westfield High, then the Olympic Stadium. The late
+  hits after each event are just you and him (and the referee).
+- Quit ends the run without posting it. The code is in
+  [`src/survival/`](src/survival/survival.js).
 
 ## 4×100m relay
 

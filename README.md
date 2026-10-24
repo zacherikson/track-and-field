@@ -163,8 +163,9 @@ one side by side, with a slider to scrub through them, and
 
 Under vs Computer → **Survival**, as in the original: you against one
 computer rival. A round is the five events in a random order; beat him in all
-five and the next round starts, against the same big athlete in red under a
-new (Russian) first name, a little better than before. Lose any event and it's
+five and the next round starts, against the same rival (a native South
+American runner: shirtless, green shorts, long black hair under a red
+headband) under a new first name, a little better than before. Lose any event and it's
 game over. Every event scores decathlon points, as in the tournament, and they
 add up over the whole run: your total goes on the **Survival** leaderboard,
 and the game over screen shows how many rounds you survived and events you
@@ -179,7 +180,12 @@ won.
   Amateur and Pro values, or carried on past them). `node tools/simulate.mjs`
   prints his marks round by round: a strong player should last to about
   round 2 or 3, a near perfect one past 5.
-- Every round is at the Olympic Stadium. The late
+- Every round is at **The Lost Stadium**, Survival's own venue: an old
+  stadium the jungle has taken back. A crumbling stone stand gone green, with
+  plants where the crowd sat, the canopy towering over it and vines hanging
+  down; a mossy stone wall where the hoardings were; a faded clay track with
+  moss coming through; jungle hills behind the javelin's flight. Venues can
+  have an `overgrowth` and a `wall` for hoardings (render/venues.js). The late
   hits after each event are just you and him (and the referee).
 - Quit ends the run without posting it. The code is in
   [`src/survival/`](src/survival/survival.js).

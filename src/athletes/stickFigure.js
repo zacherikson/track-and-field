@@ -630,7 +630,8 @@ function shade(hex, k) {
  * Hair on a head at (hx, hy), radius r, tilted with the torso (`lean`). The
  * figure faces +x, so "back" is -x. `colors.style`: band (headband in the
  * shirt color, the default), spiky, afro, ponytail, bun, short, fringe, bald,
- * mohawk, long (and refcap, the referee's).
+ * mohawk, long (and refcap, the referee's). `colors.band`: a headband in that
+ * color, over any style (the band style's own, instead of the shirt color).
  */
 function drawHair(ctx, hx, hy, r, lean, colors) {
   const style = colors.style ?? 'band';
@@ -728,11 +729,15 @@ function drawHair(ctx, hx, hy, r, lean, colors) {
       ctx.arc(-r * 0.35, -r * 1.05, r * 0.32, 0, Math.PI * 2);
       ctx.fill();
     }
+  }
+  // The headband across the forehead: the band style's (in the shirt color), or any style's `band`.
+  const band = colors.band ?? (style === 'band' ? colors.shirt : null);
+  if (band) {
     ctx.save();
     ctx.beginPath();
     ctx.arc(0, 0, r * 1.05, 0, Math.PI * 2);
     ctx.clip();
-    ctx.strokeStyle = colors.shirt;
+    ctx.strokeStyle = band;
     ctx.lineWidth = Math.max(1.5, r * 0.3);
     ctx.beginPath();
     ctx.moveTo(-r * 1.1, -r * 0.2);

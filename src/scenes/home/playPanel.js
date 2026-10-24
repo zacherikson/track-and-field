@@ -1,7 +1,7 @@
 import { CONFIG } from '../../config.js';
 import { Button, text, chamfer, slab, titlePlate, nameTag, PAL, FONT_BODY, FONT_DISPLAY } from '../../core/ui.js';
 import { drawIcon } from '../../core/icons.js';
-import { pinebrook, westfield, olympic, track, bands, wordmark } from '../../render/posterScenery.js';
+import { pinebrook, westfield, olympic, lostStadium, track, bands, wordmark } from '../../render/posterScenery.js';
 import { VENUES } from '../../render/venues.js';
 import { drawFigure, runPose } from '../../athletes/stickFigure.js';
 import { EVENTS, SPECIAL_EVENTS, SURVIVAL_BOARD, formatMark } from '../../events/registry.js';
@@ -119,7 +119,7 @@ export class PlayPanel {
       ...this.sections.map((sec) => Object.assign(new VenueCard({ label: sec.name, place: VENUES[sec.key].name, venue: sec.vignette, color: sec.color, lip: sec.lip, onTap: () => this.openSection(sec) }), { key: sec.key })),
       Object.assign(new VenueCard({ label: 'Special Events', sub: 'Relay · Time Trial', icon: 'special', venue: specialVignette, color: PAL.magenta, lip: PAL.magentaShade, onTap: () => this.open('special') }), { key: 'special' }),
       // Survival: you against one rival, round after round, until you lose an event (survival/survival.js).
-      Object.assign(new VenueCard({ label: 'Survival', sub: '', icon: 'survival', venue: survivalVignette, color: PAL.survival, lip: PAL.survivalShade, onTap: () => flow.survival(this.game) }), { key: 'survival' }),
+      Object.assign(new VenueCard({ label: 'Survival', place: VENUES.survival.name, sub: '', venue: survivalVignette, color: PAL.survival, lip: PAL.survivalShade, onTap: () => flow.survival(this.game) }), { key: 'survival' }),
     ];
     this.styleSections(takeFreshBeaten());
     // Live: the same six cards as a campaign's, against other people (a waiting room first, online/live.js).
@@ -610,9 +610,9 @@ class VenueCard extends Button {
 }
 
 /** Special Events' vignette: magenta stripes. */
-/** Survival's card: the big stadium at night, under floodlights. */
+/** Survival's card: the Lost Stadium, in the jungle. */
 function survivalVignette(ctx, x, y, w, h) {
-  olympic(ctx, x - 30, y - 6, w + 60, h + 12, { trackH: 16, night: true });
+  lostStadium(ctx, x - 30, y - 6, w + 60, h + 12, { trackH: 16 });
 }
 
 function specialVignette(ctx, x, y, w, h) {

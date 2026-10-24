@@ -39,6 +39,10 @@ import { survival } from '../survival/survival.js';
  *   finish     finish post { post, sign, text }
  *   lights     floodlight towers over the stand
  *   flashes    camera flashes popping in the crowd
+ *   overgrowth the jungle taking a ruin back (Survival's): canopy over the
+ *              stand, vines hanging down it, moss, flowers; and the javelin's
+ *              flight shot over jungle hills instead of the sea
+ *              { canopy[], canopyDark, vine, leaf, moss, flower[], hillFar, hill }
  */
 
 const AMATEUR = {
@@ -165,7 +169,64 @@ const PRO = {
   flashes: true,
 };
 
-export const VENUES = { training: TRAINING, amateur: AMATEUR, pro: PRO };
+/**
+ * Survival's: an old stadium the jungle has taken back. A crumbling stone
+ * stand gone green, plants where the crowd sat, the canopy towering over it
+ * and vines hanging down; a mossy stone wall where the hoardings were; a
+ * faded clay track with moss and weeds coming through; nobody watching.
+ */
+const JUNGLE = {
+  id: 'survival',
+  name: 'The Lost Stadium',
+  sky: { top: '#5f9e8c', bottom: '#d6e4b0', high: '#2f6a5c' }, // humid haze
+  stands: {
+    body: '#6b6a55', // weathered stone
+    roof: '#4d4c3c',
+    rows: 6,
+    rowH: 14,
+    seatW: 14,
+    emptyEvery: 3, // crumbled away
+    shade: 'rgba(20,30,10,0.28)',
+    crowd: ['#2f6b2a', '#3f8a34', '#24521f', '#4fa040', '#5cb84a', '#376b2c', '#e8505b', '#2f6b2a', '#3f8a34', '#f2b632'], // leaves where the people were, and a flower or two
+  },
+  backdrop: null,
+  boards: { kind: 'wall', back: '#7a7660', block: 'rgba(40,40,25,0.35)', moss: '#4f8a36', fern: '#3a7a2c' },
+  grass: { base: '#3d7a2e', stripe: null, stripeM: 4 }, // nobody mows a ruin
+  sector: { base: '#4a8a36', stripe: null },
+  track: {
+    surface: '#a35a3a', // old clay, faded
+    worn: 'rgba(84,122,52,0.32)', // moss coming through: a tint over the clay
+    paint: 'rgba(240,236,214,0.5)',
+    band: 'rgba(240,236,214,0.32)',
+    line: 'rgba(240,236,214,0.7)',
+    apron: '#3d7a2e',
+    curb: '#9a9478',
+    tick: '#7f7a62',
+  },
+  zone: { fill: 'rgba(64,140,255,0.22)', line: '#4f82c8' },
+  road: { asphalt: '#5a5446', edge: 'rgba(240,236,214,0.6)', verge: '#3d7a2e', earth: '#5a4632', hillFar: '#4f8a5a', hillNear: '#2f6b3a', tree: '#1f4d2a', post: '#9a9478', banner: '#4f8a36', bannerText: '#f2efe6' },
+  blocks: { rail: '#4a4a3a', railTop: '#8c8a70', plate: '#8c4a3a', plateFace: '#a9614c' }, // rusted
+  sand: { sand: '#c9b48a', rim: '#8f8a6e' },
+  board: { face: '#d8d2b8', foul: '#b4443a' },
+  mat: { side: '#4a5a3a', top: '#b8a05a', topBand: '#c9b26a', front: '#3f5030', handle: '#2a3520' },
+  upright: { post: '#8a7a3a', shade: '#5a4f24' },
+  signs: { post: '#8a7a5a', plate: '#5a4632', text: '#efe6c8' },
+  finish: { post: '#9a9478', sign: '#2a3520', text: '#e8d88a' },
+  lights: false,
+  flashes: false,
+  overgrowth: {
+    canopy: ['#2f6b2a', '#3b7f30', '#24521f', '#45923a'],
+    canopyDark: '#1c3f18',
+    vine: '#2a5a22',
+    leaf: '#4fa040',
+    moss: 'rgba(79,138,54,0.55)',
+    flower: ['#e8505b', '#f2b632', '#f07a3a'],
+    hillFar: '#5a8f6a',
+    hill: '#2f6b3a',
+  },
+};
+
+export const VENUES = { training: TRAINING, amateur: AMATEUR, pro: PRO, survival: JUNGLE };
 
 /**
  * The venue for the mode being played: the campaign's (core/storage.js), or
@@ -174,6 +235,6 @@ export const VENUES = { training: TRAINING, amateur: AMATEUR, pro: PRO };
  */
 export function venueFor(live = false) {
   if (live) return PRO;
-  if (survival.active) return PRO; // survival: a Pro from the first round, in the big stadium
+  if (survival.active) return JUNGLE; // survival: the lost stadium in the jungle
   return VENUES[getCampaign()] ?? TRAINING;
 }

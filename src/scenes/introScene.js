@@ -1,6 +1,6 @@
 import { Button, text, slab, chamfer, nameTag, PAL } from '../core/ui.js';
 import { drawIcon } from '../core/icons.js';
-import { pinebrook, westfield, olympic } from '../render/posterScenery.js';
+import { pinebrook, westfield, olympic, lostStadium } from '../render/posterScenery.js';
 import { getBest, getCampaign } from '../core/storage.js';
 import { player, heightOf } from '../athletes/roster.js';
 import { drawFigure, runPose } from '../athletes/stickFigure.js';
@@ -102,7 +102,7 @@ export class IntroScene {
     const lit = (fn, opts = {}) => (ctx, x, y, w, h) => fn(ctx, x, y, w, h, { trackH: 120, ...opts });
     if (this.live) return { draw: lit(olympic, { night: !this.meet }), plate: PAL.liveGreen };
     if (SPECIAL_EVENTS.some((e) => e.id === this.ev.id)) return { draw: lit(olympic), plate: PAL.magenta };
-    if (survival.active) return { draw: lit(olympic), plate: PAL.survival }; // as render/venues.js venueFor
+    if (survival.active) return { draw: lit(lostStadium), plate: PAL.survival }; // as render/venues.js venueFor
     const level = getCampaign();
     if (level === 'amateur') return { draw: lit(westfield), plate: PAL.brick };
     if (level === 'pro') return { draw: lit(olympic), plate: PAL.blue };

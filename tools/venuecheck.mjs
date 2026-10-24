@@ -28,6 +28,7 @@ function recorder() {
     shadowColor: '', shadowBlur: 0, shadowOffsetY: 0,
     fillRect() {}, strokeRect() {}, clearRect() {},
     beginPath() {}, closePath() {}, moveTo() {}, lineTo() {}, fill() {}, stroke() {},
+    quadraticCurveTo() {}, bezierCurveTo() {}, setLineDash() {}, globalAlpha: 1, letterSpacing: '0px',
     arc() {}, ellipse() {}, rect() {}, clip() {},
     save() {}, restore() {}, translate() {}, scale() {}, rotate() {},
     createLinearGradient: grad, createRadialGradient: grad,

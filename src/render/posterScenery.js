@@ -148,3 +148,105 @@ export function olympic(ctx, x, y, w, h, { trackH = 0, night = false } = {}) {
   if (trackH) track(ctx, x, gy, w, trackH, { face: PAL.blue });
   ctx.restore();
 }
+/**
+ * The Lost Stadium (Survival): an old stone stand the jungle has taken back,
+ * under a humid sky. Tiers of weathered stone with broken arches, moss down
+ * them, trees grown up through and towering over them, vines hanging, and a
+ * faded clay track along the bottom.
+ */
+export function lostStadium(ctx, x, y, w, h, { trackH = 0 } = {}) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x, y, w, h);
+  ctx.clip();
+  const gy = y + h - trackH;
+  const H = gy - y;
+  bands(ctx, x, y, w, H, ['#5F9E8C', '#8FBFA0', '#C3DCB0', '#D6E4B0']);
+  // Far jungle hills.
+  hill(ctx, x - w * 0.2, x + w * 0.6, y + H * 0.42, gy, '#5A8F6A');
+  hill(ctx, x + w * 0.35, x + w * 1.2, y + H * 0.38, gy, '#4F8560');
+  // The stand: stone tiers, stepping up to the middle, broken at the edges.
+  const sx = x + w * 0.08, sw = w * 0.84, stTop = y + H * 0.38;
+  const tiers = 5, th = (gy - H * 0.08 - stTop) / tiers;
+  for (let i = 0; i < tiers; i++) {
+    const ty = stTop + i * th;
+    const inset = (tiers - i) * w * 0.012;
+    // Ragged ends: the top tiers have crumbled away more.
+    const bite = (tiers - i) * w * 0.02;
+    ctx.fillStyle = i % 2 ? '#7A7660' : '#8A866E';
+    ctx.fillRect(sx + inset + bite, ty, sw - inset * 2 - bite * 1.6, th);
+    ctx.fillStyle = '#5E5B48';
+    ctx.fillRect(sx + inset + bite, ty + th - 2, sw - inset * 2 - bite * 1.6, 2);
+  }
+  // Arches along the front, dark inside.
+  ctx.fillStyle = '#3C3A2C';
+  const arches = 7;
+  for (let i = 0; i < arches; i++) {
+    const ax = sx + sw * (0.1 + (i * 0.8) / (arches - 1));
+    const aw = sw * 0.05, ah = th * 1.4, ay = gy - H * 0.08 - ah;
+    ctx.beginPath();
+    ctx.moveTo(ax - aw / 2, ay + ah);
+    ctx.lineTo(ax - aw / 2, ay + aw / 2);
+    ctx.arc(ax, ay + aw / 2, aw / 2, Math.PI, 0);
+    ctx.lineTo(ax + aw / 2, ay + ah);
+    ctx.fill();
+  }
+  // Moss streaks down the stone.
+  ctx.fillStyle = 'rgba(79,138,54,0.6)';
+  for (let i = 0; i < 12; i++) {
+    const mx = sx + sw * ((i * 0.37 + 0.05) % 1);
+    ctx.fillRect(mx, stTop + th * (i % 3), w * 0.012, H * (0.12 + (i % 4) * 0.05));
+  }
+  // Trees grown up through the stand and around it, their canopy over the top.
+  const crowns = [[0.06, 0.22, 0.13], [0.24, 0.18, 0.1], [0.5, 0.12, 0.12], [0.74, 0.2, 0.11], [0.93, 0.16, 0.14]];
+  for (const [fx, fy, fr] of crowns) {
+    const cx = x + w * fx, cy = y + H * fy, r = H * fr * 1.6;
+    ctx.fillStyle = '#3B2A1A';
+    ctx.fillRect(cx - r * 0.08, cy, r * 0.16, gy - cy);
+    ctx.fillStyle = '#1C3F18';
+    ctx.beginPath();
+    ctx.arc(cx + r * 0.2, cy + r * 0.15, r, 0, Math.PI * 2);
+    ctx.arc(cx - r * 0.65, cy + r * 0.3, r * 0.7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#2F6B2A';
+    ctx.beginPath();
+    ctx.arc(cx - r * 0.05, cy - r * 0.05, r * 0.82, 0, Math.PI * 2);
+    ctx.arc(cx - r * 0.6, cy + r * 0.15, r * 0.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#45923A';
+    ctx.beginPath();
+    ctx.arc(cx - r * 0.2, cy - r * 0.3, r * 0.45, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // Vines hanging down the stand, a flower here and there.
+  ctx.strokeStyle = '#2A5A22';
+  ctx.lineWidth = Math.max(1.5, w * 0.004);
+  for (let i = 0; i < 10; i++) {
+    const vx = sx + sw * ((i * 0.61 + 0.08) % 1);
+    const len = H * (0.18 + (i % 4) * 0.07);
+    ctx.beginPath();
+    ctx.moveTo(vx, stTop - H * 0.02);
+    ctx.quadraticCurveTo(vx + ((i % 3) - 1) * w * 0.015, stTop + len / 2, vx, stTop + len);
+    ctx.stroke();
+    if (i % 3 === 0) {
+      ctx.fillStyle = ['#E8505B', '#F2B632', '#F07A3A'][i % 3 === 0 ? (i / 3) % 3 : 0];
+      ctx.beginPath();
+      ctx.arc(vx, stTop + len + 2, Math.max(2, w * 0.006), 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  // Ferns and long grass along the bottom of the stand.
+  ctx.fillStyle = '#3D7A2E';
+  ctx.fillRect(x, gy - H * 0.08, w, H * 0.08 + 1);
+  ctx.fillStyle = '#4F8A36';
+  for (let i = 0; i < 24; i++) {
+    const fx = x + (w * i) / 23;
+    ctx.beginPath();
+    ctx.moveTo(fx - w * 0.015, gy - H * 0.06);
+    ctx.lineTo(fx, gy - H * (0.12 + (i % 3) * 0.03));
+    ctx.lineTo(fx + w * 0.015, gy - H * 0.06);
+    ctx.fill();
+  }
+  if (trackH) track(ctx, x, gy, w, trackH, { face: '#A35A3A', line: 'rgba(240,236,214,0.55)', curb: '#9A9478' });
+  ctx.restore();
+}

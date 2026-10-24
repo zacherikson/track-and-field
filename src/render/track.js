@@ -159,6 +159,70 @@ export class TrackRenderer {
     }
     if (this.venue.flashes) this.drawFlashes(ctx, view, camera, top, bottom);
     if (this.venue.lights) this.drawLights(ctx, view, camera, top);
+    if (this.venue.overgrowth) this.drawOvergrowth(ctx, view, camera, top, bottom);
+  }
+
+  /**
+   * The jungle taking a ruined stand back (venues.js `overgrowth`): moss
+   * running down the stone, trees growing up through it with their canopy
+   * over the top, and vines hanging from the roof with a flower here and
+   * there. On the stand's slow parallax (the canopy a touch slower).
+   */
+  drawOvergrowth(ctx, view, camera, top, bottom) {
+    const O = this.venue.overgrowth;
+    const offset = camera.x * camera.ppm * 0.2;
+    const span = (w, par) => {
+      const off = offset * par;
+      const first = Math.floor(off / w) - 1;
+      return { off, first, last: first + Math.ceil(view.w / w) + 2 };
+    };
+    // Moss streaks down the stone.
+    let s = span(23, 1);
+    ctx.fillStyle = O.moss;
+    for (let i = s.first; i < s.last; i++) {
+      const h = hash(i * 4271);
+      if (h % 3) continue;
+      const x = i * 23 - s.off + (h % 11);
+      ctx.fillRect(x, top + 6, 5 + (h % 6), (bottom - top) * (0.3 + ((h >>> 8) % 60) / 100));
+    }
+    // Trees grown up through the stand, their crowns over the top of it.
+    s = span(95, 0.8);
+    for (let i = s.first; i < s.last; i++) {
+      const h = hash(i * 9133);
+      const x = i * 95 - s.off + (h % 40);
+      const r = 26 + (h % 20);
+      const cy = top - 2 + ((h >>> 5) % 12);
+      ctx.fillStyle = O.canopyDark;
+      ctx.fillRect(x - 3, cy, 6, bottom - cy);
+      for (const [dx, dy, k, c] of [[-0.7, 0.25, 0.75, 0], [0.75, 0.2, 0.7, 1], [0, -0.1, 1, 2], [-0.25, -0.45, 0.6, 3]]) {
+        ctx.fillStyle = k === 1 ? O.canopy[(h >>> 3) % O.canopy.length] : O.canopy[(c + h) % O.canopy.length];
+        ctx.beginPath();
+        ctx.arc(x + dx * r, cy + dy * r, r * k, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    // Vines hanging from the roof, leaves along them, sometimes a flower at the end.
+    s = span(17, 1);
+    ctx.lineWidth = 1.5;
+    for (let i = s.first; i < s.last; i++) {
+      const h = hash(i * 6007);
+      if (h % 2) continue;
+      const x = i * 17 - s.off + (h % 9);
+      const len = (bottom - top) * (0.25 + ((h >>> 6) % 55) / 100);
+      ctx.strokeStyle = O.vine;
+      ctx.beginPath();
+      ctx.moveTo(x, top + 4);
+      ctx.quadraticCurveTo(x + ((h >>> 3) % 9) - 4, top + len / 2, x + ((h >>> 9) % 7) - 3, top + len);
+      ctx.stroke();
+      ctx.fillStyle = O.leaf;
+      for (let y = top + 10; y < top + len; y += 7) ctx.fillRect(x + ((y + h) % 2 ? 1 : -4), y, 3, 3);
+      if (h % 5 === 0) {
+        ctx.fillStyle = O.flower[h % O.flower.length];
+        ctx.beginPath();
+        ctx.arc(x, top + len + 2, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
   }
 
   /**
@@ -258,6 +322,7 @@ export class TrackRenderer {
   drawBoards(ctx, view, camera, top, h, par, size) {
     const b = this.venue.boards;
     if (b.kind === 'fence') return this.drawFence(ctx, view, camera, top, h, par);
+    if (b.kind === 'wall') return this.drawWall(ctx, view, camera, top, h, par);
     const led = b.kind === 'led';
     const boardW = 180 * Math.max(1, par);
     const offset = camera.x * camera.ppm * par;
@@ -309,6 +374,41 @@ export class TrackRenderer {
     const firstPost = Math.floor(offset / postW) - 1;
     for (let i = firstPost; i < firstPost + Math.ceil(view.w / postW) + 2; i++) {
       ctx.fillRect(i * postW - offset, top, Math.max(2, h * 0.06), h);
+    }
+  }
+
+  /** An old stone wall where the hoardings would be, gone mossy along the top, ferns growing out of it. */
+  drawWall(ctx, view, camera, top, h, par) {
+    const b = this.venue.boards;
+    ctx.fillStyle = b.back;
+    ctx.fillRect(0, top, view.w, h);
+    const offset = camera.x * camera.ppm * par;
+    const blockW = 46 * Math.max(1, par);
+    const course = h / 2;
+    ctx.fillStyle = b.block;
+    ctx.fillRect(0, top + course - 1, view.w, 2);
+    const first = Math.floor(offset / blockW) - 1;
+    for (let i = first; i < first + Math.ceil(view.w / blockW) + 2; i++) {
+      const x = i * blockW - offset;
+      ctx.fillRect(x, top, 2, course);
+      ctx.fillRect(x + blockW / 2, top + course, 2, course);
+      const k = hash(i * 3301);
+      // Moss along the top, and a fern now and then.
+      ctx.fillStyle = b.moss;
+      ctx.beginPath();
+      ctx.ellipse(x + blockW / 2, top + 1, blockW * (0.3 + (k % 30) / 100), Math.max(2, h * 0.22), 0, 0, Math.PI * 2);
+      ctx.fill();
+      if (k % 3 === 0) {
+        ctx.strokeStyle = b.fern;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (const a of [-0.9, -0.45, 0, 0.45, 0.9]) {
+          ctx.moveTo(x + 10, top + 2);
+          ctx.lineTo(x + 10 + Math.sin(a) * h * 0.9, top + 2 - Math.cos(a) * h * 0.8);
+        }
+        ctx.stroke();
+      }
+      ctx.fillStyle = b.block;
     }
   }
 

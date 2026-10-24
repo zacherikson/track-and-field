@@ -111,6 +111,32 @@ export class JavelinRenderer extends RunwayRenderer {
         ctx.fill();
       }
     }
+    // A jungle venue: green hills with the canopy over them, all the way out (no sea, no town).
+    const O = this.venue.overgrowth;
+    if (O) {
+      for (const [color, lift, drift, amp] of [[O.hillFar, 40, 2, 14], [O.hill, 14, 5, 10]]) {
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(0, view.h);
+        for (let sx = 0; sx <= view.w + 20; sx += 20) {
+          const wx = sx + x * drift;
+          ctx.lineTo(sx, hy - lift - amp * Math.sin(wx / 160) - 6 * Math.sin(wx / 57));
+        }
+        ctx.lineTo(view.w, view.h);
+        ctx.closePath();
+        ctx.fill();
+      }
+      for (let i = -1; i < 16; i++) {
+        const k = Math.floor((x * 5) / 70) + i;
+        const h = hash(k * 733);
+        const cx = k * 70 - x * 5 + (h % 40);
+        ctx.fillStyle = O.canopy[h % O.canopy.length];
+        ctx.beginPath();
+        ctx.arc(cx, hy - 10 - (h % 14), 16 + (h % 12), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      return;
+    }
     // Sea, with a few sails.
     ctx.fillStyle = '#3f9fd3';
     ctx.fillRect(0, hy - 34, view.w, 34);

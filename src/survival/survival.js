@@ -25,8 +25,12 @@ import { points } from '../events/scoring.js';
 /** The five, in the tournament's order (a round shuffles them). */
 export const EVENT_IDS = ['sprint100', 'longjump', 'hurdles110', 'polevault', 'javelin'];
 
-/** The rival's look: big, in red, with a blond crop. A new first name each round. */
-export const RIVAL_COLORS = { shirt: '#C8102E', shorts: '#F5F5F5', skin: '#F3D3B8', hair: '#D9B45A', style: 'short', height: 1.06, girth: 1.3 };
+/**
+ * The rival's look: a native South American runner, shirtless (his "shirt" is
+ * his skin), in green shorts, long black hair under a red headband. A new
+ * first name each round.
+ */
+export const RIVAL_COLORS = { shirt: '#8A5A3B', skin: '#8A5A3B', shorts: '#2E8B3E', hair: '#121212', style: 'long', band: '#D32020', height: 1.04 };
 
 export const RIVAL_NAMES = [
   'Ivan', 'Dmitri', 'Sergei', 'Alexei', 'Nikolai', 'Vladimir', 'Mikhail', 'Yuri', 'Boris', 'Pavel',

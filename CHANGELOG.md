@@ -4,6 +4,22 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Survival: The Lost Stadium, and a new rival
+- **A venue of its own**: The Lost Stadium, an old stadium overgrown by the
+  jungle (render/venues.js JUNGLE). Weathered stone stand with leaves and
+  flowers where the crowd sat, the canopy rising over it, moss down it and
+  vines hanging from the roof; a mossy stone wall with ferns for hoardings;
+  faded clay with moss through it; an unmown infield; a humid sky; no lights.
+  The javelin's flight shot looks out over jungle hills instead of the sea.
+  A poster version (posterScenery.js lostStadium) on the Survival card and
+  the event card. Venues get two new options: `overgrowth` (canopy, vines,
+  moss) and `boards.kind: 'wall'`.
+- **The rival**: a native South American runner, darker skin, shirtless,
+  green shorts, long black hair under a red headband. Any hairstyle can now
+  have a headband of its own color (`colors.band`, stickFigure.js drawHair).
+- `tools/venuecheck.mjs` runs again (its canvas stub lacked setLineDash and
+  curves) and checks the new venue.
+
 ## Survival starts at Pro, and gets better by less each round
 - The rival's level by round (`CONFIG.survival.skill`): round 1 a weak Pro
   (0.8), round 2 a strong Pro (1.2); it was easier than Amateur, Amateur,

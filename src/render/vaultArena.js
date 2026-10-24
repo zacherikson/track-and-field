@@ -1,5 +1,4 @@
 import { text } from '../core/ui.js';
-import { LAYOUT } from './track.js';
 import { RunwayRenderer } from './runway.js';
 import { venueFor } from './venues.js';
 
@@ -22,11 +21,11 @@ export class VaultRenderer extends RunwayRenderer {
   drawSky(ctx, view) {
     // Tall enough for the camera to rise into.
     const top = -900;
-    const g = ctx.createLinearGradient(0, top, 0, LAYOUT.standsTop + 40);
+    const g = ctx.createLinearGradient(0, top, 0, this.L.standsTop + 40);
     g.addColorStop(0, this.venue.sky.high);
     g.addColorStop(1, this.venue.sky.bottom);
     ctx.fillStyle = g;
-    ctx.fillRect(0, top, view.w, LAYOUT.standsTop + 40 - top);
+    ctx.fillRect(0, top, view.w, this.L.standsTop + 40 - top);
   }
 
   drawTrack(ctx, view, camera) {

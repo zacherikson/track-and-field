@@ -4,6 +4,19 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Survival: a two-lane showdown, an empty stand, Quechua names
+- **Two lanes**: the 100m and the hurdles in Survival are just you and him
+  (laneRace.js). The Lost Stadium has its own `layout` (venues.js): the
+  track's far edge and the horizon 100 px lower, a narrow strip of grass,
+  and the stand right behind it, nearly three times as tall (26 to 300 px,
+  was 26 to 128); the near edge stays put, so the athletes are the same
+  size. Every event uses it, field events too. Renderers now read the
+  layout from the venue (`this.L`, track.js LAYOUT by default).
+- **No crowd**: the stand is bare stone tiers (the leaves and flowers where
+  the crowd sat looked like a crowd), the canopy scaled to the taller stand.
+- **The rival's names are Quechua** (Inti, Amaru, Yupanqui, Wayra, Kusi,
+  Tupac…), one a round.
+
 ## Survival: The Lost Stadium, and a new rival
 - **A venue of its own**: The Lost Stadium, an old stadium overgrown by the
   jungle (render/venues.js JUNGLE). Weathered stone stand with leaves and

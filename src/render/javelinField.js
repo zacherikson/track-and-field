@@ -1,5 +1,4 @@
 import { text } from '../core/ui.js';
-import { LAYOUT } from './track.js';
 import { RunwayRenderer } from './runway.js';
 import { venueFor } from './venues.js';
 
@@ -196,12 +195,12 @@ export class JavelinRenderer extends RunwayRenderer {
    */
   drawFlight(ctx, view, camera, x, y) {
     const groundY = this.flightGround(view, y); // screen y of the field's near edge
-    const dy = groundY - LAYOUT.grassTop;
-    this.drawSkyline(ctx, view, x, LAYOUT.standsTop + dy - 6);
+    const dy = groundY - this.L.grassTop;
+    this.drawSkyline(ctx, view, x, this.L.standsTop + dy - 6);
     ctx.save();
     ctx.translate(0, dy);
     this.drawStands(ctx, view, camera);
-    this.drawBoards(ctx, view, camera, LAYOUT.boardsTop, LAYOUT.grassTop - LAYOUT.boardsTop, 0.24, 13);
+    this.drawBoards(ctx, view, camera, this.L.boardsTop, this.L.grassTop - this.L.boardsTop, 0.24, 13);
     ctx.restore();
     // The field, seen side on, with distance boards along the far edge.
     const F = this.venue.sector;

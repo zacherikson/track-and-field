@@ -27,8 +27,10 @@ import { venueFor } from './venues.js';
  *
  * Venue: `this.venue` (render/venues.js) decides how the place looks — the sky,
  * whether there's a stand or a treeline behind the track, the surface color,
- * the paint, the equipment. It never moves the ground: LAYOUT below is the same
- * in every venue, so the perspective solve and every camera stay put.
+ * the paint, the equipment. It doesn't move the ground: LAYOUT below is the same
+ * in every venue, so the perspective solve and every camera stay put. The one
+ * exception is a venue with a `layout` of its own (Survival's, for a two-lane
+ * track with the stand closer and bigger): renderers read `this.L`.
  */
 export const LAYOUT = {
   standsTop: 26,
@@ -47,7 +49,8 @@ export class TrackRenderer {
     this.distance = distance;
     this.blocksX = blocksX;
     this.venue = venue;
-    const L = LAYOUT;
+    // The venue's own layout if it has one (Survival's two-lane showdown), else everyone's.
+    const L = (this.L = venue.layout ?? LAYOUT);
     const ratio = (L.nearY - L.horizonY) / (L.farY - L.horizonY);
     this.zNear = lanes / (ratio - 1);
     this.zFar = this.zNear + lanes;
@@ -67,11 +70,11 @@ export class TrackRenderer {
   }
 
   yAt(z) {
-    return LAYOUT.horizonY + this.K / z;
+    return this.L.horizonY + this.K / z;
   }
 
   zAtY(y) {
-    return this.K / (y - LAYOUT.horizonY);
+    return this.K / (y - this.L.horizonY);
   }
 
   /** Horizontal scale at depth z relative to the player's lane. */
@@ -102,7 +105,7 @@ export class TrackRenderer {
   draw(ctx, view, camera) {
     this.drawSky(ctx, view);
     this.drawStands(ctx, view, camera);
-    this.drawBoards(ctx, view, camera, LAYOUT.boardsTop, LAYOUT.grassTop - LAYOUT.boardsTop, 0.24, 13);
+    this.drawBoards(ctx, view, camera, this.L.boardsTop, this.L.grassTop - this.L.boardsTop, 0.24, 13);
     this.drawGrass(ctx, view, camera);
     this.drawTrack(ctx, view, camera);
     this.drawNearSide(ctx, view, camera);
@@ -117,18 +120,18 @@ export class TrackRenderer {
   }
 
   drawSky(ctx, view) {
-    const g = ctx.createLinearGradient(0, 0, 0, LAYOUT.standsTop + 40);
+    const g = ctx.createLinearGradient(0, 0, 0, this.L.standsTop + 40);
     g.addColorStop(0, this.venue.sky.top);
     g.addColorStop(1, this.venue.sky.bottom);
     ctx.fillStyle = g;
-    ctx.fillRect(0, 0, view.w, LAYOUT.standsTop + 40);
+    ctx.fillRect(0, 0, view.w, this.L.standsTop + 40);
   }
 
   drawStands(ctx, view, camera) {
     const s = this.venue.stands;
     if (!s) return this.drawBackdrop(ctx, view, camera);
-    const top = LAYOUT.standsTop;
-    const bottom = LAYOUT.boardsTop;
+    const top = this.L.standsTop;
+    const bottom = this.L.boardsTop;
     ctx.fillStyle = s.body;
     ctx.fillRect(0, top, view.w, bottom - top);
     ctx.fillStyle = s.roof;
@@ -185,12 +188,13 @@ export class TrackRenderer {
       const x = i * 23 - s.off + (h % 11);
       ctx.fillRect(x, top + 6, 5 + (h % 6), (bottom - top) * (0.3 + ((h >>> 8) % 60) / 100));
     }
-    // Trees grown up through the stand, their crowns over the top of it.
-    s = span(95, 0.8);
+    // Trees grown up through the stand, their crowns over the top of it (bigger in a taller stand).
+    const big = (bottom - top) / 102;
+    s = span(95 * big, 0.8);
     for (let i = s.first; i < s.last; i++) {
       const h = hash(i * 9133);
-      const x = i * 95 - s.off + (h % 40);
-      const r = 26 + (h % 20);
+      const x = i * 95 * big - s.off + (h % 40);
+      const r = (26 + (h % 20)) * big;
       const cy = top - 2 + ((h >>> 5) % 12);
       ctx.fillStyle = O.canopyDark;
       ctx.fillRect(x - 3, cy, 6, bottom - cy);
@@ -232,8 +236,8 @@ export class TrackRenderer {
    */
   drawBackdrop(ctx, view, camera) {
     const b = this.venue.backdrop;
-    const top = LAYOUT.standsTop;
-    const bottom = LAYOUT.boardsTop;
+    const top = this.L.standsTop;
+    const bottom = this.L.boardsTop;
     const offset = camera.x * camera.ppm * 0.2;
     const ridge = (color, lift, drift, a1, w1, a2, w2) => {
       ctx.fillStyle = color;
@@ -431,7 +435,7 @@ export class TrackRenderer {
   drawGrass(ctx, view, camera) {
     const g = this.venue.grass;
     ctx.fillStyle = g.base;
-    ctx.fillRect(0, LAYOUT.grassTop, view.w, LAYOUT.farY - LAYOUT.grassTop);
+    ctx.fillRect(0, this.L.grassTop, view.w, this.L.farY - this.L.grassTop);
     if (!g.stripe) return; // nobody has mowed it
     ctx.fillStyle = g.stripe;
     const stripeM = g.stripeM;
@@ -442,8 +446,8 @@ export class TrackRenderer {
   }
 
   drawTrack(ctx, view, camera) {
-    const top = LAYOUT.farY;
-    const bottom = LAYOUT.nearY;
+    const top = this.L.farY;
+    const bottom = this.L.nearY;
     const T = this.venue.track;
     ctx.fillStyle = T.surface;
     ctx.fillRect(0, top, view.w, bottom - top);
@@ -635,10 +639,10 @@ export class TrackRenderer {
 
   /** In front of the near lane: a curb with 1m ticks, then ad boards (nearer = faster). */
   drawNearSide(ctx, view, camera) {
-    const top = LAYOUT.nearY;
+    const top = this.L.nearY;
     const T = this.venue.track;
     ctx.fillStyle = T.apron;
-    ctx.fillRect(0, top, view.w, LAYOUT.nearBoardsTop - top);
+    ctx.fillRect(0, top, view.w, this.L.nearBoardsTop - top);
     ctx.fillStyle = T.curb;
     ctx.fillRect(0, top, view.w, 5);
     ctx.fillStyle = T.tick;
@@ -646,7 +650,7 @@ export class TrackRenderer {
     for (let m = Math.floor(l); m < r; m++) {
       ctx.fillRect(this.project(camera, view, m, this.zNear).x, top, 3, 5);
     }
-    this.drawBoards(ctx, view, camera, LAYOUT.nearBoardsTop, view.h - LAYOUT.nearBoardsTop, 1.3, 20);
+    this.drawBoards(ctx, view, camera, this.L.nearBoardsTop, view.h - this.L.nearBoardsTop, 1.3, 20);
   }
 }
 

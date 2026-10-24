@@ -1,5 +1,5 @@
 import { CONFIG } from '../config.js';
-import { aiLevel } from '../survival/survival.js';
+import { aiLevel, survival } from '../survival/survival.js';
 import { Camera } from '../core/camera.js';
 import { rand, shuffle, clamp } from '../core/math.js';
 import { text, roundRect } from '../core/ui.js';
@@ -62,7 +62,7 @@ import { Thumbs } from '../core/thumbs.js';
 export class LaneRace {
   constructor(ev, cfg) {
     this.ev = ev;
-    this.cfg = cfg;
+    this.cfg = survival.active ? { ...cfg, lanes: 2 } : cfg; // survival: a showdown, two lanes (you nearest)
     this.level = getDifficulty(); // 'amateur' | 'pro': the campaign's
     this.difficulty = aiLevel(CONFIG.ai, this.level); // survival: blended to the rival's skill
     // The lean pads take holds: Input queues finger lifts and key releases too.

@@ -6,12 +6,13 @@ import { survival } from '../survival/survival.js';
  * woods, Amateur a decent high-school stadium with a half-full stand, Pro a
  * packed Olympic one with a blue track under the lights. Live play uses Pro.
  *
- * PAINT AND PROPS ONLY. Every venue shares the geometry in track.js LAYOUT
- * (horizon, far and near edges of the track), because the perspective solve,
- * the event cameras, the late-hit venues (brawl/venue.js) and the vault's
- * upward pan are all tuned against those numbers. A venue may change any
+ * PAINT AND PROPS, mostly. Every venue shares the geometry in track.js LAYOUT
+ * (horizon, far and near edges of the track) unless it has a `layout` of its
+ * own: Survival's, a two-lane showdown with the stand twice as tall (the
+ * track's near edge stays put, so the athletes are the same size; the far
+ * edge, the horizon and everything behind come down). A venue may change any
  * color, swap what fills the stands band (`stands` or `backdrop`) and what the
- * hoardings look like (`boards.kind`), but never where the ground is.
+ * hoardings look like (`boards.kind`).
  *
  * TrackRenderer and its subclasses read the chosen one as `this.venue`.
  *
@@ -39,6 +40,7 @@ import { survival } from '../survival/survival.js';
  *   finish     finish post { post, sign, text }
  *   lights     floodlight towers over the stand
  *   flashes    camera flashes popping in the crowd
+ *   layout     the screen heights the track and stand use, if not track.js LAYOUT
  *   overgrowth the jungle taking a ruin back (Survival's): canopy over the
  *              stand, vines hanging down it, moss, flowers; and the javelin's
  *              flight shot over jungle hills instead of the sea
@@ -179,15 +181,19 @@ const JUNGLE = {
   id: 'survival',
   name: 'The Lost Stadium',
   sky: { top: '#5f9e8c', bottom: '#d6e4b0', high: '#2f6a5c' }, // humid haze
+  // Two lanes (a showdown: survival.js), so the track takes less of the screen
+  // and the stand comes right down behind it: the far edge and the horizon
+  // 100 px lower than LAYOUT, a narrow strip of grass, the near edge where it was.
+  layout: { standsTop: 26, boardsTop: 300, grassTop: 324, horizonY: 157, farY: 380, nearY: 470, nearBoardsTop: 478 },
   stands: {
     body: '#6b6a55', // weathered stone
     roof: '#4d4c3c',
-    rows: 6,
-    rowH: 14,
+    rows: 16, // stone tiers, nobody on them
+    rowH: 17,
     seatW: 14,
-    emptyEvery: 3, // crumbled away
-    shade: 'rgba(20,30,10,0.28)',
-    crowd: ['#2f6b2a', '#3f8a34', '#24521f', '#4fa040', '#5cb84a', '#376b2c', '#e8505b', '#2f6b2a', '#3f8a34', '#f2b632'], // leaves where the people were, and a flower or two
+    emptyEvery: 1, // every seat: the crowd's long gone
+    shade: 'rgba(20,30,10,0.32)',
+    crowd: ['#2f6b2a'],
   },
   backdrop: null,
   boards: { kind: 'wall', back: '#7a7660', block: 'rgba(40,40,25,0.35)', moss: '#4f8a36', fern: '#3a7a2c' },

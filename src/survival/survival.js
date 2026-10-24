@@ -28,15 +28,15 @@ export const EVENT_IDS = ['sprint100', 'longjump', 'hurdles110', 'polevault', 'j
 /**
  * The rival's look: a native South American runner, shirtless (his "shirt" is
  * his skin), in green shorts, long black hair under a red headband. A new
- * first name each round.
+ * Quechua name each round.
  */
 export const RIVAL_COLORS = { shirt: '#8A5A3B', skin: '#8A5A3B', shorts: '#2E8B3E', hair: '#121212', style: 'long', band: '#D32020', height: 1.04 };
 
+/** Quechua men's names (and a few Inca rulers'), one a round. */
 export const RIVAL_NAMES = [
-  'Ivan', 'Dmitri', 'Sergei', 'Alexei', 'Nikolai', 'Vladimir', 'Mikhail', 'Yuri', 'Boris', 'Pavel',
-  'Andrei', 'Viktor', 'Oleg', 'Igor', 'Maxim', 'Anatoly', 'Konstantin', 'Fyodor', 'Gennady', 'Leonid',
-  'Stanislav', 'Vasily', 'Grigory', 'Arkady', 'Ruslan', 'Kirill', 'Roman', 'Artyom', 'Yevgeny', 'Valentin',
-  'Stepan', 'Lev', 'Gleb', 'Timofei', 'Matvei', 'Yaroslav', 'Vadim', 'Pyotr', 'Semyon', 'Zakhar',
+  'Inti', 'Amaru', 'Yupanqui', 'Wayra', 'Kusi', 'Tupac', 'Apu', 'Waman', 'Sayri', 'Mayta',
+  'Pachacuti', 'Atoq', 'Rumi', 'Huascar', 'Titu', 'Kuntur', 'Puma', 'Uturunku', 'Ninan', 'Paucar',
+  'Capac', 'Sinchi', 'Illari', 'Taki', 'Manco', 'Huayna', 'Atahualpa', 'Kallpa', 'Urqu', 'Ayar',
 ];
 
 /** The rival's skill in round `round` (1, 2, ...): see CONFIG.survival. */

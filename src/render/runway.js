@@ -1,5 +1,5 @@
 import { text } from '../core/ui.js';
-import { TrackRenderer, LAYOUT } from './track.js';
+import { TrackRenderer } from './track.js';
 import { venueFor } from './venues.js';
 
 /**
@@ -29,7 +29,7 @@ export class RunwayRenderer extends TrackRenderer {
     const G = this.venue.grass;
     const T = this.venue.track;
     ctx.fillStyle = G.base;
-    ctx.fillRect(0, LAYOUT.farY, view.w, LAYOUT.nearY - LAYOUT.farY);
+    ctx.fillRect(0, this.L.farY, view.w, this.L.nearY - this.L.farY);
     // Mowed stripes on the infield, if anyone mows it.
     const [l, r] = this.rangeAt(camera, view, zN);
     if (G.stripe) {

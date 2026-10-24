@@ -292,7 +292,7 @@ export class PoleVault {
    * you see to be your mark.
    */
   topChord(height) {
-    return clamp(height - 0.3 - this.reach, 0.3 * this.L, this.L);
+    return clamp(height - this.cfg.flight.push - this.reach, 0.3 * this.L, this.L);
   }
 
   /** Until the release is known, aim for a perfect release (with the plant you had). */
@@ -401,10 +401,10 @@ export class PoleVault {
   }
 
   /**
-   * Off the top of the pole, under gravity (`flight.gravity`): thrown up just
-   * fast enough to peak at your height (over the bar), then falling onto the
-   * mat, drifting toward the pit at a steady speed. A higher vault falls
-   * further, so it hangs and drops for longer.
+   * Off the top of the pole, under gravity (`flight.gravity`): you push off and
+   * fly forward to the bar (`uprightX`), peaking over it at your height, then
+   * fall onto the mat at `landX`. A higher vault falls further, so it hangs
+   * and drops for longer.
    */
   takeOff(t) {
     const vt = this.vault;
@@ -415,7 +415,7 @@ export class PoleVault {
     const rise = Math.sqrt((2 * (peak - h0.y)) / g); // s up to the peak
     const fall = Math.sqrt((2 * Math.max(0, peak - yLand)) / g); // s from the peak to the mat
     this.fly = {
-      t0: t, x0: h0.x, y0: h0.y, peak, yLand, rise, fall, T: rise + fall, poleT: t, phiEnd: vt.sw.phi,
+      t0: t, x0: h0.x, y0: h0.y, xBar: this.cfg.uprightX, peak, yLand, rise, fall, T: rise + fall, poleT: t, phiEnd: vt.sw.phi,
       topPose: mirror(vt.sw.pose),
     };
     this.peak = h0.y;
@@ -427,7 +427,8 @@ export class PoleVault {
     const f = this.fly;
     const g = this.cfg.flight.gravity;
     const t = clamp(ta, 0, f.T);
-    const x = f.x0 + (this.cfg.landX - f.x0) * (t / f.T);
+    // Forward off the pole to the bar by the peak (the push), then on to where you land.
+    const x = t < f.rise ? f.x0 + (f.xBar - f.x0) * (t / f.rise) : f.xBar + (this.cfg.landX - f.xBar) * ((t - f.rise) / Math.max(1e-6, f.fall));
     const d = t - f.rise; // s after the peak (negative on the way up)
     return { x, y: f.peak - 0.5 * g * d * d };
   }

@@ -4,6 +4,18 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Pole vault: push off the pole to a bar further out
+- **Standards further from the box**, as in the original: `uprightX` 0.25 →
+  2.2 m. The mat starts just past the box (`mat` 0.0–5.2 → 0.5–6.5 m) and you
+  land further on (`landX` 1.3 → 3.6 m).
+- **The push:** off the top of the pole you fly forward to the bar, reaching
+  it at the peak of your flight, then drop onto the mat. The pole falls back
+  behind you, so it's well away from you over the bar. New `flight.push` 0.6 m:
+  how far you rise from your hips at the top of the pole to the peak (was a
+  fixed 0.3 m), so the push takes longer and reads bigger.
+- Tuning (Pole Vault: look): Standards distance, Push off the pole, Landing
+  spot.
+
 ## Pole vault: your last vault gets its card too
 - Offline, the third vault shows the same card as the first two (your
   height, plant %, release %, speed and the standings); **Tap to continue**

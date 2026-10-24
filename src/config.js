@@ -483,19 +483,21 @@ export const CONFIG = {
     // bend: how much the pole bends mid-swing (share of its length). A weak vault also leaves it
     // bent at the top, so you're only as high as your mark.
     swing: { timeAt10: 0.9, bend: 0.21 },
-    // Off the pole, under gravity (m/s², lighter than real so the vault reads): thrown up just
-    // fast enough to peak at your mark, then falling onto the mat. Higher vaults hang longer.
-    flight: { gravity: 6 },
-    // Layout from real vaulting (and reference photos): the standards stand just
-    // past the back of the box and the mat starts right behind the box, so you
-    // take off under one pole length from the bar.
-    mat: { from: 0.0, to: 5.2, height: 0.8 }, // m past the box
-    uprightX: 0.25, // m past the box
+    // Off the pole, under gravity (m/s², lighter than real so the vault reads): you push off the
+    // top of the pole and fly forward to the bar, `push` m up from your hips at the top of the
+    // pole to the peak (over the bar, at your mark), then fall onto the mat. Exaggerated, as in
+    // the original. Higher vaults hang longer.
+    flight: { gravity: 6, push: 0.6 },
+    // Layout as in the original (further than real): the standards stand well past the box, so
+    // you push off the pole and fly forward to the bar, leaving the pole behind; the mat starts
+    // just past the box.
+    mat: { from: 0.5, to: 6.5, height: 0.8 }, // m past the box
+    uprightX: 2.2, // m past the box
     // The crossbar, as in the original: it waits at `rest` m, then rises with
     // your hips once you're up the pole and stops at the height you clear.
     // Every attempt starts from `rest` again (your best doesn't set it).
     bar: { rest: 2.0, follow: 14 }, // m; how tightly it follows (higher = tighter)
-    landX: 1.3, // m past the box where you come down on the mat
+    landX: 3.6, // m past the box where you come down on the mat
     markHold: 2.4, // s after landing before the result banner
     // topFrac: the camera rises to keep the vaulter at least this far down the screen.
     // zoom: closer in than the other events, from the top of the screen, so the runway sits

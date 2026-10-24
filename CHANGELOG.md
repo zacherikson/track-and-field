@@ -4,6 +4,27 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Pole vault: you let go when both thumbs are up, and an early release shows
+- **What happened:** a fast, well-planted vault scored a 43% release (2.76 m).
+  That's exactly the score for letting go right at the plant. The release was
+  the first thumb to come up, so a thumb still lifting from the last stride,
+  or slipping for a moment, ended the vault. The swing still played to the
+  top, so it looked fine and the score seemed random. Reproduced in the test
+  rig: 47%, 2.69 m.
+- **Release = both thumbs up** (`Thumbs.anyDown`). One thumb coming up isn't
+  a release. A touch cancel still counts as that thumb coming off.
+- **Let go early and you come off the pole then,** so you can see it:
+  - Was: the swing played to the top whatever you did.
+  - Now: you leave the pole from wherever you are in the swing, as you held
+    it.
+  - New `flight.leaveFrom` 0.5: never before half way through the swing. Even
+    letting go at once, the original rides the pole about half way.
+- **Release scoring unchanged** (the curve in `release.late` / `early`).
+- **Tests:** #13 and #19 now expect the release at the second thumb. New tests:
+  - #15c: a slip or a stride thumb lifting isn't a release.
+  - #15d: let go early and you leave the pole then (half way at the earliest).
+- **Tuning** (Pole Vault: look): Earliest off the pole.
+
 ## Pole vault: Zachary's tuning from the phone
 Copied from the tuning panel:
 

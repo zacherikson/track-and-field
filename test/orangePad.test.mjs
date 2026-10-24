@@ -161,13 +161,14 @@ function vault(schedule, o) {
   return { sc, z, hold: sc.holdT == null ? null : sc.holdT - z, release: sc.releaseT == null ? null : sc.releaseT - z };
 }
 
-test('#13 pole vault: a tap, 0.5 s or 2 s hold at the plant plants; release at the lift; held too long, a foul (or with heldFoul off, forced with quality 0)', () => {
+test('#13 pole vault: a tap, 0.5 s or 2 s hold at the plant plants; release when both thumbs are up; held too long, a foul (or with heldFoul off, forced with quality 0)', () => {
+  // Released when the second thumb comes up (both() lifts them 0.01 s apart, as it pressed them).
   let v = vault((rig, z) => both(rig, z + P, 0.08));
   near(v.hold, P + 0.01);
-  near(v.release, P + 0.08);
+  near(v.release, P + 0.09);
   v = vault((rig, z) => both(rig, z + P, 0.5));
   near(v.hold, P + 0.01);
-  near(v.release, P + 0.5);
+  near(v.release, P + 0.51);
   assert.ok(CONFIG.poleVault.release.heldFoul);
   v = vault((rig, z) => both(rig, z + P, 2));
   near(v.hold, P + 0.01);
@@ -216,6 +217,33 @@ test('#15 pole vault: left thumb from the run-up, right pressed in the window: p
   }
   near(v.hold, P1 - 0.1);
   near(v.release, P1 + 0.6);
+});
+
+test('#15c pole vault: one thumb coming up (a slip, or the last stride lifting) is not a release; both off is', () => {
+  const climb = releaseTarget(CONFIG.poleVault, S.poleVaultAt().sc.runner.v);
+  // Left still down from a stride, right pressed at the plant, left lifts straight after.
+  let v = vault((rig, z) => rig.at(z + P - 0.1, down(1, LX)).at(z + P, down(2, RX)).at(z + P + 0.06, up(1, LX)).at(z + P + 1.5, up(2, RX)));
+  assert.ok(v.release > P + 0.5, `released at ${v.release} (plant ${P})`);
+  // Both pressed, one slips up and back down.
+  v = vault((rig, z) => rig.at(z + P, down(1, LX), down(2, RX)).at(z + P + 0.1, up(1, LX)).at(z + P + 0.15, down(3, LX)).at(z + P + 1.5, up(2, RX), up(3, LX)));
+  assert.ok(v.release > P + 0.5, `released at ${v.release} (plant ${P})`);
+  assert.ok(climb > 0);
+});
+
+test('#15d pole vault: let go early and you come off the pole then (not before flight.leaveFrom of the swing)', () => {
+  const dry = S.poleVaultAt();
+  dry.rig.runUntil(() => dry.sc.plantT != null, 5);
+  const climb = releaseTarget(CONFIG.poleVault, dry.sc.vault.v);
+  // Half way to the top: off the pole at about that point, well short of the top.
+  let v = vault((rig, z) => both(rig, z + P, 0.6 * climb));
+  assert.equal(v.sc.state, 'fly');
+  assert.ok(v.sc.vault.u > 0.5 && v.sc.vault.u < 0.75, `left the pole at u ${v.sc.vault.u}`);
+  // Let go at once: you still ride it to leaveFrom.
+  v = vault((rig, z) => both(rig, z + P, 0.05));
+  assert.ok(Math.abs(v.sc.vault.u - CONFIG.poleVault.flight.leaveFrom) < 0.05, `left the pole at u ${v.sc.vault.u}`);
+  // On time: at the top.
+  v = vault((rig, z) => both(rig, z + P, climb));
+  assert.ok(v.sc.vault.u > 0.97, `left the pole at u ${v.sc.vault.u}`);
 });
 
 test('#15b pole vault: letting go as the spark reaches your hands is a full release, on time or pressed early', () => {
@@ -291,7 +319,7 @@ test('#19 touchcancel mid-hold (pole vault, javelin) is a release, counted in st
     const { sc, rig, z } = S.poleVaultAt();
     both(rig, z + P, null).at(z + P + 0.4, cancel(2, RX)).at(z + P + 0.6, up(1, LX));
     rig.runUntil(() => sc.state === 'fly' || sc.state === 'balk', 5);
-    near(sc.releaseT - z, P + 0.4);
+    near(sc.releaseT - z, P + 0.6); // let go once both thumbs are off (the cancel counts as one coming off)
     assert.equal(rig.input.stats.cancels, 1);
   }
   {

@@ -500,7 +500,9 @@ export const CONFIG = {
     // what's scored.
     // dropBelow: let go so late the release is worth less than this and you don't leap at all:
     // you drop off the top of the pole onto the front of the mat (the original's 1 m vaults).
-    flight: { gravity: 7.5, push: 0.4, heightScale: 1.2, dropBelow: 0.15 },
+    // leaveFrom: let go early and you come off the pole then, but not before this share of the
+    // swing (the original's instant release still rides it about half way).
+    flight: { gravity: 7.5, push: 0.4, heightScale: 1.2, dropBelow: 0.15, leaveFrom: 0.5 },
     // Layout as in the original (further than real): the standards stand well past the box, so
     // you push off the pole and fly forward to the bar, leaving the pole behind; the mat starts
     // just past the box.

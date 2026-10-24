@@ -234,8 +234,9 @@ export class PoleVault {
     if (this.thumbs.both(this.runUp.armT) != null && this.canPlant(t)) this.holdT = t;
   }
 
+  /** You let go when both thumbs are up: one thumb slipping (or still coming up from a stride) isn't a release. */
   lift(side, e) {
-    if (this.holdT != null && this.releaseT == null && !this.thumbs.bothDown) this.release(e.t);
+    if (this.holdT != null && this.releaseT == null && !this.thumbs.anyDown) this.release(e.t);
   }
 
   /**
@@ -349,7 +350,10 @@ export class PoleVault {
       const k = this.plantBlend(end);
       if (k < 1) this.hip = { x: this.plantFrom.hip.x + (sw.hip.x - this.plantFrom.hip.x) * k, y: this.plantFrom.hip.y + (sw.hip.y - this.plantFrom.hip.y) * k };
       // At the top you stay there, upside down, until you let go (or are made to).
-      if (vt.u >= 1 && vt.height != null) this.takeOff(end);
+      // Let go and you come off the pole there and then, so an early release shows. Not before
+      // `flight.leaveFrom` of the swing, though: even letting go at once, the original rides the
+      // pole about half way before you come off it.
+      if (vt.height != null && vt.u >= Math.min(1, this.cfg.flight.leaveFrom ?? 1)) this.takeOff(end);
     } else if (this.state === 'fly') {
       const f = this.fly;
       const ta = this.flyClock(end);
@@ -436,7 +440,7 @@ export class PoleVault {
       // after a hop off the top on a low one (as in the original; you never pass over it high).
       tBar: weak ? rise : Math.min(rise + Math.sqrt((2 * Math.max(0, peak - shownH)) / g), 0.9 * (rise + fall)),
       t0: t, x0: h0.x, y0: h0.y, xBar, landX, weak, peak, yLand, rise, fall, T: rise + fall, poleT: t, phiEnd: vt.sw.phi, cEnd: vt.sw.c,
-      topPose: mirror(vt.sw.pose),
+      topPose: mirror(this.state === 'vault' && this.lastPose ? this.lastPose : vt.sw.pose), // as drawn (the hands as they held the pole)
     };
     this.peak = h0.y;
     this.setState('fly');

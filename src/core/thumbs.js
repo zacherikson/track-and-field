@@ -48,6 +48,11 @@ export class Thumbs {
     return best;
   }
 
+  /** True if any thumb is down (either side). */
+  get anyDown() {
+    return this.down.size > 0;
+  }
+
   /** True if a thumb is down on both sides. */
   get bothDown() {
     return this.side('L') != null && this.side('R') != null;

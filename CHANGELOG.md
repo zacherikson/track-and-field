@@ -4,6 +4,18 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Tournament: each event's results, then the standings
+- **Between tournament events you see the event's results again** (places,
+  marks and the points each mark scored), not just the totals. Over the late
+  hits it's two pages: the results first, then **Standings ›** for the overall
+  totals with Next (after the last event: **Final standings ›**, then New
+  tournament). Enter / Space turn the page too.
+- **Live, the pages turn by themselves**: the results for half the time to
+  the next event's title card, at least 2 s and at most 5 s
+  (`standingsScene.js` `ROUND_MIN` / `ROUND_MAX`), then the standings. The
+  button counts down to the next event on both pages, and a tap on it turns
+  the page early. No change to the wait between events.
+
 ## Home screens: the sideshow
 - **The other athletes act up in the background** of the Athlete, Play and
   Squad tabs, one short skit at a time, two on screen at once: the referee

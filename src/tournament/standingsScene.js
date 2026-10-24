@@ -11,6 +11,9 @@ import { serverNow } from '../online/live.js';
 import { ResultsPanel } from '../brawl/aftermath.js';
 
 const TITLE_CARD = 7000; // ms before a live tournament's next event starts that its title card comes up (online/live.js EVENT_LEAD: standings, then 3 s of title, then the 4 s on the track)
+// Live, over the late hits: how long the round's results show before the overall standings take over (ms):
+const ROUND_MIN = 2000; // at least (the last one in only has 4 s before the next title card: half each)
+const ROUND_MAX = 5000; // at most (the first ones in wait longer, on the standings)
 
 /**
  * Between tournament events: this event's results with the points each mark
@@ -22,8 +25,11 @@ const TITLE_CARD = 7000; // ms before a live tournament's next event starts that
  * countdown on the button; see online/live.js startOf).
  *
  * With a `backdrop` (the event scene, carrying on with its late hits) it's
- * just the standings in the middle over the event, with Next (or New
- * tournament) and Quit (or Menu) under them (brawl/aftermath.js ResultsPanel).
+ * a panel at the top over the event (brawl/aftermath.js ResultsPanel), in two
+ * pages: first the round (places, marks, the points each scored), then
+ * Standings › for the overall totals, with Next (or New tournament) and Quit
+ * (or Menu) under them. Live, the pages turn by themselves: the round for a
+ * few seconds (ROUND_MIN..ROUND_MAX), then the standings until the next event.
  */
 export class StandingsScene {
   constructor(ev, results, stats = null, backdrop = null) {
@@ -36,6 +42,8 @@ export class StandingsScene {
 
   enter() {
     this.age = 0;
+    this.enteredAt = serverNow();
+    this.page = this.backdrop ? 'round' : 'overall'; // over the late hits: the round first, then the standings
     const me = this.results.find((r) => r.isPlayer);
     // Personal bests, ghosts and online marks still count in a tournament.
     this.online = null; // one line about the online leaderboard
@@ -82,13 +90,16 @@ export class StandingsScene {
           new Button({ label: 'Quit', color: PAL.ink2, lip: PAL.inkShade, onTap: () => flow.menu(this.game) }),
         ];
     if (this.backdrop) {
-      // Over the late hits: just the standings and the two buttons.
+      // Over the late hits: the round, then the standings, and the two buttons.
       this.buttons = [this.buttons[0], this.buttons[this.buttons.length - 1]];
+      const main = this.buttons[0];
+      this.after = { label: main.label, icon: main.icon, onTap: main.onTap }; // what it is on the standings
+      Object.assign(main, { label: this.final ? 'Final standings ›' : 'Standings ›', icon: this.live ? main.icon : null, onTap: () => this.showOverall() });
       this.panel = new ResultsPanel(
         this.buttons,
-        () => (this.final ? `${this.table[0].name.toUpperCase()} WINS · ${this.campaignWin ? `${getCampaign().toUpperCase()} TOURNAMENT BEATEN!` : 'FINAL STANDINGS'}` : `OVERALL AFTER ${tournament.history.length} OF ${ORDER.length} · ${this.ev.name.toUpperCase()}`),
+        () => (this.page === 'round' ? this.roundTitle() : this.final ? `${this.table[0].name.toUpperCase()} WINS · ${this.campaignWin ? `${getCampaign().toUpperCase()} TOURNAMENT BEATEN!` : 'FINAL STANDINGS'}` : `OVERALL AFTER ${tournament.history.length} OF ${ORDER.length} · ${this.ev.name.toUpperCase()}`),
         () =>
-          this.table.map((t, i) => {
+          this.page === 'round' ? this.roundRows() : this.table.map((t, i) => {
             const pts = this.rows.find((r) => (r.isPlayer ? 'you' : r.key ?? r.name) === t.key)?.pts;
             return {
               place: String(i + 1),
@@ -109,6 +120,31 @@ export class StandingsScene {
 
   exit() {
     this.backdrop?.leave();
+  }
+
+  /** The round's title: the event, and which one of the five. */
+  roundTitle() {
+    return `RESULTS · ${this.ev.name.toUpperCase()} · EVENT ${tournament.history.length} OF ${ORDER.length}`;
+  }
+
+  /** The round: in finishing order (no mark last), each mark and the points it scored. */
+  roundRows() {
+    return this.rows.map((r, i) => ({
+      place: r.status === 'ok' ? String(i + 1) : '–',
+      name: r.name,
+      colors: r.colors,
+      value: `${r.status === 'ok' ? formatMark(this.ev, r.mark) : r.status.toUpperCase()} · +${r.pts}`,
+      isPlayer: r.isPlayer,
+      gold: !r.isPlayer && (r.live ?? !!r.key),
+    }));
+  }
+
+  /** From the round to the overall standings: the main button goes back to Next (or New tournament). */
+  showOverall() {
+    if (this.page !== 'round') return;
+    this.page = 'overall';
+    Object.assign(this.buttons[0], this.after);
+    this.panel.age = 0; // fades in again
   }
 
   goNext() {
@@ -148,19 +184,36 @@ export class StandingsScene {
     this.buttons.forEach((b) => b.update(dt));
     this.panel?.update(dt);
     bd?.lateUpdate(dt, t);
+    if (tournament.live && this.page === 'round') this.turnPage();
     if (this.live) this.countDown();
+  }
+
+  /**
+   * Live: the round's results go over to the standings by themselves, halfway
+   * to the next event's title card, but after ROUND_MIN and by ROUND_MAX.
+   */
+  turnPage() {
+    const start = this.live?.startOf(this.nextStage) ?? null;
+    const title = start == null ? Infinity : start - TITLE_CARD;
+    const at = Math.max(this.enteredAt + ROUND_MIN, Math.min(this.enteredAt + ROUND_MAX, (this.enteredAt + title) / 2));
+    if (serverNow() >= at) this.showOverall();
   }
 
   /** Live: the Next button counts down to the next event, which comes up by itself. */
   countDown() {
     const start = this.live.startOf(this.nextStage);
     const next = tournament.nextEvent;
+    // On both pages (live, the round's page turns by itself: no need to tap Standings ›).
+    const label = (l) => {
+      this.buttons[0].label = l;
+      if (this.after) this.after.label = l;
+    };
     if (start == null) {
       const names = this.live.waitingFor(this.nextStage).map((p) => p.name);
-      this.buttons[0].label = `Waiting for ${names.join(', ') || 'the others'}…`;
+      label(`Waiting for ${names.join(', ') || 'the others'}…`);
       return;
     }
-    this.buttons[0].label = `${next.name} in ${Math.max(1, Math.ceil((start - serverNow()) / 1000))}`;
+    label(`${next.name} in ${Math.max(1, Math.ceil((start - serverNow()) / 1000))}`);
     if (serverNow() >= start - TITLE_CARD) this.goNext();
   }
 

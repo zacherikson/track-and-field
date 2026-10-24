@@ -41,9 +41,12 @@ beat them up, NFL Blitz style. There's no cut: once you've crossed the line and
 pulled up (or got to your feet after your last attempt), the fight controls
 appear right where you are, and each rival joins in as they come to a stop, so
 finishing first means getting the first hits in. After a field event the
-rivals walk over to you. The results (or tournament standings) come up at the
-top of the screen over the stands, with Race again (or Next) and Menu (or Quit)
-along the bottom on the ad boards, leaving the track clear. Everyone walks about normally until a fight starts; then the
+rivals walk over to you. The results come up at the top of the screen over
+the stands, with Race again and Menu along the bottom on the ad boards,
+leaving the track clear. In a tournament it's two pages: first the event's
+results (places, marks and the points each scored), then **Standings ›** for
+the overall totals, with Next (or New tournament after the last event) and
+Quit. Everyone walks about normally until a fight starts; then the
 fists come up.
 Left thumb: drag to walk. Right thumb: PUNCH, KICK, SLAM (grab, hoist overhead,
 slam down), and hold 😀 then drag to an emote on the wheel. Three punches in a
@@ -322,9 +325,9 @@ in live play, so every phone shows the same results.
 - Field events: every round starts together, so you all run up at once; the
   others are drawn on your runway, see-through and named in gold. Once
   everyone's attempt is over, the next round counts down and starts by itself.
-- Tournament: the five events in a row with the same people. Once everyone has
-  finished an event, the standings count down to the next one, which starts by
-  itself. Nobody taps to go on; anyone still playing after 20 s is left to
+- Tournament: the five events in a row with the same people. After each event
+  its results show for a few seconds, then the overall standings by themselves,
+  counting down to the next event, which starts by itself. Nobody taps to go on; anyone still playing after 20 s is left to
   catch up.
 
 Live play runs on the meet server ([server/](server/README.md)), like squad

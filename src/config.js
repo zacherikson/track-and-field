@@ -457,8 +457,8 @@ export const CONFIG = {
     // the original: down early, then the spark crawls along the low pole to the plant.
     // sparkDelay: share of the zone before the spark sets off from your hands (the original's
     // starts about 0.17 s after the pads light). docs/pole-vault-original.md has the measurements.
-    pole: { length: 4.5, gripY: 2.0, carryAngle: 0.785398, grip: 0.55, dropShare: 0.5, sparkDelay: 0.12 },
-    zoneDistance: 15, // m before the plant: orange pads, strides stop, the pole tip drops to the box and the spark runs down it (about 1.4 s at 40 km/h, as in the original)
+    pole: { length: 4.5, gripY: 2.0, carryAngle: 0.698132, grip: 0.55, dropShare: 0.85, sparkDelay: 0.1 },
+    zoneDistance: 17, // m before the plant: orange pads, strides stop, the pole tip drops to the box and the spark runs down it (about 1.55 s at 40 km/h; Zachary's tuning, the original's is 1.37 s)
     // Runway edge stripes, in m before the box (the plant is about 4.1 m out).
     runwayZones: [
       { from: 22, to: 16, color: '#ffd21f' },
@@ -472,14 +472,14 @@ export const CONFIG = {
     // registers when the window opens. earlyHoldOnTime false = it scores as
     // pressed at the window's start (`miss` early: plant quality 0); true = as
     // pressed right on the plant. Design call, open with Zachary.
-    press: { window: 0.5, miss: 0.38, earlyHoldOnTime: false },
+    press: { window: 0.5, miss: 0.5, earlyHoldOnTime: false },
     // Release quality, fitted to the original's heights: 0 at `late` s late or `early` s early,
     // falling slowly at first and then steeply (the powers). The original lost 0.5 m at 0.06 s
     // late, 2.4 m at 0.17 s late and was at 1 m by 0.22 s late; early is kinder (2.2 m lost at
     // 0.33 s early, 0.73 m left letting go at once). window: hold on that long past the top and
     // heldFoul: you stall upside down on the pole and topple back onto the runway, no height (as
     // in the original); 0 = you're let go then with nothing from the release.
-    release: { window: 0.5, heldFoul: 1, late: 0.235, latePower: 3, early: 0.85, earlyPower: 1.3 },
+    release: { window: 1, heldFoul: 1, late: 0.6, latePower: 3, early: 1.2, earlyPower: 1.3 },
     // Height from energy: base + eff × release quality × v² / 2g (v = speed at the plant, m/s;
     // real g), less up to plantLoss of it for a missed plant. As in the original, speed counts
     // as v² with no fixed part: 70% of the speed gives under half the height. Never below `min` (m).

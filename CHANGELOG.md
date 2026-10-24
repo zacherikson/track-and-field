@@ -4,6 +4,28 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Pole vault: Zachary's tuning from the phone
+Copied from the tuning panel:
+
+| Setting | Old → new |
+|---|---|
+| `release.late` (late release: gone by) | 0.235 → 0.6 s |
+| `release.early` (early release: gone by) | 0.85 → 1.2 s |
+| `zoneDistance` (plant zone) | 15 → 17 m: about 1.53 s from the pads to the plant at 40 km/h |
+| `press.miss` (run-through) | 0.38 → 0.5 s |
+| `pole.sparkDelay` (spark start) | 12% → 10% of the zone |
+| `release.window` (held too long after) | 0.5 → 1.0 s |
+| `pole.carryAngle` (carry angle) | 45° → 40° |
+| `pole.dropShare` (pole drop) | 50% → 85% of the zone |
+
+- **The release is much more forgiving.** At top speed: on time 6.47 m, 0.17 s
+  late 6.33, 0.3 s late 5.66, 0.33 s early 5.26, letting go at once 2.81.
+- Simulator: casual 3.63 m, good 4.50, expert 5.82, perfect 6.50; Amateur
+  rivals 3.66, Pro 5.15 (medians).
+- Tests #14 and #15b now follow the config instead of the old numbers:
+  - #14 holds from just before the plant window opens.
+  - #15b checks that the release fades to nothing at `late` and `early`.
+
 ## Pole vault: you go over the bar at your mark
 - After the same swing to the same top of the pole, a low vault crossed the
   standards far above its bar: hips at about 6 m over a 2.5 m bar.

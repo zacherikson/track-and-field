@@ -182,19 +182,20 @@ test('#13 pole vault: a tap, 0.5 s or 2 s hold at the plant plants; release at t
   });
 });
 
-test('#14 pole vault: a hold started 0.5 s before the plant plants as the window opens (no balk); scored as pressed then, or on time with earlyHoldOnTime', () => {
+test('#14 pole vault: a hold started before the plant window plants as it opens (no balk); scored as pressed then, or on time with earlyHoldOnTime', () => {
   // The 2 s hold is just "held"; holding too long is #13's business.
   withConfig(CONFIG.poleVault.release, { heldFoul: 0 }, test14);
 });
 function test14() {
   assert.equal(CONFIG.poleVault.press.earlyHoldOnTime, false);
-  let v = vault((rig, z) => both(rig, z + P - 0.5, 2));
+  const early = CONFIG.poleVault.press.miss + 0.12; // held from before the window opens
+  let v = vault((rig, z) => both(rig, z + P - early, 2));
   assert.notEqual(v.sc.state, 'balk');
   assert.ok(Math.abs(v.hold - (P - CONFIG.poleVault.press.miss)) < 0.03, `hold ${v.hold} vs window open ${P - CONFIG.poleVault.press.miss}`);
   near(v.sc.vault.pq, pressQuality(-CONFIG.poleVault.press.miss, CONFIG.poleVault.press), 0.05, 'scored as pressed as the window opens');
   assert.ok(!v.sc.mark?.fail);
   withConfig(CONFIG.poleVault.press, { earlyHoldOnTime: true }, () => {
-    v = vault((rig, z) => both(rig, z + P - 0.5, 2));
+    v = vault((rig, z) => both(rig, z + P - early, 2));
   });
   assert.notEqual(v.sc.state, 'balk');
   near(v.hold, v.sc.plantT - v.z);
@@ -233,11 +234,12 @@ test('#15b pole vault: letting go as the spark reaches your hands is a full rele
   // Let go when the spark is only halfway up: a weak release.
   v = vault((rig, z) => both(rig, z + P, climb / 2));
   assert.ok(v.sc.vault.rq < 0.75, `halfway rq ${v.sc.vault.rq}`);
-  // As in the original, late costs far more than early: 0.17 s late is worth less than 0.33 s early.
+  // The release falls off either side, to nothing at release.late late and release.early early.
   const vt = dry.sc.vault.v;
-  const late = releaseQuality(climb + 0.17, CONFIG.poleVault, vt);
-  const early = releaseQuality(climb - 0.33, CONFIG.poleVault, vt);
-  assert.ok(late < early && late < 0.7 && early < 0.8, `0.17 s late ${late}, 0.33 s early ${early}`);
+  const R = CONFIG.poleVault.release;
+  const q = (e) => releaseQuality(climb + e, CONFIG.poleVault, vt);
+  assert.ok(q(0.1) > q(0.2) && q(0.2) > q(R.late * 0.9) && q(R.late) < 1e-9, `late ${q(0.1)} ${q(0.2)} ${q(R.late)}`);
+  assert.ok(q(-0.1) > q(-0.3) && q(-0.3) > q(-R.early * 0.9) && q(-R.early) < 1e-9, `early ${q(-0.1)} ${q(-0.3)} ${q(-R.early)}`);
 });
 
 // ---------------------------------------------------------------- javelin

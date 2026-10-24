@@ -11,7 +11,7 @@ import * as S from './helpers/scenes.mjs';
 import { run100, runUpLJ } from './helpers/strideRuns.mjs';
 import { CONFIG } from '../src/config.js';
 import { blinkLit } from '../src/render/pads.js';
-import { releaseTarget, pressQuality } from '../src/events/poleVaultRules.js';
+import { releaseTarget, releaseQuality, pressQuality } from '../src/events/poleVaultRules.js';
 import { BrawlControls } from '../src/brawl/controls.js';
 import { seededRandom } from '../src/core/random.js';
 import { replayMark } from '../src/online/ghost.js';
@@ -223,7 +223,7 @@ test('#15b pole vault: letting go as the spark reaches your hands is a full rele
   const dry = S.poleVaultAt();
   dry.rig.runUntil(() => dry.sc.plantT != null, 5);
   const climb = releaseTarget(CONFIG.poleVault, dry.sc.vault.v); // the swing at the scenes' plant speed
-  const tol = 2 * STEP / CONFIG.poleVault.release.window; // quality lost to the step the plant falls in
+  const tol = 0.02; // quality lost to the step the plant falls in
   // On time: the spark climbs from the plant.
   let v = vault((rig, z) => both(rig, z + P, climb));
   assert.ok(v.sc.vault.rq >= 1 - tol, `on time rq ${v.sc.vault.rq}`);
@@ -232,7 +232,12 @@ test('#15b pole vault: letting go as the spark reaches your hands is a full rele
   assert.ok(v.sc.vault.rq >= 1 - tol, `early rq ${v.sc.vault.rq}`);
   // Let go when the spark is only halfway up: a weak release.
   v = vault((rig, z) => both(rig, z + P, climb / 2));
-  assert.ok(v.sc.vault.rq < 0.5, `halfway rq ${v.sc.vault.rq}`);
+  assert.ok(v.sc.vault.rq < 0.75, `halfway rq ${v.sc.vault.rq}`);
+  // As in the original, late costs far more than early: 0.17 s late is worth less than 0.33 s early.
+  const vt = dry.sc.vault.v;
+  const late = releaseQuality(climb + 0.17, CONFIG.poleVault, vt);
+  const early = releaseQuality(climb - 0.33, CONFIG.poleVault, vt);
+  assert.ok(late < early && late < 0.7 && early < 0.8, `0.17 s late ${late}, 0.33 s early ${early}`);
 });
 
 // ---------------------------------------------------------------- javelin

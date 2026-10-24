@@ -256,14 +256,18 @@ So in the original:
 
 ## Where ours still differs (October 2026)
 
-These are design calls, not measurement gaps:
+Speed (height ∝ v², no fixed part), the swing time at lower speeds, and the
+release curve (steep late, kinder early) now follow the original; see the
+CHANGELOG for ours vs the original side by side. These are still design calls:
 
 | | Original | Ours |
 |---|---|---|
 | No run-up taps | Runs on its own at ~70% speed | Stands at the start until you tap |
 | Pressing early | FOUL, however early | An early hold plants as the window opens, with plant quality 0 (`press.earlyHoldOnTime`) |
 | Run-through | Crash into the mat front, FOUL | Drop off the pole, NO HEIGHT |
-| Speed | Height ∝ v², little fixed part (70% speed → 43% height) | `height.base` 1.8 m + v² part (70% speed → ~61% height) |
-| Swing at a slower speed | ~15% longer at 70% speed | 1 / speed: ~43% longer at 70% speed |
-| Release, late | ~−2.4 m at 0.17 s late | −0.4 m (kept gentle on purpose) |
-| Release, early | −2.2 m at 0.33 s early; at once = 0.73 m | −0.7 m at 0.33 s early; at once = −1.1 m |
+| Early release | You leave the pole early | You still ride the pole to the top, then score low |
+
+Videos: [`vault-before-after.mp4`](pole-vault-compare/vault-before-after.mp4)
+(the original's 6.62 m vault over ours before and after the October smoothing)
+and [`vault-late-release.mp4`](pole-vault-compare/vault-late-release.mp4)
+(the original's 1.04 m late release over ours).

@@ -384,15 +384,39 @@ export const VAULT_POSES = {
   },
 };
 
+/**
+ * One smooth curve through keyframes [[x, value], ...] (monotone cubic,
+ * Fritsch-Carlson): it passes through every key without overshooting, and
+ * keeps moving through them (easing each segment in and out instead stops the
+ * motion at every key). Held past the ends. `endEase` scales the slope at
+ * the last key (0 = arrive at rest, 1 = keep going).
+ */
+export function smoothKeys(xs, ys, x, endEase = 0.5) {
+  const n = xs.length;
+  if (x <= xs[0]) return ys[0];
+  if (x >= xs[n - 1]) return ys[n - 1];
+  const d = [];
+  for (let i = 0; i < n - 1; i++) d.push((ys[i + 1] - ys[i]) / (xs[i + 1] - xs[i]));
+  const m = [d[0]];
+  for (let i = 1; i < n - 1; i++) m.push(d[i - 1] * d[i] <= 0 ? 0 : (2 * d[i - 1] * d[i]) / (d[i - 1] + d[i]));
+  m.push(d[n - 2] * endEase);
+  let i = 0;
+  while (i < n - 2 && x > xs[i + 1]) i++;
+  const h = xs[i + 1] - xs[i];
+  const k = (x - xs[i]) / h;
+  const k2 = k * k;
+  const k3 = k2 * k;
+  return (2 * k3 - 3 * k2 + 1) * ys[i] + (k3 - 2 * k2 + k) * h * m[i] + (-2 * k3 + 3 * k2) * ys[i + 1] + (k3 - k2) * h * m[i + 1];
+}
+
+const SWING_U = SWING_LEGS.map((k) => k[0]);
+const SWING_COL = (j, b) => SWING_LEGS.map((k) => k[1][j][b]);
+const SWING_LEG_COLS = [[SWING_COL(0, 0), SWING_COL(0, 1)], [SWING_COL(1, 0), SWING_COL(1, 1)]];
+
 /** On the pole: hips at `alpha` from the hands, swing progress u (0 plant .. 1 top of the pole). */
 export function vaultSwingPose(alpha, u) {
-  let i = 1;
-  while (i < SWING_LEGS.length - 1 && u > SWING_LEGS[i][0]) i++;
-  const [u0, a] = SWING_LEGS[i - 1];
-  const [u1, b] = SWING_LEGS[i];
-  let k = clamp01((u - u0) / (u1 - u0));
-  k = k * k * (3 - 2 * k);
-  const leg = (j) => ({ thigh: alpha + lerp(a[j][0], b[j][0], k), shin: alpha + lerp(a[j][1], b[j][1], k), toe: 0 });
+  const at = (j, b) => smoothKeys(SWING_U, SWING_LEG_COLS[j][b], clamp01(u));
+  const leg = (j) => ({ thigh: alpha + at(j, 0), shin: alpha + at(j, 1), toe: 0 });
   // Arms reach from the shoulders to the hands on the pole (along the body line, a little bent at first).
   const bend = 0.35 * (1 - clamp01(u / 0.3));
   return {

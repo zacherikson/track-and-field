@@ -473,21 +473,23 @@ export const CONFIG = {
     // pressed at the window's start (`miss` early: plant quality 0); true = as
     // pressed right on the plant. Design call, open with Zachary.
     press: { window: 0.5, miss: 0.38, earlyHoldOnTime: false },
-    // s either side of the spark reaching your hands: release quality falls to 0. heldFoul: hold on
-    // past the window and you stall upside down on the pole and topple back onto the runway, no
-    // height (as in the original); 0 = you're let go anyway with release quality 0.
-    release: { window: 0.5, heldFoul: 1 },
-    // Height from energy: base + eff × v² / 2g (v = speed at the plant, m/s; real g). The pole's
-    // efficiency `eff` runs from effMin (plant and release both missed) to effMax (both perfect),
-    // weighing the two by plantWeight and releaseWeight. `base`: hips' height at takeoff (m).
-    // Never below `min` (m).
-    height: { min: 2.95, base: 1.8, effMin: 0.32, effMax: 0.58, plantWeight: 0.2, releaseWeight: 0.2 },
+    // Release quality, fitted to the original's heights: 0 at `late` s late or `early` s early,
+    // falling slowly at first and then steeply (the powers). The original lost 0.5 m at 0.06 s
+    // late, 2.4 m at 0.17 s late and was at 1 m by 0.22 s late; early is kinder (2.2 m lost at
+    // 0.33 s early, 0.73 m left letting go at once). window: hold on that long past the top and
+    // heldFoul: you stall upside down on the pole and topple back onto the runway, no height (as
+    // in the original); 0 = you're let go then with nothing from the release.
+    release: { window: 0.5, heldFoul: 1, late: 0.235, latePower: 3, early: 0.85, earlyPower: 1.3 },
+    // Height from energy: base + eff × release quality × v² / 2g (v = speed at the plant, m/s;
+    // real g), less up to plantLoss of it for a missed plant. As in the original, speed counts
+    // as v² with no fixed part: 70% of the speed gives under half the height. Never below `min` (m).
+    height: { min: 0.5, base: 0, eff: 0.8, plantLoss: 0.25 },
     // The swing up the pole runs on your speed: timeAt10 s from the plant (or a later press) to
-    // the top at 10 m/s, quicker the faster you planted (time × 10 / speed). The spark climbs
-    // back up the pole over it: you're at the top, upside down, as it reaches your hands.
-    // bend: how much the pole bends mid-swing (share of its length). A weak vault also leaves it
-    // bent at the top, so you're only as high as your mark.
-    swing: { timeAt10: 0.9, bend: 0.21 },
+    // the top at 10 m/s, × (10 / speed) ^ speedPower. In the original a 30% slower plant swings
+    // only ~15% longer (power 0.4). The spark climbs back up the pole over it: you're at the top,
+    // upside down, as it reaches your hands. bend: how much the pole bends mid-swing (share of
+    // its length). A weak vault also leaves it bent at the top, so you're only as high as your mark.
+    swing: { timeAt10: 0.85, speedPower: 0.4, bend: 0.21 },
     // Off the pole, under gravity (m/s², lighter than real so the vault reads): you push off the
     // top of the pole and fly forward to the bar, at least `push` m up from your hips at the top
     // of the pole to the peak (over the bar), then fall onto the mat. The pole only reaches so

@@ -4,6 +4,76 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Pole vault: the original's speed and release curves, smoother animation
+Fitted to the second batch of footage (`docs/pole-vault-original.md`).
+- **Height is all speed (v²), as in the original:**
+  - `height` was `base` 1.8 + `effMin` 0.32–`effMax` 0.58 weighted by
+    `plantWeight` / `releaseWeight` 0.2 / 0.2.
+  - Now `base` 0 + `eff` 0.8 × release quality × v² / 2g, less up to
+    `plantLoss` 0.25 for a missed plant.
+  - The original's slow jump (70% of the speed) made 43% of the height; ours
+    makes 49% (was 61%).
+  - `height.min` 2.95 → 0.5 m: the original shows 0.73 and 1.04 m vaults.
+- **Release scoring fitted to the original:** late is steep, early kinder.
+  - Was a straight line to 0 at 0.5 s either side.
+  - Now 0 at `release.late` 0.235 s late (curve `latePower` 3) or
+    `release.early` 0.85 s early (`earlyPower` 1.3).
+  - Ours vs the original at top speed:
+
+    | Release | Ours | Original |
+    |---|---|---|
+    | On time | 6.58 m | 6.62 m |
+    | 0.06 s late | 6.47 m | 6.14 m |
+    | 0.17 s late | 4.09 m | 4.24 m |
+    | 0.22 s late | 1.18 m | 1.04 m |
+    | 0.33 s early | 4.65 m | 4.41 m |
+    | At once | 0.77 m | 0.73 m |
+
+  - `release.window` 0.5 s now only sets when holding on becomes a foul.
+- **Swing time vs speed:** new `swing.speedPower` 0.4, `swing.timeAt10` 0.9 →
+  0.85 s.
+  - The swing is `timeAt10 × (10 / speed) ^ speedPower` (was × 10 / speed).
+  - The original's 30% slower plant swung only ~15% longer. Ours is now 0.77 s
+    at full speed and 0.89 s at 70% (original 0.78 / 0.9).
+- **Simulator:** casual 3.63 m, good 4.54, expert 5.86, perfect 6.60.
+  Amateur rivals 3.56, Pro 5.15 (medians), still level with the players they
+  face. It now counts holding on past the window as a foul.
+- **Smoother animation.** Found by recording every frame headless and
+  measuring how far each joint, the pole and the camera move per frame. The
+  worst one-frame jump was 3.2 m; now none is bigger than a running stride.
+  - **The swing no longer stops and starts.** Its keyframes (pole angle, bend,
+    body angle, legs) were each eased in and out, so the hips nearly stopped
+    four times on the way up (speed 12 → 2 → 14 → 1 → 20 → 2 m/s). Now one
+    smooth curve runs through them (`smoothKeys` in stickFigure.js).
+  - **No pop at the plant:** the run's pose and hips blend into the swing over
+    0.16 s (they jumped 40 cm). The camera's plant jolt plays over 0.05 s
+    instead of one frame.
+  - **The top hand swings up round the shoulder:** it used to go straight
+    through the shoulder on the way from the hip to overhead, flipping the
+    elbow.
+  - **The bottom hand lets go smoothly:** its arm follows at most 12 rad/s
+    (it snapped 30 cm).
+  - **Letting go:**
+    - The push off the top eases in over 0.1 s instead of jumping to full
+      speed.
+    - A pole still bent springs straight over 0.22 s (it jumped 3 m to full
+      length).
+    - Forward speed carries smoothly through the peak (it changed pace at the
+      bar).
+    - The pole no longer re-bends while you wait at the top.
+  - **Weak vaults:** you always push up off the pole (a weak vault teleported
+    2 m to the bar). Let go far too late and you drop off the top onto the
+    front of the mat, as the original's 1 m vaults do, instead of flying high
+    over a low bar.
+  - **Flight poses:** each limb turns the short way round (the arms spun the
+    long way just before landing).
+  - **After a held-too-long foul:** you stay facing the way you fell, and the
+    camera stays on you instead of panning to the mat.
+- **Tuning** (Pole Vault: height / timing):
+  - New: Pole efficiency, Fixed height, Missed plant costs, Late / Early
+    release (gone by, curve), Swing vs speed.
+  - "Release window" is now "Held too long after".
+
 ## Pole vault: matched to the original's footage
 Measured frame by frame from Zachary's recordings of the original; the
 numbers are in `docs/pole-vault-original.md`, side-by-side frames in

@@ -4,6 +4,19 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Pole vault: a slower plant, the runway low on the screen
+- **The plant isn't rushed any more.** Timed from the original: about 1.5 s
+  from the orange pads to the plant, with the pole down to nearly level in the
+  first third and the spark crawling along it after. `zoneDistance` 12 → 17 m
+  (about 1.4 s at 42 km/h), new `pole.dropShare` 0.35 (the tip used to come
+  down over the whole zone), `runway` 55 → 60 m (the striding part stays the
+  same length), runway edge stripes moved back to match. The top hand comes up
+  over the last 25% of the zone (was 30%).
+- **Framed like the original:** `camera.zoom` 1.25, from the top of the screen,
+  so the athletes are bigger and the runway sits near the bottom, leaving room
+  above for the vault. It eases back to the usual framing for the late hits.
+- Tuning: Pole drop and Camera zoom under Pole Vault: look.
+
 ## Pole vault: 50 / 25 / 25, the hand on the end, tuning per event
 - **Scoring:** height = `height.min` (3.7 m) to `height.max` (6.4 m) by a
   score that's 50% speed at the plant, 25% plant, 25% release

@@ -157,6 +157,8 @@ export const GROUPS = [
     params: [
       { path: 'poleVault.pole.length', label: 'Pole length', unit: 'm', min: 3, max: 5.5, step: 0.05, help: 'Box to your top hand. Longer = you plant further out and ride higher.' },
       { path: 'poleVault.pole.carryAngle', label: 'Carry angle', unit: '°', scale: 57.2958, min: 0.3, max: 1.4, step: 0.0174533, help: 'How high the tip points while you run.' },
+      { path: 'poleVault.pole.dropShare', label: 'Pole drop', unit: '% of zone', scale: 100, min: 0.1, max: 1, step: 0.05, help: 'How much of the plant zone the tip takes to come down to level. Lower = down early, then the spark crawls along the low pole.' },
+      { path: 'poleVault.camera.zoom', label: 'Camera zoom', unit: '×', min: 1, max: 1.6, step: 0.05, help: 'How close in the camera is. Higher = bigger athletes and the runway lower on the screen.' },
       { path: 'poleVault.pole.grip', label: 'Hand spread', unit: 'm', min: 0.2, max: 0.8, step: 0.05, help: 'From your top hand on the end down to your bottom hand.' },
       { path: 'poleVault.swing.bend', label: 'Pole bend', unit: '%', scale: 100, min: 0, max: 0.45, step: 0.01, help: 'How far the pole bends as you swing up it.' },
       { path: 'poleVault.flight.rise', label: 'Rise off the top', unit: 'ms', scale: 1000, min: 0.2, max: 1, step: 0.05, help: 'From letting go to the top of your flight.' },

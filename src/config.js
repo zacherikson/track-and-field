@@ -447,19 +447,21 @@ export const CONFIG = {
    */
   poleVault: {
     rounds: 3, // attempts; your best counts
-    runway: 55, // m from the start to the box (a long run-up, as in the original)
+    runway: 60, // m from the start to the box (a long run-up, as in the original)
     // The pole plants when your hips reach plantX: hands overhead at gripY,
     // pole tip in the box (plantX = -sqrt(length² - gripY²)).
     // m (box to the top hand, which holds the very end); top hand's height at the plant (m, overhead);
     // rad above level while running (tip high; it drops through the plant zone); m from the top hand
     // to the bottom hand (about shoulder width, as real vaulters hold it).
-    pole: { length: 4.5, gripY: 2.0, carryAngle: 0.8, grip: 0.55 },
-    zoneDistance: 12, // m before the plant: orange pads, strides stop, the pole tip drops to the box and the spark runs down it
+    // dropShare: how much of the plant zone the tip takes to come down to (nearly) level, as in
+    // the original: down early, then the spark crawls along the low pole to the plant.
+    pole: { length: 4.5, gripY: 2.0, carryAngle: 0.8, grip: 0.55, dropShare: 0.35 },
+    zoneDistance: 17, // m before the plant: orange pads, strides stop, the pole tip drops to the box and the spark runs down it (about 1.5 s, as in the original)
     // Runway edge stripes, in m before the box (the plant is about 4.1 m out).
     runwayZones: [
-      { from: 16, to: 12, color: '#ffd21f' },
-      { from: 12, to: 8, color: '#ff8a1c' },
-      { from: 8, to: 4.2, color: '#e8281e' },
+      { from: 22, to: 16, color: '#ffd21f' },
+      { from: 16, to: 10, color: '#ff8a1c' },
+      { from: 10, to: 4.2, color: '#e8281e' },
     ],
     blink: { period: 0.6, on: 0.3 }, // s: the orange pads blink while the spark runs down
     chordWindow: 0.12, // s: not used: both thumbs down counts however far apart they landed (core/thumbs.js)
@@ -495,7 +497,10 @@ export const CONFIG = {
     bar: { rest: 2.0, follow: 14 }, // m; how tightly it follows (higher = tighter)
     landX: 1.3, // m past the box where you come down on the mat
     markHold: 2.4, // s after landing before the result banner
-    camera: { topFrac: 0.3 }, // the camera rises to keep the vaulter at least this far down the screen
+    // topFrac: the camera rises to keep the vaulter at least this far down the screen.
+    // zoom: closer in than the other events, from the top of the screen, so the runway sits
+    // low (as in the original) and there's room above for the vault.
+    camera: { topFrac: 0.3, zoom: 1.25 },
     ai: {
       amateur: { cadence: [2.7, 3.4], pressErr: 0.18, releaseErr: 0.2, missChance: 0.07 },
       pro: { cadence: [3.7, 4.5], pressErr: 0.08, releaseErr: 0.1, missChance: 0.03 },

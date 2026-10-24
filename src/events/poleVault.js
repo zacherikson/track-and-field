@@ -172,6 +172,7 @@ export class PoleVault {
     this.barTop = 0; // the highest your hips have been on this attempt (the bar rises with them)
     this.track.bar = this.cfg.bar.rest;
     this.camY = 0;
+    this.zoom = this.cfg.camera.zoom;
     this.puff = [];
     this.ghost.startAttempt(t);
     this.liveField?.begin();
@@ -464,9 +465,10 @@ export class PoleVault {
     // Rise with the vaulter: keep the head at least topFrac down the screen.
     const ground = this.track.toScreen(this.camera, view, this.hip.x, 1).y + 4;
     const headY = ground - (this.hip.y + 0.5 * this.figH) * this.camera.ppm;
-    let want = Math.max(0, view.h * this.cfg.camera.topFrac - headY);
+    const z = this.zoom;
+    let want = Math.max(0, (view.h * this.cfg.camera.topFrac) / z - headY);
     // Running: keep the tip of the carried pole on screen too.
-    if ((this.state === 'ready' || this.state === 'run') && this.poleTop != null) want = Math.max(want, view.safe.t + 12 - this.poleTop);
+    if ((this.state === 'ready' || this.state === 'run') && this.poleTop != null) want = Math.max(want, (view.safe.t + 12) / z - this.poleTop);
     this.camY = damp(this.camY, want, 6, dt);
   }
 
@@ -546,11 +548,19 @@ export class PoleVault {
   lateUpdate(dt, t) {
     this.after.update(dt, t);
     this.camY = damp(this.camY, 0, 6, dt);
+    this.zoom = damp(this.zoom, 1, 6, dt); // back to the usual framing for the late hits
+  }
+
+  /** The world's framing: zoomed in from the top of the screen (`camera.zoom`), raised by camY. */
+  frame(ctx, view) {
+    ctx.translate(view.w / 2, 0);
+    ctx.scale(this.zoom, this.zoom);
+    ctx.translate(-view.w / 2, this.camY);
   }
 
   lateRender(ctx, view) {
     ctx.save();
-    ctx.translate(0, this.camY);
+    this.frame(ctx, view);
     this.after.render(ctx, view);
     ctx.restore();
   }
@@ -631,7 +641,7 @@ export class PoleVault {
     const pxPerM = cam.ppm * tr.figureScale(1);
     const H = this.figH * pxPerM;
     ctx.save();
-    ctx.translate(0, this.camY);
+    this.frame(ctx, view);
     tr.draw(ctx, view, cam);
     tr.drawMat(ctx, view, cam);
     tr.drawUprightsBack(ctx, view, cam);
@@ -743,7 +753,7 @@ export class PoleVault {
     if (this.state === 'ready' || this.state === 'run') {
       const p = this.zoneProgress();
       // Top hand: at the back hip, driving up overhead over the last stretch of the zone.
-      const k = ease(clamp((p - 0.7) / 0.3, 0, 1));
+      const k = ease(clamp((p - 0.75) / 0.25, 0, 1));
       const C = VAULT_POSES.carryHand;
       const P = VAULT_POSES.plantHand;
       a = { x: S.x + H * (C.x + (P.x - C.x) * k), y: S.y + H * (C.y + (P.y - C.y) * k) };
@@ -753,7 +763,8 @@ export class PoleVault {
       // your hands to the box, so it never touches the ground before the box
       // and slides into it at the plant.
       const toBox = Math.atan2(a.y - boxP.y, boxP.x - a.x);
-      const psi = cfg.pole.carryAngle + (toBox - cfg.pole.carryAngle) * ease(p);
+      const drop = ease(clamp(p / cfg.pole.dropShare, 0, 1)); // down early in the zone, then low to the plant
+      const psi = cfg.pole.carryAngle + (toBox - cfg.pole.carryAngle) * drop;
       const reach = Math.min(len, Math.hypot(boxP.x - a.x, boxP.y - a.y));
       b = { x: a.x + reach * Math.cos(psi), y: a.y - reach * Math.sin(psi) };
       if (!this.runUp.striding) this.sparkS = p; // the spark runs down to the tip

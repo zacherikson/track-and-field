@@ -1,6 +1,6 @@
 import { Button, text, slab, chamfer, nameTag, PAL } from '../core/ui.js';
 import { drawIcon } from '../core/icons.js';
-import { pinebrook, westfield, olympic, lostStadium } from '../render/posterScenery.js';
+import { pinebrook, westfield, olympic, lostStadium, colosseum } from '../render/posterScenery.js';
 import { getBest, getCampaign } from '../core/storage.js';
 import { player, heightOf } from '../athletes/roster.js';
 import { drawFigure, runPose } from '../athletes/stickFigure.js';
@@ -15,6 +15,7 @@ import { formatPoints } from '../meet/scoring.js';
 import { MEET_ORDER } from '../meet/rules.js';
 import { drawStrip, drawSteps, stepsHeight } from './howTo.js';
 import { survival } from '../survival/survival.js';
+import { liveSurvival } from '../survival/liveSurvival.js';
 
 const ON_TRACK = 4000; // ms before a live event starts that it's shown (the gun's READY / GET SET, or a round's countdown)
 
@@ -27,7 +28,8 @@ const ON_TRACK = 4000; // ms before a live event starts that it's shown (the gun
  * starts at the same moment for everyone (online/live.js).
  *
  * In survival: the round, your points, and who you're up against (a new
- * name each round).
+ * name each round). In live survival: how many are still in, counting down
+ * like a live tournament's.
  *
  * Top left, Back (Quit in a tournament or a survival run) goes to the menu. How to play opens
  * the event's steps over the card (not a screen of their own, so a live
@@ -42,7 +44,7 @@ export class IntroScene {
     this.age = 0;
     this.phase = 0;
     this.meet = meet.active;
-    this.backBtn = tournament.live || this.meet
+    this.backBtn = tournament.live || this.meet || liveSurvival.active
       ? null
       : new Button({ label: tournament.active || survival.active ? 'Quit' : 'Back', icon: 'back', look: 'chip', w: 104, h: 44, onTap: () => flow.menu(this.game) });
     this.howBtn = new Button({ label: 'How to play', icon: 'howto', w: 184, h: 48, size: 20, color: PAL.ink, lip: PAL.inkShade, onTap: () => (this.howOpen = true) });
@@ -50,7 +52,7 @@ export class IntroScene {
     this.startBtn = new Button({ label: 'Tap to start', w: 280, h: 56, size: 27, color: PAL.orange, lip: PAL.orangeShade });
     this.howOpen = false;
     this.best = getBest(this.ev.id);
-    this.live = this.meet ? meet.session : tournament.active ? tournament.live : null;
+    this.live = this.meet ? meet.session : tournament.active ? tournament.live : liveSurvival.active ? liveSurvival.live : null;
     this.stage = this.live?.eventStage(this.ev.id);
     this.live?.ready(this.stage); // already, from the standings
     // Your mark goes up the moment this event ends (online/post.js), which is
@@ -100,6 +102,7 @@ export class IntroScene {
   /** Where you're about to compete: { draw(ctx, x, y, w, h), plate } (the icon plate's colour). */
   venue() {
     const lit = (fn, opts = {}) => (ctx, x, y, w, h) => fn(ctx, x, y, w, h, { trackH: 120, ...opts });
+    if (liveSurvival.active) return { draw: lit(colosseum), plate: PAL.survival }; // as render/venues.js venueFor
     if (this.live) return { draw: lit(olympic, { night: !this.meet }), plate: PAL.liveGreen };
     if (SPECIAL_EVENTS.some((e) => e.id === this.ev.id)) return { draw: lit(olympic), plate: PAL.magenta };
     if (survival.active) return { draw: lit(lostStadium), plate: PAL.survival }; // as render/venues.js venueFor
@@ -140,6 +143,8 @@ export class IntroScene {
       const mine = meet.standings?.find((r) => r.squad === meet.me?.squad);
       const pts = mine ? ` · ${meet.mySquad?.name ?? ''} ${formatPoints(mine.total)} pts` : '';
       top(`SQUAD MEET · EVENT ${meet.index + 1} OF ${MEET_ORDER.length}${pts}`);
+    } else if (liveSurvival.active) {
+      top(`LIVE SURVIVAL · EVENT ${liveSurvival.step + 1} · ${liveSurvival.alive.size} OF ${liveSurvival.players.size} LEFT`);
     } else if (survival.active) {
       top(`SURVIVAL · ROUND ${survival.round} · EVENT ${survival.index + 1} OF ${survival.order.length} · ${survival.total} pts`);
     } else if (tournament.active) {
@@ -164,6 +169,7 @@ export class IntroScene {
       const fresh = survival.index === 0 && survival.round > 1 ? ' · a new rival, and better' : '';
       text(ctx, `vs ${survival.rival.name}${fresh}`, cx, py + 212, { size: 19, font: 'body', weight: 800, color: PAL.survival, maxWidth: rw - 30 });
     }
+    if (liveSurvival.active) text(ctx, 'Last place is out', cx, py + 212, { size: 19, font: 'body', weight: 800, color: PAL.survival, maxWidth: rw - 30 });
     drawStrip(ctx, this.ev.id, cx, py + 250, { width: rw - 20, ink: PAL.ink, arrow: '#9D9070', font: 'display' });
 
     Object.assign(this.howBtn, { x: cx - this.howBtn.w / 2, y: py + 326 });

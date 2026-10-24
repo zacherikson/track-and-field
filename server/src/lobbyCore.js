@@ -1,4 +1,4 @@
-import { MAX_PLAYERS, START_DELAY, CLOSE_BEFORE } from '../../src/online/liveRules.js';
+import { maxPlayers, startDelay, CLOSE_BEFORE } from '../../src/online/liveRules.js';
 
 /**
  * LIVE WAITING ROOMS (src/online/live.js): one per `kind` (an event, or the
@@ -6,10 +6,10 @@ import { MAX_PLAYERS, START_DELAY, CLOSE_BEFORE } from '../../src/online/liveRul
  * squad's SquadHub for its Practice.
  *
  * Whoever is in a kind's waiting room plays together. When a second player
- * arrives it gets a start (`startAt`, server ms) START_DELAY ahead and a GET
+ * arrives it gets a start (`startAt`, server ms) startDelay(kind) ahead and a GET
  * SET length; dropping back to one player calls it off. Once every player has
- * tapped I'm ready (`ready`) the start comes forward to CLOSE_BEFORE from now,
- * so it closes straight away. CLOSE_BEFORE the start it closes: its players are handed to a Room (io.openRoom), which runs
+ * tapped I'm ready (`ready`), or the room is full (maxPlayers(kind)), the start
+ * comes forward to CLOSE_BEFORE from now, so it closes straight away. CLOSE_BEFORE the start it closes: its players are handed to a Room (io.openRoom), which runs
  * the play, and the next player to arrive starts a new waiting room.
  *
  * `io`: { now(), newId(), openRoom(id, info), changed() }: `changed` says the
@@ -33,7 +33,7 @@ export class LobbyCore {
     // Someone else on the same account counts as them (another tab, a reconnect).
     const same = node && [...node.players.keys()].find((p) => p.uid === peer.uid);
     if (same) this.remove(node, same);
-    if (!node || node.players.size >= MAX_PLAYERS) {
+    if (!node || node.players.size >= maxPlayers(kind)) {
       // Full: a new room takes over the kind (the full one plays on, but nobody else can get in).
       if (node) this.close(kind, node, false);
       node = { room: this.io.newId(), players: new Map(), startAt: null, setLen: null };
@@ -41,7 +41,7 @@ export class LobbyCore {
     }
     node.players.set(peer, { uid: peer.uid, name: String(msg.name ?? peer.name ?? '?').slice(0, 16), athlete: String(msg.athlete ?? '').slice(0, 24), at: now, ready: false });
     this.where.set(peer, kind);
-    this.restart(node, now);
+    this.restart(node, now, kind);
     this.changed(kind);
   }
 
@@ -54,17 +54,18 @@ export class LobbyCore {
     if (!node) return;
     this.remove(node, peer);
     if (!node.players.size) this.nodes.delete(kind);
-    else this.restart(node, this.io.now());
+    else this.restart(node, this.io.now(), kind);
     if (announce) this.changed(kind);
   }
 
   /** `peer` says it's ready to play (`on` false takes it back). Everyone ready: the start comes forward. */
   ready(peer, on = true) {
-    const node = this.nodes.get(this.where.get(peer));
+    const kind = this.where.get(peer);
+    const node = this.nodes.get(kind);
     const p = node?.players.get(peer);
     if (!p) return;
     p.ready = !!on;
-    this.restart(node, this.io.now());
+    this.restart(node, this.io.now(), kind);
     this.send(node);
   }
 
@@ -73,17 +74,18 @@ export class LobbyCore {
     this.where.delete(peer);
   }
 
-  /** Two or more players: the start is set, and brought forward once they're all ready. Fewer: it's off. */
-  restart(node, now) {
+  /** Two or more players: the start is set, and brought forward once they're all ready (or the room is full). Fewer: it's off. */
+  restart(node, now, kind) {
     if (node.players.size < 2) {
       node.startAt = node.setLen = null;
       return;
     }
     if (node.startAt == null) {
-      node.startAt = Math.round(now + START_DELAY);
+      node.startAt = Math.round(now + startDelay(kind));
       node.setLen = 1.1 + Math.random() * 1.2; // GET SET lasts a random time, as offline
     }
-    if ([...node.players.values()].every((p) => p.ready)) node.startAt = Math.min(node.startAt, Math.round(now + CLOSE_BEFORE));
+    const full = node.players.size >= maxPlayers(kind);
+    if (full || [...node.players.values()].every((p) => p.ready)) node.startAt = Math.min(node.startAt, Math.round(now + CLOSE_BEFORE));
   }
 
   /** Closes the rooms whose start is near. */
@@ -124,7 +126,7 @@ export class LobbyCore {
     return [...this.nodes]
       .map(([kind, node]) => {
         const players = this.list(node).map(({ uid, name, at }) => ({ uid, name, at }));
-        return { kind, host: players[0]?.name ?? '?', players, full: players.length >= MAX_PLAYERS, at: players[0]?.at ?? 0 };
+        return { kind, host: players[0]?.name ?? '?', players, full: players.length >= maxPlayers(kind), at: players[0]?.at ?? 0 };
       })
       .filter((r) => r.players.length)
       .sort((a, b) => a.at - b.at);

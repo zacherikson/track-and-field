@@ -1,5 +1,6 @@
 import { getCampaign } from '../core/storage.js';
 import { survival } from '../survival/survival.js';
+import { SURVIVAL_KIND } from '../online/liveRules.js';
 
 /**
  * Where each mode is played: Training is a rundown community track in the
@@ -41,6 +42,11 @@ import { survival } from '../survival/survival.js';
  *   lights     floodlight towers over the stand
  *   flashes    camera flashes popping in the crowd
  *   layout     the screen heights the track and stand use, if not track.js LAYOUT
+ *   arena      the layout a 10-lane race uses here (live survival's Colosseum):
+ *              a deeper track for ten, the stand shorter above it
+ *   colosseum  the Colosseum's stand (track.js drawColosseum): { stone, shade,
+ *              cornice, step, dark, velarium[], rope, skin[] }; boards kind
+ *              'podium' is its marble wall
  *   overgrowth the jungle taking a ruin back (Survival's): canopy over the
  *              stand, vines hanging down it, moss, flowers; and the javelin's
  *              flight shot over jungle hills instead of the sea
@@ -234,7 +240,65 @@ const JUNGLE = {
   },
 };
 
-export const VENUES = { training: TRAINING, amateur: AMATEUR, pro: PRO, survival: JUNGLE };
+/**
+ * Live survival's: the Colosseum, ten lanes laid across the arena sand. The
+ * cavea packed with togas under the velarium, arches round the top, the
+ * marble podium wall where the hoardings would be. A 10-lane race takes its
+ * `arena` layout: the track twice as deep, the stand shorter above it.
+ */
+const COLOSSEUM = {
+  id: 'colosseum',
+  name: 'The Colosseum',
+  sky: { top: '#3d7fc4', bottom: '#f3d9a4', high: '#2a5f9e' }, // a Roman afternoon
+  arena: { standsTop: 20, boardsTop: 164, grassTop: 186, horizonY: 40, farY: 214, nearY: 476, nearBoardsTop: 484 },
+  stands: {
+    body: '#cdb68c',
+    roof: '#a8916a',
+    rows: 8,
+    rowH: 12,
+    seatW: 10,
+    emptyEvery: 0, // a full house
+    shade: 'rgba(60,40,20,0.22)',
+    crowd: ['#f4ecd8', '#e8dcc0', '#b8322b', '#7a2d5a', '#d9a441', '#f7f3e8', '#8c5a3c', '#3f6fa8', '#efe6d2', '#9c2a2a'], // togas, mostly white
+  },
+  colosseum: {
+    stone: '#d2bb8f', // travertine
+    shade: '#a48c63',
+    cornice: '#ecdcb6',
+    step: '#c4ab7e',
+    dark: '#3b2a1c',
+    velarium: ['#f1e4c4', '#b8322b'],
+    rope: 'rgba(80,60,40,0.55)',
+    skin: ['#f1c9a0', '#d9a273', '#a86f45', '#7a4b2a', '#e8b98a'],
+  },
+  backdrop: null,
+  boards: { kind: 'podium', back: '#ece4d2', band: '#8e1f1f', vein: '#cfc4ab', pilaster: '#d8ceb6', letters: '#b08a2e', words: ['S·P·Q·R', 'TRACK ROYALE', 'AVE', 'LAST ONE STANDING', 'LVDI'] },
+  grass: { base: '#d9bf8a', stripe: '#d2b781', stripeM: 6 }, // the arena's sand, raked
+  sector: { base: '#d6bb84', stripe: '#cfb47c' },
+  track: {
+    surface: '#b4532f', // terracotta
+    worn: null,
+    paint: 'rgba(255,255,255,0.9)',
+    band: 'rgba(255,255,255,0.75)',
+    line: '#fff',
+    apron: '#d9bf8a',
+    curb: '#ece4d2',
+    tick: '#a48c63',
+  },
+  zone: { fill: 'rgba(64,140,255,0.2)', line: '#3d86ff' },
+  road: AMATEUR.road,
+  blocks: { rail: '#3b3428', railTop: '#b8a888', plate: '#8e1f1f', plateFace: '#c0392b' },
+  sand: { sand: '#e6cf95', rim: '#d8ceb6' },
+  board: { face: '#f7f2e6', foul: '#c0392b' },
+  mat: { side: '#7a1f1f', top: '#d9a441', topBand: '#e8bf6a', front: '#9c2a2a', handle: '#5a1515' },
+  upright: { post: '#d9a441', shade: '#9a7426' },
+  signs: { post: '#f7f2e6', plate: '#8e1f1f', text: '#f7f2e6' },
+  finish: { post: '#ece4d2', sign: '#3b2a1c', text: '#d9a441' },
+  lights: false,
+  flashes: false,
+};
+
+export const VENUES = { training: TRAINING, amateur: AMATEUR, pro: PRO, survival: JUNGLE, colosseum: COLOSSEUM };
 
 /**
  * The venue for the mode being played: the campaign's (core/storage.js), or
@@ -242,6 +306,7 @@ export const VENUES = { training: TRAINING, amateur: AMATEUR, pro: PRO, survival
  * last picked a campaign.
  */
 export function venueFor(live = false) {
+  if (live?.kind === SURVIVAL_KIND) return COLOSSEUM; // live survival: ten of you in the arena
   if (live) return PRO;
   if (survival.active) return JUNGLE; // survival: the lost stadium in the jungle
   return VENUES[getCampaign()] ?? TRAINING;

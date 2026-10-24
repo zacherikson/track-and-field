@@ -4,6 +4,21 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Live survival
+- **New: Live → Survival.** Up to ten people, the five events in a random
+  order again and again; last place in each event is out, last one standing
+  wins. Everyone tied for last goes, unless that's everyone left (then nobody
+  does and the event doesn't count). Leaving or dropping off is out.
+- Out: where you finished, then live standings until there's a winner.
+  Points add up but aren't shown; yours go on a hidden XP total.
+- **The Colosseum**, its venue: ten lanes on a track twice as deep, the
+  velarium, arches, seats full of togas, a marble podium wall. Far runners
+  shrink more with distance on a ten-lane track.
+- Waiting rooms: survival's takes ten and stays open 60 s
+  (`liveRules.js` maxPlayers / startDelay); **any full room now starts
+  straight away** (it used to wait out its countdown with nobody able to join).
+  The meet server needs redeploying for this.
+
 ## Survival: statues in the ruins
 - The Lost Stadium's stand has ruins on its tiers: carved stone statues in
   the style of the Andean monoliths (square head with a headdress band,

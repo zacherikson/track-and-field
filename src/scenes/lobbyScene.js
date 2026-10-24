@@ -3,16 +3,19 @@ import { drawIcon } from '../core/icons.js';
 import { olympic } from '../render/posterScenery.js';
 import { CHARACTERS, athleteById } from '../athletes/roster.js';
 import { eventById } from '../events/registry.js';
-import { Lobby, MAX_PLAYERS, CLOSE_BEFORE, serverNow } from '../online/live.js';
+import { Lobby, CLOSE_BEFORE, serverNow } from '../online/live.js';
+import { maxPlayers, SURVIVAL_KIND } from '../online/liveRules.js';
+import { colosseum } from '../render/posterScenery.js';
 import { flow } from '../flow.js';
 import { TOURNAMENT_KIND, liveAthletes } from '../tournament/tournament.js';
 
 /**
  * The waiting room for a live event or tournament (`kind`: an event id or a
  * tournament's, online/live.js). You join as soon as you arrive; once someone
- * else is here a half-minute countdown starts, more players can still join (up
- * to MAX_PLAYERS), and everyone goes to the event together: when it runs out,
- * or as soon as every player has tapped I'm ready.
+ * else is here a half-minute countdown starts (a minute for live survival),
+ * more players can still join (up to liveRules.js maxPlayers), and everyone
+ * goes to the event together: when it runs out, as soon as every player has
+ * tapped I'm ready, or once it's full.
  *
  * With `squad` ({ key, name }) it's that squad's practice room: only its
  * members see it (on their Squad tab, where they tap Join), and leaving goes
@@ -22,7 +25,8 @@ export class LobbyScene {
   constructor(kind, squad = null) {
     this.kind = kind;
     this.squad = squad;
-    this.title = kind === TOURNAMENT_KIND ? 'Tournament' : eventById(kind).name;
+    this.title = kind === TOURNAMENT_KIND ? 'Tournament' : kind === SURVIVAL_KIND ? 'Survival' : eventById(kind).name;
+    this.max = maxPlayers(kind);
   }
 
   enter() {
@@ -116,10 +120,11 @@ export class LobbyScene {
   }
 
   render(ctx, view) {
-    // Live's venue: the stadium at night; the room on a cream card in front of it.
-    olympic(ctx, 0, 0, view.w, view.h, { trackH: 130, night: true });
+    // Live's venue: the stadium at night (survival's: the Colosseum); the room on a cream card in front of it.
+    if (this.kind === SURVIVAL_KIND) colosseum(ctx, 0, 0, view.w, view.h, { trackH: 130 });
+    else olympic(ctx, 0, 0, view.w, view.h, { trackH: 130, night: true });
     titlePlate(ctx, view, `${this.squad ? 'PRACTICE' : 'LIVE'} · ${this.title.toUpperCase()}`, this.squad ? `${this.squad.name} only` : '', { face: PAL.gold, ink: PAL.ink });
-    const w = Math.min(520, view.w - 40);
+    const w = Math.min(this.max > 4 ? 700 : 520, view.w - 40); // live survival's ten: two columns
     const x0 = view.w / 2 - w / 2;
     const top = 96;
     const h = 326;
@@ -144,16 +149,20 @@ export class LobbyScene {
     if (left == null) line(this.squad ? 'Waiting for a squadmate to join…' : 'Waiting for another player to join…', top + 38, { size: 22, weight: 800, color: PAL.ink });
     else if (allReady) line('EVERYONE’S READY!', top + 38, big);
     else line(`STARTS IN ${left}`, top + 38, big);
-    const sub = left == null ? `${v.players.length} of ${MAX_PLAYERS} players` : `${v.players.length} of ${MAX_PLAYERS} players · ${readyN} ready · starts when everyone is`;
+    const sub = left == null ? `${v.players.length} of ${this.max} players` : `${v.players.length} of ${this.max} players · ${readyN} ready · starts when everyone is`;
     line(sub, top + 72, { size: 16 });
 
-    // The players, one row each (yours gold).
+    // The players, one row each (yours gold): in two columns once there are more than four.
+    const cols = v.players.length > 4 ? 2 : 1;
+    const perCol = Math.ceil(v.players.length / cols);
+    const rowH = Math.min(44, (h - 112) / perCol);
     v.players.forEach((p, i) => {
-      const y = top + 116 + i * 44;
-      const rx = x0 + 16;
-      const rw = w - 32;
+      const col = Math.floor(i / perCol);
+      const y = top + 116 - (44 - rowH) / 2 + (i % perCol) * rowH;
+      const rw = (w - 32 - (cols - 1) * 12) / cols;
+      const rx = x0 + 16 + col * (rw + 12);
       ctx.fillStyle = p.me ? PAL.gold : i % 2 ? PAL.cream : '#EFE2C3';
-      chamfer(ctx, rx, y - 19, rw, 38, 4);
+      chamfer(ctx, rx, y - rowH / 2 + 3, rw, rowH - 6, 4);
       ctx.fill();
       const colors = (athleteById(p.athlete) ?? CHARACTERS[0]).colors;
       ctx.fillStyle = colors.shirt;

@@ -164,6 +164,21 @@ export function setBoardView(view) {
 }
 
 /**
+ * Points earned in live survival, added up across games (survival/liveSurvival.js
+ * `totals`). Not shown anywhere yet: kept for levelling up one day. This phone only.
+ */
+export function getXp() {
+  return load().xp ?? 0;
+}
+
+export function addXp(points) {
+  if (!(points > 0)) return;
+  const data = load();
+  data.xp = (data.xp ?? 0) + Math.round(points);
+  save(data);
+}
+
+/**
  * The athlete you made in the Athlete Maker, as its code (athletes/custom.js),
  * or null. Kept on this phone whichever athlete you play as; your account
  * gets it as your character while it's the one you play as.

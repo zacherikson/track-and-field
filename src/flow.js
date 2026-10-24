@@ -3,6 +3,7 @@
 // tournament: intro -> event -> standings -> next intro ... -> champion
 // survival: intro -> event -> survival results -> next intro ... until you lose one -> game over
 // live: waiting room -> event (or a tournament's events) with the others in it (a squad's practice too)
+// live survival: waiting room -> intro -> event -> who's out -> next intro ... until one is left (or you're out: the standings)
 // meet: sign-up -> lobby -> intro -> event -> meet standings -> next intro ... -> relay -> final standings
 import { HomeScene } from './scenes/homeScene.js';
 import { IntroScene } from './scenes/introScene.js';
@@ -16,7 +17,10 @@ import { StandingsScene } from './tournament/standingsScene.js';
 import { MeetScene } from './meet/meetScene.js';
 import { MeetStandingsScene } from './meet/meetStandingsScene.js';
 import { SurvivalScene } from './survival/survivalScene.js';
+import { LiveSurvivalScene } from './survival/liveSurvivalScene.js';
 import { survival } from './survival/survival.js';
+import { liveSurvival, eventAt } from './survival/liveSurvival.js';
+import { SURVIVAL_KIND } from './online/liveRules.js';
 import { meet } from './meet/meet.js';
 import { tournament } from './tournament/tournament.js';
 import { openTuning } from './tuning/panel.js';
@@ -34,6 +38,7 @@ export const flow = {
     meet.end(); // or a squad meet
     tournament.end(); // leaving to the menu ends a tournament in progress
     survival.end(); // or a survival run
+    liveSurvival.end(); // or a live one
     game.setScene(new HomeScene(tab));
   },
   // Tournament: the five events in a row, decathlon points, a champion at the end.
@@ -41,6 +46,7 @@ export const flow = {
     resetScars();
     endLive();
     survival.end();
+    liveSurvival.end();
     tournament.start();
     game.setScene(new IntroScene(tournament.event));
   },
@@ -50,6 +56,7 @@ export const flow = {
     endLive();
     meet.end();
     tournament.end();
+    liveSurvival.end();
     setCampaign(null); // nothing to tick off, and the rival's level is survival's own
     survival.start();
     game.setScene(new IntroScene(eventById(survival.eventId)));
@@ -59,6 +66,7 @@ export const flow = {
     const scene = ev.create();
     if (meet.active) scene.live = meet.session; // a squad meet's next event
     else if (tournament.live) scene.live = tournament.live; // a live tournament's next event
+    else if (liveSurvival.live) scene.live = liveSurvival.live; // live survival's next event
     else endLive(); // playing on your own after a live event
     game.setScene(scene);
   },
@@ -67,7 +75,7 @@ export const flow = {
     results = results.map((r) => (r.mark == null ? r : { ...r, mark: roundMark(ev, r.mark) }));
     if (stats?.run) stats = { ...stats, run: { ...stats.run, mark: roundMark(ev, stats.run.mark) } };
     // A live event played to the end: going on from here isn't leaving early (a tournament's is at the end).
-    if (stats?.live && !tournament.active && currentLive()) currentLive().done = true;
+    if (stats?.live && !tournament.active && !liveSurvival.active && currentLive()) currentLive().done = true;
     // A squad's practice: Race again goes back to its waiting room, Menu to the Squad tab.
     if (stats?.live && currentLive()?.squad) stats = { ...stats, squad: currentLive().squad };
     // A campaign event won (first place, ghosts aside) is ticked off.
@@ -81,9 +89,11 @@ export const flow = {
         ? new MeetStandingsScene(ev, results, stats, backdrop)
         : tournament.active
           ? new StandingsScene(ev, results.filter((r) => !r.ghost), stats, backdrop) // a ghost is never scored
-          : survival.active
-            ? new SurvivalScene(ev, results.filter((r) => !r.ghost), stats, backdrop)
-            : new ResultScene(ev, results, stats, backdrop),
+          : liveSurvival.active
+            ? new LiveSurvivalScene(ev, results, stats, backdrop)
+            : survival.active
+              ? new SurvivalScene(ev, results.filter((r) => !r.ghost), stats, backdrop)
+              : new ResultScene(ev, results, stats, backdrop),
     );
   },
   leaderboard: (game, board) => {
@@ -91,6 +101,7 @@ export const flow = {
     endLive();
     tournament.end(); // a Race from the board is a normal race
     survival.end();
+    liveSurvival.end();
     game.setScene(new LeaderboardScene(board));
   },
   // How to play (the Play tab's ❓): a tab per event, `id` open (or the last one looked at).
@@ -106,15 +117,21 @@ export const flow = {
     endLive();
     tournament.end();
     survival.end();
+    liveSurvival.end();
     game.setScene(new LobbyScene(kind, squad));
   },
   // The waiting room has closed: `info` = { kind, room, uid, name, players, startAt, setLen, squad }.
   liveStart: (game, info) => {
     resetScars();
     const tour = info.kind === TOURNAMENT_KIND;
-    const first = tour ? ORDER[0] : info.kind;
+    const surv = info.kind === SURVIVAL_KIND;
+    const first = tour ? ORDER[0] : surv ? eventAt(info.room, 0) : info.kind;
     const session = startLive(info, first);
     if (tour) tournament.start(session);
+    if (surv) {
+      liveSurvival.start(session);
+      return game.setScene(new IntroScene(eventById(first))); // its title card counts down to the first event
+    }
     const scene = eventById(first).create(session);
     scene.live = session;
     game.setScene(scene);
@@ -125,6 +142,7 @@ export const flow = {
     endLive();
     tournament.end();
     survival.end();
+    liveSurvival.end();
     meet.end();
     game.setScene(new MeetScene(squad));
   },

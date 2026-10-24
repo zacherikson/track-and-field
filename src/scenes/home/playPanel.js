@@ -8,6 +8,7 @@ import { EVENTS, SPECIAL_EVENTS, SURVIVAL_BOARD, formatMark } from '../../events
 import { canTune, getBest, getGhostOn, setGhostOn, getPlayerName, setCampaign, getBeaten, takeFreshBeaten, getSpecialLevel, setSpecialLevel } from '../../core/storage.js';
 import { myAthlete, heightOf } from '../../athletes/roster.js';
 import { TOURNAMENT_KIND } from '../../tournament/tournament.js';
+import { SURVIVAL_KIND } from '../../online/liveRules.js';
 import { flow } from '../../flow.js';
 import { syncBests } from '../../online/bests.js';
 import { syncProgress } from '../../online/progress.js';
@@ -38,7 +39,7 @@ let lastList = null;
  *   if GHOST is on), nothing ticked off. Campaigns never have a ghost.
  * - Special Events: what doesn't fit the five (the 4x100m relay, the cycling
  *   time trial), always against computer rivals at the level its RIVALS toggle says.
- * Live is the tournament and the five events against other people.
+ * Live is the tournament, the five events and survival against other people.
  */
 export class PlayPanel {
   constructor(home) {
@@ -126,6 +127,8 @@ export class PlayPanel {
     this.liveButtons = [
       ...EVENTS.map((ev) => new EventTile({ id: ev.id, name: SHORT[ev.id] ?? ev.name, color: PAL.liveGreen, lip: PAL.liveShade, enabled: ev.available, onTap: () => flow.live(this.game, ev.id) })),
       new EventTile({ id: 'tournament', name: 'Tournament', color: PAL.gold, lip: PAL.goldShade, onTap: () => flow.live(this.game, TOURNAMENT_KIND) }),
+      // Live survival: up to ten, last place in each event is out (survival/liveSurvival.js).
+      new EventTile({ id: 'survival', name: 'Survival', color: PAL.survival, lip: PAL.survivalShade, onTap: () => flow.live(this.game, SURVIVAL_KIND) }),
     ];
     // Your ghost (Training only): race your best attempt in every event (remembered on this device).
     this.ghostButton = new Button({
@@ -351,13 +354,13 @@ export class PlayPanel {
     Object.assign(this.rivalButtons[0], { x: view.w / 2 - 56, y: SPECIAL_SETTINGS_Y });
     Object.assign(this.rivalButtons[1], { x: view.w / 2 + 50, y: SPECIAL_SETTINGS_Y });
 
-    // A vs Computer section's page, and Live: six cards in a row (each the same).
-    const n = 6;
-    const tw = Math.min(TILE_MAX, (view.w - margin * 2 - (n - 1) * TILE_GAP) / n);
-    this.tileH = Math.round(tw);
+    // A vs Computer section's page: six cards in a row (each the same); Live's seven.
+    const widthFor = (n) => Math.min(TILE_MAX, (view.w - margin * 2 - (n - 1) * TILE_GAP) / n);
+    this.tileH = Math.round(widthFor(6));
     for (const row of [...this.sections.map((sec) => sec.tiles), this.liveButtons]) {
+      const tw = Math.min(this.tileH, widthFor(row.length));
       const rx = (view.w - (row.length * tw + (row.length - 1) * TILE_GAP)) / 2; // Training's five, centred
-      row.forEach((t, i) => Object.assign(t, { w: tw, h: this.tileH, x: rx + i * (tw + TILE_GAP), y: TILES_Y }));
+      row.forEach((t, i) => Object.assign(t, { w: tw, h: tw, x: rx + i * (tw + TILE_GAP), y: TILES_Y }));
     }
     // Its setting: GHOST (Training), a cream OFF / ON slab on an ink plate.
     Object.assign(this.ghostButton, { x: view.w / 2 + 22, y: Math.max(TILES_Y + this.tileH + 24, GHOST_Y) });

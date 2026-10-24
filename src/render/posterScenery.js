@@ -259,3 +259,105 @@ export function lostStadium(ctx, x, y, w, h, { trackH = 0 } = {}) {
   if (trackH) track(ctx, x, gy, w, trackH, { face: '#A35A3A', line: 'rgba(240,236,214,0.55)', curb: '#9A9478' });
   ctx.restore();
 }
+
+/**
+ * Live survival's venue for the menus (render/venues.js COLOSSEUM): the
+ * Colosseum from outside on a warm afternoon, three tiers of arches and the
+ * attic over them, its far end broken down in steps as it is today, cypresses
+ * and umbrella pines either side, and the arena's terracotta track along the
+ * bottom.
+ */
+export function colosseum(ctx, x, y, w, h, { trackH = 0 } = {}) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x, y, w, h);
+  ctx.clip();
+  const gy = y + h - trackH;
+  const H = gy - y;
+  bands(ctx, x, y, w, H, ['#3D7FC4', '#79A7D6', '#C9D6DA', '#F3D9A4']);
+  cloud(ctx, x + w * 0.18, y + H * 0.16, H * 0.07, '#FBF3E2', '#E2D3B4');
+  cloud(ctx, x + w * 0.8, y + H * 0.11, H * 0.06, '#FBF3E2', '#E2D3B4');
+  hill(ctx, x - w * 0.2, x + w * 0.5, y + H * 0.62, gy, '#B9B07E');
+  hill(ctx, x + w * 0.45, x + w * 1.25, y + H * 0.58, gy, '#A9A372');
+  // The facade: tiers from the ground up (the attic last), the right end broken off lower.
+  const fx = x + w * 0.1, fw = w * 0.8;
+  const base = gy - H * 0.04;
+  const tier = H * 0.15;
+  const STONE = '#D2BB8F', SHADE = '#A48C63', LEDGE = '#ECDCB6', DARK = '#3B2A1C';
+  const tops = (fxr) => (fxr < 0.62 ? 4 : fxr < 0.78 ? 3 : fxr < 0.9 ? 2 : 1); // tiers standing at that point along it
+  const bays = 13;
+  const bw = fw / bays;
+  for (let i = 0; i < bays; i++) {
+    const bx = fx + i * bw;
+    const n = tops((i + 0.5) / bays);
+    for (let t = 0; t < n; t++) {
+      const ty = base - (t + 1) * tier;
+      ctx.fillStyle = STONE;
+      ctx.fillRect(bx, ty, bw + 0.5, tier);
+      ctx.fillStyle = LEDGE;
+      ctx.fillRect(bx, ty, bw + 0.5, Math.max(2, tier * 0.08));
+      if (t < 3) {
+        // An arch in each bay, a half column beside it.
+        const aw = bw * 0.56, ah = tier * 0.72;
+        const ax = bx + bw * 0.55;
+        ctx.fillStyle = DARK;
+        ctx.beginPath();
+        ctx.moveTo(ax - aw / 2, ty + tier);
+        ctx.lineTo(ax - aw / 2, ty + tier - ah + aw / 2);
+        ctx.arc(ax, ty + tier - ah + aw / 2, aw / 2, Math.PI, 0);
+        ctx.lineTo(ax + aw / 2, ty + tier);
+        ctx.fill();
+        ctx.fillStyle = LEDGE;
+        ctx.fillRect(bx + bw * 0.05, ty + tier * 0.1, bw * 0.12, tier * 0.9);
+        ctx.fillStyle = SHADE;
+        ctx.fillRect(bx + bw * 0.14, ty + tier * 0.1, bw * 0.03, tier * 0.9);
+      } else {
+        // The attic: a small square window every other bay.
+        ctx.fillStyle = SHADE;
+        ctx.fillRect(bx, ty + tier * 0.1, bw * 0.1, tier * 0.9);
+        if (i % 2) {
+          ctx.fillStyle = DARK;
+          ctx.fillRect(bx + bw * 0.4, ty + tier * 0.4, bw * 0.24, tier * 0.26);
+        }
+      }
+    }
+    // A broken top where the tiers stop: a jagged edge of stone.
+    const n2 = tops((i + 1.5) / bays);
+    if (i < bays - 1 && n2 < n) {
+      ctx.fillStyle = STONE;
+      ctx.beginPath();
+      ctx.moveTo(bx + bw, base - n * tier);
+      ctx.lineTo(bx + bw * 1.35, base - (n - 0.4) * tier);
+      ctx.lineTo(bx + bw * 1.15, base - (n - 0.7) * tier);
+      ctx.lineTo(bx + bw * 1.5, base - n2 * tier);
+      ctx.lineTo(bx + bw, base - n2 * tier);
+      ctx.fill();
+    }
+  }
+  // The awning's masts along the top of the attic.
+  ctx.fillStyle = SHADE;
+  for (let i = 0; i < bays * 0.62; i += 1.5) ctx.fillRect(fx + i * bw + bw * 0.5, base - 4 * tier - tier * 0.25, Math.max(1.5, bw * 0.05), tier * 0.25);
+  // Cypresses and umbrella pines either side.
+  const cypress = (cx, ch) => {
+    ctx.fillStyle = '#2F4A2A';
+    ctx.beginPath();
+    ctx.ellipse(cx, gy - ch / 2, ch * 0.12, ch / 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+  };
+  const umbrella = (cx, ch) => {
+    ctx.fillStyle = '#5A4632';
+    ctx.fillRect(cx - ch * 0.03, gy - ch, ch * 0.06, ch);
+    ctx.fillStyle = '#3E5E34';
+    ctx.beginPath();
+    ctx.ellipse(cx, gy - ch, ch * 0.42, ch * 0.16, 0, 0, Math.PI * 2);
+    ctx.fill();
+  };
+  cypress(x + w * 0.04, H * 0.48);
+  cypress(x + w * 0.08, H * 0.36);
+  umbrella(x + w * 0.94, H * 0.42);
+  cypress(x + w * 0.985, H * 0.5);
+  ctx.fillStyle = '#C9AE7A';
+  ctx.fillRect(x, gy - H * 0.04, w, H * 0.04 + 1);
+  if (trackH) track(ctx, x, gy, w, trackH, { face: '#B4532F', line: 'rgba(255,255,255,0.8)', curb: '#ECE4D2', lanes: 10 });
+  ctx.restore();
+}

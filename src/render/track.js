@@ -92,9 +92,13 @@ export class TrackRenderer {
     return this.project(camera, view, x, this.laneZ(lane));
   }
 
-  /** Runner size multiplier for a lane: nearly constant, like the original's sprites. */
+  /**
+   * Runner size multiplier for a lane: nearly constant, like the original's
+   * sprites. Ten lanes deep (live survival) they shrink more with distance, so
+   * the far ones don't pile up on each other.
+   */
   figureScale(lane) {
-    return Math.pow(this.scaleAt(this.laneZ(lane)), 0.2);
+    return Math.pow(this.scaleAt(this.laneZ(lane)), this.lanes > 6 ? 0.6 : 0.2);
   }
 
   /** World x range (m) visible at depth z, with a margin. */
@@ -133,6 +137,7 @@ export class TrackRenderer {
     if (!s) return this.drawBackdrop(ctx, view, camera);
     const top = this.L.standsTop;
     const bottom = this.L.boardsTop;
+    if (this.venue.colosseum) return this.drawColosseum(ctx, view, camera, top, bottom);
     ctx.fillStyle = s.body;
     ctx.fillRect(0, top, view.w, bottom - top);
     ctx.fillStyle = s.roof;
@@ -164,6 +169,124 @@ export class TrackRenderer {
     if (this.venue.flashes) this.drawFlashes(ctx, view, camera, top, bottom);
     if (this.venue.lights) this.drawLights(ctx, view, camera, top);
     if (this.venue.overgrowth) this.drawOvergrowth(ctx, view, camera, top, bottom);
+  }
+
+  /**
+   * The Colosseum seen from the arena (venues.js `colosseum`): the awning
+   * (the velarium) strung over the top, the attic wall with its little
+   * windows, a tier of arches with faces in them, then the stepped seats
+   * packed with togas down to the podium wall (drawPodium). All on the
+   * stand's slow parallax.
+   */
+  drawColosseum(ctx, view, camera, top, bottom) {
+    const C = this.venue.colosseum;
+    const S = this.venue.stands;
+    const H = bottom - top;
+    const offset = camera.x * camera.ppm * 0.2;
+    const span = (w) => {
+      const first = Math.floor(offset / w) - 1;
+      return { first, last: first + Math.ceil(view.w / w) + 2 };
+    };
+    const yAttic = top + H * 0.1;
+    const yArch = top + H * 0.27;
+    const ySeats = top + H * 0.6;
+    // Sky shows through the gaps in the awning; the stone behind everything.
+    ctx.fillStyle = C.stone;
+    ctx.fillRect(0, yAttic, view.w, bottom - yAttic);
+    // Attic: a plain wall, pilasters, a small window between each pair.
+    const bay = Math.max(46, H * 0.36);
+    let r = span(bay);
+    for (let i = r.first; i < r.last; i++) {
+      const x = i * bay - offset;
+      ctx.fillStyle = C.shade;
+      ctx.fillRect(x, yAttic, bay * 0.1, yArch - yAttic);
+      ctx.fillStyle = C.dark;
+      const ww = bay * 0.16;
+      ctx.fillRect(x + bay * 0.55 - ww / 2, yAttic + (yArch - yAttic) * 0.35, ww, (yArch - yAttic) * 0.34);
+    }
+    // Cornices: a light ledge with a shadow under it.
+    const ledge = (y) => {
+      ctx.fillStyle = C.cornice;
+      ctx.fillRect(0, y - 3, view.w, 4);
+      ctx.fillStyle = C.shade;
+      ctx.fillRect(0, y + 1, view.w, 2);
+    };
+    ledge(yArch);
+    // The arcade: arches on piers, half columns between, people looking out.
+    const archH = (ySeats - yArch) * 0.78;
+    const aw = bay * 0.62;
+    for (let i = r.first; i < r.last; i++) {
+      const x = i * bay - offset;
+      const ax = x + bay * 0.55;
+      const base = ySeats - 4;
+      ctx.fillStyle = C.dark;
+      ctx.beginPath();
+      ctx.moveTo(ax - aw / 2, base);
+      ctx.lineTo(ax - aw / 2, base - archH + aw / 2);
+      ctx.arc(ax, base - archH + aw / 2, aw / 2, Math.PI, 0);
+      ctx.lineTo(ax + aw / 2, base);
+      ctx.closePath();
+      ctx.fill();
+      // Two or three faces at the rail of each arch.
+      const h = hash(i * 6151);
+      const head = Math.max(4, aw * 0.16);
+      for (let k = 0; k < 3; k++) {
+        if ((h >>> k) % 4 === 0) continue;
+        ctx.fillStyle = S.crowd[(h >>> (k * 3)) % S.crowd.length];
+        ctx.fillRect(ax - aw * 0.36 + k * aw * 0.27, base - head * 1.6, head, head * 1.6);
+        ctx.fillStyle = C.skin[(h >>> (k + 5)) % C.skin.length];
+        ctx.fillRect(ax - aw * 0.36 + k * aw * 0.27, base - head * 2.5, head, head);
+      }
+      // The half column on the pier, with its capital.
+      ctx.fillStyle = C.cornice;
+      ctx.fillRect(x + bay * 0.03, yArch + 4, bay * 0.1, ySeats - yArch - 8);
+      ctx.fillRect(x, yArch + 4, bay * 0.16, 4);
+      ctx.fillStyle = C.shade;
+      ctx.fillRect(x + bay * 0.1, yArch + 8, bay * 0.03, ySeats - yArch - 12);
+    }
+    ledge(ySeats);
+    // The seats: steps of marble, packed solid down to the podium.
+    const seatW = S.seatW;
+    const headS = Math.max(5, seatW - 4);
+    const rows = Math.max(2, Math.floor((bottom - ySeats - 4) / S.rowH));
+    r = span(seatW);
+    for (let row = 0; row < rows; row++) {
+      const y = ySeats + 4 + row * S.rowH;
+      ctx.fillStyle = row % 2 ? C.step : C.cornice;
+      ctx.fillRect(0, y + S.rowH - 3, view.w, 3);
+      const shift = (row % 2) * (seatW / 2);
+      for (let i = r.first; i < r.last + 1; i++) {
+        const h = hash(i * 31 + row * 7919 + 17);
+        if (S.emptyEvery && h % S.emptyEvery === 0) continue;
+        const x = i * seatW - offset + shift;
+        ctx.fillStyle = S.crowd[h % S.crowd.length];
+        ctx.fillRect(x, y + headS * 0.55, headS, S.rowH - 3 - headS * 0.55); // a toga
+        ctx.fillStyle = C.skin[(h >>> 7) % C.skin.length];
+        ctx.fillRect(x + headS * 0.2, y + 1, headS * 0.6, headS * 0.55); // a head
+      }
+    }
+    // The velarium over the top: sailcloth in strips, scalloped along its edge, the ropes holding it.
+    const strip = Math.max(30, H * 0.22);
+    r = span(strip);
+    for (let i = r.first; i < r.last; i++) {
+      const x = i * strip - offset;
+      ctx.fillStyle = C.velarium[((i % 2) + 2) % 2];
+      ctx.beginPath();
+      ctx.moveTo(x, top - 4);
+      ctx.lineTo(x + strip, top - 4);
+      ctx.lineTo(x + strip, yAttic - 2);
+      ctx.quadraticCurveTo(x + strip / 2, yAttic + H * 0.07, x, yAttic - 2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = C.rope;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x, yAttic - 2);
+      ctx.lineTo(x + strip * 0.3, yArch);
+      ctx.stroke();
+    }
+    ctx.fillStyle = 'rgba(0,0,0,0.12)';
+    ctx.fillRect(0, yAttic, view.w, H * 0.05); // the awning's shade on the wall
   }
 
   /**
@@ -347,6 +470,7 @@ export class TrackRenderer {
     const b = this.venue.boards;
     if (b.kind === 'fence') return this.drawFence(ctx, view, camera, top, h, par);
     if (b.kind === 'wall') return this.drawWall(ctx, view, camera, top, h, par);
+    if (b.kind === 'podium') return this.drawPodium(ctx, view, camera, top, h, par, size);
     const led = b.kind === 'led';
     const boardW = 180 * Math.max(1, par);
     const offset = camera.x * camera.ppm * par;
@@ -398,6 +522,30 @@ export class TrackRenderer {
     const firstPost = Math.floor(offset / postW) - 1;
     for (let i = firstPost; i < firstPost + Math.ceil(view.w / postW) + 2; i++) {
       ctx.fillRect(i * postW - offset, top, Math.max(2, h * 0.06), h);
+    }
+  }
+
+  /**
+   * The Colosseum's podium wall where the hoardings would be: marble panels
+   * between pilasters, a red band along the top, gilt lettering.
+   */
+  drawPodium(ctx, view, camera, top, h, par, size) {
+    const b = this.venue.boards;
+    ctx.fillStyle = b.back;
+    ctx.fillRect(0, top, view.w, h);
+    ctx.fillStyle = b.band;
+    ctx.fillRect(0, top, view.w, Math.max(2, h * 0.18));
+    ctx.fillStyle = b.vein;
+    ctx.fillRect(0, top + h - Math.max(2, h * 0.12), view.w, Math.max(2, h * 0.12));
+    const panelW = 180 * Math.max(1, par);
+    const offset = camera.x * camera.ppm * par;
+    const first = Math.floor(offset / panelW) - 1;
+    for (let i = first; i < first + Math.ceil(view.w / panelW) + 2; i++) {
+      const x = i * panelW - offset;
+      ctx.fillStyle = b.pilaster;
+      ctx.fillRect(x, top, Math.max(3, h * 0.2), h);
+      const k = ((i % b.words.length) + b.words.length) % b.words.length;
+      text(ctx, b.words[k], x + panelW / 2, top + h * 0.58, { size: Math.round(size * 0.9), color: b.letters, font: 'display' });
     }
   }
 

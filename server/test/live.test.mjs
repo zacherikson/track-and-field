@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { LobbyCore } from '../src/lobbyCore.js';
 import { RoomCore } from '../src/roomCore.js';
 import { SquadHubCore } from '../src/squadHubCore.js';
-import { LIVE_KINDS, MAX_PLAYERS, START_DELAY, CLOSE_BEFORE } from '../../src/online/liveRules.js';
+import { LIVE_KINDS, MAX_PLAYERS, START_DELAY, CLOSE_BEFORE, SURVIVAL_KIND, maxPlayers, startDelay } from '../../src/online/liveRules.js';
 
 function peer(uid) {
   const p = { uid, name: uid, inbox: [], closed: false, send: (m) => p.inbox.push(m), close: () => (p.closed = true) };
@@ -101,15 +101,38 @@ test('lobby: the one player not ready leaving starts the rest', () => {
   assert.deepEqual(w.opened[0].info.players.map((p) => p.uid), ['a', 'b']);
 });
 
-test('lobby: a full room keeps its start; the next player gets a new room', () => {
+test('lobby: a full room starts straight away; the next player gets a new room', () => {
   const w = lobby();
   const ps = Array.from({ length: MAX_PLAYERS + 1 }, (_, i) => peer(`p${i}`));
   ps.slice(0, MAX_PLAYERS).forEach((p) => w.core.join(p, { kind: 'tournament' }));
   const full = ps[0].last('waiting');
+  assert.equal(full.startAt, w.t + CLOSE_BEFORE, 'nobody else can get in: no point waiting');
   w.core.join(ps[MAX_PLAYERS], { kind: 'tournament' });
   assert.equal(w.opened.length, 1, 'the full room was handed over');
   assert.equal(w.opened[0].info.startAt, full.startAt);
   assert.notEqual(ps[MAX_PLAYERS].last('waiting').room, full.room);
+});
+
+test('lobby: live survival takes ten and stays open a minute', () => {
+  const w = lobby();
+  assert.equal(maxPlayers(SURVIVAL_KIND), 10);
+  assert.equal(maxPlayers('sprint100'), MAX_PLAYERS);
+  assert.equal(startDelay('sprint100'), START_DELAY);
+  assert.ok(LIVE_KINDS.has(SURVIVAL_KIND));
+  const ps = Array.from({ length: 11 }, (_, i) => peer(`s${i}`));
+  w.core.join(ps[0], { kind: SURVIVAL_KIND });
+  w.core.join(ps[1], { kind: SURVIVAL_KIND });
+  assert.equal(ps[0].last('waiting').startAt, w.t + 60000 + CLOSE_BEFORE);
+  for (let i = 2; i < 9; i++) w.core.join(ps[i], { kind: SURVIVAL_KIND });
+  assert.equal(w.core.nodes.get(SURVIVAL_KIND).players.size, 9, 'room for more than four');
+  assert.equal(w.core.rooms()[0].full, false);
+  w.t += 1000;
+  w.core.join(ps[9], { kind: SURVIVAL_KIND });
+  assert.equal(ps[0].last('waiting').startAt, w.t + CLOSE_BEFORE, 'ten: it starts now');
+  w.core.join(ps[10], { kind: SURVIVAL_KIND });
+  assert.equal(w.opened.length, 1);
+  assert.equal(w.opened[0].info.players.length, 10);
+  assert.equal(w.core.nodes.get(SURVIVAL_KIND).players.size, 1, 'the eleventh waits for the next one');
 });
 
 test('lobby: one waiting room per socket, the same account once, only known kinds', () => {

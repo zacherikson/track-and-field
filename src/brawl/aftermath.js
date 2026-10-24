@@ -238,7 +238,7 @@ export class ResultsPanel {
       }
       // Live: the other people in the race in orange, the computer's runners in ink.
       text(ctx, r.name, x + NAME_X, ry + 1, { size, font: 'body', align: 'left', weight: r.isPlayer ? 800 : 700, color: r.gold && !r.isPlayer ? PAL.orangeShade : PAL.ink, maxWidth: this.nameW + 2 });
-      text(ctx, r.value, x + w - 14, ry + 1, { size, font: 'body', weight: 800, align: 'right', color: PAL.ink });
+      text(ctx, r.value, x + w - 14, ry + 1, { size, font: 'body', weight: 800, align: 'right', color: r.out ? PAL.survival : PAL.ink }); // live survival: the ones going out in red
     });
     this.buttons.forEach((b) => b?.draw(ctx));
     ctx.restore();

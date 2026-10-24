@@ -16,12 +16,15 @@ import { venueFor } from '../render/venues.js';
 import { GhostRecorder, GhostRun } from '../online/ghost.js';
 import { TraceRecorder, TracePlayer } from '../online/trace.js';
 import { serverNow } from '../online/live.js';
+import { SURVIVAL_KIND } from '../online/liveRules.js';
 import { LiveRun } from '../online/liveRun.js';
 import { LiveTrace, TraceStream } from '../online/liveTrace.js';
 import { Venue } from '../brawl/venue.js';
 import { Aftermath } from '../brawl/aftermath.js';
 import { Thumbs } from '../core/thumbs.js';
 
+
+const LIVE_SURVIVAL_LANES = 10; // live survival's Colosseum track (online/liveRules.js: ten can play)
 
 /**
  * Base scene for lane races (100m now, 110m hurdles next).
@@ -63,6 +66,7 @@ export class LaneRace {
   constructor(ev, cfg) {
     this.ev = ev;
     this.cfg = survival.active ? { ...cfg, lanes: 2 } : cfg; // survival: a showdown, two lanes (you nearest)
+    this.baseCfg = cfg;
     this.level = getDifficulty(); // 'amateur' | 'pro': the campaign's
     this.difficulty = aiLevel(CONFIG.ai, this.level); // survival: blended to the rival's skill
     // The lean pads take holds: Input queues finger lifts and key releases too.
@@ -72,8 +76,11 @@ export class LaneRace {
   }
 
   enter() {
+    if (this.live?.kind === SURVIVAL_KIND) this.cfg = { ...this.baseCfg, lanes: LIVE_SURVIVAL_LANES }; // up to ten of you, one a lane
     const cfg = this.cfg;
-    this.track = new TrackRenderer(cfg.lanes, cfg.distance, cfg.startX, venueFor(this.live));
+    const venue = venueFor(this.live);
+    // Ten lanes (live survival): the venue's deeper track for them, if it has one.
+    this.track = new TrackRenderer(cfg.lanes, cfg.distance, cfg.startX, venue.arena && cfg.lanes > 6 ? { ...venue, layout: venue.arena } : venue);
     this.track.blocksNudge = (lane) => this.laneNudge(lane);
     this.camera = new Camera();
     if (this.live) this.stage = this.live.stage(this.ev.id);
@@ -695,7 +702,7 @@ export class LaneRace {
     } else {
       drawAthleteFigure(ctx, p.x, p.y + 4 - lift, H * scale * tall, pose, a.colors, p.y + 4, this.faceFor(a));
       // Live: the other players are real rivals, named.
-      if (a.live) text(ctx, a.live.left ? `${a.name} (left)` : a.name, p.x, p.y - H * scale * tall - 6, { size: 14, color: a.tag ?? '#ffb400', shadow: true }); // a meet: in their squad's colour
+      if (a.live) text(ctx, a.live.left ? `${a.name} (left)` : a.name, p.x, p.y - H * scale * tall - 6, { size: Math.max(11, Math.round(14 * scale)), color: a.tag ?? '#ffb400', shadow: true }); // a meet: in their squad's colour (smaller in a far lane)
     }
     // Keep the player's frames for a frame-by-frame ghost (and a live race).
     if (a.isPlayer && this.tracer && (this.state === 'race' || this.state === 'finished')) {

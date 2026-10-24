@@ -148,6 +148,7 @@ export class LiveSession {
     this.step = 0; // which event of the room this is (a tournament has five)
     this.starts = new Map([[this.eventStage(first), info.startAt]]); // stage -> start (server ms), once known
     this.done = false; // played to the end: leaving now isn't leaving early
+    this.mine = {}; // stage -> your result, as sent (the others have it as your doc's `res`)
     const me = info.players.find((p) => p.uid === info.uid);
     this.send({ v: 2, name: info.name ?? '', athlete: me?.athlete ?? '' }, true);
   }
@@ -258,6 +259,7 @@ export class LiveSession {
 
   /** Your result for `stage`: { mark } or { foul } / { fail } / { status: 'dnf' }. */
   result(stage, r) {
+    this.mine[stage] = r;
     this.send({ [`res/${stage}`]: r }, true);
   }
 

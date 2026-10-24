@@ -4,7 +4,8 @@ import { range, hill } from '../../render/posterScenery.js';
 import { cleanName, getPlayerName } from '../../core/storage.js';
 import { cachedSquad, loadMySquad, topSquads, searchSquads, createSquad, joinSquad, leaveSquad, kickFromSquad, SQUAD_MAX, inviteLink, getInvite, setInvite, squadInfo } from '../../online/squads.js';
 import { prewarmSDK } from '../../online/firebase.js';
-import { MAX_PLAYERS, FIELD } from '../../online/live.js';
+import { FIELD } from '../../online/live.js';
+import { maxPlayers, SURVIVAL_KIND } from '../../online/liveRules.js';
 import { EVENTS, eventById } from '../../events/registry.js';
 import { TOURNAMENT_KIND } from '../../tournament/tournament.js';
 import { flow } from '../../flow.js';
@@ -594,7 +595,7 @@ export class SquadPanel {
       const who = r.mine ? 'You’re in' : r.players.length > 1 ? `${r.host} +${r.players.length - 1}` : r.host;
       drawIcon(ctx, 'practice', k.x + 28, k.y + 24, 22, PAL.orange);
       text(ctx, who, k.x + 44, k.y + 25, { size: 19, font: 'body', weight: 800, align: 'left', color: PAL.ink, maxWidth: tw - 24 });
-      text(ctx, `${kindName(r.kind)} · ${r.players.length}/${MAX_PLAYERS}`, k.x + 18, k.y + 50, { size: 16, font: 'body', weight: 600, align: 'left', color: PAL.muted, maxWidth: tw });
+      text(ctx, `${kindName(r.kind)} · ${r.players.length}/${maxPlayers(r.kind)}`, k.x + 18, k.y + 50, { size: 16, font: 'body', weight: 600, align: 'left', color: PAL.muted, maxWidth: tw });
       this.roomBtns[i].draw(ctx);
     });
     const more = this.rooms.length - this.roomBoxes.length;
@@ -653,7 +654,7 @@ const PRACTICE_KINDS = [
 
 /** A practice room's event, by name. */
 function kindName(kind) {
-  return kind === TOURNAMENT_KIND ? 'Tournament' : (eventById(kind)?.name ?? kind);
+  return kind === TOURNAMENT_KIND ? 'Tournament' : kind === SURVIVAL_KIND ? 'Survival' : (eventById(kind)?.name ?? kind);
 }
 
 /** What to say when a squad or the list can't be loaded. */

@@ -195,6 +195,34 @@ won.
 - Quit ends the run without posting it. The code is in
   [`src/survival/`](src/survival/survival.js).
 
+## Live survival
+
+Live → **Survival**: up to ten people (the waiting room stays open a minute
+after the second arrives, or starts as soon as it's full or everyone's
+ready). The five events in a random order, again and again; **last place in
+each event is out**, and the last one standing wins.
+
+- Everyone tied for last is out, unless that's everyone still in: then nobody
+  is and the event doesn't count. No mark (a DNF, three fouls) is last.
+- Leaving, or your phone dropping off, is out (and stays out if it comes
+  back); so is a result that never comes (90 s).
+- Out: you see where you finished, then the standings to watch the rest live
+  (who's still in, their marks as they come in, who went out when) until
+  there's a winner. Then Play again or Menu.
+- Points add up for everyone as in a tournament but aren't shown: yours go
+  on your XP (`core/storage.js` getXp) when you're out or it's over, for
+  levelling up one day.
+- At **The Colosseum** (render/venues.js COLOSSEUM): the velarium over the
+  top, a tier of arches with faces in them, the stepped seats packed with
+  togas, a marble podium wall with gilt lettering where the hoardings would
+  be, the arena's raked sand. The races have ten lanes on a track twice as
+  deep (the venue's `arena` layout), the far runners smaller.
+- Nobody's in charge: every phone works out the same order (seeded with the
+  room) and who's out (from everyone's results, to the hundredth)
+  ([`src/survival/liveSurvival.js`](src/survival/liveSurvival.js),
+  `test/liveSurvival.test.mjs`). The meet server only knows the room takes
+  ten (`src/online/liveRules.js`).
+
 ## 4×100m relay
 
 Under vs Computer → **Special Events**. Six teams of four on one long straight, in their
@@ -370,11 +398,12 @@ keep everything either copy has beaten and the best five marks from both, and
 the athlete chosen most recently wins. A guest's progress stays on the phone
 until they sign in.
 
-**Live play**: **🌐 Live** on the Play tab lists every event and the
-tournament, live against other people (**🤖 vs Computer** is against the
+**Live play**: **🌐 Live** on the Play tab lists every event, the
+tournament and survival, live against other people (**🤖 vs Computer** is against the
 computer). You wait in a waiting room for that event until someone else joins;
-then a countdown starts, more can join (up to 4), and everyone starts at the
-same moment (each phone reads the server's clock). There are no computer rivals
+then a countdown starts, more can join (up to 4; 10 for survival), and everyone starts at the
+same moment (each phone reads the server's clock). A full room starts straight
+away. There are no computer rivals
 in live play, so every phone shows the same results.
 - Races: everyone's gun fires together, in the lanes next to yours.
 - Field events: every round starts together, so you all run up at once; the
@@ -384,6 +413,7 @@ in live play, so every phone shows the same results.
   its results show for a few seconds, then the overall standings by themselves,
   counting down to the next event, which starts by itself. Nobody taps to go on; anyone still playing after 20 s is left to
   catch up.
+- Survival: see Live survival.
 
 Live play runs on the meet server ([server/](server/README.md)), like squad
 meets: a Lobby object holds the public waiting rooms (a squad's Practice

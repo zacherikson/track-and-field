@@ -488,7 +488,8 @@ export const CONFIG = {
     // the top at 10 m/s, × (10 / speed) ^ speedPower. In the original a 30% slower plant swings
     // only ~15% longer (power 0.4). The spark climbs back up the pole over it: you're at the top,
     // upside down, as it reaches your hands. bend: how much the pole bends mid-swing (share of
-    // its length). A weak vault also leaves it bent at the top, so you're only as high as your mark.
+    // its length). The pole straightens fully on every vault, as in the original: a weak vault
+    // is the same swing to the same top, just slower; you leap off it less (flight).
     swing: { timeAt10: 0.85, speedPower: 0.4, bend: 0.21 },
     // Off the pole, under gravity (m/s², lighter than real so the vault reads): you push off the
     // top of the pole and fly forward to the bar, at least `push` m up from your hips at the top
@@ -497,7 +498,9 @@ export const CONFIG = {
     // for about 0.7 s. Higher vaults hang longer. heightScale: everything in the air is drawn this
     // much higher than your mark (the bar too), so a vault looks bigger. Look only: the mark is
     // what's scored.
-    flight: { gravity: 7.5, push: 0.4, heightScale: 1.2 },
+    // dropBelow: let go so late the release is worth less than this and you don't leap at all:
+    // you drop off the top of the pole onto the front of the mat (the original's 1 m vaults).
+    flight: { gravity: 7.5, push: 0.4, heightScale: 1.2, dropBelow: 0.15 },
     // Layout as in the original (further than real): the standards stand well past the box, so
     // you push off the pole and fly forward to the bar, leaving the pole behind; the mat starts
     // just past the box.

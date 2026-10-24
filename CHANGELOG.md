@@ -4,6 +4,29 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Pole vault: the same swing every time, as in the original
+- **What was wrong:** a weak vault left the pole bent at the top so your hips
+  matched your mark (`topChord`). On a slow vault the mark is low, so the pole
+  curled into a hairpin, and the slow swing made it obvious.
+- **The original's way:** the swing is the same animation on every vault. The
+  pole always straightens fully to upright, and you reach the same handstand
+  on top of it. Speed only sets the pace: a slow vault swings slower (already
+  the case, `swing.speedPower`).
+- **The height is in the leap off the top:**
+  - A high mark leaps up to it: 1.4 m off the pole at 5.8 m.
+  - A low mark barely leaves the pole: the `flight.push` 0.4 m hop, scaled
+    down for low marks (0.2 m at 2.4 m).
+  - The bar still stops at your mark (drawn ×1.2), below you on a low vault,
+    as in the original.
+- **Dropping off the pole:** now only when the release is worth less than the
+  new `flight.dropBelow` (15%). That's the original's 1 m vaults. It used to
+  happen whenever your mark was below your hips.
+- **Removed:** `topChord` / `predictChord` and the vault's `cTop`.
+- **Heights unchanged.** Video:
+  `docs/pole-vault-compare/vault-slow-vs-fast.mp4` (the original's 2.84 m and
+  6.62 m vaults over ours at 70% and full speed).
+- **Tuning** (Pole Vault: look): Drop off the pole below.
+
 ## Pole vault: no meter marks on the standards
 - The 1–7 m marks and numbers on the far upright are gone. The vault is drawn
   `flight.heightScale` (1.2×) higher than its mark, so they no longer matched,

@@ -76,7 +76,9 @@ function swingKey(u, col) {
  *   reaches your hands at the end of the pole. You hold the very end of the
  *   pole the whole way. The swing is timed to the spark: as it reaches your
  *   hands you're at the top, upside down and straight with the pole upright,
- *   on every vault (a weak one leaves the pole a little bent, so lower). Thumbs already down when the plant window
+ *   on every vault: the same swing, quicker the faster you planted (as in
+ *   the original). How high you leap off the top is what differs. Thumbs
+ *   already down when the plant window
  *   opens (one pressed since the pads lit, the other maybe still down from
  *   the last stride) plant then: an early hold registers, scored by
  *   `press.earlyHoldOnTime` (core/thumbs.js). You swing up the bending pole, push off the
@@ -131,9 +133,6 @@ export class PoleVault {
     const gripY = Math.min(P.gripY * this.tall, 0.95 * P.length);
     this.plantX = -Math.sqrt(P.length ** 2 - gripY ** 2);
     this.phi0 = Math.asin(gripY / P.length);
-    // Hips to hands upside down at the top of the pole (arms straight along the body).
-    const top = handPos(0, 0, this.figH, vaultSwingPose(Math.PI, 1), 0);
-    this.reach = Math.hypot(top.x, top.y);
   }
 
   exit() {
@@ -168,7 +167,7 @@ export class PoleVault {
     this.holdT = null; // both thumbs down (the plant press)
     this.releaseT = null;
     this.plantT = null;
-    this.vault = null; // { v, u, pq, rq, height, cTop, sw }
+    this.vault = null; // { v, u, pq, rq, height, sw }
     this.fly = null; // { t0, x0, y0, vx, vy, T }
     this.mark = null; // { mark } or { fail: true }
     this.failWhy = null; // why there's no height, for the card
@@ -297,38 +296,19 @@ export class PoleVault {
     return height * (this.cfg.flight.heightScale ?? 1);
   }
 
-  /**
-   * How high your hands are at the top of the pole (the upright pole's chord,
-   * box to hands) for a vault of `height`: you're just below it there, upside
-   * down over your hands, and the push takes you the rest of the way. A weak
-   * vault leaves the pole bent at the top, as far as it takes for the height
-   * you see to be your mark.
-   */
-  topChord(height) {
-    return clamp(height - this.cfg.flight.push - this.reach, 0.3 * this.L, this.L);
-  }
-
-  /** Until the release is known, aim for a perfect release (with the plant you had). */
-  predictChord() {
-    const vt = this.vault;
-    if (vt.height != null) return this.topChord(this.shown(vt.height));
-    const pq = this.holdT == null ? 1 : pressQuality(this.holdT - this.plantT, this.cfg.press);
-    return this.topChord(this.shown(vaultHeight({ v: vt.v, pq, rq: 1 }, this.cfg)));
-  }
-
   // ---------------------------------------------------------------- simulation
 
   /**
    * On the pole at swing progress u (0 plant .. 1 top): the pole rotates up
-   * about the box to upright while it bends and straightens again (to
-   * `vault.cTop` at the top); the figure hangs from the end of the pole by its
-   * hands, swinging from below them to upside down and straight above them.
+   * about the box to upright while it bends and straightens again, all the way,
+   * on every vault (as in the original: a slow vault is the same swing, just
+   * slower); the figure hangs from the end of the pole by its hands, swinging
+   * from below them to upside down and straight above them.
    */
   swingAt(u) {
     const vt = this.vault;
     const phi = this.phi0 + (Math.PI / 2 - this.phi0) * swingKey(u, 1);
-    const unbent = this.L + (vt.cTop - this.L) * ease(u); // a weak vault's pole doesn't quite straighten
-    const c = unbent * (1 - this.cfg.swing.bend * swingKey(u, 2));
+    const c = this.L * (1 - this.cfg.swing.bend * swingKey(u, 2));
     const hands = { x: -c * Math.cos(phi), y: c * Math.sin(phi) };
     const alpha = swingKey(u, 3);
     const pose = vaultSwingPose(alpha, u);
@@ -362,7 +342,6 @@ export class PoleVault {
       // now, so the swing only creeps.
       const tTop = (c0 ?? end) + swingT;
       vt.u = tTop <= end ? 1 : vt.u + (1 - vt.u) * Math.min(1, dt / (tTop - t));
-      if (vt.u < 1) vt.cTop = damp(vt.cTop, this.predictChord(), 8, dt); // up there, the pole stays as it is
       const sw = this.swingAt(vt.u);
       vt.sw = sw;
       this.hip = sw.hip;
@@ -421,7 +400,6 @@ export class PoleVault {
     this.plantT = t;
     this.stats.topSpeed = Math.max(this.stats.topSpeed, r.v);
     this.vault = { v: r.v, u: 0, pq: null, rq: null, height: null };
-    this.vault.cTop = this.predictChord();
     // Pressed early and already let go? Then that's your release.
     if (this.holdT != null && this.releaseT != null) this.decide();
     this.kickLeft = this.cfg.camera.plantKick ?? 0; // the jolt as the pole bites (followCamera)
@@ -440,12 +418,14 @@ export class PoleVault {
     const vt = this.vault;
     const g = this.cfg.flight.gravity;
     const h0 = this.hip;
-    // A push up off the pole to the bar. Let go far too late and your mark is below where you
-    // already are: no push, you just drop off the top onto the front of the mat (as the original's
-    // 1 m vaults do).
+    // You're at the same top of the pole on every vault; the leap off it is what differs (as in
+    // the original): up to your mark, or at least a `push` hop. Let go far too late (release
+    // quality under `flight.dropBelow`) and you just drop off the top onto the front of the mat,
+    // as the original's 1 m vaults do. The bar still stops at your mark.
+    const weak = vt.rq < (this.cfg.flight.dropBelow ?? 0);
     const shownH = this.shown(vt.height);
-    const weak = shownH < h0.y;
-    const peak = weak ? h0.y + 0.08 : Math.max(shownH, h0.y + this.cfg.flight.push);
+    const hop = this.cfg.flight.push * clamp(shownH / h0.y, 0.3, 1); // a low mark barely leaves the pole
+    const peak = weak ? h0.y + 0.08 : Math.max(shownH, h0.y + hop);
     const xBar = weak ? h0.x + 0.15 : this.cfg.uprightX;
     const landX = weak ? this.cfg.mat.from + 1.1 : this.cfg.landX;
     const yLand = this.cfg.mat.height + 0.2;

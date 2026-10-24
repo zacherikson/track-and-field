@@ -8,6 +8,7 @@ import { IntroScene } from './scenes/introScene.js';
 import { ResultScene } from './scenes/resultScene.js';
 import { LeaderboardScene } from './scenes/leaderboardScene.js';
 import { ProfileScene } from './scenes/profileScene.js';
+import { AthleteMakerScene } from './scenes/athleteMaker.js';
 import { TutorialScene } from './scenes/tutorialScene.js';
 import { LobbyScene } from './scenes/lobbyScene.js';
 import { StandingsScene } from './tournament/standingsScene.js';
@@ -76,6 +77,8 @@ export const flow = {
   },
   // How to play (the Play tab's ❓): a tab per event, `id` open (or the last one looked at).
   tutorial: (game, id = null) => game.setScene(new TutorialScene(id)),
+  // The Athlete Maker: make (or change) the athlete of your own; Save or Cancel go back to the Athlete tab.
+  maker: (game) => game.setScene(new AthleteMakerScene()),
   // Your profile; Back returns to the home screen's `tab`.
   profile: (game, tab = 'play') => game.setScene(new ProfileScene(null, tab)),
   // Live: the waiting room for an event or the tournament (`kind`), then play with everyone in it (online/live.js).

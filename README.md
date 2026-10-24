@@ -290,6 +290,24 @@ yours. Your athlete does every event and the whole tournament (all five, like a
 pentathlon); in each event the other five are your rivals. The athletes only
 look different for now; they all run on the same physics.
 
+**Make your own** (the last card, CREATE): the Athlete Maker, Mii style. Pick
+a skin tone, a hairstyle (headband, short, spiky, afro, ponytail, bun,
+fringe, bald, mohawk, long) and its colour, a shirt, shorts, a height (Joey's
+to a bit taller than everyone) and a build (up to Chonk's), and give them a
+name (Rename, up to 12 letters; it starts as your username). Random rolls a
+whole new look. They warm up on the left as you go and react to every change.
+Save makes them yours; tap their card again (or Edit) to change them. One of
+your own at a time. Playing as them, the cast member whose shirt is most like
+theirs sits out, so there are still five rivals.
+
+A made athlete's id is its look as a short code (`~1` + a digit per pick +
+the name, [`src/athletes/custom.js`](src/athletes/custom.js)), so it goes
+wherever an athlete id goes with no change to the server or the database:
+your account (the athlete you play as follows you to another phone), live
+rooms and meets (the others see your athlete, on a build that knows codes;
+older ones show Juno), ghosts, and the home screens' sideshow, where they
+join in.
+
 (There used to be a lineup, a different athlete per event, and a Team
 tournament for it. Both are gone for now; the Team Tournament's board,
 `teamtournament`, stays in the database but isn't shown.)
@@ -476,6 +494,7 @@ src/online/
   ghosts.js           picks which ghost races: best tournament, a leaderboard pick, or your best
 src/scenes/inviteScreen.js      the invite screen a squad invite link opens: pick a username, join
 src/scenes/homeScene.js         the home screen: Athlete | Play | Squad tabs, swipes, the tab bar
+src/scenes/athleteMaker.js      the Athlete Maker: make your own athlete (looks in src/athletes/custom.js)
 src/scenes/home/                its panels: athletePanel.js (pick your athlete),
                                 playPanel.js (the events, tournament and settings), squadPanel.js (your squad, Practice),
                                 sideshow.js + skits.js (the skits in the background of all three)

@@ -629,7 +629,8 @@ function shade(hex, k) {
 /**
  * Hair on a head at (hx, hy), radius r, tilted with the torso (`lean`). The
  * figure faces +x, so "back" is -x. `colors.style`: band (headband in the
- * shirt color, the default), spiky, afro, ponytail, bun, short, fringe.
+ * shirt color, the default), spiky, afro, ponytail, bun, short, fringe, bald,
+ * mohawk, long (and refcap, the referee's).
  */
 function drawHair(ctx, hx, hy, r, lean, colors) {
   const style = colors.style ?? 'band';
@@ -675,6 +676,32 @@ function drawHair(ctx, hx, hy, r, lean, colors) {
     ctx.fill();
   } else if (style === 'short') {
     cap();
+  } else if (style === 'bald') {
+    // Nothing on top.
+  } else if (style === 'mohawk') {
+    // A crest from the forehead to the back of the head, shaved sides.
+    ctx.beginPath();
+    ctx.moveTo(r * 0.55, -r * 0.75);
+    ctx.lineTo(r * 0.35, -r * 1.55);
+    ctx.lineTo(-r * 0.1, -r * 1.65);
+    ctx.lineTo(-r * 0.55, -r * 1.5);
+    ctx.lineTo(-r * 0.95, -r * 1.15);
+    ctx.lineTo(-r * 0.85, -r * 0.5);
+    ctx.arc(0, 0, r * 0.98, Math.PI * 1.15, Math.PI * 1.7);
+    ctx.closePath();
+    ctx.fill();
+  } else if (style === 'long') {
+    // A cap, and hair down the back past the shoulders.
+    cap();
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.2, -r * 0.95);
+    ctx.quadraticCurveTo(-r * 1.25, -r * 0.7, -r * 1.2, r * 1.0);
+    ctx.lineTo(-r * 1.25, r * 2.0);
+    ctx.lineTo(-r * 0.45, r * 2.0);
+    ctx.lineTo(-r * 0.4, r * 0.4);
+    ctx.lineTo(-r * 0.9, -r * 0.1);
+    ctx.closePath();
+    ctx.fill();
   } else if (style === 'refcap') {
     // The referee's red cap: a dome, and the peak out over the face.
     ctx.beginPath();

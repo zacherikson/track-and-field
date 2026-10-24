@@ -1,6 +1,6 @@
 import { text, PAL } from '../../core/ui.js';
 import { drawFigure, handPos, headCircle, BLOCK_FEET } from '../../athletes/stickFigure.js';
-import { CHARACTERS, REFEREE, heightOf } from '../../athletes/roster.js';
+import { CHARACTERS, REFEREE, heightOf, myCustom } from '../../athletes/roster.js';
 import { drawJavelin } from '../../render/javelinField.js';
 import { SKITS } from './skits.js';
 
@@ -423,7 +423,8 @@ export class Sideshow {
   /** A skit and a cast for it, from the athletes (and the referee) not in a skit already. */
   start() {
     const busy = new Set(this.slots.flatMap((s) => s.run?.cast.map((c) => c.id) ?? []));
-    const free = CHARACTERS.filter((c) => c.id !== this.exclude && !busy.has(c.id));
+    const everyone = myCustom() ? [...CHARACTERS, myCustom()] : CHARACTERS; // the one you made joins in
+    const free = everyone.filter((c) => c.id !== this.exclude && !busy.has(c.id));
     const fits = Object.keys(SKITS).filter((id) => {
       const need = SKITS[id].cast;
       return need.filter((r) => r === 'athlete').length <= free.length && (!need.includes('ref') || !busy.has(REFEREE.id));

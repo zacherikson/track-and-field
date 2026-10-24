@@ -1,10 +1,12 @@
 import { CONFIG } from '../../config.js';
-import { text, slab, chamfer, titlePlate, PAL } from '../../core/ui.js';
+import { Button, text, slab, chamfer, titlePlate, PAL } from '../../core/ui.js';
+import { drawIcon } from '../../core/icons.js';
 import { pinebrook } from '../../render/posterScenery.js';
 import { drawFigure, runPose, POSES } from '../../athletes/stickFigure.js';
-import { CHARACTERS, myAthlete, heightOf } from '../../athletes/roster.js';
+import { CHARACTERS, myAthlete, myCustom, heightOf } from '../../athletes/roster.js';
 import { setCharacter } from '../../core/storage.js';
 import { Sideshow } from './sideshow.js';
+import { flow } from '../../flow.js';
 
 
 /**
@@ -13,6 +15,10 @@ import { Sideshow } from './sideshow.js';
  * their shirt colour, name, tagline and height; below, on a band, everyone as
  * cream cards (yours gold), and tapping one makes them yours. Remembered on this device and your
  * account (online/progress.js).
+ *
+ * The last card is the athlete you make yourself (the Athlete Maker,
+ * scenes/athleteMaker.js): CREATE until you have, then them. Tap it again
+ * once they're yours (or Edit on the big card) to change them.
  */
 export class AthletePanel {
   constructor(home) {
@@ -23,7 +29,8 @@ export class AthletePanel {
   enter() {
     this.phase = 0;
     this.flashT = 0; // just changed: the spotlight lights up
-    this.cards = CHARACTERS.map((c) => ({ c, x: 0, y: 0, w: 0, h: 0, pressT: 0 }));
+    this.cards = [...CHARACTERS.map((c) => ({ c, x: 0, y: 0, w: 0, h: 0, pressT: 0 })), { c: myCustom(), maker: true, x: 0, y: 0, w: 0, h: 0, pressT: 0 }];
+    this.editBtn = new Button({ label: 'Edit', icon: 'edit', look: 'chip', w: 104, h: 42, onTap: () => flow.maker(this.game) });
     this.sideshow = new Sideshow(); // everyone, up to no good under the cards
   }
 
@@ -31,17 +38,24 @@ export class AthletePanel {
   layout(view, bottom) {
     const margin = 20 + Math.max(view.safe.l, view.safe.r);
     const gap = 12;
-    const n = CHARACTERS.length;
+    const n = this.cards.length;
     const cw = Math.min(130, (view.w - margin * 2 - gap * (n - 1)) / n);
     const ctotal = cw * n + gap * (n - 1);
     const ch = Math.min(160, bottom - CARDS_Y - 14);
     this.cards.forEach((k, i) => Object.assign(k, { x: (view.w - ctotal) / 2 + i * (cw + gap), y: CARDS_Y, w: cw, h: ch }));
     const sw = Math.min(580, view.w - margin * 2);
     this.spot = { x: view.w / 2 - sw / 2, y: 66, w: sw, h: BAND_Y - 66 - 16 };
+    Object.assign(this.editBtn, { x: this.spot.x + sw - this.editBtn.w - 12, y: this.spot.y + this.spot.h - this.editBtn.h - 16 });
     this.bottom = bottom;
   }
 
   onShow() {}
+
+  /** Tapped a card: that athlete becomes yours. The maker's card: make one (or, already yours, change them). */
+  tapCard(card) {
+    if (card.maker && (!card.c || card.c === myAthlete())) return flow.maker(this.game);
+    this.pick(card.c);
+  }
 
   pick(c) {
     if (c === myAthlete()) return;
@@ -55,18 +69,23 @@ export class AthletePanel {
     this.flashT = Math.max(0, this.flashT - dt);
     this.sideshow.update(dt);
     for (const k of this.cards) k.pressT = Math.max(0, k.pressT - dt);
+    this.editBtn.update(dt);
     for (const e of events) {
       if (e.type === 'key') {
         // ← / →: the next athlete along.
         const step = e.code === 'ArrowRight' ? 1 : e.code === 'ArrowLeft' ? -1 : 0;
-        if (step) this.pick(CHARACTERS[(CHARACTERS.indexOf(myAthlete()) + step + CHARACTERS.length) % CHARACTERS.length]);
+        const list = this.cards.map((k) => k.c).filter(Boolean);
+        if (step) this.pick(list[(list.indexOf(myAthlete()) + step + list.length) % list.length]);
+        else if (e.code === 'KeyE' || e.code === 'KeyM') flow.maker(this.game);
         continue;
       }
       if (e.type !== 'down') continue;
+      if (myAthlete().custom && this.editBtn.tap(e.x, e.y)) return;
       const card = this.cards.find((k) => e.x >= k.x && e.x <= k.x + k.w && e.y >= k.y && e.y <= k.y + k.h);
       if (card) {
         card.pressT = 0.12;
-        this.pick(card.c);
+        this.tapCard(card);
+        if (this.game.scene !== this.home) return;
       }
     }
   }
@@ -130,6 +149,7 @@ export class AthletePanel {
     text(ctx, c.name.toUpperCase(), tx, b.y + fh * 0.3, { size: 50, font: 'display', align: 'left', track: 2, color: PAL.ink, maxWidth: tw });
     text(ctx, c.tagline, tx + 2, b.y + fh * 0.6, { size: 19, font: 'body', align: 'left', color: PAL.ink, maxWidth: tw });
     text(ctx, `${(CONFIG.figure.height * heightOf(c.colors)).toFixed(2)} m`, tx + 2, b.y + fh * 0.8, { size: 17, font: 'body', align: 'left', color: PAL.muted, maxWidth: tw });
+    if (c.custom) this.editBtn.draw(ctx);
   }
 
   /** An athlete card: cream, with their shirt colour along the top; `on`: yours (gold, and warming up). */
@@ -137,6 +157,7 @@ export class AthletePanel {
     const { c } = k;
     const lipH = 5;
     const pressed = k.pressT > 0;
+    if (!c) return this.drawCreate(ctx, k, pressed);
     slab(ctx, k.x, k.y, k.w, k.h, { face: on ? PAL.gold : PAL.cream, lip: on ? PAL.goldShade : PAL.creamShade, lipH, c: 7, pressed });
     const y = k.y + (pressed ? lipH - 1 : 0);
     ctx.fillStyle = shirtBar(c);
@@ -144,6 +165,22 @@ export class AthletePanel {
     const ground = y + k.h - lipH - 36;
     drawFigure(ctx, k.x + k.w / 2, ground, Math.min(76, k.h - 64) * heightOf(c.colors), on ? runPose(this.phase, 0.6) : POSES.stand, c.colors, ground);
     text(ctx, c.name.toUpperCase(), k.x + k.w / 2, y + k.h - lipH - 16, { size: Math.min(21, Math.round(k.w * 0.17)), font: 'display', track: 1, color: PAL.ink, maxWidth: k.w - 12 });
+    if (k.maker) drawIcon(ctx, 'edit', k.x + k.w - 16, y + 32, 18, PAL.ink); // yours to change
+  }
+
+  /** The maker's card before you've made anyone: a big plus, CREATE. */
+  drawCreate(ctx, k, pressed) {
+    const lipH = 5;
+    slab(ctx, k.x, k.y, k.w, k.h, { face: PAL.ink3, lip: PAL.inkShade, lipH, c: 7, pressed });
+    const y = k.y + (pressed ? lipH - 1 : 0);
+    const cy = y + (k.h - lipH) * 0.42;
+    ctx.fillStyle = PAL.gold;
+    ctx.beginPath();
+    ctx.arc(k.x + k.w / 2, cy, Math.min(30, k.w * 0.28), 0, Math.PI * 2);
+    ctx.fill();
+    drawIcon(ctx, 'plus', k.x + k.w / 2, cy, Math.min(36, k.w * 0.34), PAL.ink);
+    text(ctx, 'CREATE', k.x + k.w / 2, y + k.h - lipH - 30, { size: Math.min(21, Math.round(k.w * 0.17)), font: 'display', track: 1, color: PAL.cream, maxWidth: k.w - 12 });
+    text(ctx, 'your own', k.x + k.w / 2, y + k.h - lipH - 12, { size: 14, font: 'body', weight: 700, color: 'rgba(245,234,208,0.75)', maxWidth: k.w - 12 });
   }
 }
 

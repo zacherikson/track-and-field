@@ -4,6 +4,24 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Make your own athlete
+- **The Athlete Maker**, Mii style: the Athlete tab's last card, CREATE.
+  Skin (10 tones), hair (10 styles, three of them new: bald, mohawk, long),
+  hair colour (12), shirt (14), shorts (10), height (2/3 to 1.08 of
+  everyone, as Joey to a bit taller) and build (to Chonk's), a name (up to 12
+  letters; starts as your username), and Random. Your athlete warms up on
+  the left and reacts to every change. Save makes them yours; tap their card
+  again, or Edit on the big card, to change them. Keyboard: E opens it, R
+  rolls, Enter saves, Esc cancels.
+- They go everywhere the cast does: every event and the tournament, your
+  account (the athlete you play as syncs), live rooms and meets (the others
+  see them; an older build shows Juno), ghosts, and the sideshow. Playing as
+  them, the cast member in the closest shirt sits out: still five rivals.
+- How: a made athlete's id is a short code of its look and name
+  (`src/athletes/custom.js`, at most 21 characters), so the server, the
+  database rules and the progress doc are unchanged. New
+  `test/custom.test.mjs`.
+
 ## New app icon: golden hour
 - The home-screen icon is the golden-hour stadium (a track in a stone bowl
   under a mountain at sunset): `icon-192.png`, `icon-512.png` (also the

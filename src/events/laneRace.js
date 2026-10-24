@@ -4,7 +4,7 @@ import { rand, shuffle, clamp } from '../core/math.js';
 import { text, roundRect } from '../core/ui.js';
 import { Runner } from '../athletes/runner.js';
 import { AIController } from '../athletes/ai.js';
-import { CHARACTERS, player as chosenPlayer, rivals as rivalRoster, theirAthlete, heightOf } from '../athletes/roster.js';
+import { CHARACTERS, athleteById, player as chosenPlayer, rivals as rivalRoster, theirAthlete, heightOf } from '../athletes/roster.js';
 import { drawFigure, runPose, lerpPose, leanPose, launchPose, handReach, POSES, LAUNCH } from '../athletes/stickFigure.js';
 import { drawAthleteFigure } from '../athletes/sprites.js';
 import { TrackRenderer } from '../render/track.js';
@@ -202,7 +202,7 @@ export class LaneRace {
    */
   ghostAthlete(lane) {
     const spec = this.ghostSpec;
-    const who = CHARACTERS.find((c) => c.id === spec.data.athlete) ?? chosenPlayer(this.ev.id);
+    const who = athleteById(spec.data.athlete) ?? chosenPlayer(this.ev.id);
     const trace = spec.data.kind === 'trace' ? new TracePlayer(spec.data) : null;
     const ghost = trace ? null : new GhostRun(spec.data);
     return {

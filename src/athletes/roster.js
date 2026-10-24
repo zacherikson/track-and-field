@@ -1,4 +1,5 @@
-import { getCharacter } from '../core/storage.js';
+import { getCharacter, getCustom } from '../core/storage.js';
+import { athleteFromCode } from './custom.js';
 
 /**
  * The athletes (original characters). You pick one (the Athlete tab) and they
@@ -19,7 +20,16 @@ export const CHARACTERS = [
   { id: 'chonk', name: 'Chonk', tagline: 'Built for comfort. Somehow still fast.', colors: { shirt: '#f5f5f5', shorts: '#3d3d3d', skin: '#f0b99a', hair: '#8a4b2a', style: 'bun', girth: 2.3 } },
 ];
 
-const byId = (id) => CHARACTERS.find((c) => c.id === id) ?? null;
+/** An athlete by id: one of the cast, or one you made (custom.js: its id is its code). Null if neither. */
+export function athleteById(id) {
+  return CHARACTERS.find((c) => c.id === id) ?? athleteFromCode(id);
+}
+const byId = athleteById;
+
+/** The athlete you made in the Athlete Maker (whether or not it's the one you play as), or null. */
+export function myCustom() {
+  return athleteFromCode(getCustom());
+}
 
 /** Your athlete (chosen on the Athlete tab, remembered on this device and your account). */
 export function myAthlete() {
@@ -45,10 +55,25 @@ export function heightOf(colors) {
   return colors?.height ?? 1;
 }
 
-/** Everyone else in event `eventId`: your rivals. */
+/**
+ * Everyone else in event `eventId`: your rivals, five of the cast. Playing as
+ * an athlete you made, the one whose shirt looks most like yours sits out, so
+ * the lanes still read apart.
+ */
 export function rivals(eventId) {
   const me = player(eventId);
-  return CHARACTERS.filter((c) => c !== me);
+  const others = CHARACTERS.filter((c) => c !== me);
+  if (!me.custom) return others;
+  const out = others.reduce((a, b) => (colorGap(b.colors.shirt, me.colors.shirt) < colorGap(a.colors.shirt, me.colors.shirt) ? b : a));
+  return others.filter((c) => c !== out);
+}
+
+/** How far apart two #rrggbb colours look (roughly). */
+function colorGap(a, b) {
+  const c = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const [r1, g1, b1] = c(a);
+  const [r2, g2, b2] = c(b);
+  return 2 * (r1 - r2) ** 2 + 4 * (g1 - g2) ** 2 + 3 * (b1 - b2) ** 2;
 }
 
 /** The official at the foul line (long jump, javelin): white uniform, red cap. Fights back in the late hits. */

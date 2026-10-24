@@ -1,7 +1,7 @@
 import { Button, text, slab, chamfer, titlePlate, PAL } from '../core/ui.js';
 import { drawIcon } from '../core/icons.js';
 import { olympic } from '../render/posterScenery.js';
-import { CHARACTERS } from '../athletes/roster.js';
+import { CHARACTERS, athleteById } from '../athletes/roster.js';
 import { eventById } from '../events/registry.js';
 import { Lobby, MAX_PLAYERS, CLOSE_BEFORE, serverNow } from '../online/live.js';
 import { flow } from '../flow.js';
@@ -155,7 +155,7 @@ export class LobbyScene {
       ctx.fillStyle = p.me ? PAL.gold : i % 2 ? PAL.cream : '#EFE2C3';
       chamfer(ctx, rx, y - 19, rw, 38, 4);
       ctx.fill();
-      const colors = (CHARACTERS.find((c) => c.id === p.athlete) ?? CHARACTERS[0]).colors;
+      const colors = (athleteById(p.athlete) ?? CHARACTERS[0]).colors;
       ctx.fillStyle = colors.shirt;
       chamfer(ctx, rx + 12, y - 9, 18, 18, 3);
       ctx.fill();

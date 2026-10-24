@@ -58,6 +58,7 @@ export function getProgress() {
 export function setProgress(p) {
   const data = load();
   Object.assign(data, { beaten: p.beaten, top: p.top, lineup: p.lineup, character: p.character, lineupAt: p.lineupAt });
+  if (typeof p.character === 'string' && p.character.startsWith('~')) data.custom = p.character; // an athlete you made, on another phone
   save(data);
 }
 
@@ -161,7 +162,22 @@ export function setBoardView(view) {
   save(data);
 }
 
-/** Your athlete (a character id from roster.js), or null for the default. */
+/**
+ * The athlete you made in the Athlete Maker, as its code (athletes/custom.js),
+ * or null. Kept on this phone whichever athlete you play as; your account
+ * gets it as your character while it's the one you play as.
+ */
+export function getCustom() {
+  return load().custom ?? null;
+}
+
+export function setCustom(code) {
+  const data = load();
+  data.custom = code;
+  save(data);
+}
+
+/** Your athlete (a character id from roster.js, or a made athlete's code), or null for the default. */
 export function getCharacter() {
   return load().character ?? null;
 }

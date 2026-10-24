@@ -1,4 +1,4 @@
-import { CHARACTERS, player as chosenPlayer } from '../athletes/roster.js';
+import { athleteById, player as chosenPlayer } from '../athletes/roster.js';
 import { drawFigure } from '../athletes/stickFigure.js';
 import { text } from '../core/ui.js';
 import { formatMark } from '../events/registry.js';
@@ -37,7 +37,7 @@ export class FieldGhost {
     const spec = live ? null : pickGhost(ev, (d) => isTrace(d, ev.id, props));
     this.spec = spec;
     this.play = spec ? new TracePlayer(spec.data) : null;
-    this.colors = spec ? (CHARACTERS.find((c) => c.id === spec.data.athlete) ?? chosenPlayer(this.ev.id)).colors : null;
+    this.colors = spec ? (athleteById(spec.data.athlete) ?? chosenPlayer(this.ev.id)).colors : null;
     this.label = spec ? `${spec.name} · ${formatMark(ev, spec.data.mark)}` : '';
     this.ghostGo = this.play ? firstMove(this.play) : 0; // when the ghost first moved in its recording
   }

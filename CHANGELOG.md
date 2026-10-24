@@ -4,6 +4,14 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Pole vault: no meter marks on the standards
+- The 1–7 m marks and numbers on the far upright are gone. The vault is drawn
+  `flight.heightScale` (1.2×) higher than its mark, so they no longer matched,
+  and they were distracting.
+- The red WR flag now sits where a world-record vault is drawn (6.95 m ×
+  1.2), and the posts are tall enough to hold it. The red arrow for your last
+  vault was already at its drawn height.
+
 ## Pole vault: the original's speed and release curves, smoother animation
 Fitted to the second batch of footage (`docs/pole-vault-original.md`).
 - **Height is all speed (v²), as in the original:**

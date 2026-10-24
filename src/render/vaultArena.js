@@ -79,25 +79,20 @@ export class VaultRenderer extends RunwayRenderer {
     }
   }
 
-  /** One upright (yellow post) at depth z, from the ground to 7.4 m. */
+  /** One upright (yellow post) at depth z, from the ground to above the drawn world record. */
   drawPost(ctx, view, camera, z, labels) {
     const x = this.cfg.uprightX;
     const base = this.point(camera, view, x, z, 0);
-    const top = this.point(camera, view, x, z, 7.4);
+    const top = this.point(camera, view, x, z, Math.max(7.4, this.record * (this.cfg.flight?.heightScale ?? 1) + 0.5));
     const w = Math.max(3, 0.07 * this.hPx(camera, z));
     ctx.fillStyle = this.venue.upright.post;
     ctx.fillRect(base.x - w / 2, top.y, w, base.y - top.y);
     ctx.fillStyle = this.venue.upright.shade;
     ctx.fillRect(base.x + w / 2 - 1, top.y, 1, base.y - top.y);
     if (!labels) return;
-    // Height marks every meter, and the world record, on the far post.
-    for (let h = 1; h <= 7; h++) {
-      const p = this.point(camera, view, x, z, h);
-      ctx.fillStyle = '#fff';
-      ctx.fillRect(p.x - w / 2 - 6, p.y - 1, 6, 2);
-      text(ctx, `${h}`, p.x - w / 2 - 14, p.y, { size: 12, color: '#fff', shadow: true });
-    }
-    const wr = this.point(camera, view, x, z, this.record);
+    // The world record on the far post (as in the original), where a record vault is drawn: the
+    // vault is drawn flight.heightScale higher than its mark, so no meter marks (they'd be wrong).
+    const wr = this.point(camera, view, x, z, this.record * (this.cfg.flight?.heightScale ?? 1));
     ctx.fillStyle = '#e8281e';
     ctx.fillRect(wr.x + w / 2, wr.y - 7, 24, 14);
     text(ctx, 'WR', wr.x + w / 2 + 12, wr.y, { size: 10, color: '#fff' });

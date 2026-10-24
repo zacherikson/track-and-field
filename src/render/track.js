@@ -2,6 +2,7 @@ import { text } from '../core/ui.js';
 import { CONFIG } from '../config.js';
 import { BLOCK_FEET } from '../athletes/stickFigure.js';
 import { venueFor } from './venues.js';
+import { drawMonolith, drawColumn } from './ruins.js';
 
 /**
  * Side-on stadium with real one-point perspective, framed like the original:
@@ -187,6 +188,25 @@ export class TrackRenderer {
       if (h % 3) continue;
       const x = i * 23 - s.off + (h % 11);
       ctx.fillRect(x, top + 6, 5 + (h % 6), (bottom - top) * (0.3 + ((h >>> 8) % 60) / 100));
+    }
+    // Ruins on the tiers: carved stone statues (one leaning, one with its head
+    // fallen at its feet) and broken columns, between the trees (ruins.js).
+    if (O.ruins) {
+      const tall = bottom - top;
+      const gap = Math.max(180, tall * 1.1);
+      s = span(gap, 1);
+      for (let i = s.first; i < s.last; i++) {
+        const h = hash(i * 7349);
+        const x = i * gap - s.off + (h % Math.round(gap * 0.3));
+        const base = bottom - tall * 0.05;
+        const kind = h % 5;
+        if (kind === 4) {
+          drawColumn(ctx, x - tall * 0.06, base, tall * 0.42, tall * 0.07, O.ruins, 0.3);
+          drawColumn(ctx, x + tall * 0.08, base, tall * 0.24, tall * 0.07, O.ruins, 0.8);
+        } else {
+          drawMonolith(ctx, x, base, tall * (0.5 + ((h >>> 5) % 10) / 100), O.ruins, { lean: kind === 1 ? 0.12 : 0, headless: kind === 2 });
+        }
+      }
     }
     // Trees grown up through the stand, their crowns over the top of it (bigger in a taller stand).
     const big = (bottom - top) / 102;

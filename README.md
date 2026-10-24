@@ -183,7 +183,9 @@ won.
   round 2 or 3, a near perfect one past 5.
 - Every round is at **The Lost Stadium**, Survival's own venue: an old
   stadium the jungle has taken back. A crumbling stone stand with nobody on
-  it, the canopy towering over it and vines hanging down; a mossy stone wall
+  it but carved stone statues (Andean monoliths: one leaning, one with its
+  head fallen at its feet) and broken columns, the canopy towering over it
+  and vines hanging down; a mossy stone wall
   where the hoardings were; a faded clay track with moss coming through. A
   showdown, so the races have just two lanes, and the stand comes right down
   behind the track, twice as tall as anywhere else (the venue's own

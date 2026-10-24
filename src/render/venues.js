@@ -44,7 +44,8 @@ import { survival } from '../survival/survival.js';
  *   overgrowth the jungle taking a ruin back (Survival's): canopy over the
  *              stand, vines hanging down it, moss, flowers; and the javelin's
  *              flight shot over jungle hills instead of the sea
- *              { canopy[], canopyDark, vine, leaf, moss, flower[], hillFar, hill }
+ *              { canopy[], canopyDark, vine, leaf, moss, flower[], hillFar, hill,
+ *                ruins: { stone, shade, carve, moss } statues and broken columns on the stand (ruins.js) }
  */
 
 const AMATEUR = {
@@ -229,6 +230,7 @@ const JUNGLE = {
     flower: ['#e8505b', '#f2b632', '#f07a3a'],
     hillFar: '#5a8f6a',
     hill: '#2f6b3a',
+    ruins: { stone: '#9a957c', shade: '#76725e', carve: '#45432f', moss: 'rgba(79,138,54,0.75)' },
   },
 };
 

@@ -8,6 +8,7 @@
 // these colours yet.
 import { PAL } from '../core/ui.js';
 import { WORDMARK } from './wordmark.js';
+import { drawMonolith, drawColumn } from './ruins.js';
 
 const P2D = {}; // the wordmark's Path2D, made on first use
 
@@ -197,6 +198,14 @@ export function lostStadium(ctx, x, y, w, h, { trackH = 0 } = {}) {
     const mx = sx + sw * ((i * 0.37 + 0.05) % 1);
     ctx.fillRect(mx, stTop + th * (i % 3), w * 0.012, H * (0.12 + (i % 4) * 0.05));
   }
+  // Statues and broken columns on the tiers (ruins.js).
+  const R = { stone: '#9A957C', shade: '#76725E', carve: '#45432F', moss: 'rgba(79,138,54,0.75)' };
+  const foot = gy - H * 0.09;
+  drawMonolith(ctx, x + w * 0.2, foot, H * 0.42, R);
+  drawMonolith(ctx, x + w * 0.58, foot, H * 0.38, R, { headless: true });
+  drawColumn(ctx, x + w * 0.8, foot, H * 0.34, H * 0.06, R, 0.3);
+  drawColumn(ctx, x + w * 0.87, foot, H * 0.2, H * 0.06, R, 0.8);
+  drawMonolith(ctx, x + w * 0.4, foot, H * 0.36, R, { lean: 0.1 });
   // Trees grown up through the stand and around it, their canopy over the top.
   const crowns = [[0.06, 0.22, 0.13], [0.24, 0.18, 0.1], [0.5, 0.12, 0.12], [0.74, 0.2, 0.11], [0.93, 0.16, 0.14]];
   for (const [fx, fy, fr] of crowns) {

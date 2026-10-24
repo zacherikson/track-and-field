@@ -4,6 +4,15 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Survival: statues in the ruins
+- The Lost Stadium's stand has ruins on its tiers: carved stone statues in
+  the style of the Andean monoliths (square head with a headdress band,
+  square eyes, a slit mouth, arms carved across the chest, on a plinth),
+  some leaning, some headless with the head toppled at their feet, and pairs
+  of broken columns, all mossy, between the trees and under the vines. On
+  the Survival card and the event card too. New `src/render/ruins.js`
+  (drawMonolith, drawColumn); venues.js `overgrowth.ruins` colors.
+
 ## Survival: a two-lane showdown, an empty stand, Quechua names
 - **Two lanes**: the 100m and the hurdles in Survival are just you and him
   (laneRace.js). The Lost Stadium has its own `layout` (venues.js): the

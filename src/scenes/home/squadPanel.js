@@ -11,6 +11,7 @@ import { flow } from '../../flow.js';
 import { openInvite } from '../inviteScreen.js';
 import { Conn, meetServer } from '../../online/net.js';
 import { BigButton } from './playPanel.js';
+import { Sideshow } from './sideshow.js';
 
 const WARN = '#ffb35c';
 const OK = '#7fd8a0';
@@ -40,6 +41,7 @@ export class SquadPanel {
   }
 
   enter() {
+    this.sideshow = new Sideshow(); // everyone, up to no good on the hills
     this.mine = cachedSquad(); // undefined until loaded
     this.loadError = null;
     this.list = { title: 'BIGGEST SQUADS', q: null, rows: null, error: null };
@@ -455,6 +457,7 @@ export class SquadPanel {
     this.watchMeet(showing);
     this.meetBtn.sub = this.meetLine();
     if (!this.mine) this.picking = false;
+    this.sideshow.update(dt);
     const btns = this.buttons;
     for (const e of events) {
       if (e.type !== 'down') continue;
@@ -532,8 +535,16 @@ export class SquadPanel {
     const w = view.w;
     const pts = [[-0.02, 40], [0.14, 150], [0.28, 70], [0.44, 170], [0.6, 80], [0.77, 160], [1.02, 60]];
     range(ctx, pts.map(([f, h]) => [f * w, b - h]), b, PAL.ink2, '#312C6A', null);
-    hill(ctx, -0.09 * w, 0.51 * w, b - 50, b + 2, PAL.ink3);
-    hill(ctx, 0.43 * w, 1.11 * w, b - 40, b + 2, '#433D85');
+    const hills = [[-0.09 * w, 0.51 * w, b - 50, PAL.ink3], [0.43 * w, 1.11 * w, b - 40, '#433D85']];
+    hills.forEach(([x0, x1, top, face]) => hill(ctx, x0, x1, top, b + 2, face));
+    // The sideshow, on the hilltops (not in a squad: then Practice is along the bottom).
+    if (this.mine) return;
+    const groundAt = (x) => Math.min(b, ...hills.map(([x0, x1, top]) => {
+      const k = (x - (x0 + x1) / 2) / ((x1 - x0) / 2);
+      return Math.abs(k) < 1 ? b + 2 - (b + 2 - top) * Math.sqrt(1 - k * k) : b;
+    }));
+    const slots = [0.22, 0.77].map((f) => ({ x: f * w, ground: groundAt(f * w), H: 72, groundAt }));
+    this.sideshow.draw(ctx, slots, { w, h: b });
   }
 
   renderSquad(ctx, view, s) {

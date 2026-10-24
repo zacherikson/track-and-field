@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sideshow Skits</title>
+<style>
+  body { margin: 0; background: #26224F; color: #F5EAD0; font: 14px system-ui, sans-serif; }
+  h1 { font-size: 18px; margin: 14px 16px 4px; }
+  p, label { margin: 0 16px 10px; }
+  .bar { display: flex; gap: 12px; align-items: center; margin: 0 16px 10px; }
+  input[type=range] { width: 420px; }
+  canvas { display: block; margin: 0 auto 16px; max-width: 100%; }
+</style>
+</head>
+<body>
+<h1>The home screens' sideshow skits (src/scenes/home/sideshow.js)</h1>
+<p>Every skit, one per row, on a strip of track. Serve the repo and open /tools/sideshow.html. Drag the slider to scrub, or tick Play. Options: ?t=3.2 (a moment), ?mirror (play them the other way round), ?skit=bodySlam (just one), ?h=110 (figure height, px).</p>
+<div class="bar"><label><input type="checkbox" id="play"> Play</label><input type="range" id="t" min="0" max="16" step="0.02"><span id="tl"></span></div>
+<canvas id="c"></canvas>
+<script type="module">
+import { SKITS, Stage } from '../src/scenes/home/sideshow.js';
+import { CHARACTERS, REFEREE } from '../src/athletes/roster.js';
+import { loadFonts, text } from '../src/core/ui.js';
+
+const q = new URLSearchParams(location.search);
+const ids = q.get('skit') ? [q.get('skit')] : Object.keys(SKITS);
+const m = q.has('mirror') ? -1 : 1;
+const H = Number(q.get('h') ?? 52);
+const W = 1100, ROW = Math.round(H * 2.5);
+const cv = document.getElementById('c');
+const dpr = window.devicePixelRatio || 1;
+cv.width = W * dpr; cv.height = ROW * ids.length * dpr; cv.style.width = `${W}px`;
+const ctx = cv.getContext('2d');
+const slider = document.getElementById('t');
+slider.value = q.get('t') ?? 2;
+const casts = ids.map((id, k) => {
+  let i = k;
+  return SKITS[id].cast.map((r) => (r === 'ref' ? REFEREE : CHARACTERS[i++ % CHARACTERS.length]));
+});
+await loadFonts();
+
+function draw() {
+  const t = Number(slider.value);
+  document.getElementById('tl').textContent = `${t.toFixed(2)} s`;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ids.forEach((id, i) => {
+    const y = i * ROW;
+    ctx.fillStyle = '#6F9A4A'; ctx.fillRect(0, y, W, ROW * 0.45);
+    ctx.fillStyle = '#B5553A'; ctx.fillRect(0, y + ROW * 0.45, W, ROW * 0.55);
+    ctx.save();
+    ctx.beginPath(); ctx.rect(0, y, W, ROW); ctx.clip();
+    const going = SKITS[id].draw(new Stage(ctx, { x: W / 2, ground: y + ROW - 22, H }, m, W), t, casts[i]);
+    ctx.restore();
+    text(ctx, `${id}${going ? '' : ' (over)'}`, 10, y + 14, { size: 14, align: 'left', color: '#F5EAD0' });
+  });
+}
+slider.oninput = draw;
+let last = performance.now();
+(function loop(now) {
+  if (document.getElementById('play').checked) {
+    slider.value = (Number(slider.value) + (now - last) / 1000) % 16;
+    draw();
+  }
+  last = now;
+  requestAnimationFrame(loop);
+})(last);
+draw();
+</script>
+</body>
+</html>

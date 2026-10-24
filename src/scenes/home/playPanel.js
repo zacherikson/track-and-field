@@ -12,6 +12,7 @@ import { flow } from '../../flow.js';
 import { syncBests } from '../../online/bests.js';
 import { syncProgress } from '../../online/progress.js';
 import { EventTile } from './eventTile.js';
+import { Sideshow } from './sideshow.js';
 
 const SHORT = { sprint100: '100m', longjump: 'Long jump', hurdles110: 'Hurdles', polevault: 'Pole vault', javelin: 'Javelin' };
 
@@ -50,6 +51,7 @@ export class PlayPanel {
     this.fade = 1; // 0 -> 1 as a list (or the buttons) come in
     this.phase = 0;
     this.demoX = 0;
+    this.sideshow = new Sideshow(); // the other athletes, up to no good in the background
     // The two big buttons.
     this.offlineBig = new BigButton({ label: 'vs Computer', sub: 'Tournament + 5 events', icon: 'vscomputer', color: PAL.orange, lip: PAL.orangeShade, onTap: () => this.open('offline') });
     this.liveBig = new BigButton({ label: 'Live', sub: 'Race people right now', icon: 'live', color: PAL.liveGreen, lip: PAL.liveShade, onTap: () => this.open('live') });
@@ -167,6 +169,7 @@ export class PlayPanel {
   /** Coming to this tab: your athlete may have changed on the Athlete tab. */
   onShow() {
     this.me = myAthlete();
+    this.sideshow.exclude = this.me.id; // you're out on the track already
     this.warnT = 0;
   }
 
@@ -389,6 +392,7 @@ export class PlayPanel {
       if (!this.list && ev.y >= this.trackTop && ev.y <= this.trackBottom) this.home.show(0);
     }
     this.allButtons.forEach((b) => b.update(dt));
+    this.sideshow.update(dt);
     this.fade = Math.min(1, this.fade + dt * 6);
     this.warnT = Math.max(0, this.warnT - dt);
     this.phase += dt * 5; // your athlete warming up
@@ -401,6 +405,7 @@ export class PlayPanel {
   render(ctx, view) {
     // Each page stands in its venue, the track along the bottom (it stays put as the buttons fade in).
     this.drawBackdrop(ctx, view);
+    this.sideshow.draw(ctx, this.sideshowSlots(view), { w: view.w, h: this.bottom, key: this.list });
     // A list (or the buttons) comes in from a little below, fading up.
     const e = 1 - (1 - this.fade) ** 3;
     ctx.save();
@@ -506,6 +511,21 @@ export class PlayPanel {
     ctx.fill();
     text(ctx, 'TRAINING GHOST', g.x - 60, g.y + 21, { size: 18, font: 'display', track: 1, color: PAL.cream, maxWidth: 100 });
     g.draw(ctx);
+  }
+
+  /**
+   * Where the sideshow's skits play: two spots on the page's track, left and
+   * right, in the far lanes (smaller), clear of your athlete in the middle.
+   */
+  sideshowSlots(view) {
+    const top = this.trackTop;
+    const h = this.trackBottom - top;
+    if (h < 80) return [];
+    const d = this.list ? 0.08 : 0; // a page's track starts under its cards: a little further down
+    return [
+      { x: view.w * 0.2, ground: top + h * (0.3 + d), H: clamp(h * 0.33, 32, 60) },
+      { x: view.w * 0.8, ground: top + h * (0.5 + d), H: clamp(h * 0.38, 36, 68) },
+    ];
   }
 
   /** Your athlete running along the page's track. */
@@ -643,6 +663,8 @@ const TRAINING_CLOUDS = [
   [0.07, 0.42, 0.07],
   [0.93, 0.4, 0.075],
 ];
+
+const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
 
 /** "AMATEUR" -> "Amateur". */
 function titleCase(s) {

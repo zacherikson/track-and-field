@@ -130,6 +130,22 @@ event's steps over the card (any tap closes them; in live play the countdown
 carries on underneath). H on a keyboard opens them too.
 Keyboard: 1 / 2 / 3 or Q / E change tab, Esc goes back to Play.
 
+**The sideshow.** In the background of every tab the other athletes (and the
+referee) are up to no good, one little skit at a time: punching out the
+referee for showing a red card, a body slam, two fighters who both deck the
+referee when he steps in, a dance-off that ends in a kick, a baton thief and a
+flying tackle that misses, a hurdler who takes the second hurdle with their
+face and kicks it into next week, a javelin that lands at the referee's feet,
+and a long jump that ends face first, a red flag and the referee booted. On
+Play they're on the track, in the far lanes either side of your athlete (who
+never takes part); on Athlete along the bottom under the cards; on Squad on
+the hills (not once you're in a squad: Practice is there). Each skit plays
+either way round, two at a time, a few seconds apart. They're only scenery:
+nothing to tap. The skits are in
+[`src/scenes/home/sideshow.js`](src/scenes/home/sideshow.js), built from the
+late hits' fight poses and the events' own; `tools/sideshow.html` plays every
+one side by side, with a slider to scrub through them.
+
 ## 4×100m relay
 
 Under vs Computer → **Special Events**. Six teams of four on one long straight, in their
@@ -449,7 +465,8 @@ src/online/
 src/scenes/inviteScreen.js      the invite screen a squad invite link opens: pick a username, join
 src/scenes/homeScene.js         the home screen: Athlete | Play | Squad tabs, swipes, the tab bar
 src/scenes/home/                its panels: athletePanel.js (pick your athlete),
-                                playPanel.js (the events, tournament and settings), squadPanel.js (your squad, Practice)
+                                playPanel.js (the events, tournament and settings), squadPanel.js (your squad, Practice),
+                                sideshow.js (the skits in the background of all three)
 src/scenes/leaderboardScene.js  online leaderboards, a tab per event, with Race buttons
 src/scenes/tutorialScene.js     How to play: a tab per event with its steps, and Practice
 src/scenes/howTo.js             each event's steps and controls strip, and their icons (drawn with the game's pads)

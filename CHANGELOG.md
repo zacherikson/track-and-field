@@ -4,6 +4,23 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Home screens: the sideshow
+- **The other athletes act up in the background** of the Athlete, Play and
+  Squad tabs, one short skit at a time, two on screen at once: the referee
+  punched out for showing a red card (then he chases them off), a body slam,
+  the referee stepping between two fighters and getting launched by both,
+  a dance-off settled with a kick, a baton thief and a flying tackle into the
+  track, a hurdler who faceplants at the second hurdle and kicks it away, a
+  javelin that lands at the referee's feet, and a long jump that ends face
+  first, a red flag and the referee booted. Comic POW bursts, dust, and an
+  emoji over whoever's feeling something.
+- Play: on the track either side of your athlete, in the far lanes (your own
+  athlete never takes part); the vs Computer pages too. Athlete: along the
+  bottom under the cards. Squad: on the hills, until you're in a squad.
+- New `src/scenes/home/sideshow.js`, built from the late hits' poses
+  (`brawl/poses.js`) and the events' (`stickFigure.js`); no gameplay change.
+  `tools/sideshow.html` plays every skit, scrubbable.
+
 ## Live: a half-minute waiting room with I'm ready, and less standing around between events
 - **The waiting room stays open 30 s** once a second player arrives (it was
   4 s: `START_DELAY` 10 s minus the 6 s `CLOSE_BEFORE` hand-over), so friends

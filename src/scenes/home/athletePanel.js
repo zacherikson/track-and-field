@@ -4,6 +4,7 @@ import { pinebrook } from '../../render/posterScenery.js';
 import { drawFigure, runPose, POSES } from '../../athletes/stickFigure.js';
 import { CHARACTERS, myAthlete, heightOf } from '../../athletes/roster.js';
 import { setCharacter } from '../../core/storage.js';
+import { Sideshow } from './sideshow.js';
 
 
 /**
@@ -23,6 +24,7 @@ export class AthletePanel {
     this.phase = 0;
     this.flashT = 0; // just changed: the spotlight lights up
     this.cards = CHARACTERS.map((c) => ({ c, x: 0, y: 0, w: 0, h: 0, pressT: 0 }));
+    this.sideshow = new Sideshow(); // everyone, up to no good under the cards
   }
 
   /** `bottom`: the top of the tab bar. */
@@ -51,6 +53,7 @@ export class AthletePanel {
   update(dt, events) {
     this.phase += dt * 9;
     this.flashT = Math.max(0, this.flashT - dt);
+    this.sideshow.update(dt);
     for (const k of this.cards) k.pressT = Math.max(0, k.pressT - dt);
     for (const e of events) {
       if (e.type === 'key') {
@@ -85,7 +88,20 @@ export class AthletePanel {
     ctx.fillRect(0, BAND_Y, view.w, this.bottom - BAND_Y);
     ctx.fillStyle = PAL.gold;
     ctx.fillRect(0, BAND_Y, view.w, 3);
+    this.sideshow.draw(ctx, this.sideshowSlots(view), { w: view.w, h: this.bottom });
     for (const k of this.cards) this.drawCard(ctx, k, k.c === me);
+  }
+
+  /** Where the sideshow's skits play: along the bottom of the band, under the cards (if there's room). */
+  sideshowSlots(view) {
+    const k = this.cards[0];
+    const room = this.bottom - (k.y + k.h);
+    const H = Math.min(60, (room - 14) / 1.4); // and an emoji over their heads, under the cards
+    if (H < 36) return [];
+    return [
+      { x: view.w * 0.22, ground: this.bottom - 12, H },
+      { x: view.w * 0.78, ground: this.bottom - 10, H },
+    ];
   }
 
   /** Your athlete's card: them warming up in Pinebrook Park, their shirt colour, name, tagline and height. */

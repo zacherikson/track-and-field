@@ -4,6 +4,14 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## New app icon: golden hour
+- The home-screen icon is the golden-hour stadium (a track in a stone bowl
+  under a mountain at sunset): `icon-192.png`, `icon-512.png` (also the
+  maskable one) and `apple-touch-icon.png` replaced; the browser tab uses the
+  new `favicon-16.png` / `favicon-32.png`. The old `icon.svg` is gone.
+- Already added to your home screen? Remove it and add it again to pick up the
+  new icon (iOS keeps the one it saved).
+
 ## Tournament: each event's results, then the standings
 - **Between tournament events you see the event's results again** (places,
   marks and the points each mark scored), not just the totals. Over the late

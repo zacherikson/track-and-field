@@ -12,8 +12,8 @@ Gameplay and tuning changes, newest first. When you change a number in
   a dance-off settled with a kick, a baton thief and a flying tackle into the
   track, a hurdler who faceplants at the second hurdle and kicks it away, a
   javelin that lands at the referee's feet, and a long jump that ends face
-  first, a red flag and the referee booted. Comic POW bursts, dust, and an
-  emoji over whoever's feeling something.
+  first, a red flag and the referee booted. Comic POW bursts and dust; no
+  emoji over anyone's head (as the emotes).
 - Play: on the track either side of your athlete, in the far lanes (your own
   athlete never takes part); the vs Computer pages too. Athlete: along the
   bottom under the cards. Squad: on the hills, until you're in a squad.

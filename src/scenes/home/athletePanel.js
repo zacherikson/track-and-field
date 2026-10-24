@@ -96,7 +96,7 @@ export class AthletePanel {
   sideshowSlots(view) {
     const k = this.cards[0];
     const room = this.bottom - (k.y + k.h);
-    const H = Math.min(60, (room - 14) / 1.4); // and an emoji over their heads, under the cards
+    const H = Math.min(60, room - 18);
     if (H < 36) return [];
     return [
       { x: view.w * 0.22, ground: this.bottom - 12, H },

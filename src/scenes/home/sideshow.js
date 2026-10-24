@@ -96,23 +96,9 @@ class Stage {
       ctx.translate(-hx, -hy);
       drawFigure(ctx, f.x, f.y, f.h, f.p, who.colors, f.g);
       ctx.restore();
-      f.headY = f.y - f.h * 1.1; // spinning: say things from above it
+      f.headY = f.y - f.h * 1.1; // spinning: hits land from above it
     } else drawFigure(ctx, f.x, f.y, f.h, f.p, who.colors, f.g);
     return f;
-  }
-
-  /** `str` (an emoji) over figure `f`'s head while from <= t < to, popping in. */
-  say(f, str, t, from, to) {
-    if (t < from || t >= to) return;
-    const age = t - from;
-    const size = Math.max(14, f.h * 0.3);
-    const k = age < 0.15 ? ease(age / 0.15) * 1.2 : 1.2 - 0.2 * clamp((age - 0.15) / 0.12, 0, 1);
-    const { ctx } = this;
-    ctx.save();
-    ctx.translate(f.headX, f.headY - size * 0.62 + Math.sin(age * 5) * size * 0.06);
-    ctx.scale(k, k);
-    text(ctx, str, 0, 0, { size });
-    ctx.restore();
   }
 
   /** A comic-book hit, `age` s after it lands: a gold burst with `word` on it. */
@@ -385,11 +371,23 @@ class Stage {
       ctx.arc(x, y + dy * r, r * 0.6, 0, TAU);
       ctx.fill();
     }
-    ctx.restore();
+    // Two gold stars spinning round inside it.
+    ctx.fillStyle = PAL.gold;
     for (let i = 0; i < 2; i++) {
       const a = t * 5 + i * Math.PI;
-      text(ctx, i ? '💢' : '⭐', x + Math.cos(a) * r * 0.5, y + Math.sin(a) * r * 0.3, { size: Math.max(12, 0.24 * H) });
+      const sx = x + Math.cos(a) * r * 0.5;
+      const sy = y + Math.sin(a) * r * 0.3;
+      const sr = Math.max(4, 0.09 * H);
+      ctx.beginPath();
+      for (let j = 0; j < 10; j++) {
+        const b = (j / 10) * TAU - Math.PI / 2 + t * 4;
+        const rr = j % 2 ? sr * 0.45 : sr;
+        ctx.lineTo(sx + Math.cos(b) * rr, sy + Math.sin(b) * rr);
+      }
+      ctx.closePath();
+      ctx.fill();
     }
+    ctx.restore();
   }
 }
 

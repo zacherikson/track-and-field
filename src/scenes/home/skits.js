@@ -7,7 +7,7 @@ import { FIGHT, PUNCH, KICK, SLAM, HURT, KNOCK, relaxed, stance, punch, kick, sl
  * The sideshow's skits (sideshow.js plays them): id -> { cast, draw(s, t, cast) }.
  * `cast` names who a skit needs ('athlete' or 'ref'), in the order draw()
  * gets them. draw() draws the skit `t` s in through the stage `s`
- * (sideshow.js Stage: figures, props, POW bursts, emoji) and returns false
+ * (sideshow.js Stage: figures, props, POW bursts, dust) and returns false
  * once it's over. Positions are in figure heights from the slot's x, + to the
  * right (each run is mirrored at random); `s.left` and `s.right` are the
  * screen's edges in the same units, for coming on and going off.
@@ -133,16 +133,11 @@ export const SKITS = {
         af = -1;
         ap = runAt(d, 0.85);
       }
-      const fa = s.fig(A, ax, ap, { face: af });
+      s.fig(A, ax, ap, { face: af });
       const fr = s.fig(R, rx, rp, { face: -1, lift: rl });
       if (t > 1.3 && t < hits[0]) s.card(fr);
       ['BAP', 'BIF', 'POW!'].forEach((w, i) => s.pow(fr.headX, fr.headY + fr.h * 0.12, t - hits[i], w));
       s.dust(rDown, t - downT);
-      s.say(fa, '😡', t, 1.9, 2.7);
-      s.say(fa, '💪', t, 3.8, upT);
-      s.say(fa, '😱', t, fleeT, Infinity);
-      s.say(fr, '💫', t, downT + 0.2, upT + 0.4);
-      s.say(fr, '😡', t, chaseT, Infinity);
       return rx > s.left - 1.5;
     },
   },
@@ -212,14 +207,9 @@ export const SKITS = {
         vx = vDown + d;
         vp = dazed(d, t);
       }
-      const fv = s.fig(V, vx, vp, { lift: vl });
+      s.fig(V, vx, vp, { lift: vl });
       s.pow(s.X(vDown), s.Y(vDown, 0.1), t - landT, 'WHAM!', s.H * 0.42);
       s.dust(vDown, t - landT);
-      s.say(fv, '🕺', t, 0.2, grabT);
-      s.say(fv, '😱', t, grabT, landT);
-      s.say(fv, '💫', t, landT + 0.2, Infinity);
-      s.say(fa, '😎', t, dabT + 0.1, vGo);
-      s.say(fa, '😂', t, vGo, Infinity);
       return vx < s.right + 1.2;
     },
   },
@@ -285,12 +275,9 @@ export const SKITS = {
         const k = clamp((t - hitT) / 1.1, 0, 1);
         s.hurdle(h2 + 0.2 - 3.8 * k, 1.5 * (1 - k) - TAU * 2 * k, arc(k, 1.6));
       }
-      const fa = s.fig(A, ax, ap, { face: af, lift: al });
+      s.fig(A, ax, ap, { face: af, lift: al });
       s.pow(s.X(h2 + 0.25), s.Y(h2, 0.2), t - hitT, 'BONK', s.H * 0.36);
       s.dust(xT + 0.6, t - tripT - 0.3);
-      s.say(fa, '💫', t, tripT + SLIDE, upT);
-      s.say(fa, '😤', t, upT + 0.75, kickT + 0.2);
-      s.say(fa, '😌', t, kickT + KICK.time, Infinity);
       return ax < s.right + 1.5;
     },
   },
@@ -354,7 +341,7 @@ export const SKITS = {
         rf = 1;
         rp = runAt(d, 0.85);
       }
-      const fr = s.fig(R, rx, rp, { face: rf, lift: rl });
+      s.fig(R, rx, rp, { face: rf, lift: rl });
       const fa = s.fig(A, ax, ap, { face: af });
       // The javelin: in the hand, then flying tip first, then stuck in the ground, wobbling.
       if (t < relT) {
@@ -377,8 +364,6 @@ export const SKITS = {
         s.javelin(tu - (Math.cos(ang) * LEN) / 2, tv - (Math.sin(ang) * LEN) / 2, ang, LEN);
       }
       s.pow(s.X(xL), s.Y(xL, 0.05), t - landT, 'THUNK', s.H * 0.3);
-      s.say(fr, '😱', t, landT, Infinity);
-      s.say(fa, '😂', t, lolT, goT);
       return rx < s.right + 1.5 || ax > s.left - 1.5;
     },
   },
@@ -471,14 +456,10 @@ export const SKITS = {
       if (t >= hitT) s.flagDown(r0 - 0.1);
       const fr = s.fig(R, rx, rp, { face: rf, lift: rl });
       if (t > flagT && t < hitT) s.flag(fr);
-      const fa = s.fig(A, ax, ap, { face: af, lift: al });
+      s.fig(A, ax, ap, { face: af, lift: al });
       s.dust(xLand + 0.3, t - landT);
       s.dust(rDown, t - downT);
       s.pow(fr.headX, fr.headY + fr.h * 0.3, t - hitT, 'BOOT!');
-      s.say(fa, '💫', t, landT + 0.4, upT);
-      s.say(fa, '😡', t, madT, kickT);
-      s.say(fa, '😎', t, dabT + 0.1, goT);
-      s.say(fr, '💫', t, downT + 0.2, Infinity);
       return ax > s.left - 1.5 || rx < s.right + 1.2;
     },
   },
@@ -526,14 +507,10 @@ export const SKITS = {
         bx = xStop + d;
         bp = runAt(d, 0.7);
       }
-      const fb = s.fig(B, bx, bp, { lift: bl });
+      s.fig(B, bx, bp, { lift: bl });
       const fa = s.fig(A, ax, runAt(ax - start, 0.85));
       s.baton(fa);
       s.dust(xFly + 0.3, t - diveT - FLY);
-      s.say(fa, '😜', t, 0.3, Infinity);
-      s.say(fb, '😡', t, 0.3, diveT);
-      s.say(fb, '💫', t, diveT + FLY + 0.2, goT);
-      s.say(fb, '😤', t, goT, Infinity);
       return bx < s.right + 1.5;
     },
   },
@@ -626,13 +603,6 @@ export const SKITS = {
           s.pow(f.headX, f.headY + f.h * 0.15, t - h - 0.1, null, s.H * 0.22);
         }
       }
-      s.say(fr, '✋', t, atT, hit1 + 0.1);
-      s.say(fr, '💫', t, downT + 0.2, rGo);
-      s.say(fr, '😭', t, rGo, Infinity);
-      s.say(fa, '😤', t, 0.1, atT);
-      s.say(fb, '😠', t, 0.1, atT);
-      s.say(fa, '💪', t, showT + 0.2, backT);
-      s.say(fb, '🕺', t, showT + 0.2, backT);
       return t < backT + 2.4;
     },
   },
@@ -685,15 +655,9 @@ export const SKITS = {
       else if (t < dabT) bp = kick(t - kickT);
       else bp = emote('dab', t - dabT);
       const fa = s.fig(A, ax, ap, { face: af, lift: al });
-      const fb = s.fig(B, bx, bp, { face: -1 });
+      s.fig(B, bx, bp, { face: -1 });
       s.pow(fa.headX, fa.headY + fa.h * 0.35, t - hitT, 'WHUMP', s.H * 0.38);
       s.dust(aDown, t - downT);
-      s.say(fa, '🕺', t, danceT + 0.1, chickT);
-      s.say(fb, '🐔', t, chickT + 0.1, lolT);
-      s.say(fa, '😂', t, lolT + 0.1, hitT);
-      s.say(fb, '😠', t, lolT + 0.6, kickT);
-      s.say(fa, '💫', t, downT + 0.2, aGo);
-      s.say(fb, '😎', t, dabT + 0.1, Infinity);
       return ax > s.left - 1.5;
     },
   },
@@ -751,17 +715,11 @@ export const SKITS = {
       s.blocks(bx0);
       const fr = s.fig(R, rx, rp);
       if (t < bangT + 1) s.pistol(fr);
-      const fb = s.fig(B, bx, bp);
-      const fa = s.fig(A, ax, ap, { lift: al });
+      s.fig(B, bx, bp);
+      s.fig(A, ax, ap, { lift: al });
       const gun = fr.hand(0);
       s.pow(gun.x, gun.y - fr.h * 0.18, t - bangT, 'BANG!', s.H * 0.34);
       s.dust(xDrop + 0.6, t - dropT - 0.15);
-      s.say(fa, '😬', t, 0.8, jumpT);
-      s.say(fa, '😵', t, dropT + 0.1, upT);
-      s.say(fa, '😳', t, upT + 0.75, goT);
-      s.say(fa, '😅', t, goT, Infinity);
-      s.say(fb, '😏', t, bangT + 0.6, Infinity);
-      s.say(fr, '🤦', t, bangT + 1.1, Infinity);
       return ax < s.right + 1.2;
     },
   },
@@ -818,10 +776,7 @@ export const SKITS = {
         }
         for (const [f, xs] of [[fa, spots.a], [fb, spots.b], [fc, spots.c]]) {
           s.dust(xs, t - outT);
-          s.say(f, '💫', t, outT + 0.2, upT);
-          s.say(f, '😠', t, glareT + 0.1, againT);
         }
-        s.say(fc, '😤', t, Math.max(0.1, cStart), inT);
         return true;
       }
       // The cloud, bouncing about, hits going off all over it.
@@ -888,7 +843,7 @@ export const SKITS = {
         rl = arc(k, 0.35);
         rp = t < down2 ? fly(t - hit2) : FIGHT.down;
       }
-      const fr = s.fig(R, rx, rp, { lift: rl });
+      s.fig(R, rx, rp, { lift: rl });
       const fa = s.fig(A, ax, ap, { face: af });
       const p = fa.hand(0);
       const q = fa.hand(1);
@@ -897,10 +852,6 @@ export const SKITS = {
       s.pow(s.X(r1 - 0.05), s.Y(r1, 0.95), t - hit2, 'BONK!', s.H * 0.4);
       s.dust(r1, t - hit1 - 0.45);
       s.dust(r2, t - down2);
-      s.say(fa, '🎶', t, 0.2, Infinity);
-      s.say(fr, '💫', t, hit1 + 0.5, up1);
-      s.say(fr, '😡', t, stood, hit2);
-      s.say(fr, '💫', t, down2 + 0.2, Infinity);
       return t < down2 + 1 || ax > s.left - 3;
     },
   },
@@ -982,15 +933,10 @@ export const SKITS = {
       }
       s.finishLine(xF);
       const fa = s.fig(A, ax, ap, { lift: al });
-      const fb = s.fig(B, bx, bp, { face: bf, lift: bl });
+      s.fig(B, bx, bp, { face: bf, lift: bl });
       s.pow(fa.headX, fa.headY + fa.h * 0.4, t - hitT, 'KABLAM!', s.H * 0.44);
       s.dust(aLand + 0.3, t - hitT - 0.5);
       s.dust(bLand, t - landT);
-      s.say(fa, '🥇', t, celebT - 0.3, hitT);
-      s.say(fa, '💫', t, hitT + 0.6, aUp);
-      s.say(fa, '😭', t, aUp, Infinity);
-      s.say(fb, '😤', t, celebT, jumpT);
-      s.say(fb, '🥇', t, bDab, Infinity);
       return bx < s.right + 1.2 || t < aUp + 1;
     },
   },
@@ -1046,16 +992,10 @@ export const SKITS = {
         rf = -1;
         rp = runAt(d, 0.85);
       }
-      const fr = s.fig(R, rx, rp, { face: rf });
-      const fa = s.fig(A, ax, ap, { face: af });
+      s.fig(R, rx, rp, { face: rf });
+      s.fig(A, ax, ap, { face: af });
       s.dust(stopX + 0.3, t - stopT);
       s.dust(rStop, t - rStopT);
-      s.say(fa, '😱', t, 0.2, stopT);
-      s.say(fa, '💪', t, flexT + 0.1, chaseT);
-      s.say(fa, '😡', t, chaseT, Infinity);
-      s.say(fr, '😠', t, 0.2, rStopT);
-      s.say(fr, '😳', t, rStopT + 0.2, turnT + 0.3);
-      s.say(fr, '😱', t, turnT + 0.3, Infinity);
       return ax > s.left - 1.5;
     },
   },
@@ -1099,15 +1039,9 @@ export const SKITS = {
       else if (t >= cardT) rp = lerpPose(POSES.stand, ARM_UP, ease(clamp((t - cardT) / 0.2, 0, 1)));
       const fr = s.fig(R, 0, rp);
       if (t > cardT + 0.1) s.card(fr);
-      const fa = s.fig(A, ax, ap, { lift: 0.18 * k });
-      const fb = s.fig(B, bx, bp, { lift: bl });
+      s.fig(A, ax, ap, { lift: 0.18 * k });
+      s.fig(B, bx, bp, { lift: bl });
       s.dust(bRest - 0.4, t - tripT - 0.35);
-      s.say(fr, '💤', t, 0.1, wakeT);
-      s.say(fr, '😳', t, wakeT + 0.1, standT + 0.3);
-      s.say(fr, '😠', t, standT + 0.3, cardT); // then the card goes up where it was
-      s.say(fa, '😎', t, (0.8 - x0) / v, Infinity);
-      s.say(fb, '💫', t, tripT + 0.6, cardT + 0.3);
-      s.say(fb, '😭', t, cardT + 0.3, Infinity);
       return t < cardT + 2.6;
     },
   },
@@ -1133,16 +1067,10 @@ export const SKITS = {
         rf = 1;
         rp = lerpPose(standPose(t), congaPose(rx - x0, t), ease(clamp((t - joinT) / 0.3, 0, 1)));
       }
-      const fr = s.fig(R, rx, rp, { face: rf });
-      const fc = s.fig(C, lead - 2 * GAP, congaPose(lead - x0 - 2 * GAP, t - 0.2));
-      const fb = s.fig(B, lead - GAP, congaPose(lead - x0 - GAP, t - 0.1));
-      const fa = s.fig(A, lead, lp);
-      s.say(fa, '🎶', t, 0.2, Infinity);
-      s.say(fb, '🎉', t, 1.2, Infinity);
-      s.say(fc, '😁', t, 2.2, Infinity);
-      s.say(fr, '😠', t, joinT - 2.4, joinT - 0.6);
-      s.say(fr, '🤔', t, joinT - 0.6, joinT);
-      s.say(fr, '🎉', t, joinT + 0.2, Infinity);
+      s.fig(R, rx, rp, { face: rf });
+      s.fig(C, lead - 2 * GAP, congaPose(lead - x0 - 2 * GAP, t - 0.2));
+      s.fig(B, lead - GAP, congaPose(lead - x0 - GAP, t - 0.1));
+      s.fig(A, lead, lp);
       return rx < s.right + 1;
     },
   },
@@ -1191,10 +1119,6 @@ export const SKITS = {
       const fb = s.fig(B, bx, bp, { face: bf });
       const fa = s.fig(A, ax, ap, { face: af });
       s.baton(t < handT ? fa : fb);
-      s.say(fb, '👍', t, handT - 0.6, offT);
-      s.say(fb, '😁', t, offT + 0.2, Infinity);
-      s.say(fa, '😱', t, handT + 0.4, chaseT + 0.4);
-      s.say(fa, '😡', t, chaseT + 0.4, Infinity);
       return ax > s.left - 1.5;
     },
   },

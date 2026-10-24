@@ -1,4 +1,4 @@
-import { Button, text, slab, chamfer, PAL } from '../core/ui.js';
+import { Button, text, slab, chamfer, PAL, FONT_BODY, FONT_DISPLAY } from '../core/ui.js';
 import { formatMark, eventById } from '../events/registry.js';
 import { submitBest, saveGhostIfBetter } from '../core/storage.js';
 import { postMark } from '../online/post.js';
@@ -15,7 +15,8 @@ import { MEET_ORDER } from './rules.js';
 /**
  * Between a meet's events, over the event's late hits (the backdrop): this
  * event's places across every heat with the points they scored, and the
- * squads' totals. Your heat's results show at once; the overall places come
+ * squads' totals, side by side in the top right corner (each sheet just as
+ * wide as its rows), so the middle of the screen is clear for the fighting. Your heat's results show at once; the overall places come
  * up as soon as the server has every heat's. Nobody taps on: the next event's
  * title card comes up by itself when the server says (CONFIG.meet).
  *
@@ -129,12 +130,21 @@ export class MeetStandingsScene {
       ctx.fillRect(0, 0, view.w, view.h);
     }
     const s = view.safe;
-    const room = Math.min(LAYOUT.farY, view.h - 80) - s.t - 14; // above the track, clear of the late hits
-    const squadsW = Math.min(250, view.w * 0.28);
-    const placesW = Math.min(500, view.w - squadsW - 40 - Math.max(s.l, s.r) * 2);
-    const x0 = view.w / 2 - (placesW + squadsW + 12) / 2;
-    this.drawPlaces(ctx, x0, s.t + 10, placesW, room);
-    this.drawSquads(ctx, x0 + placesW + 12, s.t + 10, squadsW, room);
+    const top = s.t + 8;
+    const room = Math.min(LAYOUT.farY, view.h - 80) - top - 6; // above the track, clear of the late hits
+    const places = this.places();
+    const squads = this.squads();
+    // One row height for both, as big as fits the longer one.
+    const n = Math.max(1, places.rows.length, squads.rows.length);
+    const rowH = Math.max(20, Math.min(34, (room - HEAD - 8) / n));
+    const size = Math.round(rowH * 0.64);
+    const wp = this.fit(ctx, places, size);
+    const ws = this.fit(ctx, squads, size);
+    // Squads at the right edge, this event's places to their left; narrowed together if they'd take over half the screen.
+    const k = Math.min(1, (view.w * 0.62) / (wp + ws + 10));
+    const right = view.w - Math.max(s.r, 0) - 10;
+    this.panel(ctx, right - ws * k, top, ws * k, rowH, size, squads);
+    this.panel(ctx, right - ws * k - 10 - wp * k, top, wp * k, rowH, size, places);
     this.buttons.forEach((b) => b.draw(ctx));
     if (this.backdrop) this.backdrop.after?.drawControls(ctx, view);
     if (meet.lostText && !meet.final) {
@@ -144,8 +154,8 @@ export class MeetStandingsScene {
     }
   }
 
-  /** This event: the overall places once the server has them (else your heat), or the final standings. */
-  drawPlaces(ctx, x, y, w, room) {
+  /** This event's sheet: the overall places once the server has them (else your heat). { title, rows }. */
+  places() {
     const res = meet.results[this.index];
     const relay = this.ev.id === 'relay4x100';
     let title;
@@ -177,11 +187,11 @@ export class MeetStandingsScene {
         me: r.isPlayer,
       }));
     }
-    this.panel(ctx, x, y, w, room, title, rows);
+    return { title, rows };
   }
 
-  /** The squads' totals so far (or final). */
-  drawSquads(ctx, x, y, w, room) {
+  /** The squads' sheet: their totals so far (or final). { title, rows, gold }. */
+  squads() {
     const st = meet.final?.standings ?? meet.standings ?? [];
     const done = !!meet.final;
     const title = done ? `${meet.squads.get(st[0]?.squad)?.name?.toUpperCase() ?? ''} WIN` : `SQUADS · AFTER ${meet.results.filter(Boolean).length} OF ${MEET_ORDER.length}`;
@@ -189,32 +199,47 @@ export class MeetStandingsScene {
       const sq = meet.squads.get(r.squad);
       return { place: String(r.rank), name: sq?.name ?? r.squad, color: sq?.color ?? PAL.ink3, value: formatPoints(r.total), me: r.squad === meet.me?.squad };
     });
-    this.panel(ctx, x, y, w, room, title, rows, done);
+    return { title, rows, gold: done };
   }
 
-  /** A cream sheet under a title strip (gold for the winners, else ink), zebra rows, yours gold. */
-  panel(ctx, x, y, w, room, title, rows, gold = false) {
-    const head = 32;
-    const rowH = Math.max(20, Math.min(28, (room - head - 8) / Math.max(1, rows.length)));
-    const h = head + rows.length * rowH + 8;
+  /** How wide sheet `p` needs to be for its rows at `size` px (place and colour bar, name, a small gap, value) and its title. */
+  fit(ctx, p, size) {
+    const measure = (strs, font) => {
+      ctx.font = font;
+      return Math.max(0, ...strs.map((t) => ctx.measureText(t).width));
+    };
+    p.nameW = measure(p.rows.map((r) => r.name), `800 ${size}px ${FONT_BODY}`);
+    const valueW = measure(p.rows.map((r) => r.value), `700 ${size}px ${FONT_BODY}`);
+    ctx.letterSpacing = '1px';
+    const titleW = measure([p.title], `900 19px ${FONT_DISPLAY}`) + 24;
+    ctx.letterSpacing = '0px';
+    return Math.max(NAME_X + p.nameW + 20 + valueW + 12, titleW, 160);
+  }
+
+  /** Sheet `p` ({ title, rows, gold }): cream under a title strip (gold for the winners, else ink), zebra rows, yours gold. */
+  panel(ctx, x, y, w, rowH, size, { title, rows, gold = false, nameW }) {
+    const head = HEAD;
+    const h = head + rows.length * rowH + 6;
     slab(ctx, x, y, w, h + 5, { face: PAL.cream, lip: PAL.creamShade, lipH: 5, c: 7 });
     ctx.fillStyle = gold ? PAL.gold : this.backdrop ? PAL.ink : PAL.ink2;
     chamfer(ctx, x, y, w, head, 7);
     ctx.fill();
     ctx.fillRect(x, y + head / 2, w, head / 2);
-    text(ctx, title, x + w / 2, y + head / 2 + 1, { size: 18, font: 'display', track: 1, color: gold ? PAL.ink : PAL.cream, maxWidth: w - 16 });
-    const size = Math.round(rowH * 0.62);
+    text(ctx, title, x + w / 2, y + head / 2 + 1, { size: 19, font: 'display', track: 1, color: gold ? PAL.ink : PAL.cream, maxWidth: w - 14 });
     rows.forEach((r, i) => {
       const ry = y + head + i * rowH + rowH / 2;
       if (r.me || i % 2) {
         ctx.fillStyle = r.me ? PAL.gold : '#EFE2C3';
         ctx.fillRect(x, ry - rowH / 2, w, rowH);
       }
-      text(ctx, r.place, x + 18, ry + 1, { size: size + 2, font: 'display', color: PAL.ink });
+      text(ctx, r.place, x + 17, ry + 1, { size: size + 2, font: 'display', color: PAL.ink });
       ctx.fillStyle = r.color;
-      ctx.fillRect(x + 32, ry - size * 0.5, 6, size);
-      text(ctx, r.name, x + 46, ry + 1, { size, font: 'body', align: 'left', weight: r.me ? 800 : 700, color: PAL.ink, maxWidth: w * 0.55 });
-      text(ctx, r.value, x + w - 10, ry + 1, { size, font: 'body', weight: 700, align: 'right', color: PAL.muted });
+      ctx.fillRect(x + 32, ry - size * 0.45, 6, size * 0.9);
+      text(ctx, r.name, x + NAME_X, ry + 1, { size, font: 'body', align: 'left', weight: r.me ? 800 : 700, color: PAL.ink, maxWidth: Math.min(nameW + 2, w - NAME_X - 60) });
+      text(ctx, r.value, x + w - 12, ry + 1, { size, font: 'body', weight: 700, align: 'right', color: PAL.muted, maxWidth: w * 0.5 });
     });
   }
 }
+
+const HEAD = 32; // a sheet's title strip
+const NAME_X = 46; // where the names start: after the place and the colour bar

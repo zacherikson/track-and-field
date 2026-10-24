@@ -8,7 +8,9 @@ Gameplay and tuning changes, newest first. When you change a number in
 - **The results over the late hits move to the top right**, so the middle
   of the screen is clear for the fighting. The text stays big enough to read
   at a glance; the sheet is just as wide as its rows (no gap between the
-  names and the marks) and the titles are shorter. Every event's results and the tournament's two
+  names and the marks) and the titles are shorter. Squad meets too: the
+  event's places (every heat) and the squads' totals sit side by side in the
+  top right, each sheet as wide as its rows (`meetStandingsScene.js`). Every event's results and the tournament's two
   pages; the buttons stay along the bottom. `brawl/aftermath.js` ResultsPanel.
 - **Javelin: the line marking where it landed runs straight up the screen**,
   like the field's stripes and distance boards in that side-on shot. It used

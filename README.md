@@ -82,10 +82,13 @@ fails if one is missing a color a renderer reads.
 
 ## Tuning
 
-**On the phone:** tap **⚙ Tuning** on the menu or results screen. Every speed
-setting has a slider, and live estimates show the resulting race times. Changes
-are saved on that device. **Copy changes** gives a summary to paste into chat so
-the good ones can be made the defaults.
+**On the phone** (signed in as the tuner, `rawnald`): tap **Tuning** on the
+menu or results screen for a list of the five events. Pick one to play it; a
+**⚙** under the ✕ pauses the event and opens just that event's settings (then
+the running ones they all share). **All settings** on the list opens every
+slider at once, with live estimates of 100m times. Changes are saved on that
+device. **Copy changes** gives a summary to paste into chat so the good ones can
+be made the defaults.
 
 **In code:** every feel number lives in [`src/config.js`](src/config.js). To see what a change does
 without playing, run the headless simulator:

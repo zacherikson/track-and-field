@@ -23,8 +23,8 @@ import { liveSurvival, eventAt } from './survival/liveSurvival.js';
 import { SURVIVAL_KIND } from './online/liveRules.js';
 import { meet } from './meet/meet.js';
 import { tournament } from './tournament/tournament.js';
-import { openTuning } from './tuning/panel.js';
-import { roundMark, eventById } from './events/registry.js';
+import { openTuning, openTuningPicker } from './tuning/panel.js';
+import { roundMark, eventById, EVENTS } from './events/registry.js';
 import { ORDER, TOURNAMENT_KIND } from './tournament/tournament.js';
 import { startLive, endLive, currentLive } from './online/live.js';
 import { resetScars } from './brawl/wounds.js';
@@ -33,6 +33,7 @@ import { getCampaign, setCampaign, markBeaten, canTune } from './core/storage.js
 export const flow = {
   // The home screen, on its Play tab (or `tab`: homeScene.js TABS).
   menu: (game, tab = 'play') => {
+    game.tuneEvent = false; // back from a tuning session: no more ⚙
     resetScars(); // the late hits' wounds heal
     endLive(); // and leaves a live room
     meet.end(); // or a squad meet
@@ -156,5 +157,19 @@ export const flow = {
     game.setScene(new IntroScene(eventById(meet.eventId(i))));
   },
   // Tuning panel overlay; the canvas scene underneath stays as it was.
-  tuning: (game) => canTune() && openTuning(() => game.input.clear()), // the owner's only
+  // The owner's only: the five events; pick one to play it with the tuning ⚙ (tuning/gear.js).
+  tuning: (game) => {
+    if (!canTune()) return;
+    const done = () => game.input.clear();
+    const five = ['sprint100', 'hurdles110', 'longjump', 'polevault', 'javelin'].map((id) => EVENTS.find((e) => e.id === id));
+    openTuningPicker(five, {
+      onPick: (ev) => {
+        done();
+        game.tuneEvent = true;
+        flow.play(game, ev);
+      },
+      onAll: () => openTuning(done),
+      onClose: done,
+    });
+  },
 };

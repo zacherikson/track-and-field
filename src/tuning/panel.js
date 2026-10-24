@@ -4,10 +4,11 @@ import { estimateTime, estimateRivalWin } from './estimate.js';
 
 /**
  * In-game tuning panel: an HTML overlay above the canvas (native sliders are
- * far nicer on a phone than anything drawn on canvas). Opened between races
- * from the menu and results screens. Changes apply to the next race, are saved
- * on this device, and "Copy changes" puts a readable summary on the clipboard
- * to paste into a chat.
+ * far nicer on a phone than anything drawn on canvas). The Tuning button opens
+ * the event list (openTuningPicker); pick an event to play it with a gear
+ * (gear.js) that opens this panel with just that event's settings, the game
+ * paused underneath. Changes are saved on this device, and "Copy changes" puts
+ * a readable summary on the clipboard to paste into a chat.
  */
 let root = null;
 let onCloseCb = null;
@@ -24,10 +25,20 @@ function fmt(p, v) {
 }
 const secs = (t) => (Number.isFinite(t) ? `${t.toFixed(2)}s` : 'never finishes');
 
-export function openTuning(onClose) {
+/** Open the panel: every setting, or (with `ev`, an event from registry.js) that event's own, then the shared ones. */
+export function openTuning(onClose, ev = null) {
   if (!root) build();
   onCloseCb = onClose;
   for (const p of PARAMS) refreshRow(p);
+  root.querySelector('.tp-title strong').textContent = ev ? `Tuning · ${ev.name}` : 'Tuning';
+  root.querySelector('.tp-title span').textContent = ev ? 'Changes apply straight away (pole and run-up changes from your next attempt) and are saved on this phone.' : 'Changes apply to your next race and are saved on this phone.';
+  for (const sec of root.querySelectorAll('.tp-group')) {
+    const g = GROUPS[Number(sec.dataset.group)];
+    sec.hidden = !!ev && !g.events?.includes(ev.id);
+    sec.style.order = ev && g.shared ? 1 : 0; // the event's own settings first
+  }
+  root.querySelector('.tp-est').hidden = !!ev && ev.id !== 'sprint100' && ev.id !== 'hurdles110';
+  root.querySelector('.tp-scroll').scrollTop = 0;
   root.hidden = false;
   // Ignore the rest of the tap that opened the panel (it lands on the overlay).
   root.style.pointerEvents = 'none';
@@ -73,9 +84,10 @@ function build() {
       <textarea class="tp-copybox" id="tp-copybox" readonly hidden aria-label="Changes to copy"></textarea>
     </div>`;
   const groups = root.querySelector('.tp-groups');
-  for (const g of GROUPS) {
+  for (const [i, g] of GROUPS.entries()) {
     const sec = document.createElement('section');
     sec.className = 'tp-group';
+    sec.dataset.group = i;
     sec.innerHTML = `<h3>${g.title}</h3><p class="tp-blurb">${g.blurb}</p><div class="tp-grid"></div>`;
     const grid = sec.querySelector('.tp-grid');
     for (const p of g.params) grid.appendChild(buildRow(p));
@@ -177,6 +189,47 @@ function copyChanges() {
   }, showBox);
 }
 
+/**
+ * The Tuning button's first screen: the five events. Picking one calls
+ * onPick(ev) (the game plays it with the gear); "All settings" opens the full panel.
+ */
+let picker = null;
+export function openTuningPicker(events, { onPick, onAll, onClose }) {
+  if (!root) build();
+  picker?.remove();
+  picker = document.createElement('div');
+  picker.className = 'tp';
+  picker.innerHTML = `
+    <div class="tp-bar">
+      <div class="tp-title"><strong>Tuning</strong><span>Pick an event to play it. Tap ⚙ in the event to adjust its settings.</span></div>
+      <button type="button" class="tp-btn tp-ghost tp-close">Close</button>
+    </div>
+    <div class="tp-scroll">
+      <div class="tp-events"></div>
+      <div class="tp-actions"><button type="button" class="tp-btn tp-ghost tp-all">All settings</button></div>
+    </div>`;
+  const list = picker.querySelector('.tp-events');
+  for (const ev of events) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'tp-event';
+    b.innerHTML = `<b>${ev.name}</b><span>Play ›</span>`;
+    b.addEventListener('click', () => done(() => onPick(ev)));
+    list.appendChild(b);
+  }
+  const done = (then) => {
+    picker.remove();
+    picker = null;
+    then?.();
+  };
+  picker.querySelector('.tp-close').addEventListener('click', () => done(onClose));
+  picker.querySelector('.tp-all').addEventListener('click', () => done(onAll));
+  // Ignore the rest of the tap that opened it.
+  picker.style.pointerEvents = 'none';
+  setTimeout(() => picker && (picker.style.pointerEvents = ''), 300);
+  document.body.appendChild(picker);
+}
+
 function note(msg) {
   root.querySelector('.tp-note').textContent = msg;
 }
@@ -216,6 +269,13 @@ function injectStyles() {
   .tp-foot { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; font-size: 12px; color: #a9b8d6; }
   .tp-reset { flex: none; border: 0; background: none; color: #7dff66; font-size: 12px; padding: 2px 0; text-decoration: underline; }
   .tp-reset[hidden] { display: none; }
+  .tp-groups { display: flex; flex-direction: column; gap: 18px; }
+  .tp-group[hidden], .tp-est[hidden] { display: none; }
+  .tp-events { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+  .tp-event { display: flex; justify-content: space-between; align-items: center; gap: 10px; border: 0; border-radius: 12px;
+    padding: 18px 16px; background: rgba(255,255,255,0.08); color: #eef3ff; font: 600 17px system-ui, -apple-system, sans-serif;
+    text-align: left; touch-action: manipulation; }
+  .tp-event span { color: #7dff66; font-size: 14px; }
   .tp-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
   .tp-btn { border: 0; border-radius: 10px; padding: 10px 18px; font: 600 15px system-ui, -apple-system, sans-serif;
     background: #39e626; color: #06240b; touch-action: manipulation; }

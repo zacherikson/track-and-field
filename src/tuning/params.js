@@ -1,11 +1,14 @@
 /**
  * Every setting the in-game tuning panel exposes, in plain language.
+ * `events`: the events a group is for (the panel opened from an event shows
+ * its own groups, then the `shared` ones: running and troubleshooting).
  * `path` points into CONFIG (dot-separated; array items by index).
  * `scale` converts the stored value for display (e.g. seconds -> ms).
  */
 export const GROUPS = [
   {
     title: 'Tapping pace',
+    events: ['sprint100', 'hurdles110', 'longjump', 'polevault', 'javelin'], shared: true,
     blurb: 'The game averages your recent correct taps into a pace. Your pace sets how fast the runner wants to go.',
     params: [
       { path: 'runner.cadenceForTopSpeed', label: 'Pace for top speed', unit: 'taps/s', min: 2, max: 8, step: 0.1, help: 'How fast you must hit targets to reach full speed. Lower is easier.' },
@@ -16,6 +19,7 @@ export const GROUPS = [
   },
   {
     title: 'Speeding up',
+    events: ['sprint100', 'hurdles110', 'longjump', 'polevault', 'javelin'], shared: true,
     blurb: 'How quickly the runner catches up to the speed your pace asks for.',
     params: [
       { path: 'runner.minSpeed', label: 'Minimum speed', unit: 'm/s', min: 0, max: 9, step: 0.5, kmh: true, help: 'Your speed on the first tap out of the blocks, and the slowest you run after that, however slowly you tap. Stumbles can still dip below it briefly.' },
@@ -26,6 +30,7 @@ export const GROUPS = [
   },
   {
     title: 'Slowing down',
+    events: ['sprint100', 'hurdles110', 'longjump', 'polevault', 'javelin'], shared: true,
     blurb: 'What happens when your pace drops or you stop tapping.',
     params: [
       { path: 'runner.coastDecel', label: 'Slow-down rate', unit: 'm/s²', min: 0.5, max: 15, step: 0.25, help: 'How fast you lose speed when your pace drops or you stop.' },
@@ -35,6 +40,7 @@ export const GROUPS = [
   },
   {
     title: 'Mistakes',
+    events: ['sprint100', 'hurdles110', 'longjump', 'polevault', 'javelin'], shared: true,
     blurb: 'Tapping the wrong side. A mistake also leaves a gap in your taps, which pulls your pace down too.',
     params: [
       { path: 'sprint100.targets.missSpeedLoss', label: 'Speed lost', unit: 'm/s', min: 0, max: 5, step: 0.1, kmh: true, help: 'Taken away instantly on a wrong tap.' },
@@ -44,6 +50,7 @@ export const GROUPS = [
   },
   {
     title: 'Targets',
+    events: ['sprint100', 'hurdles110', 'longjump', 'polevault', 'javelin'], shared: true,
     blurb: 'Where the green target appears.',
     params: [
       { path: 'sprint100.targets.maxSameSide', label: 'Max same side in a row', unit: '', min: 1, max: 4, step: 1, help: 'After this many on one side, the next is guaranteed to switch.' },
@@ -52,6 +59,7 @@ export const GROUPS = [
   },
   {
     title: 'Finish lean',
+    events: ['sprint100', 'hurdles110'],
     blurb: 'Near the line, taps stop counting and you coast into your lean.',
     params: [
       { path: 'dip.promptDistance', label: 'Lean zone length', unit: 'm', min: 5, max: 30, step: 1, help: 'How far before the line the orange pads appear.' },
@@ -60,6 +68,7 @@ export const GROUPS = [
   },
   {
     title: 'Rivals (Amateur)',
+    events: ['sprint100', 'hurdles110'],
     blurb: 'Rivals hit targets at their own pace, through the same physics as you.',
     params: [
       { path: 'ai.amateur.cadence.0', label: 'Slowest rival pace', unit: 'taps/s', min: 1.5, max: 7, step: 0.1, help: 'Each rival gets a pace between slowest and fastest.' },
@@ -68,6 +77,7 @@ export const GROUPS = [
   },
   {
     title: 'Rivals (Pro)',
+    events: ['sprint100', 'hurdles110'],
     blurb: 'The field you race when Pro is picked on the menu.',
     params: [
       { path: 'ai.pro.cadence.0', label: 'Slowest rival pace', unit: 'taps/s', min: 1.5, max: 7, step: 0.1, help: 'Each rival gets a pace between slowest and fastest.' },
@@ -76,6 +86,7 @@ export const GROUPS = [
   },
   {
     title: '110m Hurdles',
+    events: ['hurdles110'],
     blurb: 'A new shuffled 1-2-3 set appears at GO and at every hurdle. How fast you clear it sets your pace; any mistake trips you at the next hurdle.',
     params: [
       { path: 'hurdles110.runner.cadenceForTopSpeed', label: 'Pace for top speed', unit: 'taps/s', min: 2, max: 10, step: 0.1, help: 'Taps per second within a set (counting your reaction to it) needed for full speed.' },
@@ -89,6 +100,7 @@ export const GROUPS = [
   },
   {
     title: 'Long Jump: flight',
+    events: ['longjump'],
     blurb: 'How the jump looks and plays in the air. Look-only settings don’t change distances.',
     params: [
       { path: 'longJump.flight.slowMo.rate', label: 'Air speed (slow motion)', unit: '×', min: 0.3, max: 1, step: 0.05, help: 'How fast the game runs while you’re in the air. Lower = more hang time and more time to see the top coming. Look only.' },
@@ -100,6 +112,7 @@ export const GROUPS = [
   },
   {
     title: 'Long Jump: stretch',
+    events: ['longjump'],
     blurb: 'Pressing both at the top: the mini double jump, and the collapse when you don’t.',
     params: [
       { path: 'longJump.stretch.kickY', label: 'Stretch hop', unit: 'm/s', min: 0, max: 3, step: 0.1, help: 'The little hop up when you stretch. Bigger = more of a double jump, and further.' },
@@ -112,21 +125,48 @@ export const GROUPS = [
     ],
   },
   {
-    title: 'Pole Vault',
-    blurb: 'The plant (press and hold as the spark reaches the tip) and the release (let go as it climbs back to your hands).',
+    title: 'Pole Vault: height',
+    events: ['polevault'],
+    blurb: 'Height = min + (max − min) × score. The score weighs your speed at the plant, the plant and the release by these weights (as shares of their total).',
     params: [
-      { path: 'poleVault.zoneDistance', label: 'Plant zone', unit: 'm', min: 5, max: 20, step: 1, help: 'Meters before the plant where the pads turn orange and the spark starts down the pole.' },
-      { path: 'poleVault.press.window', label: 'Plant window', unit: 'ms', scale: 1000, min: 0.08, max: 0.5, step: 0.01, help: 'How far from the plant your press can be and still count for something. Tighter = harder.' },
-      { path: 'poleVault.spark.climbTime', label: 'Spark climb time', unit: 'ms', scale: 1000, min: 0.3, max: 1.5, step: 0.05, help: 'How long the spark takes to climb from the box back up to your hands while you hold, and so how long the swing up the pole takes. Let go as it gets there.' },
+      { path: 'poleVault.height.min', label: 'Lowest height', unit: 'm', min: 2, max: 5, step: 0.05, help: 'Height with everything wrong: slow, and a missed plant and release.' },
+      { path: 'poleVault.height.max', label: 'Highest height', unit: 'm', min: 4, max: 8, step: 0.05, help: 'Height with everything right: fast, a perfect plant and a perfect release.' },
+      { path: 'poleVault.height.speedWeight', label: 'Speed weight', unit: '', min: 0, max: 1, step: 0.05, help: 'How much your speed at the plant counts.' },
+      { path: 'poleVault.height.plantWeight', label: 'Plant weight', unit: '', min: 0, max: 1, step: 0.05, help: 'How much the plant (press as the spark reaches the tip) counts.' },
+      { path: 'poleVault.height.releaseWeight', label: 'Release weight', unit: '', min: 0, max: 1, step: 0.05, help: 'How much the release (let go as the spark reaches your hands) counts.' },
+      { path: 'poleVault.height.slowSpeed', label: 'Speed counts from', unit: 'm/s', min: 4, max: 11, step: 0.25, kmh: true, help: 'Plant at this speed or slower and speed adds nothing.' },
+      { path: 'poleVault.height.fastSpeed', label: 'Full speed at', unit: 'm/s', min: 9, max: 14, step: 0.25, kmh: true, help: 'Plant at this speed or faster and speed counts in full.' },
+    ],
+  },
+  {
+    title: 'Pole Vault: timing',
+    events: ['polevault'],
+    blurb: 'Press and hold both as the spark reaches the tip of the pole (the plant). Let go as it climbs back to your hands (the release).',
+    params: [
+      { path: 'poleVault.zoneDistance', label: 'Plant zone', unit: 'm', min: 5, max: 20, step: 1, help: 'Meters before the plant where the pads turn orange and the spark starts down the pole. Shorter = the spark runs down faster.' },
+      { path: 'poleVault.press.window', label: 'Plant window', unit: 'ms', scale: 1000, min: 0.08, max: 0.5, step: 0.01, help: 'How far either side of the plant your press can be and still count for something. Tighter = harder.' },
+      { path: 'poleVault.press.miss', label: 'Run-through', unit: 'ms', scale: 1000, min: 0.15, max: 0.8, step: 0.01, help: 'No press within this long of the plant and you run through: no height.' },
+      { path: 'poleVault.spark.climbTime', label: 'Spark climb time', unit: 'ms', scale: 1000, min: 0.3, max: 1.5, step: 0.05, help: 'How long the spark takes to climb back up to your hands, and so how long the swing up the pole takes.' },
       { path: 'poleVault.release.window', label: 'Release window', unit: 'ms', scale: 1000, min: 0.08, max: 0.5, step: 0.01, help: 'How far either side of the spark reaching your hands you can let go and still get something. Tighter = harder.' },
-      { path: 'poleVault.height.gain', label: 'Timing reward', unit: 'm', min: 1, max: 6, step: 0.1, help: 'Height a perfect plant and release add over a botched one.' },
-      { path: 'poleVault.height.perMps', label: 'Speed reward', unit: 'm per m/s', min: 0, max: 1, step: 0.05, help: 'Extra height for each m/s of run-up speed at the plant.' },
-      { path: 'poleVault.height.base', label: 'Base height', unit: 'm', min: 0, max: 4, step: 0.1, help: 'Shifts every vault up or down.' },
-      { path: 'poleVault.swing.bend', label: 'Pole bend', unit: '%', scale: 100, min: 0, max: 0.4, step: 0.01, help: 'How far the pole bends as you swing on it. Look only.' },
+    ],
+  },
+  {
+    title: 'Pole Vault: look',
+    events: ['polevault'],
+    blurb: 'How the pole and the vault look. None of these change your height. Pole changes apply from your next attempt.',
+    params: [
+      { path: 'poleVault.pole.length', label: 'Pole length', unit: 'm', min: 3, max: 5.5, step: 0.05, help: 'Box to your top hand. Longer = you plant further out and ride higher.' },
+      { path: 'poleVault.pole.carryAngle', label: 'Carry angle', unit: '°', scale: 57.2958, min: 0.3, max: 1.4, step: 0.0174533, help: 'How high the tip points while you run.' },
+      { path: 'poleVault.pole.grip', label: 'Hand spread', unit: 'm', min: 0.2, max: 0.8, step: 0.05, help: 'From your top hand on the end down to your bottom hand.' },
+      { path: 'poleVault.swing.bend', label: 'Pole bend', unit: '%', scale: 100, min: 0, max: 0.45, step: 0.01, help: 'How far the pole bends as you swing up it.' },
+      { path: 'poleVault.flight.rise', label: 'Rise off the top', unit: 'ms', scale: 1000, min: 0.2, max: 1, step: 0.05, help: 'From letting go to the top of your flight.' },
+      { path: 'poleVault.flight.hang', label: 'Hang over the bar', unit: 'ms', scale: 1000, min: 0, max: 1.2, step: 0.05, help: 'How long you float over the bar.' },
+      { path: 'poleVault.flight.fall', label: 'Drop to the mat', unit: 'ms', scale: 1000, min: 0.2, max: 1.2, step: 0.05, help: 'From the bar down onto the mat.' },
     ],
   },
   {
     title: 'Javelin',
+    events: ['javelin'],
     blurb: 'Hold both to draw the javelin back (its angle rises), let go to throw.',
     params: [
       { path: 'javelin.zoneDistance', label: 'Throw zone', unit: 'm', min: 8, max: 30, step: 1, help: 'Meters before the foul line where the pads turn orange and you can start holding.' },
@@ -140,6 +180,7 @@ export const GROUPS = [
   },
   {
     title: 'Troubleshooting',
+    events: ['sprint100', 'hurdles110', 'longjump', 'polevault', 'javelin'], shared: true,
     blurb: 'Tools for finding out why a tap did or didn’t count.',
     params: [
       { path: 'debug.tapMarkers', label: 'Tap markers (1 = on)', unit: '', min: 0, max: 1, step: 1, help: 'Marks every tap the game receives: green = stride, red = wrong side, grey = ignored (with the reason). A press that leaves no marker never reached the game.' },

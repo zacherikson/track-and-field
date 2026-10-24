@@ -473,12 +473,14 @@ export const CONFIG = {
     // to your hands. The best release is the moment it gets there.
     spark: { climbTime: 0.8 },
     release: { window: 0.18 }, // s either side of the spark reaching your hands: release quality falls to 0
-    // Height cleared = base + perMps * (speed - vRef) + gain * quality, where
-    // quality = pressWeight * plant + (1 - pressWeight) * release (each 0..1).
-    height: { base: 1.4, perMps: 0.4, vRef: 9, gain: 4.0, pressWeight: 0.5 },
-    // How much the pole bends mid-swing, and at most at the top for a weak vault (shares of its length).
-    // The swing takes as long as the spark's climb: you're at the top as it reaches your hands.
-    swing: { bend: 0.3, topBend: 0.3 },
+    // Height cleared = min + (max - min) × score. The score weighs speed, plant and release
+    // (each 0..1) by their weights, as shares of the three's total. Speed counts 0 at
+    // `slowSpeed` m/s at the plant and 1 at `fastSpeed`.
+    height: { min: 3.7, max: 6.4, speedWeight: 0.5, plantWeight: 0.25, releaseWeight: 0.25, slowSpeed: 8, fastSpeed: 12.5 },
+    // How much the pole bends mid-swing (share of its length). A weak vault also leaves it bent
+    // at the top, so you're only as high as your mark. The swing takes as long as the spark's
+    // climb: you're at the top, upside down, as it reaches your hands.
+    swing: { bend: 0.3 },
     // Off the pole (from the original, not gravity): rise while turning to face
     // the bar, hang face down over it, drop onto the mat (s).
     flight: { rise: 0.4, hang: 0.5, fall: 0.5 },

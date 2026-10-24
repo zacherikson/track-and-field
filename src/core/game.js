@@ -1,6 +1,7 @@
 import { CONFIG } from '../config.js';
 import { Input } from './input.js';
 import { text } from './ui.js';
+import { takeGearTap, drawGear } from '../tuning/gear.js';
 
 /**
  * The Game owns three things: the view (canvas sizing), the loop, and the
@@ -109,7 +110,8 @@ export class Game {
     if (rawDt > 0) this.fps += (1 / rawDt - this.fps) * 0.05;
     this.worstFrameMs = Math.max(this.worstFrameMs ?? 0, rawDt * 1000); // hitch meter (reset by scenes)
 
-    if (this.view.portrait) {
+    takeGearTap(this); // the tuning ⚙ (tuning/gear.js): pauses the game
+    if (this.view.portrait || this.paused) {
       // Paused: freeze the sim clock and drop any taps.
       this.input.clear();
       this.acc = 0;
@@ -134,6 +136,7 @@ export class Game {
       return;
     }
     this.scene.render(ctx, view);
+    drawGear(ctx, this);
     if (this.debug) {
       text(ctx, `${this.fps.toFixed(0)} fps`, view.w - 8 - view.safe.r, view.h - 10, { size: 12, align: 'right', weight: 500, color: 'rgba(255,255,255,0.7)' });
     }

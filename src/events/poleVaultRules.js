@@ -16,8 +16,10 @@
  *   (within `release.window` either side; hold on too long and you get
  *   nothing from it). What you see is what's scored: the spark arrives
  *   exactly at the best moment.
- * - Height cleared = base + speed at the plant + both qualities (vaultHeight).
- *   Best of three counts, as in the long jump.
+ * - Height cleared: from `height.min` (everything wrong) to `height.max`
+ *   (everything right), by a score that weighs your speed at the plant, the
+ *   plant and the release (`height.speedWeight` etc., 50 / 25 / 25 by
+ *   default). See vaultHeight. Best of three counts, as in the long jump.
  */
 
 /** Plant quality 0..1 from press time minus plant time (s). */
@@ -35,11 +37,22 @@ export function releaseTarget(cfg) {
   return cfg.spark.climbTime;
 }
 
-/** Height cleared (m) for plant speed v (m/s) and the two qualities. */
+/** Speed quality 0..1: 0 at `height.slowSpeed` m/s at the plant or slower, 1 at `height.fastSpeed` or faster. */
+export function speedQuality(v, cfg) {
+  const h = cfg.height;
+  return Math.max(0, Math.min(1, (v - h.slowSpeed) / (h.fastSpeed - h.slowSpeed)));
+}
+
+/**
+ * Height cleared (m) for plant speed v (m/s) and the plant and release
+ * qualities (0..1): min + (max - min) × score, where the score weighs the
+ * three by `speedWeight`, `plantWeight` and `releaseWeight` (shares of their total).
+ */
 export function vaultHeight({ v, pq, rq }, cfg) {
   const h = cfg.height;
-  const q = h.pressWeight * pq + (1 - h.pressWeight) * rq;
-  return h.base + h.perMps * (v - h.vRef) + h.gain * q;
+  const total = h.speedWeight + h.plantWeight + h.releaseWeight || 1;
+  const score = (h.speedWeight * speedQuality(v, cfg) + h.plantWeight * pq + h.releaseWeight * rq) / total;
+  return h.min + (h.max - h.min) * score;
 }
 
 const rand = (a, b, rng) => a + (b - a) * rng();

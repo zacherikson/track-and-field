@@ -4,6 +4,30 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Pole vault: 50 / 25 / 25, the hand on the end, tuning per event
+- **Scoring:** height = `height.min` (3.7 m) to `height.max` (6.4 m) by a
+  score that's 50% speed at the plant, 25% plant, 25% release
+  (`speedWeight` / `plantWeight` / `releaseWeight`). Speed counts from
+  `slowSpeed` 8 m/s to `fastSpeed` 12.5 m/s. Replaces `base` 1.4 /
+  `perMps` 0.4 / `vRef` 9 / `gain` 4.0 / `pressWeight` 0.5.
+- **What you see is your mark.** The top of the swing used to stop at 70% of the
+  pole however weak the vault, so a 2.96 m vault went up past 4 m. Now a weak
+  vault leaves the pole as bent at the top as it takes, and the flight peaks
+  exactly at your mark. `swing.topBend` removed.
+- **The hand you see holds the end of the pole**, the whole time: the near arm
+  is now the top hand (at the back hip running, overhead at the plant, on the
+  end up the pole), the far arm the bottom hand. Both are drawn gripping the
+  pole.
+- Pole length and grip changes apply from the next attempt.
+- **Tuning per event:** the Tuning button opens a list of the five events.
+  Pick one to play it with a ⚙ under the ✕: it pauses the game and opens that
+  event's settings, then the shared running ones. All settings is still there.
+  New `src/tuning/gear.js`; groups in params.js say which events they're for.
+- **Pole vault settings:** height (lowest, highest, the three weights, the
+  speed range), timing (plant zone, plant window, run-through, spark climb,
+  release window) and look (pole length, carry angle, hand spread, bend,
+  rise / hang / drop).
+
 ## Pole vault: held like a real vaulter, a longer pole
 - **Two hands on the pole**, as a right-handed vaulter holds it: the top hand
   (far arm) on the very end at the back hip, the bottom hand (near arm) about

@@ -98,17 +98,10 @@ export class PoleVault {
 
   enter() {
     const cfg = this.cfg;
-    const P = cfg.pole;
-    this.L = P.length;
     // A shorter athlete (Joey) is smaller all over and plants with the hands lower.
     this.tall = heightOf(chosenPlayer(this.ev.id).colors);
     this.figH = FIG_H * this.tall;
-    const gripY = P.gripY * this.tall;
-    this.plantX = -Math.sqrt(P.length ** 2 - gripY ** 2);
-    this.phi0 = Math.asin(gripY / P.length);
-    // Hips to hands upside down at the top of the pole (arms straight along the body).
-    const top = handPos(0, 0, this.figH, vaultSwingPose(Math.PI, 1), 1);
-    this.reach = Math.hypot(top.x, top.y);
+    this.measurePole();
     this.track = new VaultRenderer(cfg, venueFor(this.live));
     this.camera = new Camera();
     const me = chosenPlayer(this.ev.id);
@@ -126,6 +119,18 @@ export class PoleVault {
     this.ghost = new FieldGhost(this.ev, this.liveField);
     this.onResize(this.game.view);
     this.startRound();
+  }
+
+  /** The pole's geometry, from config (again every attempt, so tuning applies from the next one). */
+  measurePole() {
+    const P = this.cfg.pole;
+    this.L = P.length;
+    const gripY = Math.min(P.gripY * this.tall, 0.95 * P.length);
+    this.plantX = -Math.sqrt(P.length ** 2 - gripY ** 2);
+    this.phi0 = Math.asin(gripY / P.length);
+    // Hips to hands upside down at the top of the pole (arms straight along the body).
+    const top = handPos(0, 0, this.figH, vaultSwingPose(Math.PI, 1), 0);
+    this.reach = Math.hypot(top.x, top.y);
   }
 
   exit() {
@@ -153,6 +158,7 @@ export class PoleVault {
 
   startRound() {
     this.round++;
+    this.measurePole();
     const t = this.now;
     this.runner = this.runUp.begin(-this.cfg.runway, t, liveRandom(this.live, this.live?.stage(this.ev.id, this.round), 'targets')); // live: this round's run-up targets are the same for everyone
     this.thumbs.reset();
@@ -282,10 +288,11 @@ export class PoleVault {
    * How high your hands are at the top of the pole (the upright pole's chord,
    * box to hands) for a vault of `height`: you're just below it there, upside
    * down over your hands, and the push takes you the rest of the way. A weak
-   * vault leaves the pole a little bent (at most `swing.topBend` of its length).
+   * vault leaves the pole bent at the top, as far as it takes for the height
+   * you see to be your mark.
    */
   topChord(height) {
-    return clamp(height - 0.15 - this.reach, this.L * (1 - this.cfg.swing.topBend), this.L);
+    return clamp(height - 0.15 - this.reach, 0.3 * this.L, this.L);
   }
 
   /** Until the release is known, aim for a perfect release (with the plant you had). */
@@ -312,7 +319,7 @@ export class PoleVault {
     const hands = { x: -c * Math.cos(phi), y: c * Math.sin(phi) };
     const alpha = swingKey(u, 3);
     const pose = vaultSwingPose(alpha, u);
-    const off = handPos(0, 0, this.figH, pose, 1); // top hand relative to the hips (m, y down)
+    const off = handPos(0, 0, this.figH, pose, 0); // top hand relative to the hips (m, y down)
     return { phi, c, hands, alpha, pose, hip: { x: hands.x - off.x, y: hands.y + off.y } };
   }
 
@@ -650,13 +657,14 @@ export class PoleVault {
 
     const sx = ground.x;
     this.drawGhost(ctx, view, pxPerM);
-    // The pole passes the near side of the body (as a right-handed vaulter's,
-    // seen from the left): the athlete, then the pole, then the near hand over it.
+    // The pole passes the near side of the body: the athlete, then the pole,
+    // then the hands gripping it (the top hand on the very end).
     const pole = this.poleGrip(view, sx, y, H, pose, pxPerM);
     drawFigure(ctx, sx, y, H, pose, this.player.colors, onMat ? floorY : groundY);
     if (pole) {
       strokePole(ctx, pole.e, pole.a, pole.c, pole.b, H);
-      if (pole.low) drawHand(ctx, pole.low, H, this.player.colors);
+      if (pole.low) drawHand(ctx, pole.low, H, this.player.colors, true);
+      if (pole.held) drawHand(ctx, pole.a, H, this.player.colors);
     }
     if (this.state !== 'mark') {
       const p = this.poleDrawn;
@@ -709,8 +717,8 @@ export class PoleVault {
   }
 
   /**
-   * The pole and how you hold it, as a right-handed vaulter: the top hand (far
-   * arm) holds the very end, the bottom hand (near arm) grips about
+   * The pole and how you hold it: the top hand (the near arm, the one you see)
+   * holds the very end the whole time, the bottom hand (far arm) grips about
    * `pole.grip` m further up. Running, the top hand carries the end at the
    * back hip and the bottom hand holds the pole up in front of the chest, tip
    * high; through the plant zone the tip drops to the box and the top hand
@@ -739,7 +747,7 @@ export class PoleVault {
       const C = VAULT_POSES.carryHand;
       const P = VAULT_POSES.plantHand;
       a = { x: S.x + H * (C.x + (P.x - C.x) * k), y: S.y + H * (C.y + (P.y - C.y) * k) };
-      pose.arms[1] = armIK(S, a, H, -1);
+      pose.arms[0] = armIK(S, a, H, -1);
       // Tip high while running, like a real vaulter. Through the plant zone the
       // pole drops, turning to aim at the box: the tip stays on the line from
       // your hands to the box, so it never touches the ground before the box
@@ -752,7 +760,7 @@ export class PoleVault {
       this.poleTop = Math.min(a.y, b.y);
     } else if (this.state === 'vault') {
       const sw = this.vault.sw ?? this.swingAt(this.vault.u);
-      a = handPos(sx, y, H, pose, 1); // the swing hangs you from the top hand
+      a = handPos(sx, y, H, pose, 0); // the swing hangs you from the top hand
       b = boxP;
       sag = Math.sqrt(Math.max(0, (3 * this.L * (this.L - sw.c)) / 8)) * pxPerM;
     } else {
@@ -809,7 +817,7 @@ export class PoleVault {
         }
       }
       if (!low && this.state !== 'vault') low = at(0.12 * g); // running: always holding on
-      if (low) pose.arms[0] = armIK(S, low, H, -1);
+      if (low) pose.arms[1] = armIK(S, low, H, -1);
     }
     this.poleDrawn = { e, a, c, b }; // for the ghost recording
     // Spark: down the pole in the plant zone (reaching the tip as it plants),
@@ -821,7 +829,7 @@ export class PoleVault {
       s = c0 == null ? 1 : 1 - clamp((this.now - c0) / releaseTarget(cfg), 0, 1);
     }
     if (s != null) this.sparkAt = at(s * acc[N]);
-    return { e, a, c, b, low };
+    return { e, a, c, b, low, held: grip };
   }
 
   drawSpark(ctx) {

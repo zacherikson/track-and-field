@@ -4,6 +4,20 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Pole vault: held like a real vaulter, a longer pole
+- **Two hands on the pole**, as a right-handed vaulter holds it: the top hand
+  (far arm) on the very end at the back hip, the bottom hand (near arm) about
+  `pole.grip` 0.55 m up the pole in front of the chest, tip up and forward.
+  Through the plant zone the tip drops to the box and the top hand drives up
+  overhead. On the pole the top hand stays on the end; the bottom hand keeps
+  hold while it can reach. The arms are solved to the pole every frame
+  (stickFigure.js armIK), so the hands never drift off it.
+- The pole is drawn over the body (it passes the near side), with the near
+  hand over it.
+- `pole.length` 3.6 → 4.5 m, `pole.carryAngle` 0.9 → 0.8 rad. The plant is
+  4.0 m out. While you run, the camera rises if it needs to so the tip stays on
+  screen.
+
 ## Pole vault: upside down on the spark, a shorter pole
 - **The swing is timed to the spark.** You reach the top of the pole, upside
   down and straight with the pole upright, exactly as the spark reaches your

@@ -4,7 +4,7 @@ import { Camera } from '../core/camera.js';
 import { clamp, damp, rand, shuffle } from '../core/math.js';
 import { text, roundRect } from '../core/ui.js';
 import { player as chosenPlayer, rivals as rivalRoster, heightOf } from '../athletes/roster.js';
-import { drawFigure, lerpPose, sampleTrack, handPos, vaultSwingPose, wrapNear, VAULT_POSES, POSES } from '../athletes/stickFigure.js';
+import { drawFigure, drawHand, armIK, shoulderPos, lerpPose, sampleTrack, handPos, vaultSwingPose, wrapNear, VAULT_POSES, POSES } from '../athletes/stickFigure.js';
 import { RunUp } from './runUp.js';
 import { Thumbs } from '../core/thumbs.js';
 import { runUpSpeed, runUpPose } from './runUpRules.js';
@@ -107,7 +107,7 @@ export class PoleVault {
     this.plantX = -Math.sqrt(P.length ** 2 - gripY ** 2);
     this.phi0 = Math.asin(gripY / P.length);
     // Hips to hands upside down at the top of the pole (arms straight along the body).
-    const top = handPos(0, 0, this.figH, vaultSwingPose(Math.PI, 1), 0);
+    const top = handPos(0, 0, this.figH, vaultSwingPose(Math.PI, 1), 1);
     this.reach = Math.hypot(top.x, top.y);
     this.track = new VaultRenderer(cfg, venueFor(this.live));
     this.camera = new Camera();
@@ -312,7 +312,7 @@ export class PoleVault {
     const hands = { x: -c * Math.cos(phi), y: c * Math.sin(phi) };
     const alpha = swingKey(u, 3);
     const pose = vaultSwingPose(alpha, u);
-    const off = handPos(0, 0, this.figH, pose, 0); // hand relative to the hips (m, y down)
+    const off = handPos(0, 0, this.figH, pose, 1); // top hand relative to the hips (m, y down)
     return { phi, c, hands, alpha, pose, hip: { x: hands.x - off.x, y: hands.y + off.y } };
   }
 
@@ -457,7 +457,9 @@ export class PoleVault {
     // Rise with the vaulter: keep the head at least topFrac down the screen.
     const ground = this.track.toScreen(this.camera, view, this.hip.x, 1).y + 4;
     const headY = ground - (this.hip.y + 0.5 * this.figH) * this.camera.ppm;
-    const want = Math.max(0, view.h * this.cfg.camera.topFrac - headY);
+    let want = Math.max(0, view.h * this.cfg.camera.topFrac - headY);
+    // Running: keep the tip of the carried pole on screen too.
+    if ((this.state === 'ready' || this.state === 'run') && this.poleTop != null) want = Math.max(want, view.safe.t + 12 - this.poleTop);
     this.camY = damp(this.camY, want, 6, dt);
   }
 
@@ -627,7 +629,8 @@ export class PoleVault {
     tr.drawMat(ctx, view, cam);
     tr.drawUprightsBack(ctx, view, cam);
 
-    const pose = this.poseFor();
+    const base = this.poseFor();
+    const pose = { ...base, arms: [...base.arms] }; // the grip sets the arms
     this.lastPose = pose;
     const ground = tr.toScreen(cam, view, this.hip.x, 1);
     const groundY = ground.y + 4;
@@ -647,9 +650,14 @@ export class PoleVault {
 
     const sx = ground.x;
     this.drawGhost(ctx, view, pxPerM);
-    // Pole behind the athlete's near arm: draw it first, then the athlete.
-    this.drawPole(ctx, view, sx, y, H, pose, pxPerM);
+    // The pole passes the near side of the body (as a right-handed vaulter's,
+    // seen from the left): the athlete, then the pole, then the near hand over it.
+    const pole = this.poleGrip(view, sx, y, H, pose, pxPerM);
     drawFigure(ctx, sx, y, H, pose, this.player.colors, onMat ? floorY : groundY);
+    if (pole) {
+      strokePole(ctx, pole.e, pole.a, pole.c, pole.b, H);
+      if (pole.low) drawHand(ctx, pole.low, H, this.player.colors);
+    }
     if (this.state !== 'mark') {
       const p = this.poleDrawn;
       const rel = (q) => [(q.x - sx) / pxPerM, (q.y - y) / pxPerM];
@@ -701,41 +709,57 @@ export class PoleVault {
   }
 
   /**
-   * The pole: carried up in front while running, lowered through the plant
-   * zone to the box, bending as you swing on it, then falling back after you
-   * let go. Also sets this.sparkAt (screen point) for drawSpark.
+   * The pole and how you hold it, as a right-handed vaulter: the top hand (far
+   * arm) holds the very end, the bottom hand (near arm) grips about
+   * `pole.grip` m further up. Running, the top hand carries the end at the
+   * back hip and the bottom hand holds the pole up in front of the chest, tip
+   * high; through the plant zone the tip drops to the box and the top hand
+   * drives up overhead. On the pole the top hand stays on the end; the bottom
+   * hand keeps hold while it can reach and lets go near the top (it leaves
+   * first, as in a real vault). Sets the arms of `pose` (a copy), this.sparkAt
+   * for drawSpark and this.poleTop for the camera; returns the pole (screen
+   * points: e end, a top hand, c bend, b tip, low the bottom hand or null) or
+   * null once you've let go and it's fallen.
    */
-  drawPole(ctx, view, sx, y, H, pose, pxPerM) {
+  poleGrip(view, sx, y, H, pose, pxPerM) {
     const cfg = this.cfg;
     const tr = this.track;
     const box = tr.toScreen(this.camera, view, 0, 1);
     const boxP = { x: box.x, y: box.y + 4 };
-    const hand = handPos(sx, y, H, pose, 0);
     const len = this.L * pxPerM;
+    const S = shoulderPos(sx, y, H, pose);
     this.sparkAt = null;
-    let a, b, sag = 0; // a = hands end, b = tip end
+    this.poleTop = null;
+    let a, b, sag = 0; // a = top hand (the end), b = tip
+    const grip = this.state === 'ready' || this.state === 'run' || this.state === 'vault';
     if (this.state === 'ready' || this.state === 'run') {
       const p = this.zoneProgress();
+      // Top hand: at the back hip, driving up overhead over the last stretch of the zone.
+      const k = ease(clamp((p - 0.7) / 0.3, 0, 1));
+      const C = VAULT_POSES.carryHand;
+      const P = VAULT_POSES.plantHand;
+      a = { x: S.x + H * (C.x + (P.x - C.x) * k), y: S.y + H * (C.y + (P.y - C.y) * k) };
+      pose.arms[1] = armIK(S, a, H, -1);
       // Tip high while running, like a real vaulter. Through the plant zone the
       // pole drops, turning to aim at the box: the tip stays on the line from
       // your hands to the box, so it never touches the ground before the box
       // and slides into it at the plant.
-      const toBox = Math.atan2(hand.y - boxP.y, boxP.x - hand.x);
+      const toBox = Math.atan2(a.y - boxP.y, boxP.x - a.x);
       const psi = cfg.pole.carryAngle + (toBox - cfg.pole.carryAngle) * ease(p);
-      const reach = Math.min(len, Math.hypot(boxP.x - hand.x, boxP.y - hand.y));
-      a = hand;
-      b = { x: hand.x + reach * Math.cos(psi), y: hand.y - reach * Math.sin(psi) };
+      const reach = Math.min(len, Math.hypot(boxP.x - a.x, boxP.y - a.y));
+      b = { x: a.x + reach * Math.cos(psi), y: a.y - reach * Math.sin(psi) };
       if (!this.runUp.striding) this.sparkS = p; // the spark runs down to the tip
+      this.poleTop = Math.min(a.y, b.y);
     } else if (this.state === 'vault') {
       const sw = this.vault.sw ?? this.swingAt(this.vault.u);
-      a = hand;
+      a = handPos(sx, y, H, pose, 1); // the swing hangs you from the top hand
       b = boxP;
       sag = Math.sqrt(Math.max(0, (3 * this.L * (this.L - sw.c)) / 8)) * pxPerM;
     } else {
       // Let go: the pole falls back toward the runway.
       const f = this.state === 'balk' ? this.balkFall : this.fly;
       this.poleDrawn = null;
-      if (!f) return;
+      if (!f) return null;
       const ta = this.now - f.poleT;
       const phi = Math.max(0.12, f.phiEnd - 1.6 * ta * ta);
       b = boxP;
@@ -751,9 +775,42 @@ export class PoleVault {
     const ny = dx / d;
     const flip = nx > 0 || ny < 0 ? 1 : -1; // toward the pit / up
     const c = { x: mx + nx * sag * 2 * flip, y: my + ny * sag * 2 * flip };
-    // Your hand holds the very end of the pole.
-    const e = a;
-    strokePole(ctx, e, a, c, b, H);
+    const e = a; // the top hand holds the very end
+    // Points along the pole by distance from the end (even spacing on a bent pole).
+    const q = (k) => ({
+      x: (1 - k) * (1 - k) * a.x + 2 * (1 - k) * k * c.x + k * k * b.x,
+      y: (1 - k) * (1 - k) * a.y + 2 * (1 - k) * k * c.y + k * k * b.y,
+    });
+    const N = 32;
+    const acc = [0];
+    let prev = q(0);
+    for (let i = 1; i <= N; i++) {
+      const pt = q(i / N);
+      acc.push(acc[i - 1] + Math.hypot(pt.x - prev.x, pt.y - prev.y));
+      prev = pt;
+    }
+    const at = (dist) => {
+      let i = 1;
+      while (i < N && acc[i] < dist) i++;
+      const k = (i - 1 + (dist - acc[i - 1]) / Math.max(1e-6, acc[i] - acc[i - 1])) / N;
+      return q(clamp(k, 0, 1));
+    };
+    // Bottom hand: `pole.grip` m up the pole, or as far as the arm reaches; on
+    // the pole, too far to reach at all and it has let go (the swing pose's arm).
+    let low = null;
+    if (grip) {
+      const armLen = 0.33 * H * 0.99;
+      const g = cfg.pole.grip * this.tall * pxPerM;
+      for (let dist = g; dist >= 0.12 * g; dist -= 0.04 * g) {
+        const pt = at(dist);
+        if (Math.hypot(pt.x - S.x, pt.y - S.y) <= armLen) {
+          low = pt;
+          break;
+        }
+      }
+      if (!low && this.state !== 'vault') low = at(0.12 * g); // running: always holding on
+      if (low) pose.arms[0] = armIK(S, low, H, -1);
+    }
     this.poleDrawn = { e, a, c, b }; // for the ghost recording
     // Spark: down the pole in the plant zone (reaching the tip as it plants),
     // waiting there until you press, then back up to your hands while you hold.
@@ -763,27 +820,8 @@ export class PoleVault {
       const c0 = this.climbStart();
       s = c0 == null ? 1 : 1 - clamp((this.now - c0) / releaseTarget(cfg), 0, 1);
     }
-    if (s != null) {
-      const q = (k) => ({
-        x: (1 - k) * (1 - k) * a.x + 2 * (1 - k) * k * c.x + k * k * b.x,
-        y: (1 - k) * (1 - k) * a.y + 2 * (1 - k) * k * c.y + k * k * b.y,
-      });
-      // Even speed along the pole: s is a share of the pole's length, not of the curve's parameter
-      // (which runs faster near the ends of a bent pole).
-      const N = 24;
-      const acc = [0];
-      let prev = q(0);
-      for (let i = 1; i <= N; i++) {
-        const p = q(i / N);
-        acc.push(acc[i - 1] + Math.hypot(p.x - prev.x, p.y - prev.y));
-        prev = p;
-      }
-      const want = s * acc[N];
-      let i = 1;
-      while (i < N && acc[i] < want) i++;
-      const k = (i - 1 + (want - acc[i - 1]) / Math.max(1e-6, acc[i] - acc[i - 1])) / N;
-      this.sparkAt = q(clamp(k, 0, 1));
-    }
+    if (s != null) this.sparkAt = at(s * acc[N]);
+    return { e, a, c, b, low };
   }
 
   drawSpark(ctx) {

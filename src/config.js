@@ -450,7 +450,10 @@ export const CONFIG = {
     runway: 55, // m from the start to the box (a long run-up, as in the original)
     // The pole plants when your hips reach plantX: hands overhead at gripY,
     // pole tip in the box (plantX = -sqrt(length² - gripY²)).
-    pole: { length: 3.6, gripY: 2.0, carryAngle: 0.9 }, // m (box to hands: you hold the very end), m, rad above level while running (tip high, like a real vaulter; it drops through the plant zone)
+    // m (box to the top hand, which holds the very end); top hand's height at the plant (m, overhead);
+    // rad above level while running (tip high; it drops through the plant zone); m from the top hand
+    // to the bottom hand (about shoulder width, as real vaulters hold it).
+    pole: { length: 4.5, gripY: 2.0, carryAngle: 0.8, grip: 0.55 },
     zoneDistance: 12, // m before the plant: orange pads, strides stop, the pole tip drops to the box and the spark runs down it
     // Runway edge stripes, in m before the box (the plant is about 4.1 m out).
     runwayZones: [

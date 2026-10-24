@@ -336,6 +336,10 @@ const SWING_LEGS = [
 ];
 export const VAULT_POSES = {
   carryArms: [{ upper: 0.2, fore: 1.6 }, { upper: 0.7, fore: 2.1 }], // pole carried at the hip and chest, tip high
+  // The top hand (far arm) relative to the shoulder, in figure heights (y down): running, at the
+  // back hip holding the end of the pole; at the plant, straight up overhead (poleVault.js poleGrip).
+  carryHand: { x: -0.04, y: 0.3 },
+  plantHand: { x: 0.06, y: -0.32 },
   plantArms: [{ upper: 2.9, fore: 2.75 }, { upper: 2.7, fore: 2.55 }], // both hands up to the pole
   // Mirrored from here (flip: true).
   turn: {
@@ -763,6 +767,41 @@ export function handPos(x, y, H, pose, i = 0) {
     x: sx + 0.17 * H * Math.sin(a.upper) + 0.16 * H * Math.sin(a.fore),
     y: sy + 0.17 * H * Math.cos(a.upper) + 0.16 * H * Math.cos(a.fore),
   };
+}
+
+/** Shoulder position for a figure drawn with drawFigure(ctx, x, y, H, pose) (not mirrored). */
+export function shoulderPos(x, y, H, pose) {
+  const hipX = x + pose.hipX * H;
+  const hipY = y + pose.hipY * H;
+  return { x: hipX + 0.9 * 0.32 * H * Math.sin(pose.lean), y: hipY - 0.9 * 0.32 * H * Math.cos(pose.lean) };
+}
+
+/**
+ * Two-bone arm IK in screen space: the arm angles (as drawFigure: from straight
+ * down, + toward +x) that put the hand of an arm from `shoulder` at `target`
+ * (or as near as it reaches). `elbow` -1 or +1 picks which way the elbow bends.
+ */
+export function armIK(shoulder, target, H, elbow = -1) {
+  const U = 0.17 * H;
+  const F = 0.16 * H;
+  const dx = target.x - shoulder.x;
+  const dy = target.y - shoulder.y;
+  const d = Math.max(1e-6, Math.min(Math.hypot(dx, dy), U + F - 1e-4));
+  const a = Math.acos(Math.max(-1, Math.min(1, (U * U + d * d - F * F) / (2 * U * d))));
+  const upper = Math.atan2(dx, dy) + elbow * a;
+  const ex = shoulder.x + U * Math.sin(upper);
+  const ey = shoulder.y + U * Math.cos(upper);
+  return { upper, fore: Math.atan2(target.x - ex, target.y - ey) };
+}
+
+/** A hand gripping something at `p` (screen), drawn over it: the size of drawFigure's hand. */
+export function drawHand(ctx, p, H, colors, far = false) {
+  const girth = colors.girth ?? 1;
+  const lw = Math.max(2, 0.065 * H) * (1 + (girth - 1) * 0.55) * 0.85;
+  ctx.fillStyle = far ? shade(colors.skin, 0.7) : colors.skin;
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, lw * 0.62, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 /** Head centre and radius (for hats) for a figure drawn with drawFigure(ctx, x, y, H, pose). */

@@ -4,6 +4,15 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Results in the corner; the javelin's mark line stands straight
+- **The results over the late hits move to the top right**, smaller (a
+  narrower sheet, shorter rows and titles), so the middle of the screen is
+  clear for the fighting. Every event's results and the tournament's two
+  pages; the buttons stay along the bottom. `brawl/aftermath.js` ResultsPanel.
+- **Javelin: the line marking where it landed runs straight up the screen**,
+  like the field's stripes and distance boards in that side-on shot. It used
+  to lean as if the field were in perspective.
+
 ## Make your own athlete
 - **The Athlete Maker**, Mii style: the Athlete tab's last card, CREATE.
   Skin (10 tones), hair (10 styles, three of them new: bald, mohawk, long),

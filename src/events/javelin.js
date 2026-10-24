@@ -565,14 +565,17 @@ export class Javelin {
     if (this.state === 'mark') this.drawMark(ctx, view);
   }
 
-  /** The line across the field where the javelin landed, drawing out from the spot, with the distance (or FOUL). */
+  /**
+   * The line across the field where the javelin landed, drawing out from the
+   * spot, with the distance (or FOUL). Straight up the screen: this shot sees
+   * the field side on, its stripes and distance boards upright.
+   */
   drawMarkLine(ctx, view, x, y, age) {
     const tr = this.track;
     const top = tr.flightGround(view, 0);
     const k = clamp((age - 0.15) / 0.35, 0, 1);
     if (k <= 0) return;
     const foul = this.shot.foul;
-    const slope = 0.35; // leans with the field's perspective: further away = further right
     const y0 = y - (y - top) * k;
     const y1 = y + (view.h - y) * k;
     ctx.save();
@@ -580,13 +583,13 @@ export class Javelin {
     ctx.strokeStyle = foul ? '#e8281e' : '#ffffff';
     ctx.lineWidth = 5;
     ctx.beginPath();
-    ctx.moveTo(x + (y - y0) * slope, y0);
-    ctx.lineTo(x - (y1 - y) * slope, y1);
+    ctx.moveTo(x, y0);
+    ctx.lineTo(x, y1);
     ctx.stroke();
     ctx.restore();
     if (k < 1) return;
     const label = foul ? 'FOUL' : `${this.mark.mark.toFixed(2)} m`;
-    const lx = x - (view.h - y) * slope * 0.55;
+    const lx = x;
     const ly = y + (view.h - y) * 0.55;
     ctx.font = '800 26px system-ui, sans-serif';
     const w = ctx.measureText(label).width + 24;

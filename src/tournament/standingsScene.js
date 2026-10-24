@@ -97,7 +97,7 @@ export class StandingsScene {
       Object.assign(main, { label: this.final ? 'Final standings ›' : 'Standings ›', icon: this.live ? main.icon : null, onTap: () => this.showOverall() });
       this.panel = new ResultsPanel(
         this.buttons,
-        () => (this.page === 'round' ? this.roundTitle() : this.final ? `${this.table[0].name.toUpperCase()} WINS · ${this.campaignWin ? `${getCampaign().toUpperCase()} TOURNAMENT BEATEN!` : 'FINAL STANDINGS'}` : `OVERALL AFTER ${tournament.history.length} OF ${ORDER.length} · ${this.ev.name.toUpperCase()}`),
+        () => (this.page === 'round' ? this.roundTitle() : this.final ? `${this.table[0].name.toUpperCase()} WINS · ${this.campaignWin ? `${getCampaign().toUpperCase()} TOURNAMENT BEATEN!` : 'FINAL STANDINGS'}` : `STANDINGS · AFTER ${tournament.history.length} OF ${ORDER.length}`),
         () =>
           this.page === 'round' ? this.roundRows() : this.table.map((t, i) => {
             const pts = this.rows.find((r) => (r.isPlayer ? 'you' : r.key ?? r.name) === t.key)?.pts;
@@ -124,7 +124,7 @@ export class StandingsScene {
 
   /** The round's title: the event, and which one of the five. */
   roundTitle() {
-    return `RESULTS · ${this.ev.name.toUpperCase()} · EVENT ${tournament.history.length} OF ${ORDER.length}`;
+    return `${this.ev.name.toUpperCase()} · EVENT ${tournament.history.length} OF ${ORDER.length}`;
   }
 
   /** The round: in finishing order (no mark last), each mark and the points it scored. */

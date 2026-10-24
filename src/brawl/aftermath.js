@@ -149,11 +149,11 @@ export class Aftermath {
 }
 
 /**
- * The results (or tournament standings) over the late hits: the rows up top,
- * over the stands, on a cream sheet under an ink title strip, and the scene's two buttons
- * right at the bottom, on the ad boards below the track, so the track itself
- * is left clear for the fighting. It fades in, so the results just show up
- * over the event.
+ * The results (or tournament standings) over the late hits: a compact sheet
+ * in the top right corner, over the stands (cream, under an ink title strip),
+ * and the scene's two buttons right at the bottom, on the ad boards below the
+ * track, so the middle of the screen is left clear for the fighting. It fades
+ * in, so the results just show up over the event.
  */
 export class ResultsPanel {
   /**
@@ -171,14 +171,14 @@ export class ResultsPanel {
   layout(view) {
     const s = view.safe;
     const n = Math.max(1, this.rows().length);
-    this.w = Math.max(300, Math.min(520, view.w - 360));
-    this.x = (view.w - this.w) / 2;
-    this.y = s.t + 10;
-    this.head = 36;
+    this.w = Math.max(260, Math.min(350, view.w * 0.3));
+    this.x = view.w - Math.max(s.r, 0) - 10 - this.w; // top right
+    this.y = s.t + 8;
+    this.head = 28;
     // The rows keep above the track where they can.
-    const room = LAYOUT.farY - this.y - this.head - 10;
-    this.rowH = Math.max(22, Math.min(32, room / n));
-    this.h = this.head + n * this.rowH + 10;
+    const room = LAYOUT.farY - this.y - this.head - 8;
+    this.rowH = Math.max(19, Math.min(26, room / n));
+    this.h = this.head + n * this.rowH + 6;
     const [main, other] = this.buttons;
     const by = view.h - s.b - 52 - 4;
     const mw = Math.min(230, this.w * 0.58);
@@ -203,8 +203,8 @@ export class ResultsPanel {
     chamfer(ctx, x, y, w, this.head, 7);
     ctx.fill();
     ctx.fillRect(x, y + this.head / 2, w, this.head / 2);
-    text(ctx, this.title(), x + w / 2, y + this.head / 2 + 1, { size: 20, font: 'display', track: 1.5, color: PAL.cream, maxWidth: w - 24 });
-    const size = Math.round(this.rowH * 0.62);
+    text(ctx, this.title(), x + w / 2, y + this.head / 2 + 1, { size: 16, font: 'display', track: 1, color: PAL.cream, maxWidth: w - 16 });
+    const size = Math.round(this.rowH * 0.66);
     rows.forEach((r, i) => {
       const ry = y + this.head + i * this.rowH + this.rowH / 2;
       // Zebra rows; yours gold.
@@ -212,12 +212,12 @@ export class ResultsPanel {
         ctx.fillStyle = r.isPlayer ? PAL.gold : '#EFE2C3';
         ctx.fillRect(x, ry - this.rowH / 2, w, this.rowH);
       }
-      text(ctx, r.place, x + 26, ry + 1, { size: size + 2, font: 'display', color: PAL.ink });
+      text(ctx, r.place, x + 16, ry + 1, { size: size + 1, font: 'display', color: PAL.ink });
       ctx.fillStyle = r.colors.shirt;
-      ctx.fillRect(x + 44, ry - size * 0.5, 6, size);
+      ctx.fillRect(x + 29, ry - size * 0.45, 5, size * 0.9);
       // Live: the other people in the race in orange, the computer's runners in ink.
-      text(ctx, r.name, x + 60, ry + 1, { size, font: 'body', align: 'left', weight: r.isPlayer ? 800 : 700, color: r.gold && !r.isPlayer ? PAL.orangeShade : PAL.ink, maxWidth: w - 180 });
-      text(ctx, r.value, x + w - 16, ry + 1, { size, font: 'body', weight: 800, align: 'right', color: PAL.ink });
+      text(ctx, r.name, x + 40, ry + 1, { size, font: 'body', align: 'left', weight: r.isPlayer ? 800 : 700, color: r.gold && !r.isPlayer ? PAL.orangeShade : PAL.ink, maxWidth: w * 0.42 });
+      text(ctx, r.value, x + w - 10, ry + 1, { size, font: 'body', weight: 800, align: 'right', color: PAL.ink, maxWidth: w * 0.46 });
     });
     this.buttons.forEach((b) => b?.draw(ctx));
     ctx.restore();

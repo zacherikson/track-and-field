@@ -248,7 +248,7 @@ export const CONFIG = {
    * its Amateur and Pro values (survival.js blend).
    */
   survival: {
-    skill: [0, 0.8, 1.2], // rounds 1-3: Amateur, a weak Pro, a strong Pro
+    skill: [0.8, 1.2], // rounds 1-2: a weak Pro, a strong Pro (survival is meant to be hard)
     ceiling: 1.9, // where he's heading after that (near perfect), never quite reached
     climb: 0.2, // each round closes this share of the gap left: smaller steps every round
   },

@@ -173,13 +173,13 @@ won.
 - Beating him: a better mark (your best of the attempts against his in the
   field events). The same mark to the hundredth is a tie, and a tie keeps you
   in; no mark at all (a DNF, three fouls) loses unless he has none either.
-- Round 1 he's an Amateur rival, round 2 a weak Pro, round 3 a strong Pro,
-  and after that he keeps getting better by a little less each round, towards
+- It's meant to be hard: round 1 he's a weak Pro, round 2 a strong Pro, and
+  after that he keeps getting better by a little less each round, towards
   near perfect (`CONFIG.survival`: every rival setting is blended between its
   Amateur and Pro values, or carried on past them). `node tools/simulate.mjs`
   prints his marks round by round: a strong player should last to about
-  round 3 or 4, a near perfect one well past 6.
-- Round 1 is at Westfield High, then the Olympic Stadium. The late
+  round 2 or 3, a near perfect one past 5.
+- Every round is at the Olympic Stadium. The late
   hits after each event are just you and him (and the referee).
 - Quit ends the run without posting it. The code is in
   [`src/survival/`](src/survival/survival.js).

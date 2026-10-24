@@ -174,6 +174,6 @@ export const VENUES = { training: TRAINING, amateur: AMATEUR, pro: PRO };
  */
 export function venueFor(live = false) {
   if (live) return PRO;
-  if (survival.active) return survival.round <= 1 ? AMATEUR : PRO; // survival: the high school for the Amateur round, then the big stadium
+  if (survival.active) return PRO; // survival: a Pro from the first round, in the big stadium
   return VENUES[getCampaign()] ?? TRAINING;
 }

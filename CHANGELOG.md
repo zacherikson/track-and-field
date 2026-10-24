@@ -4,15 +4,15 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
-## Survival: Amateur, then Pro, then better by less each round
-- The rival's level by round (`CONFIG.survival.skill`): round 1 Amateur (0),
-  round 2 a weak Pro (0.8), round 3 a strong Pro (1.2); was easier than
-  Amateur, Amateur, between, Pro (-0.6, 0, 0.5, 1). After that he still
-  closes a fifth of the gap to 1.9 each round, so each step is smaller than
-  the last (1.34, 1.45, 1.54...). Harder overall: by the simulator a strong
-  player lasts to about round 3 or 4 (was 6 to 8); his long jump passes an
-  expert's in round 4.
-- Round 1 at Westfield High, the Olympic Stadium from round 2 (was round 3).
+## Survival starts at Pro, and gets better by less each round
+- The rival's level by round (`CONFIG.survival.skill`): round 1 a weak Pro
+  (0.8), round 2 a strong Pro (1.2); it was easier than Amateur, Amateur,
+  between, Pro (-0.6, 0, 0.5, 1). Survival is meant to be hard. After that
+  he closes a fifth of the gap to 1.9 each round, so each step is smaller
+  than the last (1.34, 1.45, 1.54...). By the simulator a strong player
+  lasts to about round 2 or 3 (was 6 to 8); his long jump passes an
+  expert's in round 3.
+- Every round at the Olympic Stadium (was Westfield High for rounds 1 and 2).
 
 ## Survival mode
 - **New: vs Computer → Survival**, as in the original. You against one

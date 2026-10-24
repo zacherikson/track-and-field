@@ -37,7 +37,7 @@ const PLANT_BLEND = 0.16; // s: the run's pose and hips blend into the swing's a
 const POLE_SPRING = 0.22; // s: a pole still bent when you let go springs straight over this
 const FAR_ARM_RATE = 28; // 1/s: how quickly the bottom hand's arm follows its target (no snaps)
 const FAR_ARM_MAX = 12; // rad/s: and never faster than this (letting go of the pole)
-const PUSH_BLEND = 0.1; // s: the push off the top of the pole picks up speed over this
+const ARC_BLEND = 0.08; // s: the swing's motion carries into the flight's arc over about this
 const FIG_H = CONFIG.figure.height;
 // Ghost frames keep the pole (registry traceProps = 9): shown (1/0), then its
 // end, hands, bend and tip, each x, y in m from where the figure is drawn.
@@ -180,6 +180,7 @@ export class PoleVault {
     this.kickLeft = 0; // m of the plant jolt still to apply
     this.plantFrom = null; // where the run left you at the plant, blended into the swing
     this.farArm = null; // the bottom hand's arm last frame (smoothed)
+    this.hipVel = null; // how the hips were moving on the pole (the flight carries it on)
     this.ghost.startAttempt(t);
     this.liveField?.begin();
     this.setState('ready');
@@ -345,10 +346,12 @@ export class PoleVault {
       vt.u = tTop <= end ? 1 : vt.u + (1 - vt.u) * Math.min(1, dt / (tTop - t));
       const sw = this.swingAt(vt.u);
       vt.sw = sw;
+      const before = this.hip;
       this.hip = sw.hip;
       // The first moment on the pole blends in from where the run left you (no pop at the plant).
       const k = this.plantBlend(end);
       if (k < 1) this.hip = { x: this.plantFrom.hip.x + (sw.hip.x - this.plantFrom.hip.x) * k, y: this.plantFrom.hip.y + (sw.hip.y - this.plantFrom.hip.y) * k };
+      this.hipVel = { x: (this.hip.x - before.x) / dt, y: (this.hip.y - before.y) / dt }; // carried into the flight
       // At the top you stay there, upside down, until you let go (or are made to).
       // Let go and you come off the pole there and then, so an early release shows. Not before
       // `flight.leaveFrom` of the swing, though: even letting go at once, the original rides the
@@ -413,33 +416,47 @@ export class PoleVault {
   }
 
   /**
-   * Off the top of the pole, under gravity (`flight.gravity`): you push off and
-   * fly forward to the bar (`uprightX`), peaking over it at your height, then
-   * fall onto the mat at `landX`. A higher vault falls further, so it hangs
-   * and drops for longer.
+   * Off the pole: one arc under gravity (`flight.gravity`), thrown from where
+   * you let go with a steady forward speed. How high it goes is your vault: a
+   * fast, good vault arcs up and peaks over the bar at your mark; a slow or weak
+   * one only lifts a little off the top of the pole (a `push` hop, smaller for a
+   * low mark) and comes down through the bar at your mark. The forward speed is
+   * whatever makes the arc pass the standards (`uprightX`) at your mark, so it
+   * lands where it lands on the mat. Let go far too late (release quality under
+   * `flight.dropBelow`) and you just drop off the top onto the front of the mat,
+   * as the original's 1 m vaults do. The bar still stops at your mark.
    */
   takeOff(t) {
     const vt = this.vault;
     const g = this.cfg.flight.gravity;
+    const m = this.cfg.mat;
     const h0 = this.hip;
-    // You're at the same top of the pole on every vault; the leap off it is what differs (as in
-    // the original): up to your mark, or at least a `push` hop. Let go far too late (release
-    // quality under `flight.dropBelow`) and you just drop off the top onto the front of the mat,
-    // as the original's 1 m vaults do. The bar still stops at your mark.
     const weak = vt.rq < (this.cfg.flight.dropBelow ?? 0);
     const shownH = this.shown(vt.height); // where you cross the bar
     const hop = this.cfg.flight.push * clamp(shownH / h0.y, 0.3, 1); // a low mark barely leaves the pole
     const peak = weak ? h0.y + 0.08 : Math.max(shownH, h0.y + hop);
-    const xBar = weak ? h0.x + 0.15 : this.cfg.uprightX;
-    const landX = weak ? this.cfg.mat.from + 1.1 : this.cfg.landX;
-    const yLand = this.cfg.mat.height + 0.2;
-    const rise = Math.sqrt((2 * (peak - h0.y)) / g); // s up to the peak
-    const fall = Math.sqrt((2 * Math.max(0, peak - yLand)) / g); // s from the peak to the mat
+    const yLand = m.height + 0.2;
+    const tPeak = Math.sqrt((2 * (peak - h0.y)) / g); // s up to the top of the arc
+    const T = tPeak + Math.sqrt((2 * Math.max(0, peak - yLand)) / g); // s to the mat
+    // When the arc passes the standards: at the peak, or on the way down through your mark.
+    const tBar = weak ? tPeak : Math.min(tPeak + Math.sqrt((2 * Math.max(0, peak - shownH)) / g), 0.9 * T);
+    let vx = weak ? (m.from + 0.6 - h0.x) / T : (this.cfg.uprightX - h0.x) / Math.max(0.05, tBar);
+    let arc = { peak, tPeak, tBar, T };
+    // That would land you off the mat (a quick peak just over your mark throws you far): instead
+    // aim the arc through the bar at your mark and down onto the mat as far out as it goes.
+    const lo = m.from + 1;
+    const hi = m.to - 0.8;
+    const landAt = h0.x + vx * T;
+    if (!weak && (landAt > hi || landAt < lo)) {
+      const fit = arcThrough(h0, { x: this.cfg.uprightX, y: shownH }, { x: clamp(landAt, lo, hi), y: yLand }, g);
+      if (fit) ({ vx, arc } = fit);
+    }
+    const vy = g * arc.tPeak;
+    const v0 = this.hipVel ?? { x: vx, y: vy };
     this.fly = {
-      // tBar: when you cross the bar, at your mark: at the peak on a high vault, on the way down
-      // after a hop off the top on a low one (as in the original; you never pass over it high).
-      tBar: weak ? rise : Math.min(rise + Math.sqrt((2 * Math.max(0, peak - shownH)) / g), 0.9 * (rise + fall)),
-      t0: t, x0: h0.x, y0: h0.y, xBar, landX, weak, peak, yLand, rise, fall, T: rise + fall, poleT: t, phiEnd: vt.sw.phi, cEnd: vt.sw.c,
+      t0: t, x0: h0.x, y0: h0.y, vx, ...arc, weak, yLand, landX: h0.x + vx * arc.T,
+      dvx: v0.x - vx, dvy: v0.y - vy, // the swing's own motion, eased into the arc (no second launch)
+      poleT: t, phiEnd: vt.sw.phi, cEnd: vt.sw.c,
       topPose: mirror(this.state === 'vault' && this.lastPose ? this.lastPose : vt.sw.pose), // as drawn (the hands as they held the pole)
     };
     this.peak = h0.y;
@@ -453,19 +470,15 @@ export class PoleVault {
     const V = VAULT_POSES;
     const keys = f.weak
       ? [[0, f.topPose], [f.T * 0.3, V.turn], [f.T * 0.65, V.drop], [f.T, V.landBack]] // dropping off the top
-      : this.overBarKeys(f.topPose, Math.min(f.tBar, f.T - 0.4), f.T); // face down over the bar as you cross it, time left to land
+      : this.overBarKeys(f.topPose, Math.max(0.2, Math.min(f.tBar, f.T - 0.4)), f.T); // face down over the bar as you cross it, time left to land
     for (let i = 1; i < keys.length; i++) keys[i] = [keys[i][0], wrapNear(keys[i][1], keys[i - 1][1])];
     f.track = keys;
     return keys;
   }
 
-  /**
-   * Flight time at `t`: the push off the pole picks up speed over PUSH_BLEND s
-   * (the clock starts slow), so you don't go from still to full speed at once.
-   */
+  /** Flight time at `t` (s since you left the pole). */
   flyClock(t) {
-    const ta = t - this.fly.t0;
-    return ta < PUSH_BLEND ? (ta * ta) / (2 * PUSH_BLEND) : ta - PUSH_BLEND / 2;
+    return t - this.fly.t0;
   }
 
   /** Pose keys off the pole: turn, face down over the bar at `tOver`, then hang, drop and land on your back at T. */
@@ -475,20 +488,18 @@ export class PoleVault {
     return [[0, top], [tOver * 0.7, V.turn], [tOver, V.overBar], [tOver + after * 0.35, V.hang], [tOver + after * 0.7, V.drop], [T, V.landBack]];
   }
 
-  /** Hips during the flight, `ta` s after leaving the pole. */
+  /**
+   * Hips during the flight, `ta` s after leaving the pole: on the arc, plus the
+   * difference between the swing's motion and the arc's, fading out over
+   * ARC_BLEND s (you carry on the way you were going, then the arc takes over).
+   */
   flyAt(ta) {
     const f = this.fly;
     const g = this.cfg.flight.gravity;
     const t = clamp(ta, 0, f.T);
-    // Forward off the pole to the bar by the peak (the push), then on to where you land: one smooth
-    // curve (no change of pace at the peak), slowing a little as you come down onto the mat.
-    const after = f.T - f.tBar;
-    const s1 = (f.xBar - f.x0) / Math.max(1e-6, f.tBar);
-    const s2 = (f.landX - f.xBar) / Math.max(1e-6, after);
-    const sp = f.tBar > 1e-6 && after > 1e-6 ? (2 * s1 * s2) / Math.max(1e-6, s1 + s2) : s1 || s2; // pace over the bar
-    const x = t < f.tBar ? hermite(f.x0, f.xBar, s1, sp, t, f.tBar) : hermite(f.xBar, f.landX, sp, 0.6 * s2, t - f.tBar, after);
-    const d = t - f.rise; // s after the peak (negative on the way up)
-    return { x, y: f.peak - 0.5 * g * d * d };
+    const d = t - f.tPeak; // s after the top of the arc (negative on the way up)
+    const fade = t * Math.exp(-t / ARC_BLEND);
+    return { x: f.x0 + f.vx * t + f.dvx * fade, y: f.peak - 0.5 * g * d * d + f.dvy * fade };
   }
 
   land(t) {
@@ -1085,13 +1096,24 @@ export class PoleVault {
   }
 }
 
-/** Cubic from p0 (slope m0) to p1 (slope m1) over `len` s, at time t (0..len). */
-function hermite(p0, p1, m0, m1, t, len) {
-  if (len <= 1e-6) return p1;
-  const k = clamp(t / len, 0, 1);
-  const k2 = k * k;
-  const k3 = k2 * k;
-  return (2 * k3 - 3 * k2 + 1) * p0 + (k3 - 2 * k2 + k) * len * m0 + (-2 * k3 + 3 * k2) * p1 + (k3 - k2) * len * m1;
+/**
+ * The throw from `p0` that passes through `p1` and comes down to `p2` (x
+ * increasing, gravity g): steady forward speed vx, and the arc's peak, the
+ * time it peaks, crosses p1 and lands. Null if there's no such arc.
+ */
+function arcThrough(p0, p1, p2, g) {
+  const a = p1.x - p0.x;
+  const b = p2.x - p0.x;
+  const d1 = p1.y - p0.y;
+  const d2 = p2.y - p0.y;
+  if (a <= 0.05 || b <= a + 0.05) return null;
+  const u2 = (2 * (b * d1 - a * d2)) / (g * a * b * (b - a)); // (1 / vx)²
+  if (!(u2 > 0)) return null;
+  const u = Math.sqrt(u2);
+  const vy = (d1 + 0.5 * g * a * a * u2) / (a * u);
+  const tPeak = Math.max(0, vy / g);
+  const peak = p0.y + vy * tPeak - 0.5 * g * tPeak * tPeak;
+  return { vx: 1 / u, arc: { peak, tPeak, tBar: a * u, T: b * u } };
 }
 
 /** A pole from its end `e` through the hands `a`, bending toward `c`, to the tip `b` (screen points). */

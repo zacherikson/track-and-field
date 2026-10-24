@@ -491,17 +491,12 @@ export const CONFIG = {
     // its length). The pole straightens fully on every vault, as in the original: a weak vault
     // is the same swing to the same top, just slower; you leap off it less (flight).
     swing: { timeAt10: 0.85, speedPower: 0.4, bend: 0.21 },
-    // Off the pole, under gravity (m/s², lighter than real so the vault reads): you push off the
-    // top of the pole and fly forward to the bar, at least `push` m up from your hips at the top
-    // of the pole to the peak (over the bar), then fall onto the mat. The pole only reaches so
-    // high, so a big vault pushes much further off it (about 2 m on the original's best), rising
-    // for about 0.7 s. Higher vaults hang longer. heightScale: everything in the air is drawn this
-    // much higher than your mark (the bar too), so a vault looks bigger. Look only: the mark is
-    // what's scored.
-    // dropBelow: let go so late the release is worth less than this and you don't leap at all:
-    // you drop off the top of the pole onto the front of the mat (the original's 1 m vaults).
-    // leaveFrom: let go early and you come off the pole then, but not before this share of the
-    // swing (the original's instant release still rides it about half way).
+    // Off the pole: one arc under gravity (m/s², lighter than real so the vault reads), thrown
+    // from where you let go with a steady forward speed, passing the standards at your mark. A
+    // fast, good vault arcs up and peaks over the bar; a slow one lifts at least a `push` hop off
+    // the top of the pole (smaller for a low mark) and comes down through the bar. Higher vaults
+    // hang longer. heightScale: everything in the air is drawn this much higher than your mark
+    // (the bar too), so a vault looks bigger. Look only: the mark is what's scored.
     flight: { gravity: 7.5, push: 0.4, heightScale: 1.2, dropBelow: 0.15, leaveFrom: 0.5 },
     // Layout as in the original (further than real): the standards stand well past the box, so
     // you push off the pole and fly forward to the bar, leaving the pole behind; the mat starts
@@ -512,7 +507,6 @@ export const CONFIG = {
     // your hips once you're up the pole and stops at the height you clear.
     // Every attempt starts from `rest` again (your best doesn't set it).
     bar: { rest: 2.0, follow: 14 }, // m; how tightly it follows (higher = tighter)
-    landX: 4, // m past the box where you come down on the mat (about 2 m past the standards, as in the original)
     markHold: 1.1, // s after landing before the result banner (the original's height shows about 0.9 s after)
     standUp: 0.9, // s from landing on your back to on your feet (the original's is quick)
     // topFrac: the camera rises to keep the vaulter at least this far down the screen.

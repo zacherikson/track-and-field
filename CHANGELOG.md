@@ -3,6 +3,37 @@
 Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
+From 1.0.0 every push to master bumps `src/version.js` and heads its section
+here with the version.
+
+## 1.0.0 — App version on the tuning screens; one arc off the pole
+- **Version:** new `src/version.js`, starting at 1.0.0.
+  - Shown on the tuning screens: the event list and each event's settings
+    ("Tuning v1.0.0").
+  - "Copy changes" starts with it too ("Track Royale v1.0.0 tuning
+    changes:"), so you can tell which build a phone is running.
+  - Bumped on every push to master.
+- **No more double jump.** The flight used to be three pieces:
+  - a speed ramp that paused you at the top;
+  - a hop up;
+  - a separate curve sliding you sideways to the bar.
+
+  On a low vault that read as a second launch sideways.
+- **One arc instead:** thrown from where you let go, with a steady forward
+  speed and gravity. It carries on the swing's own motion, which fades into
+  the arc over 0.08 s, with no pause.
+  - **Faster goes higher:** the arc's height is your mark (v²). A fast vault
+    arcs up and peaks over the bar. A slow one lifts a little off the top and
+    comes down through the bar at its mark.
+  - **Forward speed** is whatever passes the standards at your mark. If that
+    would land you off the mat, the arc is aimed through the bar and down
+    onto the far end of the mat instead.
+  - Hips vs bar at the standards: 2.46 / 2.46, 3.58 / 3.59, 6.17 / 6.18,
+    6.93 / 6.93.
+  - Landings are 2.6–5.7 m out, all on the mat.
+- **Removed:** `landX` (where you land now follows from the arc) and its
+  "Landing spot" tuning row.
+- **Video updated:** `docs/pole-vault-compare/vault-slow-vs-fast.mp4`.
 
 ## Pole vault: you let go when both thumbs are up, and an early release shows
 - **What happened:** a fast, well-planted vault scored a 43% release (2.76 m).

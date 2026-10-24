@@ -1,6 +1,7 @@
 import { GROUPS, PARAMS } from './params.js';
 import { DEFAULTS, getParam, setParam, resetParam, resetAll, changes } from './store.js';
 import { estimateTime, estimateRivalWin } from './estimate.js';
+import { VERSION } from '../version.js';
 
 /**
  * In-game tuning panel: an HTML overlay above the canvas (native sliders are
@@ -30,7 +31,7 @@ export function openTuning(onClose, ev = null) {
   if (!root) build();
   onCloseCb = onClose;
   for (const p of PARAMS) refreshRow(p);
-  root.querySelector('.tp-title strong').textContent = ev ? `Tuning · ${ev.name}` : 'Tuning';
+  root.querySelector('.tp-title strong').innerHTML = `${ev ? `Tuning · ${ev.name}` : 'Tuning'} <em class="tp-ver">v${VERSION}</em>`;
   root.querySelector('.tp-title span').textContent = ev ? 'Changes apply straight away (pole and run-up changes from your next attempt) and are saved on this phone.' : 'Changes apply to your next race and are saved on this phone.';
   for (const sec of root.querySelectorAll('.tp-group')) {
     const g = GROUPS[Number(sec.dataset.group)];
@@ -164,7 +165,7 @@ function scheduleEstimates(delay = 150) {
 function changesText() {
   const list = changes();
   if (!list.length) return '';
-  return ['Track Royale tuning changes:', ...list.map(({ param: p, from, to }) => `- ${p.label}: ${fmt(p, from)} → ${fmt(p, to)} (${p.path})`)].join('\n');
+  return [`Track Royale v${VERSION} tuning changes:`, ...list.map(({ param: p, from, to }) => `- ${p.label}: ${fmt(p, from)} → ${fmt(p, to)} (${p.path})`)].join('\n');
 }
 
 function copyChanges() {
@@ -201,7 +202,7 @@ export function openTuningPicker(events, { onPick, onAll, onClose }) {
   picker.className = 'tp';
   picker.innerHTML = `
     <div class="tp-bar">
-      <div class="tp-title"><strong>Tuning</strong><span>Pick an event to play it. Tap ⚙ in the event to adjust its settings.</span></div>
+      <div class="tp-title"><strong>Tuning <em class="tp-ver">v${VERSION}</em></strong><span>Pick an event to play it. Tap ⚙ in the event to adjust its settings.</span></div>
       <button type="button" class="tp-btn tp-ghost tp-close">Close</button>
     </div>
     <div class="tp-scroll">
@@ -246,6 +247,7 @@ function injectStyles() {
   .tp-title { flex: 1; display: flex; flex-direction: column; min-width: 0; }
   .tp-title strong { font-size: 18px; color: #ffb400; letter-spacing: 0.02em; }
   .tp-title span { font-size: 12px; color: #a9b8d6; }
+  .tp-ver { font-style: normal; font-size: 12px; font-weight: 600; color: #a9b8d6; margin-left: 6px; letter-spacing: 0; }
   .tp-scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y;
     padding: 12px 16px calc(24px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 18px; }
   .tp h3 { margin: 0 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: #ffb400; }

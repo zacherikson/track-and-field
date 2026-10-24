@@ -177,7 +177,6 @@ export const GROUPS = [
       { path: 'poleVault.camera.plantKick', label: 'Plant jolt', unit: 'm', min: 0, max: 1.5, step: 0.05, help: 'How far the camera jolts back as the pole plants. 0 = none.' },
       { path: 'poleVault.standUp', label: 'Getting up', unit: 's', min: 0.4, max: 2, step: 0.1, help: 'From landing on your back to on your feet on the mat.' },
       { path: 'poleVault.markHold', label: 'Result delay', unit: 's', min: 0.3, max: 3, step: 0.1, help: 'From landing to the result card.' },
-      { path: 'poleVault.landX', label: 'Landing spot', unit: 'm', min: 1, max: 6, step: 0.1, help: 'Where you come down on the mat, in m past the box.' },
       { path: 'poleVault.flight.gravity', label: 'Flight gravity', unit: 'm/s²', min: 2, max: 9.8, step: 0.1, help: 'Off the pole, how hard you fall. Lower = floatier, more time over the bar (real is 9.8).' },
     ],
   },

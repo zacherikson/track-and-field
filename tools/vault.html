@@ -44,9 +44,8 @@ pv.plantX = -Math.sqrt(cfg.pole.length ** 2 - cfg.pole.gripY ** 2);
 pv.phi0 = Math.asin(cfg.pole.gripY / cfg.pole.length);
 const top = handPos(0, 0, figH, { hipX: 0, hipY: 0, lean: -Math.PI, legs: [{ thigh: Math.PI, shin: Math.PI }, { thigh: Math.PI, shin: Math.PI }], arms: [{ upper: 0, fore: 0 }, { upper: 0, fore: 0 }] }, 0);
 pv.reach = Math.hypot(top.x, top.y);
-pv.vault = { v: 11, u: 0, height, phiEnd: null };
-pv.vault.phiEnd = pv.phiFor(height);
-pv.vault.phiCur = pv.vault.phiEnd;
+pv.vault = { v: 11, u: 0, height };
+pv.vault.cTop = pv.topChord(height);
 
 // Ground, box, mat, standards, bar.
 ctx.strokeStyle = '#2d5d8a'; ctx.lineWidth = 2;

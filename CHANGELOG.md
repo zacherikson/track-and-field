@@ -4,6 +4,20 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Pole vault: upside down on the spark, a shorter pole
+- **The swing is timed to the spark.** You reach the top of the pole, upside
+  down and straight with the pole upright, exactly as the spark reaches your
+  hands, on every vault: a bad plant or release no longer leaves you short of
+  vertical. The swing used to run on its own clock (`poleVault.swing.time`
+  1.1 s → removed, with its slider), so at the best release you were only
+  halfway round. Press late and the swing waits for you; let go early and it
+  still finishes, then you come off. A weak vault leaves the pole a little
+  bent at the top (at most `swing.topBend` 0.3 of it), so you're lower.
+- `poleVault.spark.climbTime` 0.6 → 0.8 s: it's now the swing's length too,
+  and 0.6 s rushed it.
+- **Shorter pole**, so it stays on screen: `pole.length` 4.0 → 3.6 m,
+  `pole.carryAngle` 1.05 → 0.9 rad. The plant is 3.0 m out (was 3.5).
+
 ## Pole vault: the spark means what it shows
 - **Release on the spark.** The best release is now exactly when the spark
   reaches your hands. It used to be 0.15 s *after* it got there

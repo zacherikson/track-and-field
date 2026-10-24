@@ -40,7 +40,7 @@ const FIG_H = CONFIG.figure.height;
 // The swing, keyed from a phase diagram of a real vault (takeoff, swing,
 // rock back, L, extension, inversion), per swing progress u:
 //   phi   pole chord angle above level, as a share of the way from the plant
-//         angle to the vault's final angle (upright for a good vault)
+//         angle to upright (every vault ends with the pole upright)
 //   bend  how much the pole is bent (share of swing.bend)
 //   alpha where the hips are relative to the hands (0 = hanging straight
 //         below, PI/2 = level toward the pit, PI = upside down above)
@@ -71,7 +71,9 @@ function swingKey(u, col) {
  * - Press and HOLD both at the plant. The spark climbs back up the pole
  *   (from the plant, or from your press if that came later); let go as it
  *   reaches your hands at the end of the pole. You hold the very end of the
- *   pole the whole way. Thumbs already down when the plant window
+ *   pole the whole way. The swing is timed to the spark: as it reaches your
+ *   hands you're at the top, upside down and straight with the pole upright,
+ *   on every vault (a weak one leaves the pole a little bent, so lower). Thumbs already down when the plant window
  *   opens (one pressed since the pads lit, the other maybe still down from
  *   the last stride) plant then: an early hold registers, scored by
  *   `press.earlyHoldOnTime` (core/thumbs.js). You swing up the bending pole, push off the
@@ -157,7 +159,7 @@ export class PoleVault {
     this.holdT = null; // both thumbs down (the plant press)
     this.releaseT = null;
     this.plantT = null;
-    this.vault = null; // { v, u, pq, rq, height, phiEnd, released, ... }
+    this.vault = null; // { v, u, pq, rq, height, cTop, sw }
     this.fly = null; // { t0, x0, y0, vx, vy, T }
     this.mark = null; // { mark } or { fail: true }
     this.hip = { x: this.runner.x, y: 0.5 * (this.figH ?? FIG_H) };
@@ -264,7 +266,6 @@ export class PoleVault {
     vt.pq = pressQuality(this.holdT - this.plantT, cfg.press);
     vt.rq = this.releaseT == null ? 0 : releaseQuality(this.releaseT - this.climbStart(), cfg);
     vt.height = vaultHeight({ v: vt.v, pq: vt.pq, rq: vt.rq }, cfg);
-    vt.phiEnd = this.phiFor(vt.height);
   }
 
   /**
@@ -278,39 +279,38 @@ export class PoleVault {
   }
 
   /**
-   * How far the pole rises for a vault of `height`: far enough that you're
-   * just below it (upside down over your hands) at the top of the pole, then
-   * the push takes you the rest of the way. Straight up for a good vault.
+   * How high your hands are at the top of the pole (the upright pole's chord,
+   * box to hands) for a vault of `height`: you're just below it there, upside
+   * down over your hands, and the push takes you the rest of the way. A weak
+   * vault leaves the pole a little bent (at most `swing.topBend` of its length).
    */
-  phiFor(height) {
-    const s = (height - 0.15 - this.reach) / this.L;
-    return s >= 1 ? Math.PI / 2 + 0.04 : clamp(Math.asin(clamp(s, -1, 1)), this.phi0 + 0.5, Math.PI / 2);
+  topChord(height) {
+    return clamp(height - 0.15 - this.reach, this.L * (1 - this.cfg.swing.topBend), this.L);
   }
 
-  /** Until the release is known, aim the pole for a perfect release (with the plant you had). */
-  predictPhi() {
+  /** Until the release is known, aim for a perfect release (with the plant you had). */
+  predictChord() {
     const vt = this.vault;
-    if (vt.phiEnd != null) return vt.phiEnd;
+    if (vt.height != null) return this.topChord(vt.height);
     const pq = this.holdT == null ? 1 : pressQuality(this.holdT - this.plantT, this.cfg.press);
-    return this.phiFor(vaultHeight({ v: vt.v, pq, rq: 1 }, this.cfg));
+    return this.topChord(vaultHeight({ v: vt.v, pq, rq: 1 }, this.cfg));
   }
 
   // ---------------------------------------------------------------- simulation
 
   /**
    * On the pole at swing progress u (0 plant .. 1 top): the pole rotates up
-   * about the box while it bends and straightens again; the figure hangs from
-   * the top by its hands (so the hands are always on the pole), swinging from
-   * below the hands to upside down above them.
+   * about the box to upright while it bends and straightens again (to
+   * `vault.cTop` at the top); the figure hangs from the end of the pole by its
+   * hands, swinging from below them to upside down and straight above them.
    */
   swingAt(u) {
     const vt = this.vault;
-    const phi = this.phi0 + (vt.phiCur - this.phi0) * swingKey(u, 1);
-    const c = this.L * (1 - this.cfg.swing.bend * swingKey(u, 2));
+    const phi = this.phi0 + (Math.PI / 2 - this.phi0) * swingKey(u, 1);
+    const unbent = this.L + (vt.cTop - this.L) * ease(u); // a weak vault's pole doesn't quite straighten
+    const c = unbent * (1 - this.cfg.swing.bend * swingKey(u, 2));
     const hands = { x: -c * Math.cos(phi), y: c * Math.sin(phi) };
-    // A weak vault never gets the pole upright, so you don't get fully upside down either.
-    const k = clamp((vt.phiCur - this.phi0) / (Math.PI / 2 - this.phi0), 0.45, 1);
-    const alpha = swingKey(u, 3) * k;
+    const alpha = swingKey(u, 3);
     const pose = vaultSwingPose(alpha, u);
     const off = handPos(0, 0, this.figH, pose, 0); // hand relative to the hips (m, y down)
     return { phi, c, hands, alpha, pose, hip: { x: hands.x - off.x, y: hands.y + off.y } };
@@ -329,17 +329,20 @@ export class PoleVault {
     } else if (this.state === 'vault') {
       const vt = this.vault;
       if (this.holdT == null && end - this.plantT > cfg.press.miss) return this.balk(end);
+      const c0 = this.climbStart();
       // Held on too long: you get nothing from the release.
-      if (this.holdT != null && this.releaseT == null && end - this.climbStart() > releaseTarget(cfg) + cfg.release.window) this.release(end);
-      vt.u = Math.min(1, vt.u + dt / cfg.swing.time);
-      vt.phiCur = damp(vt.phiCur, this.predictPhi(), 8, dt);
+      if (c0 != null && this.releaseT == null && end - c0 > releaseTarget(cfg) + cfg.release.window) this.release(end);
+      // The swing reaches the top (upside down, straight, pole upright) exactly
+      // as the spark reaches your hands. Before you press, that's a climb from
+      // now, so the swing only creeps.
+      const tTop = (c0 ?? end) + releaseTarget(cfg);
+      vt.u = tTop <= end ? 1 : vt.u + (1 - vt.u) * Math.min(1, dt / (tTop - t));
+      vt.cTop = damp(vt.cTop, this.predictChord(), 8, dt);
       const sw = this.swingAt(vt.u);
       vt.sw = sw;
       this.hip = sw.hip;
-      if (vt.u >= 1) {
-        if (vt.height == null) this.release(end); // top of the pole: let go now
-        this.takeOff(end);
-      }
+      // At the top you stay there, upside down, until you let go (or are made to).
+      if (vt.u >= 1 && vt.height != null) this.takeOff(end);
     } else if (this.state === 'fly') {
       const f = this.fly;
       this.hip = this.flyAt(Math.min(end - f.t0, f.T));
@@ -381,8 +384,8 @@ export class PoleVault {
     const r = this.runner;
     this.plantT = t;
     this.stats.topSpeed = Math.max(this.stats.topSpeed, r.v);
-    this.vault = { v: r.v, u: 0, pq: null, rq: null, height: null, phiEnd: null };
-    this.vault.phiCur = this.predictPhi();
+    this.vault = { v: r.v, u: 0, pq: null, rq: null, height: null };
+    this.vault.cTop = this.predictChord();
     // Pressed early and already let go? Then that's your release.
     if (this.holdT != null && this.releaseT != null) this.decide();
     navigator.vibrate?.(20);

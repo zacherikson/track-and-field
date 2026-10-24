@@ -450,7 +450,7 @@ export const CONFIG = {
     runway: 55, // m from the start to the box (a long run-up, as in the original)
     // The pole plants when your hips reach plantX: hands overhead at gripY,
     // pole tip in the box (plantX = -sqrt(length² - gripY²)).
-    pole: { length: 4.0, gripY: 2.0, carryAngle: 1.05 }, // m (box to hands: you hold the very end), m, rad above level while running (tip high, like a real vaulter; it drops through the plant zone)
+    pole: { length: 3.6, gripY: 2.0, carryAngle: 0.9 }, // m (box to hands: you hold the very end), m, rad above level while running (tip high, like a real vaulter; it drops through the plant zone)
     zoneDistance: 12, // m before the plant: orange pads, strides stop, the pole tip drops to the box and the spark runs down it
     // Runway edge stripes, in m before the box (the plant is about 4.1 m out).
     runwayZones: [
@@ -468,12 +468,14 @@ export const CONFIG = {
     press: { window: 0.2, miss: 0.35, earlyHoldOnTime: false },
     // s for the spark to climb back up the pole: from the plant (or your press, if later)
     // to your hands. The best release is the moment it gets there.
-    spark: { climbTime: 0.6 },
+    spark: { climbTime: 0.8 },
     release: { window: 0.18 }, // s either side of the spark reaching your hands: release quality falls to 0
     // Height cleared = base + perMps * (speed - vRef) + gain * quality, where
     // quality = pressWeight * plant + (1 - pressWeight) * release (each 0..1).
     height: { base: 1.4, perMps: 0.4, vRef: 9, gain: 4.0, pressWeight: 0.5 },
-    swing: { time: 1.1, bend: 0.3 }, // s from plant to the top of the pole; how much the pole bends (share of its length)
+    // How much the pole bends mid-swing, and at most at the top for a weak vault (shares of its length).
+    // The swing takes as long as the spark's climb: you're at the top as it reaches your hands.
+    swing: { bend: 0.3, topBend: 0.3 },
     // Off the pole (from the original, not gravity): rise while turning to face
     // the bar, hang face down over it, drop onto the mat (s).
     flight: { rise: 0.4, hang: 0.5, fall: 0.5 },

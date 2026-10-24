@@ -151,7 +151,8 @@ test('#12 lean: stray stride taps as the zone begins (L -0.05..0.03, R 0.08..0.1
 // ---------------------------------------------------------------- pole vault
 
 const P = S.plantOffset(); // s from the pads lighting to the plant, at the scenes' speed
-const forcedAfter = releaseTarget(CONFIG.poleVault) + CONFIG.poleVault.release.window;
+/** Held too long: the release is forced this long after the spark starts climbing, planted at v m/s. */
+const forcedAfter = (v) => releaseTarget(CONFIG.poleVault, v) + CONFIG.poleVault.release.window;
 
 function vault(schedule, o) {
   const { sc, rig, z } = S.poleVaultAt(o);
@@ -169,7 +170,7 @@ test('#13 pole vault: a tap, 0.5 s or 2 s hold at the plant plants; release at t
   near(v.release, P + 0.5);
   v = vault((rig, z) => both(rig, z + P, 2));
   near(v.hold, P + 0.01);
-  inStep(v.release, P + 0.01 + forcedAfter, 'forced release');
+  inStep(v.release, P + 0.01 + forcedAfter(v.sc.vault.v), 'forced release');
   assert.equal(v.sc.vault.rq, 0);
   assert.notEqual(v.sc.state, 'balk');
 });
@@ -206,7 +207,11 @@ test('#15 pole vault: left thumb from the run-up, right pressed in the window: p
 });
 
 test('#15b pole vault: letting go as the spark reaches your hands is a full release, on time or pressed early', () => {
-  const climb = releaseTarget(CONFIG.poleVault);
+  // The swing (and the spark's climb) is quicker the faster you plant.
+  assert.ok(releaseTarget(CONFIG.poleVault, 12) < releaseTarget(CONFIG.poleVault, 9));
+  const dry = S.poleVaultAt();
+  dry.rig.runUntil(() => dry.sc.plantT != null, 5);
+  const climb = releaseTarget(CONFIG.poleVault, dry.sc.vault.v); // the swing at the scenes' plant speed
   const tol = 2 * STEP / CONFIG.poleVault.release.window; // quality lost to the step the plant falls in
   // On time: the spark climbs from the plant.
   let v = vault((rig, z) => both(rig, z + P, climb));
@@ -257,7 +262,7 @@ test('#18 keyboard: Space held 2 s works as a 2 s two-thumb hold in every event'
   }
   const v = vault(space(P));
   near(v.hold, P);
-  inStep(v.release, P + forcedAfter, 'pole vault forced release');
+  inStep(v.release, P + forcedAfter(v.sc.vault.v), 'pole vault forced release');
   const j = javelin(space(0.5), { v: 6 });
   near(j.hold, 0.5);
   near(j.letGo, 2.5);

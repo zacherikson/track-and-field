@@ -336,7 +336,7 @@ function pvPlayer(rate, psd, rsd) {
   const vaults = Array.from({ length: PV.rounds }, () => {
     const pe = gauss(0, psd);
     if (Math.abs(pe) > PV.press.miss) return null; // missed the plant: no height
-    return vaultHeight({ v, pq: pressQuality(pe, PV.press), rq: releaseQuality(releaseTarget(PV) + gauss(0, rsd), PV) }, PV);
+    return vaultHeight({ v, pq: pressQuality(pe, PV.press), rq: releaseQuality(releaseTarget(PV, v) + gauss(0, rsd), PV, v) }, PV);
   });
   const ok = vaults.filter((h) => h != null);
   return { v, best: ok.length ? Math.max(...ok) : 0, fails: vaults.length - ok.length };

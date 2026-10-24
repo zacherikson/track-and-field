@@ -471,21 +471,21 @@ export const CONFIG = {
     // pressed at the window's start (`miss` early: plant quality 0); true = as
     // pressed right on the plant. Design call, open with Zachary.
     press: { window: 0.5, miss: 0.38, earlyHoldOnTime: false },
-    // s for the spark to climb back up the pole: from the plant (or your press, if later)
-    // to your hands. The best release is the moment it gets there.
-    spark: { climbTime: 0.8 },
     release: { window: 0.5 }, // s either side of the spark reaching your hands: release quality falls to 0
-    // Height cleared = min + (max - min) × score. The score weighs speed, plant and release
-    // (each 0..1) by their weights, as shares of the three's total. Speed counts 0 at
-    // `slowSpeed` m/s at the plant and 1 at `fastSpeed`.
-    height: { min: 2.95, max: 6.4, speedWeight: 0.6, plantWeight: 0.2, releaseWeight: 0.2, slowSpeed: 5.75, fastSpeed: 12.5 },
-    // How much the pole bends mid-swing (share of its length). A weak vault also leaves it bent
-    // at the top, so you're only as high as your mark. The swing takes as long as the spark's
-    // climb: you're at the top, upside down, as it reaches your hands.
-    swing: { bend: 0.21 },
-    // Off the pole (from the original, not gravity): rise while turning to face
-    // the bar, hang face down over it, drop onto the mat (s).
-    flight: { rise: 0.4, hang: 0.7, fall: 0.6 },
+    // Height from energy: base + eff × v² / 2g (v = speed at the plant, m/s; real g). The pole's
+    // efficiency `eff` runs from effMin (plant and release both missed) to effMax (both perfect),
+    // weighing the two by plantWeight and releaseWeight. `base`: hips' height at takeoff (m).
+    // Never below `min` (m).
+    height: { min: 2.95, base: 1.8, effMin: 0.32, effMax: 0.58, plantWeight: 0.2, releaseWeight: 0.2 },
+    // The swing up the pole runs on your speed: timeAt10 s from the plant (or a later press) to
+    // the top at 10 m/s, quicker the faster you planted (time × 10 / speed). The spark climbs
+    // back up the pole over it: you're at the top, upside down, as it reaches your hands.
+    // bend: how much the pole bends mid-swing (share of its length). A weak vault also leaves it
+    // bent at the top, so you're only as high as your mark.
+    swing: { timeAt10: 0.9, bend: 0.21 },
+    // Off the pole, under gravity (m/s², lighter than real so the vault reads): thrown up just
+    // fast enough to peak at your mark, then falling onto the mat. Higher vaults hang longer.
+    flight: { gravity: 6 },
     // Layout from real vaulting (and reference photos): the standards stand just
     // past the back of the box and the mat starts right behind the box, so you
     // take off under one pole length from the bar.

@@ -4,6 +4,26 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Pole vault: physics instead of timers
+- **Height from energy:** `1.8 + eff × v² / 2g` (v = speed at the plant, real
+  g). The pole's efficiency runs from `height.effMin` 0.32 (plant and release
+  both missed) to `height.effMax` 0.58 (both perfect), the two weighed by
+  `plantWeight` / `releaseWeight` (0.2 / 0.2). Speed counts more and more the
+  faster you go. `height.min` 2.95 m stays as a floor. Replaces `max`,
+  `speedWeight`, `slowSpeed`, `fastSpeed`. Simulator: casual 4.42 m, good
+  5.03, expert 5.97, perfect 6.48; Amateur rivals 4.42, Pro 5.47 (medians).
+- **The swing runs on your speed:** `swing.timeAt10` 0.9 s from the plant to
+  the top at 10 m/s, scaled by 10 / speed (0.79 s at 41 km/h). The spark climbs
+  over it, so a faster plant means a quicker spark and a quicker release.
+  Replaces `spark.climbTime` 0.8 s.
+- **The flight uses gravity:** `flight.gravity` 6 m/s² (lighter than real so
+  it reads). Thrown up to peak exactly at your mark, then a free fall onto the
+  mat, so higher vaults hang and drop for longer. Replaces `flight.rise`,
+  `hang`, `fall`. Hips at the top of the pole are 0.3 m under the mark (was
+  0.15), so there's always a little rise to turn over the bar.
+- Tuning: Pole efficiency (perfect / missed), Takeoff height, Swing time at
+  36 km/h, Flight gravity.
+
 ## Pole vault: Rawnald's tuning as the defaults
 From the in-game tuning panel:
 - `height.min` 3.70 → 2.95 m; weights speed / plant / release 0.50 / 0.25 /

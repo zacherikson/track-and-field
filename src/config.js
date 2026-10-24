@@ -450,7 +450,7 @@ export const CONFIG = {
     runway: 55, // m from the start to the box (a long run-up, as in the original)
     // The pole plants when your hips reach plantX: hands overhead at gripY,
     // pole tip in the box (plantX = -sqrt(length² - gripY²)).
-    pole: { length: 4.0, gripY: 2.0, carryAngle: 1.05, overhang: 0.45 }, // m (box to hands), m, rad above level while running (tip high, like a real vaulter; it drops through the plant zone), m sticking out behind the hands
+    pole: { length: 4.0, gripY: 2.0, carryAngle: 1.05 }, // m (box to hands: you hold the very end), m, rad above level while running (tip high, like a real vaulter; it drops through the plant zone)
     zoneDistance: 12, // m before the plant: orange pads, strides stop, the pole tip drops to the box and the spark runs down it
     // Runway edge stripes, in m before the box (the plant is about 4.1 m out).
     runwayZones: [
@@ -466,11 +466,10 @@ export const CONFIG = {
     // pressed at the window's start (`miss` early: plant quality 0); true = as
     // pressed right on the plant. Design call, open with Zachary.
     press: { window: 0.2, miss: 0.35, earlyHoldOnTime: false },
-    spark: { climbTime: 0.6 }, // s for the spark to climb back up the pole while you hold
-    // Best release: `lead` s after the spark reaches your hands (covers the ~0.15 s between
-    // seeing it get there and your finger actually leaving the screen); quality falls to 0
-    // `window` s either side of that.
-    release: { window: 0.18, lead: 0.15 },
+    // s for the spark to climb back up the pole: from the plant (or your press, if later)
+    // to your hands. The best release is the moment it gets there.
+    spark: { climbTime: 0.6 },
+    release: { window: 0.18 }, // s either side of the spark reaching your hands: release quality falls to 0
     // Height cleared = base + perMps * (speed - vRef) + gain * quality, where
     // quality = pressWeight * plant + (1 - pressWeight) * release (each 0..1).
     height: { base: 1.4, perMps: 0.4, vRef: 9, gain: 4.0, pressWeight: 0.5 },

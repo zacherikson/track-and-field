@@ -205,6 +205,20 @@ test('#15 pole vault: left thumb from the run-up, right pressed in the window: p
   near(v.release, P1 + 0.6);
 });
 
+test('#15b pole vault: letting go as the spark reaches your hands is a full release, on time or pressed early', () => {
+  const climb = releaseTarget(CONFIG.poleVault);
+  const tol = 2 * STEP / CONFIG.poleVault.release.window; // quality lost to the step the plant falls in
+  // On time: the spark climbs from the plant.
+  let v = vault((rig, z) => both(rig, z + P, climb));
+  assert.ok(v.sc.vault.rq >= 1 - tol, `on time rq ${v.sc.vault.rq}`);
+  // Pressed 0.15 s early: the spark still runs down to the box first, then climbs from the plant.
+  v = vault((rig, z) => both(rig, z + P - 0.15, 0.15 + climb));
+  assert.ok(v.sc.vault.rq >= 1 - tol, `early rq ${v.sc.vault.rq}`);
+  // Let go when the spark is only halfway up: a weak release.
+  v = vault((rig, z) => both(rig, z + P, climb / 2));
+  assert.ok(v.sc.vault.rq < 0.5, `halfway rq ${v.sc.vault.rq}`);
+});
+
 // ---------------------------------------------------------------- javelin
 
 function javelin(schedule, o) {

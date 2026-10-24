@@ -10,11 +10,12 @@
  * - At that moment press and HOLD both. How close to the plant you press is
  *   the PLANT quality (0 at `press.window` either side; no press within
  *   `press.miss` and you run through: no height).
- * - While you hold, the spark climbs back up the pole (`spark.climbTime`). Let
- *   go as it reaches your hands: the RELEASE quality (within `release.window`
- *   either side; hold on too long and you get nothing from it). The sweet
- *   spot is `release.lead` s after the spark gets there, to cover the delay
- *   between seeing it arrive and your finger leaving the screen.
+ * - While you hold, the spark climbs back up the pole (`spark.climbTime`),
+ *   starting at the plant (or at your press, if that came later). Let go as
+ *   it reaches your hands, at the very end of the pole: the RELEASE quality
+ *   (within `release.window` either side; hold on too long and you get
+ *   nothing from it). What you see is what's scored: the spark arrives
+ *   exactly at the best moment.
  * - Height cleared = base + speed at the plant + both qualities (vaultHeight).
  *   Best of three counts, as in the long jump.
  */
@@ -24,14 +25,14 @@ export function pressQuality(err, p) {
   return Math.max(0, 1 - Math.abs(err) / p.window);
 }
 
-/** Release quality 0..1 from how long you held (s) vs. the spark's climb. */
+/** Release quality 0..1 from how long the spark had been climbing when you let go (s). */
 export function releaseQuality(held, cfg) {
   return Math.max(0, 1 - Math.abs(held - releaseTarget(cfg)) / cfg.release.window);
 }
 
-/** The best hold time (s): the spark reaches your hands, plus the allowance for reaction and screen delay. */
+/** The best time to let go (s after the spark starts climbing): as it reaches your hands. */
 export function releaseTarget(cfg) {
-  return cfg.spark.climbTime + (cfg.release.lead ?? 0);
+  return cfg.spark.climbTime;
 }
 
 /** Height cleared (m) for plant speed v (m/s) and the two qualities. */

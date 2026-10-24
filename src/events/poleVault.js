@@ -68,8 +68,10 @@ function swingKey(u, col) {
  * - Plant zone: the pads turn orange and blink, strides stop, the pole comes
  *   down and a spark runs from your hands to its tip, reaching it as the tip
  *   plants in the box.
- * - Press and HOLD both at the plant. The spark climbs back up the pole; let
- *   go as it reaches your hands. Thumbs already down when the plant window
+ * - Press and HOLD both at the plant. The spark climbs back up the pole
+ *   (from the plant, or from your press if that came later); let go as it
+ *   reaches your hands at the end of the pole. You hold the very end of the
+ *   pole the whole way. Thumbs already down when the plant window
  *   opens (one pressed since the pads lit, the other maybe still down from
  *   the last stride) plant then: an early hold registers, scored by
  *   `press.earlyHoldOnTime` (core/thumbs.js). You swing up the bending pole, push off the
@@ -260,9 +262,19 @@ export class PoleVault {
     if (vt.height != null) return;
     const cfg = this.cfg;
     vt.pq = pressQuality(this.holdT - this.plantT, cfg.press);
-    vt.rq = this.releaseT == null ? 0 : releaseQuality(this.releaseT - this.holdT, cfg);
+    vt.rq = this.releaseT == null ? 0 : releaseQuality(this.releaseT - this.climbStart(), cfg);
     vt.height = vaultHeight({ v: vt.v, pq: vt.pq, rq: vt.rq }, cfg);
     vt.phiEnd = this.phiFor(vt.height);
+  }
+
+  /**
+   * When the spark starts back up the pole: at the plant, or at your press if
+   * that came later (pressed early, it still runs all the way down to the box
+   * first). The release is timed from here, exactly as the spark is drawn.
+   */
+  climbStart() {
+    if (this.holdT == null || this.plantT == null) return null;
+    return Math.max(this.holdT, this.plantT);
   }
 
   /**
@@ -318,7 +330,7 @@ export class PoleVault {
       const vt = this.vault;
       if (this.holdT == null && end - this.plantT > cfg.press.miss) return this.balk(end);
       // Held on too long: you get nothing from the release.
-      if (this.holdT != null && this.releaseT == null && end - this.holdT > releaseTarget(cfg) + cfg.release.window) this.release(end);
+      if (this.holdT != null && this.releaseT == null && end - this.climbStart() > releaseTarget(cfg) + cfg.release.window) this.release(end);
       vt.u = Math.min(1, vt.u + dt / cfg.swing.time);
       vt.phiCur = damp(vt.phiCur, this.predictPhi(), 8, dt);
       const sw = this.swingAt(vt.u);
@@ -561,7 +573,7 @@ export class PoleVault {
       case 'run': {
         // Running with the pole; the hands come up overhead for the plant.
         const run = runUpPose(r);
-        const k = ease(clamp((this.zoneProgress() - 0.88) / 0.12, 0, 1)); // hands up over the last two strides
+        const k = ease(clamp((this.zoneProgress() - 0.7) / 0.3, 0, 1)); // hands come up smoothly over the last stretch
         const carry = { ...run, arms: V.carryArms };
         return lerpPose(carry, { ...run, arms: V.plantArms }, k);
       }
@@ -736,18 +748,18 @@ export class PoleVault {
     const ny = dx / d;
     const flip = nx > 0 || ny < 0 ? 1 : -1; // toward the pit / up
     const c = { x: mx + nx * sag * 2 * flip, y: my + ny * sag * 2 * flip };
-    // The end of the pole sticks out behind the hands, as in the original.
-    const tx = a.x - c.x;
-    const ty = a.y - c.y;
-    const tl = Math.hypot(tx, ty) || 1;
-    const over = this.cfg.pole.overhang * pxPerM;
-    const e = { x: a.x + (tx / tl) * over, y: a.y + (ty / tl) * over };
+    // Your hand holds the very end of the pole.
+    const e = a;
     strokePole(ctx, e, a, c, b, H);
     this.poleDrawn = { e, a, c, b }; // for the ghost recording
-    // Spark: down the pole in the plant zone, back up it while you hold.
+    // Spark: down the pole in the plant zone (reaching the tip as it plants),
+    // waiting there until you press, then back up to your hands while you hold.
     let s = null; // 0 = hands, 1 = tip
-    if ((this.state === 'run' && !this.runUp.striding) || (this.state === 'vault' && this.holdT == null)) s = this.state === 'vault' ? 1 : this.sparkS;
-    if (this.holdT != null && this.releaseT == null && this.state !== 'fly') s = 1 - clamp((this.now - this.holdT) / cfg.spark.climbTime, 0, 1);
+    if (this.state === 'run' && !this.runUp.striding) s = this.sparkS;
+    else if (this.state === 'vault' && this.releaseT == null) {
+      const c0 = this.climbStart();
+      s = c0 == null ? 1 : 1 - clamp((this.now - c0) / releaseTarget(cfg), 0, 1);
+    }
     if (s != null) {
       const q = (k) => ({
         x: (1 - k) * (1 - k) * a.x + 2 * (1 - k) * k * c.x + k * k * b.x,

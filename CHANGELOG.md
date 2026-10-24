@@ -4,6 +4,22 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Pole vault: the spark means what it shows
+- **Release on the spark.** The best release is now exactly when the spark
+  reaches your hands. It used to be 0.15 s *after* it got there
+  (`poleVault.release.lead` 0.15 → removed, along with its tuning slider), so
+  letting go as the spark arrived scored only about 17%.
+- **The spark climbs from the plant.** Pressed a little early, the spark
+  still runs all the way down to the box and climbs back from the plant, and
+  the release is timed from there. It used to jump straight to the tip at your
+  press and time the release from the press. Pressed late, it waits at the tip
+  and climbs from your press, as before.
+- **You hold the very end of the pole**, from the run-up to the top
+  (`poleVault.pole.overhang` 0.45 m → removed). The spark runs the full pole,
+  end to tip.
+- The hands come up for the plant over the last 30% of the plant zone instead
+  of snapping up over the last 12%.
+
 ## Live survival
 - **New: Live → Survival.** Up to ten people, the five events in a random
   order again and again; last place in each event is out, last one standing

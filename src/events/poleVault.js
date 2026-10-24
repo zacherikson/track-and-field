@@ -423,7 +423,7 @@ export class PoleVault {
     // quality under `flight.dropBelow`) and you just drop off the top onto the front of the mat,
     // as the original's 1 m vaults do. The bar still stops at your mark.
     const weak = vt.rq < (this.cfg.flight.dropBelow ?? 0);
-    const shownH = this.shown(vt.height);
+    const shownH = this.shown(vt.height); // where you cross the bar
     const hop = this.cfg.flight.push * clamp(shownH / h0.y, 0.3, 1); // a low mark barely leaves the pole
     const peak = weak ? h0.y + 0.08 : Math.max(shownH, h0.y + hop);
     const xBar = weak ? h0.x + 0.15 : this.cfg.uprightX;
@@ -432,6 +432,9 @@ export class PoleVault {
     const rise = Math.sqrt((2 * (peak - h0.y)) / g); // s up to the peak
     const fall = Math.sqrt((2 * Math.max(0, peak - yLand)) / g); // s from the peak to the mat
     this.fly = {
+      // tBar: when you cross the bar, at your mark: at the peak on a high vault, on the way down
+      // after a hop off the top on a low one (as in the original; you never pass over it high).
+      tBar: weak ? rise : Math.min(rise + Math.sqrt((2 * Math.max(0, peak - shownH)) / g), 0.9 * (rise + fall)),
       t0: t, x0: h0.x, y0: h0.y, xBar, landX, weak, peak, yLand, rise, fall, T: rise + fall, poleT: t, phiEnd: vt.sw.phi, cEnd: vt.sw.c,
       topPose: mirror(vt.sw.pose),
     };
@@ -446,7 +449,7 @@ export class PoleVault {
     const V = VAULT_POSES;
     const keys = f.weak
       ? [[0, f.topPose], [f.T * 0.3, V.turn], [f.T * 0.65, V.drop], [f.T, V.landBack]] // dropping off the top
-      : [[0, f.topPose], [f.rise * 0.7, V.turn], [f.rise, V.overBar], [f.rise + f.fall * 0.35, V.hang], [f.rise + f.fall * 0.7, V.drop], [f.T, V.landBack]];
+      : this.overBarKeys(f.topPose, Math.min(f.tBar, f.T - 0.4), f.T); // face down over the bar as you cross it, time left to land
     for (let i = 1; i < keys.length; i++) keys[i] = [keys[i][0], wrapNear(keys[i][1], keys[i - 1][1])];
     f.track = keys;
     return keys;
@@ -461,6 +464,13 @@ export class PoleVault {
     return ta < PUSH_BLEND ? (ta * ta) / (2 * PUSH_BLEND) : ta - PUSH_BLEND / 2;
   }
 
+  /** Pose keys off the pole: turn, face down over the bar at `tOver`, then hang, drop and land on your back at T. */
+  overBarKeys(top, tOver, T) {
+    const V = VAULT_POSES;
+    const after = T - tOver;
+    return [[0, top], [tOver * 0.7, V.turn], [tOver, V.overBar], [tOver + after * 0.35, V.hang], [tOver + after * 0.7, V.drop], [T, V.landBack]];
+  }
+
   /** Hips during the flight, `ta` s after leaving the pole. */
   flyAt(ta) {
     const f = this.fly;
@@ -468,10 +478,11 @@ export class PoleVault {
     const t = clamp(ta, 0, f.T);
     // Forward off the pole to the bar by the peak (the push), then on to where you land: one smooth
     // curve (no change of pace at the peak), slowing a little as you come down onto the mat.
-    const s1 = (f.xBar - f.x0) / Math.max(1e-6, f.rise);
-    const s2 = (f.landX - f.xBar) / Math.max(1e-6, f.fall);
-    const sp = f.rise > 1e-6 && f.fall > 1e-6 ? (2 * s1 * s2) / Math.max(1e-6, s1 + s2) : s1 || s2; // pace over the bar
-    const x = t < f.rise ? hermite(f.x0, f.xBar, s1, sp, t, f.rise) : hermite(f.xBar, f.landX, sp, 0.6 * s2, t - f.rise, f.fall);
+    const after = f.T - f.tBar;
+    const s1 = (f.xBar - f.x0) / Math.max(1e-6, f.tBar);
+    const s2 = (f.landX - f.xBar) / Math.max(1e-6, after);
+    const sp = f.tBar > 1e-6 && after > 1e-6 ? (2 * s1 * s2) / Math.max(1e-6, s1 + s2) : s1 || s2; // pace over the bar
+    const x = t < f.tBar ? hermite(f.x0, f.xBar, s1, sp, t, f.tBar) : hermite(f.xBar, f.landX, sp, 0.6 * s2, t - f.tBar, after);
     const d = t - f.rise; // s after the peak (negative on the way up)
     return { x, y: f.peak - 0.5 * g * d * d };
   }

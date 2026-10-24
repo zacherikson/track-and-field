@@ -4,6 +4,28 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Pole vault: you go over the bar at your mark
+- After the same swing to the same top of the pole, a low vault crossed the
+  standards far above its bar: hips at about 6 m over a 2.5 m bar.
+- In the original's slow 2.84 m vault, the athlete hops off the top, arcs
+  forward and down, and goes over right at the bar, then drops onto the mat.
+- Ours now does the same. The flight passes the standards at your mark (drawn
+  ×1.2):
+  - High vault: at the peak, as before.
+  - Low vault: on the way down.
+- Hips at the standards vs the bar, now:
+
+  | Mark | Hips | Bar |
+  |---|---|---|
+  | 2.11 m | 2.49 | 2.53 |
+  | 3.05 m | 3.65 | 3.66 |
+  | 4.28 m | 5.12 | 5.13 |
+  | 5.82 m | 6.99 | 6.99 |
+
+- The face-down-over-the-bar pose comes as you cross. At least 0.4 s is left
+  after it to land, so a late crossing doesn't rush the landing.
+- Video updated: `docs/pole-vault-compare/vault-slow-vs-fast.mp4`.
+
 ## Pole vault: the same swing every time, as in the original
 - **What was wrong:** a weak vault left the pole bent at the top so your hips
   matched your mark (`topChord`). On a slow vault the mark is low, so the pole

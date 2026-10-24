@@ -167,10 +167,11 @@ export class PoleVault {
     this.vault = null; // { v, u, pq, rq, height, cTop, sw }
     this.fly = null; // { t0, x0, y0, vx, vy, T }
     this.mark = null; // { mark } or { fail: true }
+    this.failWhy = null; // why there's no height, for the card
     this.hip = { x: this.runner.x, y: 0.5 * (this.figH ?? FIG_H) };
     this.barTop = 0; // the highest your hips have been on this attempt (the bar rises with them)
     this.track.bar = this.cfg.bar.rest;
-    this.camY = 0;
+    this.camY = (this.game.view.h * (this.cfg.camera.drop ?? 0)) / this.cfg.camera.zoom; // at rest: the runway low
     this.zoom = this.cfg.camera.zoom;
     this.puff = [];
     this.ghost.startAttempt(t);
@@ -284,6 +285,11 @@ export class PoleVault {
     return Math.max(this.holdT, this.plantT);
   }
 
+  /** How high a vault of `height` is drawn (flight.heightScale: everything in the air looks bigger than the mark). */
+  shown(height) {
+    return height * (this.cfg.flight.heightScale ?? 1);
+  }
+
   /**
    * How high your hands are at the top of the pole (the upright pole's chord,
    * box to hands) for a vault of `height`: you're just below it there, upside
@@ -298,9 +304,9 @@ export class PoleVault {
   /** Until the release is known, aim for a perfect release (with the plant you had). */
   predictChord() {
     const vt = this.vault;
-    if (vt.height != null) return this.topChord(vt.height);
+    if (vt.height != null) return this.topChord(this.shown(vt.height));
     const pq = this.holdT == null ? 1 : pressQuality(this.holdT - this.plantT, this.cfg.press);
-    return this.topChord(vaultHeight({ v: vt.v, pq, rq: 1 }, this.cfg));
+    return this.topChord(this.shown(vaultHeight({ v: vt.v, pq, rq: 1 }, this.cfg)));
   }
 
   // ---------------------------------------------------------------- simulation
@@ -337,9 +343,13 @@ export class PoleVault {
       const vt = this.vault;
       if (this.holdT == null && end - this.plantT > cfg.press.miss) return this.balk(end);
       const c0 = this.climbStart();
-      // Held on too long: you get nothing from the release.
+      // Held on too long: you stall on top of the pole and topple back (release.heldFoul, as in
+      // the original), or are let go with nothing from the release.
       const swingT = releaseTarget(cfg, vt.v); // quicker the faster you planted
-      if (c0 != null && this.releaseT == null && end - c0 > swingT + cfg.release.window) this.release(end);
+      if (c0 != null && this.releaseT == null && end - c0 > swingT + cfg.release.window) {
+        if (cfg.release.heldFoul) return this.stall(end);
+        this.release(end);
+      }
       // The swing reaches the top (upside down, straight, pole upright) exactly
       // as the spark reaches your hands. Before you press, that's a climb from
       // now, so the swing only creeps.
@@ -361,7 +371,8 @@ export class PoleVault {
       const b = this.balkFall;
       const ta = end - b.t0;
       this.hip = { x: b.x + b.vx * Math.min(ta, b.T), y: Math.max(0.5 * this.figH, b.y + b.vy * ta - 0.5 * G * ta * ta) };
-      if (ta > 1.6) this.showMark();
+      // A stall comes down from the top of the pole: on your back, then up again first.
+      if (ta > (b.stall ? b.fallT + (this.cfg.standUp ?? 1.9) + 0.2 : 1.6)) this.showMark();
     } else if (this.state === 'landed') {
       if (t - this.stateT > cfg.markHold) this.showMark();
     }
@@ -385,7 +396,7 @@ export class PoleVault {
   barHeight() {
     const top = Math.max(this.cfg.bar.rest, this.barTop);
     const h = this.vault?.height;
-    return h == null ? top : Math.min(h, top);
+    return h == null ? top : Math.min(this.shown(h), top);
   }
 
   plant(t) {
@@ -396,6 +407,7 @@ export class PoleVault {
     this.vault.cTop = this.predictChord();
     // Pressed early and already let go? Then that's your release.
     if (this.holdT != null && this.releaseT != null) this.decide();
+    this.camera.x -= this.cfg.camera.plantKick ?? 0; // the jolt as the pole bites (it eases back)
     navigator.vibrate?.(20);
     this.setState('vault');
   }
@@ -410,7 +422,7 @@ export class PoleVault {
     const vt = this.vault;
     const g = this.cfg.flight.gravity;
     const h0 = this.hip;
-    const peak = Math.max(vt.height, h0.y);
+    const peak = Math.max(this.shown(vt.height), h0.y);
     const yLand = this.cfg.mat.height + 0.2;
     const rise = Math.sqrt((2 * (peak - h0.y)) / g); // s up to the peak
     const fall = Math.sqrt((2 * Math.max(0, peak - yLand)) / g); // s from the peak to the mat
@@ -436,7 +448,7 @@ export class PoleVault {
   land(t) {
     const vt = this.vault;
     this.mark = { mark: vt.height };
-    this.track.lastHeight = vt.height;
+    this.track.lastHeight = this.shown(vt.height); // where the bar stopped
     for (let i = 0; i < 14; i++) {
       this.puff.push({ x: this.hip.x + rand(-0.6, 0.6), y: this.cfg.mat.height, vx: rand(-0.6, 0.6), vy: rand(0.3, 1.2), life: rand(0.3, 0.6), r: rand(3, 7) });
     }
@@ -453,17 +465,40 @@ export class PoleVault {
     this.setState('balk');
   }
 
+  /**
+   * Held on past the release: you stall upside down on top of the pole and it
+   * topples back toward the runway with you (as in the original). No height.
+   */
+  stall(t) {
+    const sw = this.vault.sw ?? this.swingAt(this.vault.u);
+    this.releaseT = t;
+    const fallT = Math.sqrt((2 * Math.max(0, this.hip.y - 0.5 * this.figH)) / G); // s to the runway
+    this.balkFall = { t0: t, x: this.hip.x, y: this.hip.y, vx: -1.4, vy: 0, T: 1.1, poleT: t, phiEnd: sw.phi, stall: true, fallT, topPose: mirror(sw.pose) };
+    this.mark = { fail: true };
+    this.failWhy = 'held on too long';
+    navigator.vibrate?.(60);
+    this.setState('balk');
+  }
+
   followCamera(dt) {
     const view = this.game.view;
     const r = this.runner;
-    let cx = this.state === 'ready' || this.state === 'run' ? r.x : this.hip.x;
+    // Ahead of you, as in the original: you're in the left third running, further left through
+    // the zone as the box comes into view, then back toward the middle off the pole.
+    const C = this.cfg.camera;
+    const zoneLead = (C.lead ?? 0) + (C.zoneLead ?? 0);
+    let lead = C.flyLead ?? 0;
+    if (this.state === 'ready' || this.state === 'run') lead = (C.lead ?? 0) + (C.zoneLead ?? 0) * this.zoneProgress();
+    else if (this.state === 'vault') lead = zoneLead + (lead - zoneLead) * ease(clamp(this.vault.u, 0, 1));
+    let cx = (this.state === 'ready' || this.state === 'run' ? r.x : this.hip.x) + lead;
     if (this.state === 'landed' || this.state === 'mark') cx = this.cfg.landX - 1.5;
     this.camera.follow(cx, this.state === 'run' ? r.v : 0, dt);
-    // Rise with the vaulter: keep the head at least topFrac down the screen.
+    // Rise with the vaulter: keep the head at least topFrac down the screen. At rest the world
+    // sits camera.drop of the screen lower (the runway low, as in the original).
     const ground = this.track.toScreen(this.camera, view, this.hip.x, 1).y + 4;
     const headY = ground - (this.hip.y + 0.5 * this.figH) * this.camera.ppm;
     const z = this.zoom;
-    let want = Math.max(0, (view.h * this.cfg.camera.topFrac) / z - headY);
+    let want = Math.max((view.h * (this.cfg.camera.drop ?? 0)) / z, (view.h * this.cfg.camera.topFrac) / z - headY);
     // Running: keep the tip of the carried pole on screen too.
     if ((this.state === 'ready' || this.state === 'run') && this.poleTop != null) want = Math.max(want, (view.safe.t + 12) / z - this.poleTop);
     this.camY = damp(this.camY, want, 6, dt);
@@ -504,7 +539,7 @@ export class PoleVault {
   /** The line under your mark: your plant, release and speed (or why there's no height). */
   markDetail() {
     const vt = this.vault;
-    if (this.mark?.fail || !vt) return 'no press at the plant';
+    if (this.mark?.fail || !vt) return this.failWhy ?? 'no press at the plant';
     return `plant ${Math.round(vt.pq * 100)}% · release ${Math.round(vt.rq * 100)}% · ${(vt.v * 3.6).toFixed(0)} km/h`;
   }
 
@@ -628,6 +663,14 @@ export class PoleVault {
       }
       case 'balk': {
         const ta = now - this.stateT;
+        const b = this.balkFall;
+        if (b?.stall) {
+          // Toppled off the top of the pole: upside down, onto your back on the runway, up again.
+          const k = (this.cfg.standUp ?? 1.9) / 1.9;
+          const after = [[0.12, V.landBack], [0.45, V.landBack], [0.85, V.lie], [1.2, V.sitMat], [1.5, V.crouchMat], [1.9, POSES.stand]];
+          const keys = [[0, b.topPose], [0.4 * b.fallT, V.hang], [0.75 * b.fallT, V.drop], [b.fallT, V.landBack], ...after.map(([t, p]) => [b.fallT + t * k, p])];
+          return { ...sampleTrack(keys, ta), flip: true };
+        }
         const from = wrapNear(this.lastPose ?? POSES.stand, POSES.stand);
         return lerpPose(from, POSES.stand, ease(clamp(ta / 0.6, 0, 1)));
       }
@@ -637,7 +680,9 @@ export class PoleVault {
         // On the mat (from the original): on your back, legs up, legs come down, sit up, stand.
         const age = now - (this.fly.t0 + this.fly.T);
         const from = { ...wrapNear(this.lastAirPose ?? V.landBack, V.landBack), hipY: V.landBack.hipY };
-        const pose = sampleTrack([[0, from], [0.12, V.landBack], [0.45, V.landBack], [0.85, V.lie], [1.2, V.sitMat], [1.5, V.crouchMat], [1.9, POSES.stand]], age);
+        const k = (this.cfg.standUp ?? 1.9) / 1.9; // quick, as in the original
+        const keys = [[0, from], [0.12, V.landBack], [0.45, V.landBack], [0.85, V.lie], [1.2, V.sitMat], [1.5, V.crouchMat], [1.9, POSES.stand]];
+        const pose = sampleTrack(keys.map(([t, p]) => [t * k, p]), age);
         return { ...pose, flip: true };
       }
     }
@@ -776,7 +821,9 @@ export class PoleVault {
       const psi = cfg.pole.carryAngle + (toBox - cfg.pole.carryAngle) * drop;
       const reach = Math.min(len, Math.hypot(boxP.x - a.x, boxP.y - a.y));
       b = { x: a.x + reach * Math.cos(psi), y: a.y - reach * Math.sin(psi) };
-      if (!this.runUp.striding) this.sparkS = p; // the spark runs down to the tip
+      // The spark sets off from your hands a moment into the zone and runs down to the tip.
+      const sd = cfg.pole.sparkDelay ?? 0;
+      if (!this.runUp.striding) this.sparkS = p < sd ? null : (p - sd) / (1 - sd);
       this.poleTop = Math.min(a.y, b.y);
     } else if (this.state === 'vault') {
       const sw = this.vault.sw ?? this.swingAt(this.vault.u);
@@ -928,7 +975,7 @@ export class PoleVault {
     text(ctx, `Best ${best == null ? '—' : best.toFixed(2) + ' m'}`, view.w - 16 - s.r, 48 + s.t, { size: 15, align: 'right', color: 'rgba(255,255,255,0.85)', shadow: true });
     // Live height while in the air.
     if (this.state === 'fly' || this.state === 'landed') {
-      const h = this.state === 'fly' ? Math.min(this.peak, this.vault.height) : this.vault.height;
+      const h = this.state === 'fly' ? Math.min(this.peak / (this.cfg.flight.heightScale ?? 1), this.vault.height) : this.vault.height;
       text(ctx, `${h.toFixed(2)} m`, view.w / 2, 40 + s.t, { size: 30, color: '#fff', shadow: true });
     }
   }

@@ -4,6 +4,56 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Pole vault: matched to the original's footage
+Measured frame by frame from Zachary's recordings of the original; the
+numbers are in `docs/pole-vault-original.md`, side-by-side frames in
+`docs/pole-vault-compare/`.
+- **Plant zone** `zoneDistance` 18 → 15 m. The original's pads light 1.37 s
+  before the plant; ours took 1.65 s at 41 km/h, now 1.37 s.
+- **Spark start** new `pole.sparkDelay` 0.12: the spark waits at your hands
+  for the first 12% of the zone (the original's sets off ~0.17 s after the
+  pads), and still reaches the tip at the plant.
+- **Carry angle** `pole.carryAngle` 40° → 45°: the original's pole is at
+  about 45° as the pads light.
+- **Held on too long is a foul** new `release.heldFoul` 1: hold past the
+  release window and you stall upside down on the pole, topple back with it
+  onto the runway, get up: NO HEIGHT, "held on too long". In the original,
+  holding on past the handstand is a FOUL; ours used to let you go anyway for
+  a weak height. 0 = the old way.
+- **Off the pole:**
+  - `flight.gravity` 6 → 7.5 m/s², least `flight.push` 0.6 → 0.4 m.
+  - The original's best vault pushes ~1.7 m off the top of the pole, rising
+    for ~0.8 s, and its flight time grows steeply with height: 1.23 s at
+    4.24 m, 1.45 at 5.06, 1.8 at 6.14, 1.95 at 6.62.
+  - Ours now: 1.37 s at 4.3 m, 1.57 at 5.2, 1.94 at 6.0, rising 0.65 s on the
+    big one (was 1.49 / 1.61 / 1.73, always 0.44 s up).
+- **Drawn higher** new `flight.heightScale` 1.2: the vault and the bar are
+  drawn 20% higher than your mark, so it looks bigger. Look only: the mark and
+  scoring are unchanged. A good vault now reaches past the top of the pole, so
+  the big push off it reads (Zachary's idea).
+- **Landing** `landX` 3.6 → 4.0 m: the original lands ~2 m past the standards.
+- **Back on your feet sooner** new `standUp` 0.9 s (was 1.9 s built in), and
+  `markHold` 2.4 → 1.1 s. The original's height shows ~0.9 s after landing.
+- **Camera framing**, measured against the original:
+  - New `camera.lead` 3.5 m, `zoneLead` 2 m, `flyLead` 0.6 m.
+    - You were at ~57% across the screen running and ~45% at the plant.
+    - Now 37% running and 28% at the plant (the original: 37% and 27%), so
+      the box and mat come into view.
+    - Off the pole the camera drifts back toward you: 44% at the peak
+      (original 45%).
+  - New `camera.drop` 0.17: the runway sits lower without zooming in. Feet
+    were 64% down the screen, now 82% (original 83%). The athlete's size
+    already matched (25% of the screen height; original 26%).
+  - New `camera.plantKick` 0.45 m: the camera jolts back as the pole bites,
+    as the original's does.
+- **Heights** barely move (the shorter zone keeps a little more speed):
+  simulator casual 4.44 m, good 5.08, expert 6.03, perfect 6.57; Amateur
+  rivals 4.43, Pro 5.54 (medians).
+- **Tuning** (Pole Vault: timing / look): Spark start, Held too long fouls,
+  Height (drawn), Camera ahead (running / plant zone / in the air), Runway
+  low, Plant jolt, Getting up, Result delay. Push off the pole is now "Least
+  push off the pole".
+
 ## Pole vault: push off the pole to a bar further out
 - **Standards further from the box**, as in the original: `uprightX` 0.25 →
   2.2 m. The mat starts just past the box (`mat` 0.0–5.2 → 0.5–6.5 m) and you

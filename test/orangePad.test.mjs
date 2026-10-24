@@ -161,21 +161,32 @@ function vault(schedule, o) {
   return { sc, z, hold: sc.holdT == null ? null : sc.holdT - z, release: sc.releaseT == null ? null : sc.releaseT - z };
 }
 
-test('#13 pole vault: a tap, 0.5 s or 2 s hold at the plant plants; release at the lift, or forced (quality 0) when held too long', () => {
+test('#13 pole vault: a tap, 0.5 s or 2 s hold at the plant plants; release at the lift; held too long, a foul (or with heldFoul off, forced with quality 0)', () => {
   let v = vault((rig, z) => both(rig, z + P, 0.08));
   near(v.hold, P + 0.01);
   near(v.release, P + 0.08);
   v = vault((rig, z) => both(rig, z + P, 0.5));
   near(v.hold, P + 0.01);
   near(v.release, P + 0.5);
+  assert.ok(CONFIG.poleVault.release.heldFoul);
   v = vault((rig, z) => both(rig, z + P, 2));
   near(v.hold, P + 0.01);
-  inStep(v.release, P + 0.01 + forcedAfter(v.sc.vault.v), 'forced release');
-  assert.equal(v.sc.vault.rq, 0);
-  assert.notEqual(v.sc.state, 'balk');
+  inStep(v.release, P + 0.01 + forcedAfter(v.sc.vault.v), 'stalled on the pole');
+  assert.equal(v.sc.state, 'balk');
+  assert.deepEqual(v.sc.mark, { fail: true });
+  withConfig(CONFIG.poleVault.release, { heldFoul: 0 }, () => {
+    v = vault((rig, z) => both(rig, z + P, 2));
+    inStep(v.release, P + 0.01 + forcedAfter(v.sc.vault.v), 'forced release');
+    assert.equal(v.sc.vault.rq, 0);
+    assert.notEqual(v.sc.state, 'balk');
+  });
 });
 
 test('#14 pole vault: a hold started 0.5 s before the plant plants as the window opens (no balk); scored as pressed then, or on time with earlyHoldOnTime', () => {
+  // The 2 s hold is just "held"; holding too long is #13's business.
+  withConfig(CONFIG.poleVault.release, { heldFoul: 0 }, test14);
+});
+function test14() {
   assert.equal(CONFIG.poleVault.press.earlyHoldOnTime, false);
   let v = vault((rig, z) => both(rig, z + P - 0.5, 2));
   assert.notEqual(v.sc.state, 'balk');
@@ -188,7 +199,7 @@ test('#14 pole vault: a hold started 0.5 s before the plant plants as the window
   assert.notEqual(v.sc.state, 'balk');
   near(v.hold, v.sc.plantT - v.z);
   assert.equal(v.sc.vault.pq, 1);
-});
+}
 
 test('#15 pole vault: left thumb from the run-up, right pressed in the window: plant', () => {
   const before = (rig) => rig.at(rig.time + 0.005, down(1, LX)); // a stride (it changes your speed, so the plant: dry run first)

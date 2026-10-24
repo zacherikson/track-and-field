@@ -455,8 +455,10 @@ export const CONFIG = {
     // to the bottom hand (about shoulder width, as real vaulters hold it).
     // dropShare: how much of the plant zone the tip takes to come down to (nearly) level, as in
     // the original: down early, then the spark crawls along the low pole to the plant.
-    pole: { length: 4.5, gripY: 2.0, carryAngle: 0.698132, grip: 0.55, dropShare: 0.5 },
-    zoneDistance: 18, // m before the plant: orange pads, strides stop, the pole tip drops to the box and the spark runs down it (about 1.5 s at 42 km/h, as in the original)
+    // sparkDelay: share of the zone before the spark sets off from your hands (the original's
+    // starts about 0.17 s after the pads light). docs/pole-vault-original.md has the measurements.
+    pole: { length: 4.5, gripY: 2.0, carryAngle: 0.785398, grip: 0.55, dropShare: 0.5, sparkDelay: 0.12 },
+    zoneDistance: 15, // m before the plant: orange pads, strides stop, the pole tip drops to the box and the spark runs down it (about 1.4 s at 40 km/h, as in the original)
     // Runway edge stripes, in m before the box (the plant is about 4.1 m out).
     runwayZones: [
       { from: 22, to: 16, color: '#ffd21f' },
@@ -471,7 +473,10 @@ export const CONFIG = {
     // pressed at the window's start (`miss` early: plant quality 0); true = as
     // pressed right on the plant. Design call, open with Zachary.
     press: { window: 0.5, miss: 0.38, earlyHoldOnTime: false },
-    release: { window: 0.5 }, // s either side of the spark reaching your hands: release quality falls to 0
+    // s either side of the spark reaching your hands: release quality falls to 0. heldFoul: hold on
+    // past the window and you stall upside down on the pole and topple back onto the runway, no
+    // height (as in the original); 0 = you're let go anyway with release quality 0.
+    release: { window: 0.5, heldFoul: 1 },
     // Height from energy: base + eff × v² / 2g (v = speed at the plant, m/s; real g). The pole's
     // efficiency `eff` runs from effMin (plant and release both missed) to effMax (both perfect),
     // weighing the two by plantWeight and releaseWeight. `base`: hips' height at takeoff (m).
@@ -484,10 +489,13 @@ export const CONFIG = {
     // bent at the top, so you're only as high as your mark.
     swing: { timeAt10: 0.9, bend: 0.21 },
     // Off the pole, under gravity (m/s², lighter than real so the vault reads): you push off the
-    // top of the pole and fly forward to the bar, `push` m up from your hips at the top of the
-    // pole to the peak (over the bar, at your mark), then fall onto the mat. Exaggerated, as in
-    // the original. Higher vaults hang longer.
-    flight: { gravity: 6, push: 0.6 },
+    // top of the pole and fly forward to the bar, at least `push` m up from your hips at the top
+    // of the pole to the peak (over the bar), then fall onto the mat. The pole only reaches so
+    // high, so a big vault pushes much further off it (about 2 m on the original's best), rising
+    // for about 0.7 s. Higher vaults hang longer. heightScale: everything in the air is drawn this
+    // much higher than your mark (the bar too), so a vault looks bigger. Look only: the mark is
+    // what's scored.
+    flight: { gravity: 7.5, push: 0.4, heightScale: 1.2 },
     // Layout as in the original (further than real): the standards stand well past the box, so
     // you push off the pole and fly forward to the bar, leaving the pole behind; the mat starts
     // just past the box.
@@ -497,12 +505,19 @@ export const CONFIG = {
     // your hips once you're up the pole and stops at the height you clear.
     // Every attempt starts from `rest` again (your best doesn't set it).
     bar: { rest: 2.0, follow: 14 }, // m; how tightly it follows (higher = tighter)
-    landX: 3.6, // m past the box where you come down on the mat
-    markHold: 2.4, // s after landing before the result banner
+    landX: 4, // m past the box where you come down on the mat (about 2 m past the standards, as in the original)
+    markHold: 1.1, // s after landing before the result banner (the original's height shows about 0.9 s after)
+    standUp: 0.9, // s from landing on your back to on your feet (the original's is quick)
     // topFrac: the camera rises to keep the vaulter at least this far down the screen.
     // zoom: closer in than the other events, from the top of the screen, so the runway sits
     // low (as in the original) and there's room above for the vault.
-    camera: { topFrac: 0.3, zoom: 1 },
+    // plantKick: m the camera jolts back as the pole plants (the original's jumps about half a meter).
+    // lead: m further ahead of you than the other events while running (the original keeps you
+    // in the left third, about 37% across); zoneLead: m more by the plant (27% across there, so
+    // the box and mat come into view); flyLead: m ahead once you're off the pole (back near the
+    // middle). drop: share of the screen the world sits lower at rest (the original's feet are
+    // 83% of the way down).
+    camera: { topFrac: 0.3, zoom: 1, plantKick: 0.45, lead: 3.5, zoneLead: 2, flyLead: 0.6, drop: 0.17 },
     ai: {
       amateur: { cadence: [2.7, 3.4], pressErr: 0.18, releaseErr: 0.2, missChance: 0.07 },
       pro: { cadence: [3.7, 4.5], pressErr: 0.08, releaseErr: 0.1, missChance: 0.03 },

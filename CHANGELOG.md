@@ -4,6 +4,15 @@ Gameplay and tuning changes, newest first. When you change a number in
 `src/config.js`, log the old → new value and why it felt better.
 `node tools/simulate.mjs` shows what a change does to race times.
 
+## Pole vault: your last vault gets its card too
+- Offline, the third vault shows the same card as the first two (your
+  height, plant %, release %, speed and the standings); **Tap to continue**
+  starts the late hits, and the results follow as before. It used to go
+  straight into the late hits, so you never saw how the last one went.
+- Live, the late hits still start straight away (the rounds run on the room's
+  clock), but the plant / release line now shows under your mark there
+  (fieldLateHits.js draws a scene's optional `markDetail()`).
+
 ## Pole vault: physics instead of timers
 - **Height from energy:** `1.8 + eff × v² / 2g` (v = speed at the plant, real
   g). The pole's efficiency runs from `height.effMin` 0.32 (plant and release

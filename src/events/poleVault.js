@@ -478,8 +478,10 @@ export class PoleVault {
       rv.jumps.push(rivalVault(level, this.cfg, () => this.rivalRunUp(rv)));
     }
     this.setState('mark');
-    // Your last vault: on your feet (on the mat, facing back the way you came), the late hits start (brawl/fieldLateHits.js).
-    if (this.round >= this.cfg.rounds) startFieldLateHits(this, this.hip.x, this.poseFor(), this.fly ? -1 : 1);
+    // Your last vault: on your feet (on the mat, facing back the way you came), the late hits start
+    // (brawl/fieldLateHits.js). Live, straight away (the rounds run on the room's clock); offline,
+    // after this vault's card, like the others, so you can see your plant and release (next()).
+    if (this.round >= this.cfg.rounds && this.liveField) this.startLateHits();
   }
 
   /** A rival's speed at the plant (same physics as yours). */
@@ -491,7 +493,18 @@ export class PoleVault {
   next() {
     if (this.liveField) return this.liveField.next();
     if (this.round < this.cfg.rounds) this.startRound();
-    else this.finish();
+    else this.startLateHits(); // the results follow (fieldLateStep)
+  }
+
+  startLateHits() {
+    startFieldLateHits(this, this.hip.x, this.poseFor(), this.fly ? -1 : 1);
+  }
+
+  /** The line under your mark: your plant, release and speed (or why there's no height). */
+  markDetail() {
+    const vt = this.vault;
+    if (this.mark?.fail || !vt) return 'no press at the plant';
+    return `plant ${Math.round(vt.pq * 100)}% · release ${Math.round(vt.rq * 100)}% · ${(vt.v * 3.6).toFixed(0)} km/h`;
   }
 
   best(a) {
@@ -931,11 +944,7 @@ export class PoleVault {
     text(ctx, `ATTEMPT ${this.round} OF ${this.cfg.rounds}`, cx, 98, { size: 16, color: 'rgba(255,255,255,0.7)' });
     if (m.fail) text(ctx, 'NO HEIGHT', cx, 150, { size: 52, color: '#ff4b3e', shadow: true });
     else text(ctx, `${m.mark.toFixed(2)} m`, cx, 150, { size: 60, color: '#fff', shadow: true });
-    const vt = this.vault;
-    const detail = m.fail
-      ? 'no press at the plant'
-      : `plant ${Math.round(vt.pq * 100)}% · release ${Math.round(vt.rq * 100)}% · ${(vt.v * 3.6).toFixed(0)} km/h`;
-    text(ctx, detail, cx, 192, { size: 14, weight: 500, color: 'rgba(255,255,255,0.75)', maxWidth: w - 30 });
+    text(ctx, this.markDetail(), cx, 192, { size: 14, weight: 500, color: 'rgba(255,255,255,0.75)', maxWidth: w - 30 });
     const all = [this.player, ...this.rivals].map((a) => ({ a, b: this.best(a) }));
     all.sort((p, q) => (q.b ?? -1) - (p.b ?? -1));
     all.forEach(({ a, b }, i) => {
@@ -948,7 +957,7 @@ export class PoleVault {
     });
     const last = this.round >= this.cfg.rounds;
     const pulse = 0.6 + 0.4 * Math.sin(this.now * 5);
-    text(ctx, this.liveField?.hint() ?? (last ? 'Tap for results' : 'Tap for the next vault'), cx, 372, { size: 18, color: `rgba(255,255,255,${pulse})` });
+    text(ctx, this.liveField?.hint() ?? (last ? 'Tap to continue' : 'Tap for the next vault'), cx, 372, { size: 18, color: `rgba(255,255,255,${pulse})` });
   }
 }
 

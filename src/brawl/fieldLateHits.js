@@ -18,6 +18,7 @@ import { REFEREE } from '../athletes/roster.js';
  *   lateVenue()      its Venue (venue.js), on its own camera
  *   lateUpdate(dt, t) / lateRender(ctx, view): the late hits and the venue
  *   markLabel()      your last mark, as the banner shows it ('7.12 m', 'FOUL')
+ *   markDetail()     optional: a line under it about the attempt (the pole vault's plant and release)
  */
 const RESULTS_AFTER = 2.2; // s from your last mark to the results (offline)
 
@@ -62,8 +63,11 @@ export function fieldLateRender(scene, ctx, view) {
   const label = scene.markLabel();
   const bad = !/m$/.test(label);
   text(ctx, label, view.w / 2, 70 + view.safe.t, { size: 56, color: bad ? '#ff4b3e' : '#fff', shadow: true });
+  // The event's line about the attempt, if it has one (the pole vault's plant and release).
+  const detail = scene.markDetail?.();
+  if (detail) text(ctx, detail, view.w / 2, 106 + view.safe.t, { size: 15, weight: 600, color: 'rgba(255,255,255,0.9)', shadow: true });
   const hint = scene.liveField?.hint();
-  if (hint) text(ctx, hint, view.w / 2, 112 + view.safe.t, { size: 16, color: 'rgba(255,255,255,0.85)', shadow: true });
+  if (hint) text(ctx, hint, view.w / 2, (detail ? 130 : 112) + view.safe.t, { size: 16, color: 'rgba(255,255,255,0.85)', shadow: true });
   ctx.globalAlpha = 1;
   scene.after.drawControls(ctx, view);
 }

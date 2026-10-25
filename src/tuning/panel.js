@@ -73,7 +73,7 @@ function build() {
           <div><span>Good · 4 hits/s</span><b data-est="4">…</b></div>
           <div><span>Expert · 5 hits/s</span><b data-est="5">…</b></div>
           <div><span>One mistake costs</span><b data-est="miss">…</b></div>
-          <div><span>Amateur rivals win in</span><b data-est="rivals">…</b></div>
+          <div><span>Collegiate rivals win in</span><b data-est="rivals">…</b></div>
         </div>
       </section>
       <div class="tp-groups"></div>

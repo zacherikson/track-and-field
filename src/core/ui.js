@@ -20,7 +20,8 @@ export const PAL = {
   gold: '#F2B632', goldShade: '#C48A1C', // active, highlight, the tournament
   orange: '#E8743B', orangeShade: '#B9542A', // primary: vs Computer, Start, Tap to start
   liveGreen: '#2E8B57', liveShade: '#1F6640', // Live, Join
-  brick: '#C2452F', brickShade: '#93321F', // Amateur, the track
+  brick: '#C2452F', brickShade: '#93321F', // High School, the track
+  college: '#2D8BB8', collegeShade: '#1F6688', // Collegiate: its pale blue track
   blue: '#3B6CC2', blueShade: '#2A4F93', // Pro, Find, Google
   magenta: '#C2407E', magentaShade: '#8F2C5C', // Special Events
   survival: '#A8232D', survivalShade: '#761820', // Survival

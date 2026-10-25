@@ -6,7 +6,7 @@ drawn art is ready to switch back on (see [src/athletes/sprites/](src/athletes/s
 Plain HTML5 Canvas + vanilla ES modules. No framework, no build step.
 
 **Status:** all five events playable (100m Dash, 110m Hurdles, Long Jump, Pole
-Vault, Javelin), against Amateur or Pro rivals, plus a 4×100m relay and a
+Vault, Javelin), against High School, Collegiate or Pro rivals, plus a 4×100m relay and a
 cycling time trial under Special Events.
 
 ## Play on your phone
@@ -64,8 +64,12 @@ Each mode has a venue of its own ([`src/render/venues.js`](src/render/venues.js)
 - **Training** — a rundown community track. Overcast, faded surface worn to
   dirt, chalk lines, dry unmown grass, rusty blocks, pine woods behind a
   chainlink fence. No stand, because nobody came.
-- **Amateur** — the high-school stadium: brick-red track, mowed stripes, a low
+- **High School** — Westfield High: brick-red track, mowed stripes, a low
   stand that's a good way from full, painted sponsor boards.
+- **Collegiate** — Wasatch University, after the track in Provo: snow-capped
+  mountains behind, a line of trees and light poles, modest aluminium
+  bleachers with a press box, a pale blue track with its lanes in two blues.
+  The javelin's flight shot looks out over the mountains instead of the sea.
 - **Pro** — the big final: blue track, crisp paint, a deep stand packed solid
   under floodlights with camera flashes, lit hoardings, evening sky. Live play
   uses this one.
@@ -115,11 +119,12 @@ Like Clash Royale: three tabs along the bottom, **Athlete | Play | Squad**. Tap
 one or swipe sideways to slide between them. The game opens on **Play**: two
 big buttons, **🤖 vs Computer** and **🌐 Live**, over your athlete warming up on
 the track (tap them to change who it is). Live opens the tournament and the
-five events. vs Computer opens five big buttons (three across, or two on a narrow screen): **Amateur** and
-**Pro** (a campaign each: the five events and the tournament, Pro locked until
-Amateur is beaten), **Training** (the five events on your own, no tournament, with its Training
+five events. vs Computer opens six big buttons (three across, or two on a narrow screen): **High School**,
+**Collegiate** and **Pro** (a campaign each: the five events and the tournament, each locked until
+the one before is beaten; Collegiate was Amateur, and what you'd beaten there stays beaten),
+**Training** (the five events on your own, no tournament, with its Training
 Ghost toggle) and **⭐ Special Events** (the events that aren't part of the five, the
-4×100m relay and the time trial, with a RIVALS toggle, Amateur or Pro) and
+4×100m relay and the time trial, with a RIVALS toggle: High School, Collegiate or Pro) and
 **Survival** (you against one rival until you lose an event: see Survival). The
 Squad tab has ⚔ Practice: live events with just your squad (see Squads).
 ‹ Back (or Esc) goes back a step, and Menu after a race comes back to the
@@ -181,7 +186,7 @@ won.
 - It's meant to be hard: round 1 he's a weak Pro, round 2 a strong Pro, and
   after that he keeps getting better by a little less each round, towards
   near perfect (`CONFIG.survival`: every rival setting is blended between its
-  Amateur and Pro values, or carried on past them). `node tools/simulate.mjs`
+  Collegiate and Pro values, or carried on past them). `node tools/simulate.mjs`
   prints his marks round by round: a strong player should last to about
   round 2 or 3, a near perfect one past 5.
 - Every round is at **The Lost Stadium**, Survival's own venue: an old
@@ -248,8 +253,8 @@ the button closes in as you catch them; tap when it meets the button.
 - The anchor leans at the line with the orange pads, as in the 100m.
 
 The results show each of your exchanges and the baton's time through the zone.
-Rivals race in the venue for their level: the high school for Amateur, the big
-stadium for Pro. The relay isn't on the online leaderboards yet. It plays
+Rivals race in the venue for their level: the high school, the university or
+the big stadium. The relay isn't on the online leaderboards yet. It plays
 live as a squad Practice (Squad tab, 2 to 4 squadmates): the squad is one
 team, each runner on their own phone as in a meet (two take turns, A B A B;
 three, one runs two legs), against the Practice Squad, a computer team that
@@ -355,7 +360,10 @@ address is `MEET_SERVER` in `src/online/net.js`.
 **Athlete** (the home screen's left tab): your athlete warming up along the
 top, with their tagline and height, and everyone below. Tap one and they're
 yours. Your athlete does every event and the whole tournament (all five, like a
-pentathlon); in each event the other five are your rivals. The athletes only
+pentathlon). Who you race depends on the level: High School has its own six
+rivals (a bit shorter: they haven't finished growing), Collegiate another six,
+and at Pro the other five of the cast are your rivals
+([`src/athletes/roster.js`](src/athletes/roster.js) `castOf`). The athletes only
 look different for now; they all run on the same physics.
 
 **Make your own** (the last card, CREATE): the Athlete Maker, Mii style. Pick
@@ -391,7 +399,7 @@ personal best either. Set your username with the 👤 button at the top right of
 the menu; names are unique.
 
 **Your progress follows your account.** Signed in with Google, your
-campaign progress (what you've beaten in Amateur and Pro), your top five marks
+campaign progress (what you've beaten in High School, Collegiate and Pro), your top five marks
 on every board (the Leaderboard's **Mine**) and your athlete
 are saved to your account as well as the phone
 ([`src/online/progress.js`](src/online/progress.js), Firestore

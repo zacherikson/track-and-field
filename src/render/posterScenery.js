@@ -1,8 +1,9 @@
 // The menus' flat poster scenery (Art/Home screen redesign v1, kit/poster-ui.js):
 // banded skies, lobed clouds, faceted ranges, round trees and pines, the
 // track, and the three venues drawn into any rectangle (backdrops and card
-// vignettes): pinebrook (Training), westfield (Amateur), olympic (Pro, and Live
-// at night). Plus the TRACK ROYALE wordmark. Flat fills only.
+// vignettes): pinebrook (Training), westfield (High School), wasatch
+// (Collegiate), olympic (Pro, and Live at night). Plus the TRACK ROYALE
+// wordmark. Flat fills only.
 //
 // The race venues (render/venues.js) are drawn separately and don't share
 // these colours yet.
@@ -62,10 +63,12 @@ export function pine(ctx, x, base, h, face = PAL.deep, shade = PAL.deeper) {
   ctx.fillStyle = shade; ctx.beginPath(); ctx.moveTo(x, base - h); ctx.lineTo(x + w / 2, base); ctx.lineTo(x + w * 0.05, base); ctx.closePath(); ctx.fill();
 }
 /** The track, as in the game: a band with lane lines (wider toward the bottom). */
-export function track(ctx, x, top, w, h, { face = PAL.brick, line = 'rgba(245,234,208,0.85)', lanes = 6, curb = PAL.cream } = {}) {
+export function track(ctx, x, top, w, h, { face = PAL.brick, alt = null, line = 'rgba(245,234,208,0.85)', lanes = 6, curb = PAL.cream } = {}) {
   ctx.fillStyle = face; ctx.fillRect(x, top, w, h);
+  const r = 1.18; let lh = (h * (r - 1)) / (r ** lanes - 1);
+  if (alt) { ctx.fillStyle = alt; let ly = top, l = lh; for (let i = 0; i < lanes; i++) { if (i % 2) ctx.fillRect(x, ly, w, l + 1); ly += l; l *= r; } } // two-tone lanes
   ctx.fillStyle = curb; ctx.fillRect(x, top, w, 3);
-  let yy = top; const r = 1.18; let lh = (h * (r - 1)) / (r ** lanes - 1);
+  let yy = top;
   ctx.fillStyle = line;
   for (let i = 0; i < lanes - 1; i++) { yy += lh; lh *= r; ctx.fillRect(x, Math.round(yy), w, 2); }
 }
@@ -115,6 +118,39 @@ export function westfield(ctx, x, y, w, h, { trackH = 0, crowd = true } = {}) {
   const bwid = w / boards.length, bh = H * 0.1;
   boards.forEach(([bg, fg], i) => { const xx = x + i * bwid; ctx.fillStyle = bg; ctx.fillRect(xx + 2, gy - bh, bwid - 4, bh); ctx.fillStyle = fg; if (i % 3 === 0) { ctx.beginPath(); ctx.arc(xx + bwid * 0.3, gy - bh / 2, bh * 0.28, 0, 7); ctx.fill(); ctx.fillRect(xx + bwid * 0.48, gy - bh * 0.62, bwid * 0.36, bh * 0.24); } else if (i % 3 === 1) { for (let s = 0; s < 3; s++) { ctx.beginPath(); ctx.moveTo(xx + bwid * (0.2 + s * 0.22), gy - bh * 0.2); ctx.lineTo(xx + bwid * (0.3 + s * 0.22), gy - bh * 0.8); ctx.lineTo(xx + bwid * (0.36 + s * 0.22), gy - bh * 0.8); ctx.lineTo(xx + bwid * (0.26 + s * 0.22), gy - bh * 0.2); ctx.fill(); } } else { ctx.beginPath(); ctx.moveTo(xx + bwid * 0.2, gy - bh * 0.2); ctx.lineTo(xx + bwid * 0.5, gy - bh * 0.82); ctx.lineTo(xx + bwid * 0.8, gy - bh * 0.2); ctx.fill(); } });
   if (trackH) track(ctx, x, gy, w, trackH, { face: '#D2442E' });
+  ctx.restore();
+}
+/**
+ * Wasatch University (Collegiate), after the track in Provo: snow-capped
+ * peaks over the campus trees, light poles, modest aluminium bleachers with a
+ * navy press box, and a pale blue track with its lanes in two blues.
+ */
+export function wasatch(ctx, x, y, w, h, { trackH = 0 } = {}) {
+  ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+  const gy = y + h - trackH; const H = gy - y;
+  bands(ctx, x, y, w, H, ['#7FA8E6', '#9DBDEB', '#BDD3F0', '#D6E4F5']);
+  cloud(ctx, x + w * 0.84, y + H * 0.12, H * 0.07, '#F7F9FD', '#C9D6EC');
+  const m = (fx, fy) => [x + fx * w, y + fy * H];
+  range(ctx, [m(-0.05, 0.55), m(0.06, 0.3), m(0.17, 0.42), m(0.31, 0.1), m(0.43, 0.3), m(0.53, 0.2), m(0.65, 0.4), m(0.77, 0.16), m(0.9, 0.36), m(1.05, 0.28)], gy, '#8E9CC4', '#7584B0', '#F6F8FC');
+  range(ctx, [m(-0.05, 0.72), m(0.12, 0.52), m(0.27, 0.64), m(0.45, 0.48), m(0.61, 0.66), m(0.8, 0.5), m(1.05, 0.68)], gy, '#6E7DA8', '#5D6A95', '#E4EAF4');
+  // campus trees along the foot of the range
+  for (let i = 0; i < 11; i++) roundTree(ctx, x + w * (0.01 + i * 0.1), gy - H * 0.18, H * (0.06 + (i % 3) * 0.012), '#6FA94E', '#3F7A3A');
+  // light poles
+  [0.12, 0.88].forEach((fx) => { const px = x + fx * w, py = y + H * 0.22; ctx.fillStyle = '#5B6470'; ctx.fillRect(px - 1.5, py, 3, gy - py); ctx.fillRect(px - 10, py - 6, 20, 7); ctx.fillStyle = '#F4F1E2'; for (let k = 0; k < 3; k++) ctx.fillRect(px - 8 + k * 6, py - 4.5, 4, 4); });
+  // bleachers: two low aluminium sections, a press box on the bigger one
+  const tiers = 4;
+  [[0.2, 0.42], [0.66, 0.24]].forEach(([fx, fw], s) => {
+    const bx = x + fx * w, bw = fw * w, btop = gy - H * 0.3, th = (gy - H * 0.1 - btop) / tiers;
+    for (let i = 0; i < tiers; i++) { const ty = btop + i * th; const inset = (tiers - i) * w * 0.005; ctx.fillStyle = i % 2 ? '#C9CED8' : '#DCE0E8'; ctx.fillRect(bx + inset, ty, bw - inset * 2, th); ctx.fillStyle = '#8D95A5'; ctx.fillRect(bx + inset, ty + th - 2, bw - inset * 2, 2); }
+    const cols = ['#0B2D5B', '#F4F6F8', '#1F5FAE', PAL.gold, '#0B2D5B', PAL.orange];
+    for (let i = 0; i < tiers - 1; i++) for (let j = 0; j < 16; j++) { if ((j * 5 + i * 3 + s) % 4) continue; const px = bx + 10 + (j * (bw - 20)) / 16, py = btop + i * th; ctx.fillStyle = cols[(i + j) % cols.length]; ctx.fillRect(px, py + th * 0.3, th * 0.7, th * 0.55); ctx.beginPath(); ctx.arc(px + th * 0.35, py + th * 0.15, th * 0.24, 0, 7); ctx.fill(); }
+    if (s === 0) { const pw = bw * 0.3, px = bx + (bw - pw) / 2, py = btop - H * 0.12; ctx.fillStyle = '#0B2D5B'; ctx.fillRect(px, py, pw, H * 0.12); ctx.fillStyle = '#9CC7EC'; ctx.fillRect(px + pw * 0.08, py + H * 0.03, pw * 0.84, H * 0.045); }
+  });
+  // low navy and white boards
+  const boards = ['#0B2D5B', '#F4F6F8', '#1F5FAE', '#0B2D5B', '#F4F6F8', '#1F5FAE'];
+  const bwid = w / boards.length, bh = H * 0.1;
+  boards.forEach((c, i) => { const xx = x + i * bwid; ctx.fillStyle = c; ctx.fillRect(xx + 2, gy - bh, bwid - 4, bh); ctx.fillStyle = c === '#F4F6F8' ? '#0B2D5B' : '#F4F6F8'; ctx.fillRect(xx + bwid * 0.25, gy - bh * 0.6, bwid * 0.5, bh * 0.2); });
+  if (trackH) track(ctx, x, gy, w, trackH, { face: '#7DB3E0', alt: '#4F88C2', line: 'rgba(255,255,255,0.9)', curb: '#EEF2F6' });
   ctx.restore();
 }
 export function olympic(ctx, x, y, w, h, { trackH = 0, night = false } = {}) {

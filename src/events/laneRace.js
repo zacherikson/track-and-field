@@ -67,7 +67,7 @@ export class LaneRace {
     this.ev = ev;
     this.cfg = survival.active ? { ...cfg, lanes: 2 } : cfg; // survival: a showdown, two lanes (you nearest)
     this.baseCfg = cfg;
-    this.level = getDifficulty(); // 'amateur' | 'pro': the campaign's
+    this.level = getDifficulty(); // a LEVELS id (core/storage.js): the campaign's
     this.difficulty = aiLevel(CONFIG.ai, this.level); // survival: blended to the rival's skill
     // The lean pads take holds: Input queues finger lifts and key releases too.
     // They only go to the thumbs and the late hits' controls, never to strides.
@@ -111,7 +111,7 @@ export class LaneRace {
     const cfg = this.cfg;
     const spec = this.ghostSpec;
     const ghostLane = spec && !spec.overlay ? (cfg.playerLane < cfg.lanes ? cfg.playerLane + 1 : cfg.playerLane - 1) : null;
-    const rivals = shuffle(rivalRoster(this.ev.id));
+    const rivals = shuffle(rivalRoster(this.ev.id, this.level));
     // Live: the other players in the lanes nearest yours, and nobody else (so every phone has the same results).
     const others = this.live ? this.live.others : [];
     const liveLanes = new Map(nearestLanes(cfg.playerLane, cfg.lanes).slice(0, others.length).map((lane, i) => [lane, others[i]]));

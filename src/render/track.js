@@ -138,6 +138,7 @@ export class TrackRenderer {
     const top = this.L.standsTop;
     const bottom = this.L.boardsTop;
     if (this.venue.colosseum) return this.drawColosseum(ctx, view, camera, top, bottom);
+    if (this.venue.mountains) return this.drawMountainStadium(ctx, view, camera, top, bottom);
     ctx.fillStyle = s.body;
     ctx.fillRect(0, top, view.w, bottom - top);
     ctx.fillStyle = s.roof;
@@ -368,6 +369,104 @@ export class TrackRenderer {
         ctx.beginPath();
         ctx.arc(x, top + len + 2, 2.5, 0, Math.PI * 2);
         ctx.fill();
+      }
+    }
+  }
+
+  /**
+   * Collegiate's (venues.js `mountains`): the sky all the way down the band,
+   * a snow-capped range behind (two ridges, barely moving), a line of trees
+   * and light poles, and low aluminium bleachers in sections along the
+   * bottom, people dotted along them, a press box on every third. The trees,
+   * poles and bleachers are on the stand's parallax.
+   */
+  drawMountainStadium(ctx, view, camera, top, bottom) {
+    const M = this.venue.mountains;
+    const S = this.venue.stands;
+    const g = ctx.createLinearGradient(0, 0, 0, bottom);
+    g.addColorStop(0, this.venue.sky.top);
+    g.addColorStop(1, this.venue.sky.bottom);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, top, view.w, bottom - top);
+    const offset = camera.x * camera.ppm * 0.2;
+    const H = bottom - top;
+    drawMountains(ctx, view.w, offset * 0.15, top + 2, bottom - H * 0.12, { face: M.far, shade: M.farShade, snow: M.snow, snowShade: M.snowShade, spacing: 170, seed: 7919, snowDepth: H * 0.22 });
+    drawMountains(ctx, view.w, offset * 0.3, top + H * 0.3, bottom - H * 0.12, { face: M.near, shade: M.nearShade, snow: M.snow, snowShade: M.snowShade, spacing: 120, seed: 104729, snowDepth: H * 0.1 });
+
+    // Trees along the foot of the range, light poles standing over them.
+    const treeW = 30;
+    const tFirst = Math.floor(offset / treeW) - 1;
+    for (let i = tFirst; i < tFirst + Math.ceil(view.w / treeW) + 2; i++) {
+      const h = hash(i * 3571);
+      const x = i * treeW - offset + (h % 12);
+      const r = 9 + (h % 7);
+      const base = bottom - 2;
+      ctx.fillStyle = M.trunk;
+      ctx.fillRect(x - 1.5, base - r, 3, r);
+      ctx.fillStyle = h % 3 ? M.tree : M.treeLit;
+      ctx.beginPath();
+      ctx.arc(x, base - r - r * 0.7, r, 0, Math.PI * 2);
+      ctx.arc(x + r * 0.7, base - r - r * 0.2, r * 0.7, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    const poleW = 420;
+    for (let i = Math.floor(offset / poleW) - 1; i < Math.floor(offset / poleW) + Math.ceil(view.w / poleW) + 2; i++) {
+      const x = i * poleW - offset + 150;
+      const y0 = top + H * 0.08;
+      ctx.fillStyle = M.pole;
+      ctx.fillRect(x - 1.5, y0, 3, bottom - y0);
+      ctx.fillRect(x - 11, y0 - 6, 22, 7);
+      ctx.fillStyle = '#f4f1e2';
+      for (let k = 0; k < 3; k++) ctx.fillRect(x - 9 + k * 7, y0 - 4.5, 5, 4);
+    }
+
+    // The bleachers: sections with gaps of trees between them.
+    const secW = 300;
+    const period = secW + 110;
+    const rows = S.rows;
+    const bTop = bottom - rows * S.rowH - 4;
+    const head = Math.max(4, S.seatW - 6);
+    for (let i = Math.floor(offset / period) - 1; i < Math.floor(offset / period) + Math.ceil(view.w / period) + 2; i++) {
+      const x0 = i * period - offset;
+      if (x0 > view.w || x0 + secW < 0) continue;
+      ctx.fillStyle = S.frame;
+      ctx.fillRect(x0, bTop, secW, bottom - bTop);
+      for (let r = 0; r < rows; r++) {
+        const y = bTop + r * S.rowH;
+        const inset = (rows - 1 - r) * 3; // each row up steps back a little
+        ctx.fillStyle = S.body;
+        ctx.fillRect(x0 + inset, y + 3, secW - inset * 2, S.rowH - 3);
+        ctx.fillStyle = S.plank;
+        ctx.fillRect(x0 + inset, y, secW - inset * 2, 3);
+        // People sitting on this row (their heads over the plank, shirts below it).
+        const n = Math.floor((secW - inset * 2 - 8) / S.seatW);
+        for (let k = 0; k < n; k++) {
+          const hh = hash(i * 7307 + r * 131 + k * 17);
+          if (S.emptyEvery && hh % S.emptyEvery !== 0) continue; // most seats free: a modest crowd
+          const px = x0 + inset + 4 + k * S.seatW + (hh % 3);
+          ctx.fillStyle = S.crowd[(hh >>> 4) % S.crowd.length];
+          ctx.fillRect(px, y - 2, head, 6);
+          ctx.fillStyle = '#e8c4a0';
+          ctx.fillRect(px + 1, y - 2 - head + 1, head - 2, head - 2);
+        }
+      }
+      ctx.fillStyle = S.rail;
+      ctx.fillRect(x0, bTop - 4, 2, 4);
+      ctx.fillRect(x0 + secW - 2, bTop - 4, 2, 4);
+      ctx.fillRect(x0, bTop - 4, secW, 1.5);
+      if (((i % 3) + 3) % 3 === 1) {
+        // A press box on its posts over the top row.
+        const bw = secW * 0.34;
+        const bx = x0 + (secW - bw) / 2;
+        const by = bTop - 24;
+        ctx.fillStyle = S.frame;
+        ctx.fillRect(bx + 6, by + 18, 3, 8);
+        ctx.fillRect(bx + bw - 9, by + 18, 3, 8);
+        ctx.fillStyle = S.box;
+        ctx.fillRect(bx, by, bw, 18);
+        ctx.fillRect(bx - 3, by - 3, bw + 6, 4);
+        ctx.fillStyle = S.boxWindow;
+        ctx.fillRect(bx + 5, by + 5, bw - 10, 7);
       }
     }
   }
@@ -619,6 +718,14 @@ export class TrackRenderer {
     const T = this.venue.track;
     ctx.fillStyle = T.surface;
     ctx.fillRect(0, top, view.w, bottom - top);
+    if (T.alt) {
+      // Two-tone lanes: every other one a shade deeper.
+      ctx.fillStyle = T.alt;
+      for (let k = 1; k < this.lanes; k += 2) {
+        const y0 = this.yAt(this.zNear + k + 1);
+        ctx.fillRect(0, y0, view.w, this.yAt(this.zNear + k) - y0);
+      }
+    }
     if (T.worn) this.drawWear(ctx, view, camera, T.worn);
 
     // Lane lines: horizontal, closer together further away.
@@ -829,4 +936,77 @@ function hash(n) {
   n = Math.imul(n, 0x27d4eb2d);
   n ^= n >>> 15;
   return n >>> 0;
+}
+
+/**
+ * A snow-capped range across a `w`-wide band: peaks no higher than `crest`,
+ * its foot at `base` (screen y), scrolled by `off` px. Peaks every `spacing`
+ * px or so (`seed` picks their heights), each with its right face shaded and
+ * snow down `snowDepth` px from the top. Collegiate's backdrop, and what the
+ * javelin's flight shot looks out over there.
+ */
+export function drawMountains(ctx, w, off, crest, base, { face, shade, snow, snowShade, spacing, seed, snowDepth }) {
+  const span = base - crest;
+  const first = Math.floor(off / spacing) - 2;
+  const peaks = [];
+  for (let i = first; i < first + Math.ceil(w / spacing) + 5; i++) {
+    const h = hash(i * seed);
+    peaks.push({ x: i * spacing - off + (h % Math.round(spacing * 0.3)), y: crest + span * (((h >>> 6) % 45) / 100) });
+  }
+  // A valley between each pair of peaks, lower than both.
+  const pts = [];
+  peaks.forEach((p, k) => {
+    pts.push({ ...p, peak: true });
+    const q = peaks[k + 1];
+    if (!q) return;
+    const h = hash((first + k) * seed + 17);
+    pts.push({ x: p.x + (q.x - p.x) * (0.4 + ((h % 20) / 100)), y: Math.min(base - 2, Math.max(p.y, q.y) + span * (0.2 + ((h >>> 5) % 25) / 100)) });
+  });
+  ctx.fillStyle = face;
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, base);
+  for (const p of pts) ctx.lineTo(p.x, p.y);
+  ctx.lineTo(pts.at(-1).x, base);
+  ctx.closePath();
+  ctx.fill();
+  for (let k = 1; k < pts.length - 1; k++) {
+    const p = pts[k];
+    if (!p.peak) continue;
+    const L = pts[k - 1];
+    const R = pts[k + 1];
+    // The face away from the sun.
+    ctx.fillStyle = shade;
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+    ctx.lineTo(R.x, R.y);
+    ctx.lineTo(R.x, base);
+    ctx.lineTo(p.x + (R.x - p.x) * 0.3, base);
+    ctx.closePath();
+    ctx.fill();
+    // Snow down from the top: a ragged edge, lit on the left, in shade on the right.
+    const kl = Math.min(0.7, snowDepth / Math.max(1, L.y - p.y));
+    const kr = Math.min(0.7, snowDepth / Math.max(1, R.y - p.y));
+    const a = { x: p.x + (L.x - p.x) * kl, y: p.y + (L.y - p.y) * kl };
+    const b = { x: p.x + (R.x - p.x) * kr, y: p.y + (R.y - p.y) * kr };
+    const dip = (b.y - p.y) * 0.35;
+    ctx.fillStyle = snow;
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.lineTo(p.x + (b.x - p.x) * 0.55, b.y - dip);
+    ctx.lineTo(p.x + (b.x - p.x) * 0.25, b.y + dip * 0.4);
+    ctx.lineTo(p.x - (p.x - a.x) * 0.3, a.y - dip * 0.2);
+    ctx.lineTo(p.x - (p.x - a.x) * 0.6, a.y + dip * 0.5);
+    ctx.lineTo(a.x, a.y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = snowShade;
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.lineTo(p.x + (b.x - p.x) * 0.55, b.y - dip);
+    ctx.lineTo(p.x + (b.x - p.x) * 0.25, b.y + dip * 0.4);
+    ctx.closePath();
+    ctx.fill();
+  }
 }

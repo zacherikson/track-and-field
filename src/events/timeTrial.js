@@ -49,7 +49,7 @@ export class TimeTrial {
     this.track = new RoadRenderer(this.road, VENUES[this.level]); // out in the country, but at the level's time of day
     const me = chosenPlayer(this.ev.id);
     this.player = { name: me.name, colors: me.colors, isPlayer: true, bike: new Bike(cfg, this.road), mark: null, checks: [] };
-    this.rivals = shuffle(rivalRoster(this.ev.id))
+    this.rivals = shuffle(rivalRoster(this.ev.id, this.level))
       .slice(0, 5)
       .map((c) => {
         const bike = new Bike(cfg, this.road);

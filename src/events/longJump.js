@@ -63,7 +63,7 @@ export class LongJump {
     const me = chosenPlayer(this.ev.id);
     this.player = { name: this.live ? this.live.name : me.name, colors: me.colors, isPlayer: true, jumps: [] }; // live: your username, as the others see you
     // Five rivals, each with a fixed run-up pace for the whole competition.
-    this.rivals = shuffle(rivalRoster(this.ev.id))
+    this.rivals = shuffle(rivalRoster(this.ev.id, this.level))
       .slice(0, 5)
       .map((r) => ({ name: r.name, colors: r.colors, isPlayer: false, jumps: [], cadence: rand(...this.lv.cadence) }));
     this.exitBtn = { x: 0, y: 0, w: 44, h: 40 };

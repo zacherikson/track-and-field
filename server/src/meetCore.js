@@ -462,7 +462,7 @@ export class MeetCore {
 
   /**
    * Relay: a runner's phone dropped. Their legs are run by a computer runner
-   * (Amateur) on a teammate's phone: the one running the leg after theirs, or
+   * (Collegiate) on a teammate's phone: the one running the leg after theirs, or
    * the one before, or anyone left.
    */
   reassignLegs(uid) {

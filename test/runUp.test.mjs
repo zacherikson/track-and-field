@@ -14,7 +14,7 @@ test('faster tapping, a faster run-up, up to sprinting speed', () => {
   assert.ok(speeds.at(-1) > 10 && speeds.at(-1) < CONFIG.runner.topSpeed + 0.5);
 });
 
-test("a rival's run-up: the same random numbers, the same speed; Pros faster than Amateurs", () => {
+test("a rival's run-up: the same random numbers, the same speed; Pros faster than Collegiates", () => {
   const rival = (level, seed) => {
     Math.random = seededRandom(seed);
     return lj({ level: { ...CONFIG.ai[level], ...LJ.ai[level] } });
@@ -23,7 +23,7 @@ test("a rival's run-up: the same random numbers, the same speed; Pros faster tha
   try {
     assert.equal(rival('pro', 'a'), rival('pro', 'a'));
     const avg = (level) => Array.from({ length: 40 }, (_, i) => rival(level, `${level}${i}`)).reduce((s, v) => s + v, 0) / 40;
-    assert.ok(avg('pro') > avg('amateur'));
+    assert.ok(avg('pro') > avg('collegiate'));
   } finally {
     Math.random = real;
   }

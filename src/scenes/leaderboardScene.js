@@ -2,7 +2,7 @@ import { CONFIG } from '../config.js';
 import { Button, text, slab, chamfer, PAL } from '../core/ui.js';
 import { drawIcon } from '../core/icons.js';
 import { BOARDS, formatMark } from '../events/registry.js';
-import { getTopMarks, TOP_N, getBoardView, setBoardView } from '../core/storage.js';
+import { getTopMarks, TOP_N, getBoardView, setBoardView, LEVEL_NAMES } from '../core/storage.js';
 import { leaderboard, cachedLeaderboard, fetchGhost, learnUid, isSignedIn, startGoogleSignIn } from '../online/firebase.js';
 import { chooseGhost, isReplayable, GHOST_VERSION } from '../online/ghost.js';
 import { isTrace } from '../online/trace.js';
@@ -26,7 +26,7 @@ let lastBoard = null; // the tab you looked at last, for the menu's Leaderboard 
  *
  * - Mine: your own top five on every board (storage.js getTopMarks), five
  *   events across, the two tournament scores under them, each mark with who
- *   set it, where (Amateur, Pro, Training, Live) and when. Kept on this phone,
+ *   set it, where (High School, Collegiate, Pro, Training, Live) and when. Kept on this phone,
  *   so guests have it too. Tap a board to see it on Global.
  * - Global: the online leaderboards, a tab per event plus the solo and team
  *   tournament scores, each with the best marks from every player. On the event
@@ -334,7 +334,7 @@ export class LeaderboardScene {
 const MINE_Y = 80; // top of the Mine columns
 const MINE_HEAD = 64; // a column's coloured header
 const MINE_ROW = 70; // a mark and its details line, at most
-const WHERE = { amateur: 'Amateur', pro: 'Pro', training: 'Training', live: 'Live' };
+const WHERE = { ...LEVEL_NAMES, amateur: 'Collegiate', training: 'Training', live: 'Live' }; // amateur: Collegiate's old name, on older marks
 
 /** "Okoro · Pro · Oct 1": who set a mark, where and when ("From before" for one kept before the list was). */
 function details(e) {

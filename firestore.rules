@@ -180,7 +180,7 @@ service cloud.firestore {
         && d.keys().hasAll(['beaten', 'top', 'lineup', 'character', 'lineupAt', 'v', 'updatedAt'])
         && d.v == 1
         && d.updatedAt == request.time
-        && d.beaten is map && d.beaten.keys().hasOnly(['amateur', 'pro'])
+        && d.beaten is map && d.beaten.keys().hasOnly(['highschool', 'amateur', 'pro']) // 'amateur' is Collegiate (its old name)
         && d.top is map && d.top.size() <= 30
         && d.lineup is map && d.lineup.size() <= 30
         && (d.character == null || (d.character is string && d.character.size() <= 32))

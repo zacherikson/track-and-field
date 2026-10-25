@@ -15,10 +15,10 @@ test('the rival: a weak Pro in round 1, a strong Pro in 2, then better every rou
   assert.ok(skillFor(60) < CONFIG.survival.ceiling);
 });
 
-test('blending: skill 0 is Amateur and 1 is Pro, exactly, for every rival table', () => {
+test('blending: skill 0 is Collegiate and 1 is Pro, exactly, for every rival table', () => {
   for (const t of [CONFIG.ai, ...SECTIONS.map((k) => CONFIG[k].ai)]) {
-    assert.deepEqual(blend(t.amateur, t.pro, 0), t.amateur);
-    assert.deepEqual(blend(t.amateur, t.pro, 1), t.pro);
+    assert.deepEqual(blend(t.collegiate, t.pro, 0), t.collegiate);
+    assert.deepEqual(blend(t.collegiate, t.pro, 1), t.pro);
   }
 });
 
@@ -33,10 +33,10 @@ test('blending past either end stays sane: ranges in order, nothing crosses zero
     } else if (a && typeof a === 'object') for (const k of Object.keys(a)) if (k in p) check(a[k], p[k], v[k], `${path}.${k}`);
   };
   for (const s of [skillFor(1), skillFor(6), skillFor(30)]) {
-    for (const [name, t] of [['ai', CONFIG.ai], ...SECTIONS.map((k) => [k, CONFIG[k].ai])]) check(t.amateur, t.pro, blend(t.amateur, t.pro, s), `${name}@${s.toFixed(2)}`);
+    for (const [name, t] of [['ai', CONFIG.ai], ...SECTIONS.map((k) => [k, CONFIG[k].ai])]) check(t.collegiate, t.pro, blend(t.collegiate, t.pro, s), `${name}@${s.toFixed(2)}`);
   }
-  // Rivals still stride: cadence stays well above zero even easier than Amateur.
-  assert.ok(blend(CONFIG.ai.amateur, CONFIG.ai.pro, skillFor(1)).cadence[0] > 1);
+  // Rivals still stride: cadence stays well above zero even easier than Collegiate.
+  assert.ok(blend(CONFIG.ai.collegiate, CONFIG.ai.pro, skillFor(1)).cadence[0] > 1);
 });
 
 test('aiLevel: the named level outside a run, blended in one', () => {
@@ -44,7 +44,7 @@ test('aiLevel: the named level outside a run, blended in one', () => {
   assert.equal(aiLevel(CONFIG.ai, 'pro'), CONFIG.ai.pro);
   survival.start(seededRandom('x'));
   survival.round = 1;
-  assert.deepEqual(aiLevel(CONFIG.ai, 'amateur'), blend(CONFIG.ai.amateur, CONFIG.ai.pro, skillFor(1))); // his own level, whatever the name says
+  assert.deepEqual(aiLevel(CONFIG.ai, 'collegiate'), blend(CONFIG.ai.collegiate, CONFIG.ai.pro, skillFor(1))); // his own level, whatever the name says
   survival.end();
 });
 

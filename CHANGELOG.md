@@ -6,6 +6,45 @@ Gameplay and tuning changes, newest first. When you change a number in
 From 1.0.0 every push to master bumps `src/version.js` and heads its section
 here with the version.
 
+## 1.1.0 — High School, Collegiate and Pro
+- **Three campaigns:** High School → Collegiate → Pro, each locked until the
+  one before is beaten. Amateur is now Collegiate: what you'd beaten there
+  stays beaten (it keeps its save key, `amateur`), and if you'd started it or
+  Pro already, it's open without High School.
+- **High School rivals** are a step below Collegiate in every event (what
+  Collegiate is to Pro, the other way; `ai.highschool` in each table).
+  Winner medians (tools/simulate.mjs), High School / Collegiate / Pro:
+  - 100m 11.10 / 10.29 / 9.44 s; hurdles 14.60 / 13.50 / 11.95 s.
+  - Long jump 6.40 / 7.51 / 9.25 m; pole vault 2.99 / 4.00 / 5.51 m;
+    javelin 71.6 / 80.9 / 93.7 m.
+  - Relay team median 45.5 / 41.9 / 37.9 s (passing half a step below
+    Collegiate: a full step drops batons and some teams never finish);
+    time trial 65.5 / 58.3 / 51.7 s.
+  - Collegiate and Pro unchanged.
+- **New rivals at each level** (`roster.js` `castOf`): six high schoolers
+  (Brayden, Kenzie, DeShawn, Mateo, Hailey, Gus), 82–88% of everyone's
+  height, and six college athletes (Marcus, Ingrid, Kai, Ramírez, Sloane,
+  Theo). Pro races the original six. Relay rival teams come from the level's
+  cast too.
+- **Venues:** High School is Westfield High (Amateur's). Collegiate gets a
+  new one, **Wasatch University**, after the track in Provo:
+  - snow-capped mountains behind, a line of trees and light poles;
+  - modest aluminium bleachers with a press box;
+  - a pale blue track with its lanes in two alternating blues (new
+    `track.alt`);
+  - the javelin's flight shot looks out over the mountains instead of the
+    sea;
+  - a poster version for the home card, the page and the intro (`wasatch`).
+- **Special Events' RIVALS:** High School, Collegiate or Pro (starts on High
+  School). Their intro shows the level's venue.
+- **Labels:** results, the tournament, the Mine leaderboard ("Collegiate" for
+  marks saved as Amateur) and the tuning panel ("Rivals (High School)" rows).
+- **Database:** `firestore.rules` now allows `beaten.highschool`. Until the
+  new rules are published, progress sync leaves High School off your account
+  (it stays on the phone) instead of failing.
+- New `test/levels.test.mjs`: the old save key, every level in every rival
+  table, and each level's own rivals.
+
 ## 1.0.4 — Hurdles rivals back as they were
 - **Reverted 1.0.3:** hurdles rivals have `CONFIG.ai`'s gun reaction again
   (Amateur 0.20–0.35 s, Pro 0.16–0.24 s) and their old reading and tapping

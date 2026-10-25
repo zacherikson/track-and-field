@@ -20,7 +20,7 @@ const AHEAD = 0.5; // s at most a teammate's runner is carried on past their new
  * and each runner on their own phone. The meet server says who runs which leg
  * (meet/relayLegs.js: someone runs again for anyone gone before the start)
  * and, when a runner's phone drops during the race, which teammate's phone
- * runs their leg instead, as an Amateur computer runner (`proxies`).
+ * runs their leg instead, as a Collegiate computer runner (`proxies`).
  *
  * Every phone runs the legs it CONTROLS (yours, and any it stands in for) and
  * sends its team's frame (relay4x100.js traceFrameProps) as a live relay
@@ -43,9 +43,9 @@ const AHEAD = 0.5; // s at most a teammate's runner is carried on past their new
 export class MeetRelay extends Relay4x100 {
   constructor(ev) {
     super(ev);
-    this.level = 'amateur'; // a computer runner standing in for someone runs like an Amateur rival
-    this.difficulty = CONFIG.ai.amateur;
-    this.exchangeAI = this.cfg.ai.amateur;
+    this.level = 'collegiate'; // a computer runner standing in for someone runs like a Collegiate rival
+    this.difficulty = CONFIG.ai.collegiate;
+    this.exchangeAI = this.cfg.ai.collegiate;
   }
 
   enter() {

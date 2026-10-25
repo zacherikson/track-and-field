@@ -1,11 +1,11 @@
 import { CONFIG } from '../../config.js';
 import { Button, text, chamfer, slab, titlePlate, nameTag, PAL, FONT_BODY, FONT_DISPLAY } from '../../core/ui.js';
 import { drawIcon } from '../../core/icons.js';
-import { pinebrook, westfield, olympic, lostStadium, track, bands, wordmark } from '../../render/posterScenery.js';
+import { pinebrook, westfield, wasatch, olympic, lostStadium, track, bands, wordmark } from '../../render/posterScenery.js';
 import { VENUES } from '../../render/venues.js';
 import { drawFigure, runPose } from '../../athletes/stickFigure.js';
 import { EVENTS, SPECIAL_EVENTS, SURVIVAL_BOARD, formatMark } from '../../events/registry.js';
-import { canTune, getBest, getGhostOn, setGhostOn, getPlayerName, setCampaign, getBeaten, takeFreshBeaten, getSpecialLevel, setSpecialLevel } from '../../core/storage.js';
+import { canTune, getBest, getGhostOn, setGhostOn, getPlayerName, setCampaign, getBeaten, takeFreshBeaten, getSpecialLevel, setSpecialLevel, LEVELS, LEVEL_NAMES } from '../../core/storage.js';
 import { myAthlete, heightOf } from '../../athletes/roster.js';
 import { TOURNAMENT_KIND } from '../../tournament/tournament.js';
 import { SURVIVAL_KIND } from '../../online/liveRules.js';
@@ -32,10 +32,12 @@ let lastList = null;
  * Tuning (the owner only, storage.js canTune), Leaderboard, How to play and Profile along the top.
  *
  * vs Computer is four big buttons in a grid, each opening its own page:
- * - Amateur and Pro, a mini campaign each: six cards, the five events then the
- *   tournament. Win an event (in any order) and its card is stamped BEATEN!;
- *   beat all five and the tournament opens; win that too. Pro stays locked
- *   until all of Amateur (tournament too) is beaten.
+ * - High School, Collegiate and Pro, a mini campaign each: six cards, the five
+ *   events then the tournament. Win an event (in any order) and its card is
+ *   stamped BEATEN!; beat all five and the tournament opens; win that too.
+ *   Each level stays locked until all of the one before (tournament too) is
+ *   beaten, or you've beaten something there or above already (Collegiate
+ *   was Amateur, before High School came in).
  * - Training: the five events on your own (no tournament), no rivals (your ghost
  *   if GHOST is on), nothing ticked off. Campaigns never have a ghost.
  * - Special Events: what doesn't fit the five (the 4x100m relay, the cycling
@@ -49,7 +51,7 @@ export class PlayPanel {
   }
 
   enter() {
-    this.list = lastList; // null | 'offline' (its grid) | 'amateur' | 'pro' | 'training' | 'special' | 'live'
+    this.list = lastList; // null | 'offline' (its grid) | a LEVELS id | 'training' | 'special' | 'live'
     this.fade = 1; // 0 -> 1 as a list (or the buttons) come in
     this.phase = 0;
     this.demoX = 0;
@@ -73,11 +75,11 @@ export class PlayPanel {
           },
         }),
     );
-    this.rivalButtons = ['amateur', 'pro'].map(
-      (level) =>
+    this.rivalButtons = LEVELS.map((level) =>
+      Object.assign(
         new Button({
-          label: level === 'pro' ? 'Pro' : 'Amateur',
-          w: level === 'pro' ? 88 : 100,
+          label: LEVEL_NAMES[level],
+          w: { highschool: 132, collegiate: 124, pro: 70 }[level],
           h: 48,
           size: 19,
           onTap: () => {
@@ -85,6 +87,8 @@ export class PlayPanel {
             this.styleRivals();
           },
         }),
+        { level },
+      ),
     );
     this.styleRivals();
     this.warnT = 0; // a locked card tapped: why, over the track
@@ -181,7 +185,7 @@ export class PlayPanel {
     this.warnT = 0;
   }
 
-  /** A section's page from the grid (Pro: once all of Amateur is beaten). */
+  /** A section's page from the grid (each level: once all of the one before is beaten). */
   openSection(sec) {
     if (sec.locked) {
       const lock = this.lockOf(sec, sec.tiles[0].id);
@@ -207,17 +211,17 @@ export class PlayPanel {
    * a section with `after` waits for all of that one, and a campaign's tournament for its five events.
    */
   lockOf(sec, id) {
-    if (sec.after) {
+    if (sec.after && !startedFrom(sec.level)) {
       const prev = this.sections.find((s) => s.level === sec.after);
       const beaten = getBeaten(prev.level);
       const left = prev.tiles.filter((t) => !beaten[t.id]);
       const rest = left.length > 3 ? `${left.length} cards to go` : listOf(left); // a long list won't fit the card
-      if (left.length) return { title: `${titleCase(sec.title)} is locked`, detail: `Beat the rest of ${titleCase(prev.title)} first: ${rest}.` };
+      if (left.length) return { title: `${sec.name} is locked`, detail: `Beat the rest of ${prev.name} first: ${rest}.` };
     }
     if (sec.level && id === 'tournament') {
       const beaten = getBeaten(sec.level);
       const left = sec.tiles.filter((t) => t.id !== 'tournament' && !beaten[t.id]);
-      if (left.length) return { title: 'Tournament locked', detail: `Beat ${listOf(left)} in ${titleCase(sec.title)} to unlock it.` };
+      if (left.length) return { title: 'Tournament locked', detail: `Beat ${listOf(left)} in ${sec.name} to unlock it.` };
     }
     return null;
   }
@@ -236,7 +240,7 @@ export class PlayPanel {
     this.warnT = detail ? 5 : 4;
   }
 
-  /** Opens a list: 'offline' (vs Computer's grid), one of its pages ('amateur', 'pro', 'training', 'special'), or 'live'. */
+  /** Opens a list: 'offline' (vs Computer's grid), one of its pages (a LEVELS id, 'training', 'special'), or 'live'. */
   open(list) {
     this.list = lastList = list;
     this.fade = 0;
@@ -273,7 +277,7 @@ export class PlayPanel {
   styleRivals() {
     const level = getSpecialLevel();
     for (const b of this.rivalButtons) {
-      const on = (b.label === 'Pro') === (level === 'pro');
+      const on = b.level === level;
       b.color = on ? PAL.cream : PAL.ink2; // a segmented control: the one picked is cream
       b.lip = on ? PAL.creamShade : PAL.inkShade;
     }
@@ -292,16 +296,16 @@ export class PlayPanel {
         t.stampAge = fresh && fresh.level === sec.level && fresh.id === t.id ? 0 : null;
       }
     }
-    const done = (level) => this.sections.find((sec) => sec.level === level).done;
-    const pro = this.sections.find((sec) => sec.level === 'pro');
-    this.offlineBig.sub = `Amateur ${done('amateur')}/6 · Pro ${pro.locked ? 'locked' : `${done('pro')}/6`} · Training · Special · Survival`;
+    const campaigns = this.sections.filter((sec) => sec.level);
+    const done = campaigns.reduce((n, sec) => n + sec.done, 0);
+    this.offlineBig.sub = `Campaigns ${done}/${campaigns.length * 6} · Training · Special · Survival`;
     const best = getBest(SURVIVAL_BOARD.id);
     this.gridButtons.find((b) => b.key === 'survival').sub = best ? `Best ${best} pts` : 'Beat one rival, round after round';
     for (const b of this.gridButtons) {
       const sec = this.sections.find((x) => x.key === b.key);
       if (!sec) continue;
       const complete = sec.level && sec.done === sec.tiles.length;
-      b.sub = !sec.level ? 'Just you (and your ghost)' : sec.locked ? `Beat ${titleCase(sec.after)} first` : complete ? 'Complete' : `${sec.done} / ${sec.tiles.length} beaten`;
+      b.sub = !sec.level ? 'Just you (and your ghost)' : sec.locked ? `Beat ${LEVEL_NAMES[sec.after]} first` : complete ? 'Complete' : `${sec.done} / ${sec.tiles.length} beaten`;
       b.locked = sec.locked;
     }
   }
@@ -353,9 +357,12 @@ export class PlayPanel {
     const sw = Math.min(330, (view.w - margin * 2 - gapFor(this.specialButtons.length)) / this.specialButtons.length);
     const sx = view.w / 2 - (sw * this.specialButtons.length + gapFor(this.specialButtons.length)) / 2;
     this.specialButtons.forEach((b, i) => Object.assign(b, { w: sw, h: 112, x: sx + i * (sw + 18), y: SPECIAL_Y }));
-    // RIVALS on an ink plate, the two choices side by side after it.
-    Object.assign(this.rivalButtons[0], { x: view.w / 2 - 56, y: SPECIAL_SETTINGS_Y });
-    Object.assign(this.rivalButtons[1], { x: view.w / 2 + 50, y: SPECIAL_SETTINGS_Y });
+    // RIVALS on an ink plate, the three choices side by side after it.
+    let rx = view.w / 2 - RIVALS_W / 2 + 116;
+    for (const b of this.rivalButtons) {
+      Object.assign(b, { x: rx, y: SPECIAL_SETTINGS_Y });
+      rx += b.w + 8;
+    }
 
     // A vs Computer section's page: six cards in a row (each the same); Live's seven.
     const widthFor = (n) => Math.min(TILE_MAX, (view.w - margin * 2 - (n - 1) * TILE_GAP) / n);
@@ -453,7 +460,8 @@ export class PlayPanel {
 
   /**
    * The page's scenery, the track along the bottom: Pinebrook Park behind the
-   * big buttons and Training, Westfield High behind Amateur, Olympic Stadium
+   * big buttons and Training, Westfield High behind High School, Wasatch
+   * University behind Collegiate, Olympic Stadium
    * behind Pro and Special Events (and at night behind Live); vs Computer's
    * grid on plain ink bands.
    */
@@ -466,7 +474,8 @@ export class PlayPanel {
       bands(ctx, 0, 0, view.w, this.trackTop - 30, [PAL.ink, PAL.ink2]);
       return track(ctx, 0, this.trackTop, view.w, trackH, { face: PAL.brick });
     }
-    if (list === 'amateur') return westfield(ctx, 0, 0, view.w, h, { trackH });
+    if (list === 'highschool') return westfield(ctx, 0, 0, view.w, h, { trackH });
+    if (list === 'collegiate') return wasatch(ctx, 0, 0, view.w, h, { trackH });
     if (list === 'training') return pinebrook(ctx, 0, 0, view.w, h, { trackH, clouds: TRAINING_CLOUDS });
     olympic(ctx, 0, 0, view.w, h, { trackH, night: list === 'live' });
   }
@@ -511,9 +520,9 @@ export class PlayPanel {
     this.specialButtons.forEach((b) => b.draw(ctx));
     const ry = this.settingsY;
     ctx.fillStyle = PAL.ink;
-    chamfer(ctx, view.w / 2 - 150, ry - 8, 300, 66, 6);
+    chamfer(ctx, view.w / 2 - RIVALS_W / 2, ry - 8, RIVALS_W, 66, 6);
     ctx.fill();
-    text(ctx, 'RIVALS', view.w / 2 - 100, ry + 23, { size: 20, font: 'display', track: 2, color: PAL.cream });
+    text(ctx, 'RIVALS', view.w / 2 - RIVALS_W / 2 + 58, ry + 23, { size: 20, font: 'display', track: 2, color: PAL.cream });
     this.rivalButtons.forEach((b) => b.draw(ctx));
   }
 
@@ -690,9 +699,9 @@ const TRAINING_CLOUDS = [
 
 const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
 
-/** "AMATEUR" -> "Amateur". */
-function titleCase(s) {
-  return s[0].toUpperCase() + s.slice(1).toLowerCase();
+/** True if you've beaten anything at `level` or above: it's open whatever's left below it. */
+function startedFrom(level) {
+  return LEVELS.slice(LEVELS.indexOf(level)).some((l) => Object.keys(getBeaten(l)).length > 0);
 }
 
 /** "100m", "100m and Hurdles", "100m, Hurdles and the tournament": cards by name. */
@@ -703,11 +712,13 @@ function listOf(tiles) {
 
 const SPECIAL_Y = 92; // top of the Special Events cards
 const SPECIAL_SETTINGS_Y = 240; // the Special Events RIVALS row
+const RIVALS_W = 470; // its ink plate: the label, then the three levels
 const gapFor = (n) => (n - 1) * 18; // between the Special Events cards
 // vs Computer: the sections (level null: Training), in grid order (Special Events comes after).
 const SECTIONS = [
-  { level: 'amateur', title: 'AMATEUR', name: 'Amateur', color: PAL.brick, lip: PAL.brickShade, vignette: (c, x, y, w, h) => westfield(c, x - 60, y - 10, w + 120, h + 30, { trackH: 22 }) },
-  { level: 'pro', title: 'PRO', name: 'Pro', color: PAL.blue, lip: PAL.blueShade, after: 'amateur', vignette: (c, x, y, w, h) => olympic(c, x - 30, y - 6, w + 60, h + 12, { trackH: 16 }) }, // locked until all of Amateur is beaten
+  { level: 'highschool', title: 'HIGH SCHOOL', name: 'High School', color: PAL.brick, lip: PAL.brickShade, vignette: (c, x, y, w, h) => westfield(c, x - 60, y - 10, w + 120, h + 30, { trackH: 22 }) },
+  { level: 'collegiate', title: 'COLLEGIATE', name: 'Collegiate', color: PAL.college, lip: PAL.collegeShade, after: 'highschool', vignette: (c, x, y, w, h) => wasatch(c, x - 40, y - 8, w + 80, h + 20, { trackH: 20 }) }, // locked until all of High School is beaten
+  { level: 'pro', title: 'PRO', name: 'Pro', color: PAL.blue, lip: PAL.blueShade, after: 'collegiate', vignette: (c, x, y, w, h) => olympic(c, x - 30, y - 6, w + 60, h + 12, { trackH: 16 }) }, // locked until all of Collegiate is beaten
   { level: null, title: 'TRAINING', name: 'Training', color: PAL.deep, lip: PAL.deeper, vignette: (c, x, y, w, h) => pinebrook(c, x - 40, y, w + 80, h + 16, { trackH: 22, clouds: [[0.5, 0.18, 0.12]] }) },
 ];
 const GRID_Y = 92; // top of vs Computer's grid

@@ -2,7 +2,7 @@ import { Button, text, slab, chamfer, PAL, FONT_DISPLAY } from '../core/ui.js';
 import { drawIcon } from '../core/icons.js';
 import { ordinal } from '../core/math.js';
 import { formatMark } from '../events/registry.js';
-import { submitBest, saveGhostIfBetter, getCampaign, markBeaten } from '../core/storage.js';
+import { submitBest, saveGhostIfBetter, getCampaign, markBeaten, LEVEL_NAMES } from '../core/storage.js';
 import { postMark } from '../online/post.js';
 import { counts, recordTopMark } from '../online/bests.js';
 import { tournament, ORDER, TOURNAMENT_KIND } from './tournament.js';
@@ -241,7 +241,7 @@ export class StandingsScene {
       text(ctx, name, cx + 22, 76, { size: 48, font: 'display', track: 2, color: col, maxWidth: view.w - 140 });
       const me = this.table.find((t) => t.isPlayer);
       const line = champ.isPlayer
-        ? `You win with ${me.total} points!${this.campaignWin ? ` ${getCampaign() === 'pro' ? 'Pro' : 'Amateur'} tournament beaten!` : ''}${tournament.newBest ? ' New best score!' : ''}`
+        ? `You win with ${me.total} points!${this.campaignWin ? ` ${LEVEL_NAMES[getCampaign()]} tournament beaten!` : ''}${tournament.newBest ? ' New best score!' : ''}`
         : `You finished ${ordinal(this.myPlace)} with ${me.total} points${tournament.newBest ? ' · new best score!' : ''}`;
       text(ctx, line, cx, 114, { size: 20, font: 'body', weight: 700, color: champ.isPlayer ? PAL.gold : CREAM(0.85), maxWidth: view.w - 40 });
     } else {

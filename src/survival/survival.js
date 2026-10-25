@@ -14,7 +14,7 @@ import { points } from '../events/scoring.js';
  * tie keeps you in. No mark (a DNF, three fouls) loses, unless he has none
  * either.
  *
- * His skill (`skill`, CONFIG.survival): 0 is the Amateur rivals', 1 the Pro
+ * His skill (`skill`, CONFIG.survival): 0 is the Collegiate rivals', 1 the Pro
  * ones', and the events blend every rival setting between the two, or carry
  * on past either end (aiLevel, blend).
  *
@@ -48,10 +48,10 @@ export function skillFor(round) {
 }
 
 /**
- * A rival setting `skill` of the way from its Amateur value `a` to its Pro
+ * A rival setting `skill` of the way from its Collegiate value `a` to its Pro
  * value `p` (carried on past either end). Numbers and [lo, hi] ranges blend;
  * a number never crosses zero (an error shrinks to none, never flips side);
- * a range stays lo <= hi; anything else (a flag) is Amateur's below halfway
+ * a range stays lo <= hi; anything else (a flag) is Collegiate's below halfway
  * and Pro's after.
  */
 export function blend(a, p, skill) {
@@ -75,13 +75,13 @@ export function blend(a, p, skill) {
 }
 
 /**
- * The rival settings an event should use from `table` ({ amateur, pro }, as
+ * The rival settings an event should use from `table` ({ collegiate, pro }, as
  * CONFIG.ai and every event's cfg.ai): in a survival run, blended to the
  * rival's skill; else the `level` named (the campaign's).
  */
 export function aiLevel(table, level) {
-  if (!survival.active || !table?.amateur || !table?.pro) return table?.[level];
-  return blend(table.amateur, table.pro, survival.skill);
+  if (!survival.active || !table?.collegiate || !table?.pro) return table?.[level];
+  return blend(table.collegiate, table.pro, survival.skill);
 }
 
 /** Did your mark beat (or tie) his? Each is { mark, status }. */

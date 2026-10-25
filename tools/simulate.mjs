@@ -17,6 +17,8 @@ import { runUpSpeed } from '../src/events/runUpRules.js';
 import { Bike, BikeAI, buildCourse, gearFor, idealThrow } from '../src/events/cyclingRules.js';
 import { skillFor, blend } from '../src/survival/survival.js';
 
+const LEVELS = ['highschool', 'collegiate', 'pro']; // core/storage.js LEVELS (importing it would pull in the browser's storage)
+
 const STEP = CONFIG.loop.fixedStep;
 const D = CONFIG.sprint100.distance;
 const DIP = CONFIG.dip;
@@ -134,7 +136,7 @@ for (const rate of [6, 8, 10, 12, 14]) row(`alternating masher ${rate}/s`, () =>
 for (const rate of [4, 7, 10]) row(`both-thumb drummer ${rate}/s`, () => strategies.drummer({ rate }));
 
 console.log('\nAI FIELDS');
-for (const name of Object.keys(CONFIG.ai)) {
+for (const name of LEVELS) {
   const winners = [];
   const all = [];
   for (let i = 0; i < 200; i++) {
@@ -145,7 +147,7 @@ for (const name of Object.keys(CONFIG.ai)) {
   winners.sort((a, b) => a - b);
   all.sort((a, b) => a - b);
   const q = (arr, p) => arr[Math.floor(p * (arr.length - 1))].toFixed(2);
-  console.log(`${name.padEnd(8)} individual ${q(all, 0)}–${q(all, 1)} (median ${q(all, 0.5)}); winner median ${q(winners, 0.5)}, fastest 10% ${q(winners, 0.1)}`);
+  console.log(`${name.padEnd(10)} individual ${q(all, 0)}–${q(all, 1)} (median ${q(all, 0.5)}); winner median ${q(winners, 0.5)}, fastest 10% ${q(winners, 0.1)}`);
 }
 
 console.log(`\nFINISH LEAN from 10.5 m/s (meters early vs. ideal, ideal ≈ ${(10.5 * DIP.riseTime + DIP.reach).toFixed(1)}m out)`);
@@ -253,7 +255,7 @@ hrow('machine  react 0.25 gap 0.10 (set ~0.45s)', { react: 0.25, gap: 0.1, err: 
 hrow('good but sloppy (8% wrong)', { react: 0.45, gap: 0.18, err: 0.08 });
 hrow('good but very sloppy (20% wrong)', { react: 0.45, gap: 0.18, err: 0.2 });
 hrow('fast guesser (react 0.2, 40% wrong)', { react: 0.2, gap: 0.1, err: 0.4 });
-for (const level of ['amateur', 'pro']) {
+for (const level of LEVELS) {
   const winners = [];
   const all = [];
   for (let i = 0; i < 150; i++) {
@@ -264,7 +266,7 @@ for (const level of ['amateur', 'pro']) {
   winners.sort((a, b) => a - b);
   all.sort((a, b) => a - b);
   const q = (arr, p) => arr[Math.floor(p * (arr.length - 1))].toFixed(2);
-  console.log(`${level.padEnd(8)} individual ${q(all, 0)}–${q(all, 1)} (median ${q(all, 0.5)}); winner median ${q(winners, 0.5)}, fastest 10% ${q(winners, 0.1)}`);
+  console.log(`${level.padEnd(10)} individual ${q(all, 0)}–${q(all, 1)} (median ${q(all, 0.5)}); winner median ${q(winners, 0.5)}, fastest 10% ${q(winners, 0.1)}`);
 }
 
 // ------------------------------------------------------------------ long jump
@@ -303,7 +305,7 @@ for (const [label, rate, aim, sd, delay] of [
   const nm = res.filter((r) => r.best === 0).length / res.length;
   console.log(`${label.padEnd(48)} best ${avg.toFixed(2)}m   fouls ${(fouls * 100).toFixed(0)}%   no mark ${(nm * 100).toFixed(0)}%`);
 }
-for (const level of ['amateur', 'pro']) {
+for (const level of LEVELS) {
   const lv = { ...CONFIG.ai[level], ...LJ.ai[level] };
   const runUp = () => ljRunUp(0, lv);
   const bests = [];
@@ -319,7 +321,7 @@ for (const level of ['amateur', 'pro']) {
   bests.sort((a, b) => a - b);
   winners.sort((a, b) => a - b);
   const q = (arr, p) => arr[Math.floor(p * (arr.length - 1))].toFixed(2);
-  console.log(`${level.padEnd(8)} rival best-of-3 median ${q(bests, 0.5)}; winner median ${q(winners, 0.5)}, top 10% ${q(winners, 0.9)}`);
+  console.log(`${level.padEnd(10)} rival best-of-3 median ${q(bests, 0.5)}; winner median ${q(winners, 0.5)}, top 10% ${q(winners, 0.9)}`);
 }
 
 // ---------------------------------------------------------------- pole vault
@@ -357,7 +359,7 @@ for (const [label, rate, psd, rsd] of [
   const fails = res.reduce((a, r) => a + r.fails, 0) / (res.length * PV.rounds);
   console.log(`${label.padEnd(48)} plant speed ${v.toFixed(1)} m/s   best ${avg.toFixed(2)}m   no height ${(fails * 100).toFixed(0)}%`);
 }
-for (const level of ['amateur', 'pro']) {
+for (const level of LEVELS) {
   const lv = { ...CONFIG.ai[level], ...PV.ai[level] };
   const runUp = () => pvRunUp(0, lv);
   const bests = [];
@@ -373,7 +375,7 @@ for (const level of ['amateur', 'pro']) {
   bests.sort((a, b) => a - b);
   winners.sort((a, b) => a - b);
   const q = (arr, p) => arr[Math.floor(p * (arr.length - 1))].toFixed(2);
-  console.log(`${level.padEnd(8)} rival best-of-3 median ${q(bests, 0.5)}; winner median ${q(winners, 0.5)}, top 10% ${q(winners, 0.9)}`);
+  console.log(`${level.padEnd(10)} rival best-of-3 median ${q(bests, 0.5)}; winner median ${q(winners, 0.5)}, top 10% ${q(winners, 0.9)}`);
 }
 
 // ---------------------------------------------------------------- javelin
@@ -408,7 +410,7 @@ for (const [label, rate, aim, sd, asd] of [
   const fouls = res.reduce((a, r) => a + r.fouls, 0) / (res.length * JV.rounds);
   console.log(`${label.padEnd(48)} speed ${v.toFixed(1)} m/s   best ${avg.toFixed(2)}m   fouls ${(fouls * 100).toFixed(0)}%`);
 }
-for (const level of ['amateur', 'pro']) {
+for (const level of LEVELS) {
   const lv = { ...CONFIG.ai[level], ...JV.ai[level] };
   const runUp = () => jvRunUp(0, lv);
   const bests = [];
@@ -424,7 +426,7 @@ for (const level of ['amateur', 'pro']) {
   bests.sort((a, b) => a - b);
   winners.sort((a, b) => a - b);
   const q = (arr, p) => arr[Math.floor(p * (arr.length - 1))].toFixed(2);
-  console.log(`${level.padEnd(8)} rival best-of-3 median ${q(bests, 0.5)}; winner median ${q(winners, 0.5)}, top 10% ${q(winners, 0.9)}`);
+  console.log(`${level.padEnd(10)} rival best-of-3 median ${q(bests, 0.5)}; winner median ${q(winners, 0.5)}, top 10% ${q(winners, 0.9)}`);
 }
 
 // ---------------------------------------------------------------- 4x100m relay
@@ -476,13 +478,13 @@ for (const [label, pass, take] of [
   const zone = times[1].exs.map((ex) => (ex.tOut - ex.tIn).toFixed(2)).join(' ');
   console.log(`${label.padEnd(46)} 3.6/s ${times[0].time.toFixed(2)}s   4.15/s ${times[1].time.toFixed(2)}s   zone ${zone}`);
 }
-for (const level of ['amateur', 'pro']) {
+for (const level of LEVELS) {
   const runs = Array.from({ length: 200 }, () => relayRace(CONFIG.ai[level], RC.ai[level]));
   const grades = {};
   for (const r of runs) for (const ex of r.exs) grades[ex.grade] = (grades[ex.grade] ?? 0) + 1;
-  const times = runs.map((r) => r.time).sort((a, b) => a - b);
+  const times = runs.map((r) => r.time ?? Infinity).sort((a, b) => a - b);
   const share = Object.entries(grades).map(([g, n]) => `${g} ${Math.round((100 * n) / (runs.length * 3))}%`).join(', ');
-  console.log(`${level.padEnd(8)} team median ${times[100].toFixed(2)}s, best ${times[0].toFixed(2)}s; exchanges: ${share}`);
+  console.log(`${level.padEnd(10)} team median ${times[100].toFixed(2)}s, best ${times[0].toFixed(2)}s; exchanges: ${share}`);
 }
 
 // ---------------------------------------------------------------- time trial
@@ -521,7 +523,7 @@ for (const rate of [3.4, 4.0, 4.6]) {
   const r = (shift, tuck) => ttRide(rate, shift, tuck).toFixed(2);
   console.log(`${rate}/s: ideal + tuck ${r('ideal', true)}s   no tuck ${r('ideal', false)}s   stuck in gear 3 ${r(2, true)}s, gear 5 ${r(4, true)}s, gear 8 ${r(7, true)}s`);
 }
-for (const level of ['amateur', 'pro']) {
+for (const level of LEVELS) {
   const times = Array.from({ length: 200 }, () => {
     const b = new Bike(CC, ttRoad);
     const ai = new BikeAI(b, CC.ai[level]);
@@ -534,7 +536,7 @@ for (const level of ['amateur', 'pro']) {
     }
     return CC.maxTime;
   }).sort((a, b) => a - b);
-  console.log(`${level.padEnd(8)} rival median ${times[100].toFixed(2)}s, best ${times[0].toFixed(2)}s`);
+  console.log(`${level.padEnd(10)} rival median ${times[100].toFixed(2)}s, best ${times[0].toFixed(2)}s`);
 }
 
 // ---------------------------------------------------------------- survival
@@ -543,7 +545,7 @@ for (const level of ['amateur', 'pro']) {
 console.log('\nSURVIVAL (the one rival, round by round: median marks; NM = no mark at all)');
 for (const round of [1, 2, 3, 4, 5, 6, 8, 10, 15, 20]) {
   const sk = skillFor(round);
-  const mix = (t) => blend(t.amateur, t.pro, sk);
+  const mix = (t) => blend(t.collegiate, t.pro, sk);
   const key = `survival${round}`;
   CONFIG.ai[key] = mix(CONFIG.ai);
   HC.ai[key] = mix(HC.ai);

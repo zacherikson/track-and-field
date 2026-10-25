@@ -1,6 +1,7 @@
 import { text } from '../core/ui.js';
 import { RunwayRenderer } from './runway.js';
 import { venueFor } from './venues.js';
+import { drawMountains } from './track.js';
 
 const hash = (n) => {
   let x = (n | 0) ^ 0x9e3779b9;
@@ -134,6 +135,13 @@ export class JavelinRenderer extends RunwayRenderer {
         ctx.arc(cx, hy - 10 - (h % 14), 16 + (h % 12), 0, Math.PI * 2);
         ctx.fill();
       }
+      return;
+    }
+    // Collegiate's: the snow-capped range all along the horizon.
+    const M = this.venue.mountains;
+    if (M) {
+      drawMountains(ctx, view.w, x * 2, hy - 150, hy, { face: M.far, shade: M.farShade, snow: M.snow, snowShade: M.snowShade, spacing: 260, seed: 7919, snowDepth: 40 });
+      drawMountains(ctx, view.w, x * 3.5, hy - 80, hy, { face: M.near, shade: M.nearShade, snow: M.snow, snowShade: M.snowShade, spacing: 190, seed: 104729, snowDepth: 18 });
       return;
     }
     // Sea, with a few sails.

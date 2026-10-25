@@ -4,7 +4,7 @@ import { connectSDK, isSignedIn } from './firebase.js';
 
 /**
  * YOUR PROGRESS FOLLOWS YOUR ACCOUNT: campaign progress (what you've beaten in
- * Amateur and Pro), your top five marks on every board, and your athlete.
+ * High School, Collegiate and Pro), your top five marks on every board, and your athlete.
  * Signed in with Google only, like the leaderboards: a guest's progress stays
  * on the phone, and goes up the first time they sign in.
  *
@@ -60,12 +60,22 @@ async function sync() {
   const { fs, db, uid } = await connectSDK();
   const ref = fs.doc(db, 'progress', uid);
   let merged = null;
-  await fs.runTransaction(db, async (tx) => {
-    const snap = await tx.get(ref);
-    const remote = snap.exists() ? clean(snap.data()) : null;
-    merged = merge(getProgress(), remote);
-    if (!remote || !same(merged, remote)) tx.set(ref, { ...clean(merged), v: DOC_VERSION, updatedAt: fs.serverTimestamp() });
-  });
+  const write = (keep) =>
+    fs.runTransaction(db, async (tx) => {
+      const snap = await tx.get(ref);
+      const remote = snap.exists() ? clean(snap.data()) : null;
+      merged = merge(getProgress(), remote);
+      const doc = keep(clean(merged));
+      if (!remote || !same(doc, remote)) tx.set(ref, { ...doc, v: DOC_VERSION, updatedAt: fs.serverTimestamp() });
+    });
+  try {
+    await write((d) => d);
+  } catch (err) {
+    // The database's rules from before High School (firestore.rules) refuse its
+    // progress: everything else still goes up, and High School stays on this phone.
+    if (err?.code !== 'permission-denied' || !getProgress().beaten?.highschool) throw err;
+    await write((d) => ({ ...d, beaten: Object.fromEntries(Object.entries(d.beaten).filter(([level]) => level !== 'highschool')) }));
+  }
   // Anything that changed here while that was on its way gets merged in too.
   const local = getProgress();
   const next = merge(local, merged);

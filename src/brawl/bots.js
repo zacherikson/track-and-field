@@ -11,14 +11,15 @@ import { EMOTES } from './poses.js';
 const GLOATS = ['laugh', 'flex', 'chicken', 'dab', 'taunt', 'dance'];
 const TAUNT_RANGE = { x: 2.2, d: 1.2 }; // m: an emote this close to a rival starts a fight
 const LEVELS = {
-  amateur: { cooldown: [0.7, 1.5], speed: 0.75 },
+  highschool: { cooldown: [0.9, 1.9], speed: 0.65 },
+  collegiate: { cooldown: [0.7, 1.5], speed: 0.75 },
   pro: { cooldown: [0.45, 1.0], speed: 0.9 },
 };
 
 export class BotBrain {
-  constructor(fighter, level = 'amateur') {
+  constructor(fighter, level = 'collegiate') {
     this.f = fighter;
-    this.lv = LEVELS[level] ?? LEVELS.amateur;
+    this.lv = LEVELS[level] ?? LEVELS.collegiate;
     this.angry = false; // after you: you hit them, or taunted them up close
     this.floored = false; // they've just put you down (to gloat once)
     this.nextSwing = 0;

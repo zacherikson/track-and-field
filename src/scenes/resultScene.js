@@ -1,7 +1,7 @@
 import { Button, text, slab, chamfer, PAL } from '../core/ui.js';
 import { ordinal } from '../core/math.js';
 import { formatMark } from '../events/registry.js';
-import { getBest, submitBest, getCampaign, getBeaten, saveGhostIfBetter, canTune, getSpecialLevel } from '../core/storage.js';
+import { getBest, submitBest, getCampaign, getBeaten, saveGhostIfBetter, canTune, getSpecialLevel, LEVEL_NAMES } from '../core/storage.js';
 import { postMark } from '../online/post.js';
 import { counts, recordTopMark } from '../online/bests.js';
 import { worldRecord, isWorldRecord } from '../online/worldRecords.js';
@@ -58,7 +58,7 @@ export class ResultScene {
     if (this.backdrop) {
       // Over the late hits: just the results and the two buttons.
       this.buttons = this.buttons.slice(0, 2);
-      this.panel = new ResultsPanel(this.buttons, () => `RESULTS · ${this.ev.name.toUpperCase()}${this.beaten ? ` · ${getCampaign().toUpperCase()} BEATEN!` : ''}`, () =>
+      this.panel = new ResultsPanel(this.buttons, () => `RESULTS · ${this.ev.name.toUpperCase()}${this.beaten ? ` · ${LEVEL_NAMES[getCampaign()].toUpperCase()} BEATEN!` : ''}`, () =>
         this.results.map((r, i) => ({
           place: r.status === 'ok' ? String(i + 1) : '–',
           name: r.name,
@@ -132,7 +132,7 @@ export class ResultScene {
     else if (me.status === 'nm') headline = 'NO MARK';
     else headline = formatMark(this.ev, me.mark);
     const cx = lx + colW / 2;
-    const where = this.stats?.squad ? 'PRACTICE' : this.stats?.live ? 'LIVE' : this.ev.special ? getSpecialLevel().toUpperCase() : getCampaign() ? getCampaign().toUpperCase() : 'TRAINING';
+    const where = this.stats?.squad ? 'PRACTICE' : this.stats?.live ? 'LIVE' : this.ev.special ? LEVEL_NAMES[getSpecialLevel()].toUpperCase() : getCampaign() ? LEVEL_NAMES[getCampaign()].toUpperCase() : 'TRAINING';
     text(ctx, `${this.ev.name.toUpperCase()} · ${where}${this.beaten ? ' · BEATEN!' : ''}`, cx, 52, { size: 22, font: 'display', track: 1.5, color: this.beaten ? PAL.gold : CREAM(0.75), maxWidth: colW });
     text(ctx, headline, cx, 118, { size: me.status === 'ok' ? 84 : 44, font: 'display', track: 2, color: PAL.cream, maxWidth: colW });
     if (me.status === 'ok' && this.results.length > 1) text(ctx, `${ordinal(this.place).toUpperCase()} PLACE`, cx, 180, { size: 34, font: 'display', track: 2, color: this.place === 1 ? PAL.gold : PAL.cream });

@@ -144,7 +144,8 @@ export const CONFIG = {
     // first gaps about 20% longer). Their cadence makes up for it, so finish
     // times stay where they were (tools/simulate.mjs).
     ai: {
-      amateur: { reaction: [0.3, 0.45], startSlow: 0.2, startStrides: 3, cadence: [2.42, 3.26] },
+      highschool: { reaction: [0.33, 0.52], startSlow: 0.2, startStrides: 3, cadence: [1.85, 2.79] },
+      collegiate: { reaction: [0.3, 0.45], startSlow: 0.2, startStrides: 3, cadence: [2.42, 3.26] },
       pro: { reaction: [0.26, 0.36], startSlow: 0.2, startStrides: 3, cadence: [3.13, 3.85] },
     },
     driveDistance: 12, // m out of the blocks over which runners rise from a low, forward drive to upright
@@ -201,7 +202,8 @@ export const CONFIG = {
     // Rivals read a new set in `setReact` s, then tap `tapGap` s apart (their
     // reaction to the gun, miss chance, jitter and lean timing come from CONFIG.ai).
     ai: {
-      amateur: { setReact: [0.55, 0.78], tapGap: [0.21, 0.3] }, // typical rival about 14.3s
+      highschool: { setReact: [0.65, 0.96], tapGap: [0.25, 0.36] }, // typical rival about 15.6s
+      collegiate: { setReact: [0.55, 0.78], tapGap: [0.21, 0.3] }, // typical rival about 14.3s
       pro: { setReact: [0.42, 0.56], tapGap: [0.16, 0.22] }, // typical rival about 12.5s
     },
   },
@@ -242,7 +244,8 @@ export const CONFIG = {
     // Computer teams: PASS once the gap is down to `passGap` m, TAKE at `reach - takeErr` m
     // (a negative error reaches too soon: a whiff).
     ai: {
-      amateur: { passGap: [2.6, 5.0], takeErr: [-0.35, 1.1] },
+      highschool: { passGap: [2.76, 5.64], takeErr: [-0.45, 1.3] },
+      collegiate: { passGap: [2.6, 5.0], takeErr: [-0.35, 1.1] },
       pro: { passGap: [2.2, 3.4], takeErr: [-0.1, 0.6] },
     },
   },
@@ -250,11 +253,11 @@ export const CONFIG = {
   /**
    * SURVIVAL (src/survival/survival.js): you against one rival, the five events
    * a round in a random order, until you lose one. The rival gets better each
-   * round: `skill` is where he is between the Amateur rivals (0) and the Pro
+   * round: `skill` is where he is between the Collegiate rivals (0) and the Pro
    * ones (1) in round 1, 2, 3...; after the list he keeps climbing, by `climb`
    * of the way left to `ceiling` each round (beyond Pro: near perfect).
    * Every rival setting is blended (or carried on past either end) between
-   * its Amateur and Pro values (survival.js blend).
+   * its Collegiate and Pro values (survival.js blend).
    */
   survival: {
     skill: [0.8, 1.2], // rounds 1-2: a weak Pro, a strong Pro (survival is meant to be hard)
@@ -327,7 +330,8 @@ export const CONFIG = {
     // Rivals: tapping rate, how long they take to see they need a gear, how
     // often they bother to tuck, and how far off their bike throw is (m).
     ai: {
-      amateur: { cadence: [3.1, 3.7], react: [1.0, 1.6], tuck: 0.4, throwErr: [-0.6, 1.5], jitter: 0.25 },
+      highschool: { cadence: [2.54, 3.14], react: [1.56, 2.44], tuck: 0.1, throwErr: [-0.92, 2.3], jitter: 0.33 },
+      collegiate: { cadence: [3.1, 3.7], react: [1.0, 1.6], tuck: 0.4, throwErr: [-0.6, 1.5], jitter: 0.25 },
       pro: { cadence: [3.8, 4.4], react: [0.3, 0.55], tuck: 0.95, throwErr: [-0.2, 0.5], jitter: 0.15 },
     },
   },
@@ -400,7 +404,8 @@ export const CONFIG = {
     // Rivals: run-up pace from CONFIG.ai, plus where they take off relative to
     // the line (negative = over it: foul) and how late they stretch.
     ai: {
-      amateur: { cadence: [2.7, 3.4], takeoffGap: [-0.12, 0.65], stretchDelay: [0.1, 0.4] },
+      highschool: { cadence: [1.9, 2.52], takeoffGap: [-0.19, 0.99], stretchDelay: [0.13, 0.56] },
+      collegiate: { cadence: [2.7, 3.4], takeoffGap: [-0.12, 0.65], stretchDelay: [0.1, 0.4] },
       pro: { cadence: [3.7, 4.5], takeoffGap: [-0.03, 0.22], stretchDelay: [0.06, 0.2] },
     },
     markHold: 2.2, // s after landing before the mark banner
@@ -444,7 +449,8 @@ export const CONFIG = {
     landHold: 2.2, // s showing where it landed before the banner
     overrun: 0.3, // m past the line still holding: foul
     ai: {
-      amateur: { cadence: [2.7, 3.4], gap: [-0.3, 3.0], angleErr: 18 },
+      highschool: { cadence: [1.9, 2.52], gap: [-0.46, 4.52], angleErr: 27 },
+      collegiate: { cadence: [2.7, 3.4], gap: [-0.3, 3.0], angleErr: 18 },
       pro: { cadence: [3.7, 4.5], gap: [-0.1, 1.1], angleErr: 7 },
     },
   },
@@ -529,7 +535,8 @@ export const CONFIG = {
     // 83% of the way down).
     camera: { topFrac: 0.3, zoom: 1, plantKick: 0.45, lead: 3.5, zoneLead: 2, flyLead: 0.6, drop: 0.17 },
     ai: {
-      amateur: { cadence: [2.7, 3.4], pressErr: 0.18, releaseErr: 0.2, missChance: 0.07 },
+      highschool: { cadence: [1.9, 2.52], pressErr: 0.26, releaseErr: 0.28, missChance: 0.1 },
+      collegiate: { cadence: [2.7, 3.4], pressErr: 0.18, releaseErr: 0.2, missChance: 0.07 },
       pro: { cadence: [3.7, 4.5], pressErr: 0.08, releaseErr: 0.1, missChance: 0.03 },
     },
   },
@@ -537,7 +544,17 @@ export const CONFIG = {
   // A rival's wrong-side tap costs what yours does: sprint100.targets' missSpeedLoss and
   // missLockout (athletes/ai.js). An event with rules of its own says so (hurdles110.js).
   ai: {
-    amateur: {
+    // High School: a step below Collegiate in every event (each event's own
+    // `ai` too): what Collegiate is to Pro, the other way. tools/simulate.mjs.
+    highschool: {
+      cadence: [1.74, 2.64],
+      reaction: [0.23, 0.44],
+      jitter: 0.36,
+      fatigue: 0.07,
+      missChance: 0.042,
+      dipError: [-1.7, 3.5],
+    },
+    collegiate: {
       cadence: [2.3, 3.1], // strides/s range across the field (median time about 10.8s)
       reaction: [0.2, 0.35], // s from GO to first stride
       jitter: 0.3, // +/- fraction of randomness on each stride interval (reaction variance)

@@ -108,7 +108,8 @@ export const TOP_N = 5;
 /**
  * Your best `TOP_N` marks on a board (an event or a tournament kind's id),
  * best first: [{ mark, at, who, where }], where `at` is when (ms), `who` the
- * athlete (or 'Team'), `where` 'amateur' | 'pro' | 'training' | 'live'.
+ * athlete (or 'Team'), `where` a LEVELS id | 'training' | 'live' (or 'amateur':
+ * Collegiate's old name, on marks from before it was renamed).
  * Only kept since this list was added: your personal best from before (or
  * one synced from the online board) shows as an entry with no details.
  */
@@ -212,14 +213,27 @@ function getLineup() {
   return l && typeof l === 'object' ? l : {};
 }
 
-// The campaign you're playing ('amateur' or 'pro'), or null for Training. Set
+/**
+ * The rival levels, easiest first: each is a campaign on the menu, and a
+ * column of rival settings in CONFIG (`ai.highschool`, ...). Pro unlocks
+ * once Collegiate is beaten, Collegiate once High School is.
+ */
+export const LEVELS = ['highschool', 'collegiate', 'pro'];
+export const LEVEL_NAMES = { highschool: 'High School', collegiate: 'Collegiate', pro: 'Pro' };
+
+// Where each level's progress is saved (`beaten`, here and on your account):
+// Collegiate was Amateur, and keeps its key so what you'd beaten there stays beaten.
+const SAVE_KEY = { collegiate: 'amateur' };
+const saveKey = (level) => SAVE_KEY[level] ?? level;
+
+// The campaign you're playing (a LEVELS id), or null for Training. Set
 // by the menu for this session; it decides the rivals and what a win counts for.
 // Training (and a race from the leaderboard) has no computer rivals, just you
 // and your ghost; a campaign has rivals and no ghost.
 let campaign = null;
 
 export function setCampaign(level) {
-  campaign = level === 'amateur' || level === 'pro' ? level : null;
+  campaign = LEVELS.includes(level) ? level : null;
 }
 
 export function getCampaign() {
@@ -227,10 +241,10 @@ export function getCampaign() {
 }
 
 // The rival level for the special events (the relay): Special Events' RIVALS toggle, for this session.
-let specialLevel = 'amateur';
+let specialLevel = 'highschool'; // the easiest, until you pick another
 
 export function setSpecialLevel(level) {
-  specialLevel = level === 'pro' ? 'pro' : 'amateur';
+  specialLevel = LEVELS.includes(level) ? level : 'collegiate';
 }
 
 export function getSpecialLevel() {
@@ -242,18 +256,18 @@ export function hasRivals() {
   return campaign != null || survival.active;
 }
 
-/** Rival difficulty, 'amateur' or 'pro': the campaign's. */
+/** Rival difficulty (a LEVELS id): the campaign's. */
 export function getDifficulty() {
-  if (survival.active) return survival.skill >= 0.5 ? 'pro' : 'amateur'; // the nearer (the events blend it: survival.js aiLevel)
-  return campaign ?? 'amateur';
+  if (survival.active) return survival.skill >= 0.5 ? 'pro' : 'collegiate'; // the nearer (the events blend it: survival.js aiLevel)
+  return campaign ?? 'collegiate';
 }
 
 /**
- * What you've beaten in a campaign ('amateur' or 'pro'): { [eventId | 'tournament']: true }.
+ * What you've beaten in a campaign (a LEVELS id): { [eventId | 'tournament']: true }.
  * Win an event (first place) to tick it off, in any order; the tournament opens once all five are.
  */
 export function getBeaten(level) {
-  const b = load().beaten?.[level];
+  const b = load().beaten?.[saveKey(level)];
   return b && typeof b === 'object' ? b : {};
 }
 
@@ -264,9 +278,10 @@ let fresh = null;
 export function markBeaten(level, id) {
   const data = load();
   data.beaten ??= {};
-  data.beaten[level] ??= {};
-  if (data.beaten[level][id]) return false;
-  data.beaten[level][id] = true;
+  const key = saveKey(level);
+  data.beaten[key] ??= {};
+  if (data.beaten[key][id]) return false;
+  data.beaten[key][id] = true;
   save(data);
   fresh = { level, id };
   progressChanged();

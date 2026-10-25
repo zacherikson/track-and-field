@@ -2,7 +2,7 @@ import { CONFIG } from '../config.js';
 import { Sprint100 } from './sprint100.js';
 import { Exchange, exchangeSpot, LEG } from './relayRules.js';
 import { Runner } from '../athletes/runner.js';
-import { CHARACTERS, player as chosenPlayer, heightOf } from '../athletes/roster.js';
+import { CHARACTERS, player as chosenPlayer, rivals as rivalRoster, castOf, heightOf } from '../athletes/roster.js';
 import { POSES, lerpPose, runPose, leanPose, handPos } from '../athletes/stickFigure.js';
 import { rand, shuffle, clamp } from '../core/math.js';
 import { text, roundRect } from '../core/ui.js';
@@ -73,28 +73,28 @@ export class Relay4x100 extends Sprint100 {
     }
     super.enter();
     this.track.zones = [0, 1, 2].map((k) => exchangeSpot(this.cfg, k));
-    if (!this.live) this.track.venue = VENUES[this.level]; // raced where its rivals race: the high school, or the big stadium (live: the big stadium)
+    if (!this.live) this.track.venue = VENUES[this.level]; // raced where its rivals race (live: the big stadium)
   }
 
   /** Six teams, yours in your lane: always against rivals (Special Events are never Training). Live relays build their own (meetRelay.js). */
   buildField() {
     const cfg = this.cfg;
     const captain = chosenPlayer(this.ev.id);
-    const rivals = shuffle(CHARACTERS.filter((c) => c !== captain));
+    const rivals = shuffle(rivalRoster(this.ev.id, this.level)); // the level's cast captains the other teams
     const field = [];
     for (let lane = 1; lane <= cfg.lanes; lane++) {
       const isPlayer = lane === cfg.playerLane;
       const cap = isPlayer ? captain : rivals.pop();
-      if (cap) field.push(this.team(lane, cap, isPlayer));
+      if (cap) field.push(this.team(lane, cap, isPlayer, !isPlayer, isPlayer ? CHARACTERS : castOf(this.level)));
     }
     return field;
   }
 
-  /** A team in `cap`'s kit: the three after them on the roster run legs 1-3, and they anchor. `ai`: the computer runs it. */
-  team(lane, cap, isPlayer, ai = !isPlayer) {
+  /** A team in `cap`'s kit: the three after them on `roster` (their cast) run legs 1-3, and they anchor. `ai`: the computer runs it. */
+  team(lane, cap, isPlayer, ai = !isPlayer, roster = CHARACTERS) {
     const cfg = this.cfg;
-    const i = CHARACTERS.indexOf(cap);
-    const squad = [1, 2, 3].map((k) => CHARACTERS[(i + k) % CHARACTERS.length]).concat(cap);
+    const i = roster.indexOf(cap);
+    const squad = [1, 2, 3].map((k) => roster[(i + k + roster.length) % roster.length]).concat(cap);
     const kit = { shirt: cap.colors.shirt, shorts: cap.colors.shorts };
     const team = { lane, isPlayer, name: `Team ${cap.name}`, mark: null, status: 'ok', idlePhase: rand(0, Math.PI * 2), exchanges: [] };
     team.legs = squad.map((who, k) => {

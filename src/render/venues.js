@@ -4,8 +4,10 @@ import { SURVIVAL_KIND } from '../online/liveRules.js';
 
 /**
  * Where each mode is played: Training is a rundown community track in the
- * woods, Amateur a decent high-school stadium with a half-full stand, Pro a
- * packed Olympic one with a blue track under the lights. Live play uses Pro.
+ * woods, High School a decent high-school stadium with a half-full stand,
+ * Collegiate a university track under snow-capped mountains (modest
+ * bleachers, lanes in two blues), Pro a packed Olympic one with a blue track
+ * under the lights. Live play uses Pro.
  *
  * PAINT AND PROPS, mostly. Every venue shares the geometry in track.js LAYOUT
  * (horizon, far and near edges of the track) unless it has a `layout` of its
@@ -21,12 +23,19 @@ import { SURVIVAL_KIND } from '../online/liveRules.js';
  *   stands     grandstand, or null for none (then `backdrop` fills the band)
  *              { body, roof, rows, rowH, seatW, emptyEvery, shade, crowd[] }
  *              emptyEvery: 1 seat in N is empty (0 = packed solid)
+ *              With `mountains` it's bleachers instead: low sections along the
+ *              bottom of the band, { ..., plank, frame, rail, box, boxWindow }
+ *   mountains  a range behind the bleachers, the sky over it (track.js
+ *              drawMountainStadium): { far, farShade, near, nearShade, snow,
+ *              snowShade, tree, treeLit, trunk, pole }; the javelin's flight
+ *              shot looks out over it instead of the sea
  *   backdrop   what's behind the track instead of a stand: { hillFar, hill, tree, treeLit, trunk }
  *   boards     hoardings: kind 'ads' (painted sponsor boards), 'fence'
  *              (chainlink, nothing sold) or 'led' (lit panels), plus words/colors
  *   grass      { base, stripe, stripeM }  stripe null = nobody has mowed it
  *   sector     the javelin landing field, which is its own lighter green
- *   track      running surface and its paint { surface, worn, paint, band, line, apron, curb, tick }
+ *   track      running surface and its paint { surface, alt, worn, paint, band, line, apron, curb, tick }
+ *              alt: every other lane in this color instead (two-tone lanes), or unset
  *              worn: scuff the surface through to dirt (that color), or null
  *   blocks     starting blocks { rail, railTop, plate, plateFace }
  *   sand       long jump pit { sand, rim }
@@ -54,8 +63,8 @@ import { SURVIVAL_KIND } from '../online/liveRules.js';
  *                ruins: { stone, shade, carve, moss } statues and broken columns on the stand (ruins.js) }
  */
 
-const AMATEUR = {
-  id: 'amateur',
+const HIGH_SCHOOL = {
+  id: 'highschool',
   name: 'Westfield High',
   sky: { top: '#5aa9e6', bottom: '#a9d6f5', high: '#2f7fc8' },
   stands: {
@@ -96,6 +105,76 @@ const AMATEUR = {
   upright: { post: '#e7c21c', shade: '#9a7f0a' },
   signs: { post: '#fff', plate: '#c62828', text: '#fff' },
   finish: { post: '#ddd', sign: '#12203a', text: '#ffb400' },
+  lights: false,
+  flashes: false,
+};
+
+/**
+ * Collegiate's: a university track at the foot of the mountains, after the
+ * one in Provo. Snow on the peaks, a line of trees and light poles, modest
+ * aluminium bleachers with a press box, and a pale blue track whose lanes
+ * alternate between two blues.
+ */
+const COLLEGIATE = {
+  id: 'collegiate',
+  name: 'Wasatch University',
+  sky: { top: '#3f86d4', bottom: '#cfe4f6', high: '#2563ad' }, // clear mountain air
+  stands: {
+    body: '#7d8794', // the risers, in shadow
+    roof: null,
+    rows: 4,
+    rowH: 11,
+    seatW: 12,
+    emptyEvery: 3, // a dual meet: room to spread out
+    shade: 'rgba(0,0,0,0.18)',
+    crowd: ['#0b2d5b', '#f4f6f8', '#1f5fae', '#0b2d5b', '#f4f6f8', '#7fb2e0', '#e4572e', '#f1c40f', '#1f5fae'],
+    plank: '#d9dee5', // aluminium seats
+    frame: '#4a525e',
+    rail: '#aab3be',
+    box: '#0b2d5b', // the press box on the middle section
+    boxWindow: '#9cc7ec',
+  },
+  mountains: {
+    far: '#8f9fbf',
+    farShade: '#7787a8',
+    near: '#6e7d98',
+    nearShade: '#5a6884',
+    snow: '#f6f8fc',
+    snowShade: '#d3dcea',
+    tree: '#3f7a3a',
+    treeLit: '#5a9a48',
+    trunk: '#4a3b2e',
+    pole: '#5b6470',
+  },
+  backdrop: null,
+  boards: {
+    kind: 'ads',
+    words: ['WASATCH U', 'TRACK ROYALE', 'BLUE & WHITE', 'CONFERENCE MEET', 'FAST THUMBS'],
+    colors: ['#0b2d5b', '#1f5fae', '#f4f6f8', '#7fb2e0', '#0b2d5b'],
+    dark: [2, 3],
+  },
+  grass: { base: '#4f9a3f', stripe: '#59a848', stripeM: 4 },
+  sector: { base: '#7ccf55', stripe: '#86d65e' },
+  track: {
+    surface: '#6fa6d8', // pale blue
+    alt: '#5b93c8', // every other lane a shade deeper
+    worn: null,
+    paint: 'rgba(255,255,255,0.92)',
+    band: 'rgba(255,255,255,0.8)',
+    line: '#fff',
+    apron: '#4f9a3f',
+    curb: '#eef2f6',
+    tick: '#a9b8c8',
+  },
+  zone: { fill: 'rgba(20,60,140,0.22)', line: '#123f8a' }, // darker: a blue zone on a pale blue track
+  road: { asphalt: '#4a4d52', edge: '#f2f2f2', verge: '#5fae4a', earth: '#7a5a3c', hillFar: '#9aa8c4', hillNear: '#6aa25a', tree: '#2f6b3a', post: '#ffffff', banner: '#1f5fae', bannerText: '#fff' },
+  blocks: { rail: '#3b4250', railTop: '#aab3be', plate: '#0b2d5b', plateFace: '#1f5fae' },
+  sand: { sand: '#e8d29a', rim: '#dfe3e8' },
+  board: { face: '#f7f7f2', foul: '#e8281e' },
+  mat: { side: '#0b2d5b', top: '#1f5fae', topBand: '#4c86cc', front: '#123f8a', handle: '#07203f' },
+  upright: { post: '#e7c21c', shade: '#9a7f0a' },
+  signs: { post: '#fff', plate: '#0b2d5b', text: '#fff' },
+  finish: { post: '#ddd', sign: '#0b2d5b', text: '#f4f6f8' },
   lights: false,
   flashes: false,
 };
@@ -286,7 +365,7 @@ const COLOSSEUM = {
     tick: '#a48c63',
   },
   zone: { fill: 'rgba(64,140,255,0.2)', line: '#3d86ff' },
-  road: AMATEUR.road,
+  road: HIGH_SCHOOL.road,
   blocks: { rail: '#3b3428', railTop: '#b8a888', plate: '#8e1f1f', plateFace: '#c0392b' },
   sand: { sand: '#e6cf95', rim: '#d8ceb6' },
   board: { face: '#f7f2e6', foul: '#c0392b' },
@@ -298,7 +377,7 @@ const COLOSSEUM = {
   flashes: false,
 };
 
-export const VENUES = { training: TRAINING, amateur: AMATEUR, pro: PRO, survival: JUNGLE, colosseum: COLOSSEUM };
+export const VENUES = { training: TRAINING, highschool: HIGH_SCHOOL, collegiate: COLLEGIATE, pro: PRO, survival: JUNGLE, colosseum: COLOSSEUM };
 
 /**
  * The venue for the mode being played: the campaign's (core/storage.js), or

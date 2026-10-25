@@ -6,6 +6,44 @@ Gameplay and tuning changes, newest first. When you change a number in
 From 1.0.0 every push to master bumps `src/version.js` and heads its section
 here with the version.
 
+## 1.7.0 — The shop (economy phase 6)
+Buy gear with Coins and Gems. The shop is the same for everyone and changes
+every day.
+- **21 items for sale** (`src/economy/items.js`; prices and names are
+  placeholders):
+  - **Basics:** 7 commons, always there, 300 to 600 Coins.
+  - **Rotation:** 14 rare, epic and legendary items. Rares cost 1,000 to
+    1,500 Coins, epics 25 to 40 Gems. The legendaries are Chrome spikes
+    (8,000 Coins + 50 Gems) and Gold hoops (120 Gems).
+  - Each item also needs a level, 2 to 12.
+- **The rotation** (`src/economy/shop.js`, `CONFIG.economy.shop`):
+  - **This week:** 2 epic or legendary picks, new every Monday 00:00 UTC.
+  - **Today:** 4 more picks, new at midnight UTC.
+  - Worked out from the date, so every phone and the server agree with no
+    database and no scheduled jobs. The starter gear (1.6.0) stays free with
+    levels and isn't sold.
+- **Buying is checked by the server** (`POST /api/shop`). The item must be on
+  sale today, you must be at its level and not own it yet, and you must be
+  able to pay. The price comes out of your wallet (one ledger entry per
+  currency) in the same transaction that adds it to your inventory
+  (`inventory/{uid}`). Guests can look but not buy.
+- **Shop screen** (`src/scenes/shopScene.js`), from the new Shop chip on the
+  home screen:
+  - This week's and today's cards on top, with countdowns; the basics below.
+  - Each card shows the item on your own athlete close up, with its rarity,
+    name and price, or OWNED, or the level it needs.
+  - Tap to buy, then wear it straight away if you've made an athlete.
+- **Athlete Maker:** the Gear tab shows the starter set plus what you've
+  bought. Everything else is in the Shop.
+- **Home:** the top bar fits Shop and Contract next to your profile. On
+  narrow screens How to play shrinks to its icon first, then Shop and
+  Contract.
+- **Database:** `firestore.rules` adds `inventory/{uid}` (yours to read, only
+  the server writes).
+- **Tests:** the rotation (the same for everyone, Monday weeks, it changes),
+  what can be bought and why not, prices out of the wallet, and the server
+  end to end (open, buy once, both currencies, every refusal).
+
 ## 1.6.0 — Gear (economy phase 5)
 The Athlete Maker has a Gear tab: cosmetic items for the athlete you make,
 unlocked as you level up. Looks only; nobody runs any differently.

@@ -3,6 +3,8 @@ import { changeWallet, readWallet, readProgress, hasAdmin } from './firestoreAdm
 import { xpForRace, xpDay, levelOf } from '../../src/economy/levels.js';
 import { WalletError } from '../../src/economy/wallet.js';
 import { advance, collect, contractView, localDay, offers, setZone, sign } from '../../src/economy/contracts.js';
+import { shopDay, shopFor, cantBuy, priceChanges } from '../../src/economy/shop.js';
+import { itemById } from '../../src/economy/items.js';
 
 /**
  * THE GAME'S HTTP CALLS to the server (besides the live sockets), under /api/:
@@ -20,6 +22,12 @@ import { advance, collect, contractView, localDay, offers, setZone, sign } from 
  *                  signs your offer for `tier` (worked out here, from your progress and medals),
  *                  with its signing bonus, then the same. `tz` = your time zone (minutes behind UTC).
  *                  → { contract, offers, paid, bonus, news, wallet }
+ *
+ *   POST /api/shop  { action: 'open' | 'buy', id? }  (same sign-in)
+ *                  The shop (src/economy/shop.js: today's, the same for everyone) and the gear you
+ *                  own. 'buy': item `id`, if it's on sale today, you're at its level, don't have it
+ *                  yet and can pay; its price comes out of your wallet as it goes in your inventory.
+ *                  → { shop, inventory, wallet, bought }   (a refused buy: 409 { error: 'funds' | ... })
  *
  * Signed in with Google only: a guest earns nothing (`guest`). Any website may
  * call it (CORS *): it does nothing without a player's own token.
@@ -41,7 +49,7 @@ const json = (body, status = 200) => new Response(JSON.stringify(body), { status
  */
 export async function handleApi(request, env, path, deps = {}) {
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
-  if (path !== 'xp' && path !== 'contract') return json({ error: 'not-found' }, 404);
+  if (path !== 'xp' && path !== 'contract' && path !== 'shop') return json({ error: 'not-found' }, 404);
   if (request.method !== 'POST') return json({ error: 'method' }, 405);
   if (!hasAdmin(env) && !deps.change) return json({ error: 'not-set-up' }, 503);
   const token = (request.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '');
@@ -57,6 +65,7 @@ export async function handleApi(request, env, path, deps = {}) {
     return json({ error: 'bad-json' }, 400);
   }
   if (path === 'contract') return contract(env, who.uid, body, deps);
+  if (path === 'shop') return shop(env, who.uid, body, deps);
   const claims = Array.isArray(body?.claims) ? body.claims.slice(0, MAX_CLAIMS) : [];
   const change = deps.change ?? changeWallet;
   const read = deps.read ?? readWallet;
@@ -126,6 +135,30 @@ async function contract(env, uid, body, deps) {
   } catch (e) {
     if (e instanceof WalletError) return json({ error: e.code }, 409);
     console.warn('api contract', e?.message);
+    return json({ error: 'server' }, 502);
+  }
+}
+
+/** POST /api/shop: today's shop and your gear, or an item bought. */
+async function shop(env, uid, body, deps) {
+  const action = body?.action;
+  if (action !== 'open' && action !== 'buy') return json({ error: 'bad-action' }, 400);
+  const change = deps.change ?? changeWallet;
+  try {
+    let day;
+    const r = await change(env, uid, ({ wallet, inventory, now }) => {
+      day = shopDay(now);
+      if (action === 'open') return { changes: [] };
+      const item = itemById(body.id);
+      const why = cantBuy(item, day, { level: levelOf(wallet.xp), inventory, wallet });
+      if (why) throw new WalletError(why);
+      return { changes: priceChanges(item), inventory: [...inventory, item.id] };
+    });
+    const { earned, premium, xp, gold, silver, bronze } = r.wallet;
+    return json({ shop: shopFor(day), inventory: r.inventory, wallet: { earned, premium, xp, gold, silver, bronze }, bought: action === 'buy' ? body.id : null });
+  } catch (e) {
+    if (e instanceof WalletError) return json({ error: e.code }, 409);
+    console.warn('api shop', e?.message);
     return json({ error: 'server' }, 502);
   }
 }

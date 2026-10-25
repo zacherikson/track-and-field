@@ -595,6 +595,8 @@ export const CONFIG = {
       requalify: 3, // after losing one: top-3 finishes before offers come again
       zoneEvery: 7, // days between changes of your time zone (your day ends at your midnight)
     },
+    // THE SHOP (src/economy/shop.js): the rotation's picks (prices are on the items: economy/items.js).
+    shop: { daily: 4, weekly: 2 },
   },
 
   // A rival's wrong-side tap costs what yours does: sprint100.targets' missSpeedLoss and

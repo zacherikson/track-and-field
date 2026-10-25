@@ -8,6 +8,7 @@ import { flow } from '../flow.js';
 import { cachedWallet, refreshWallet, forgetWallet } from '../online/wallet.js';
 import { myLevel, forgetXp } from '../online/xp.js';
 import { forgetContract } from '../online/contracts.js';
+import { forgetInventory } from '../online/shop.js';
 import { levelProgress } from '../economy/levels.js';
 import { CURRENCIES, formatAmount } from '../economy/currencies.js';
 
@@ -173,6 +174,7 @@ export class ProfileScene {
         forgetWallet();
         forgetXp();
         forgetContract();
+        forgetInventory();
         location.reload();
       })
       .catch(() => {

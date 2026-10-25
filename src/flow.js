@@ -10,6 +10,7 @@ import { IntroScene } from './scenes/introScene.js';
 import { ResultScene } from './scenes/resultScene.js';
 import { LeaderboardScene } from './scenes/leaderboardScene.js';
 import { ContractScene } from './scenes/contractScene.js';
+import { ShopScene } from './scenes/shopScene.js';
 import { ProfileScene } from './scenes/profileScene.js';
 import { AthleteMakerScene } from './scenes/athleteMaker.js';
 import { TutorialScene } from './scenes/tutorialScene.js';
@@ -144,6 +145,8 @@ export const flow = {
   profile: (game, tab = 'play') => game.setScene(new ProfileScene(null, tab)),
   // Your contract (economy/contracts.js): its pay and clause, your offers.
   contract: (game, tab = 'play') => game.setScene(new ContractScene(tab)),
+  // The shop (economy/shop.js): today's gear, and buying it.
+  shop: (game, tab = 'play') => game.setScene(new ShopScene(tab)),
   // Live: the waiting room for an event or the tournament (`kind`), then play with everyone in it (online/live.js).
   // `squad` ({ key, name }): that squad's practice room, which only its members see (Squad tab).
   live: (game, kind, squad = null) => {

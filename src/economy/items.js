@@ -12,7 +12,9 @@
  *   rarity    common | rare | epic | legendary
  *   level     the level that unlocks it
  *   price     null: free once you reach `level` (the starter set). Otherwise
- *             { earned?, premium? }, bought in the shop (a later phase)
+ *             { earned?, premium? }, bought in the shop (economy/shop.js), from `level` on
+ *   avail     'level' (the free starter set), 'always' (the shop's basics) or
+ *             'rotation' (in the shop on some days or weeks: shop.js shopFor)
  *   sponsor   null, or a brand (later)
  *   art       how it's drawn (stickFigure.js drawFigure, from gearColors)
  */
@@ -20,7 +22,9 @@ export const SLOTS = ['spikes', 'socks', 'headband', 'glasses', 'sleeves', 'kit'
 export const SLOT_NAMES = { spikes: 'Spikes', socks: 'Socks', headband: 'Headband', glasses: 'Glasses', sleeves: 'Sleeves', kit: 'Kit' };
 export const RARITIES = ['common', 'rare', 'epic', 'legendary'];
 
-const item = (slot, n, id, name, level, rarity, art) => ({ id, slot, n, name, rarity, level, price: null, sponsor: null, art });
+const item = (slot, n, id, name, level, rarity, art) => ({ id, slot, n, name, rarity, level, price: null, avail: 'level', sponsor: null, art });
+// A shop item: `avail` 'always' or 'rotation', `price` { earned?, premium? } (placeholders).
+const sale = (slot, n, id, name, level, rarity, avail, price, art) => ({ id, slot, n, name, rarity, level, price, avail, sponsor: null, art });
 
 export const ITEMS = [
   // Spikes: the shoe, and its sole.
@@ -52,6 +56,30 @@ export const ITEMS = [
   item('kit', 1, 'kit-stripe-01', 'Racing stripe', 3, 'common', { kit: '#f5f5f5', kitKind: 'stripe' }),
   item('kit', 2, 'kit-hoops-01', 'Hoops', 7, 'rare', { kit: '#12203a', kitKind: 'hoops' }),
   item('kit', 3, 'kit-yoke-01', 'Gold yoke', 10, 'epic', { kit: '#f2c230', kitKind: 'yoke' }),
+
+  // THE SHOP (economy/shop.js): the basics, always there...
+  sale('spikes', 7, 'spikes-bubblegum-01', 'Bubblegum spikes', 2, 'common', 'always', { earned: 400 }, { shoe: '#ff8fc7', sole: '#f5f5f5' }),
+  sale('spikes', 8, 'spikes-forest-01', 'Forest spikes', 2, 'common', 'always', { earned: 400 }, { shoe: '#2e8b57', sole: '#f5f5f5' }),
+  sale('socks', 5, 'socks-pink-01', 'Pink tall socks', 2, 'common', 'always', { earned: 300 }, { sock: '#ff8fc7', sockH: 0.12 }),
+  sale('headband', 5, 'band-black-01', 'Black headband', 2, 'common', 'always', { earned: 300 }, { band: '#1b1b1b' }),
+  sale('glasses', 4, 'glasses-blackvisor-01', 'Black visor', 3, 'common', 'always', { earned: 600 }, { lens: '#1b1b1b', lensKind: 'visor' }),
+  sale('sleeves', 4, 'sleeves-redwrist-01', 'Red wristbands', 2, 'common', 'always', { earned: 300 }, { sleeve: '#d32020', sleeveKind: 'wrist' }),
+  sale('kit', 4, 'kit-blackstripe-01', 'Black stripe', 2, 'common', 'always', { earned: 500 }, { kit: '#12203a', kitKind: 'stripe' }),
+  // ...and the rotation: some each day, the best each week.
+  sale('spikes', 9, 'spikes-lava-01', 'Lava spikes', 4, 'rare', 'rotation', { earned: 1500 }, { shoe: '#d32020', sole: '#ffb400' }),
+  sale('spikes', 10, 'spikes-galaxy-01', 'Galaxy spikes', 6, 'epic', 'rotation', { premium: 40 }, { shoe: '#5b2a86', sole: '#c9f23a' }),
+  sale('spikes', 11, 'spikes-chrome-01', 'Chrome spikes', 10, 'legendary', 'rotation', { earned: 8000, premium: 50 }, { shoe: '#d3d8de', sole: '#5a5f66' }),
+  sale('socks', 6, 'socks-gold-01', 'Gold crew socks', 3, 'rare', 'rotation', { earned: 1200 }, { sock: '#f2c230', sockH: 0.04 }),
+  sale('socks', 7, 'socks-neon-01', 'Neon striped socks', 6, 'epic', 'rotation', { premium: 30 }, { sock: '#c9f23a', sockH: 0.12, sockStripe: '#12203a' }),
+  sale('headband', 6, 'band-volt-01', 'Volt headband', 4, 'rare', 'rotation', { earned: 1000 }, { band: '#c9f23a' }),
+  sale('headband', 7, 'band-magenta-01', 'Magenta headband', 4, 'rare', 'rotation', { earned: 1000 }, { band: '#c2407e' }),
+  sale('glasses', 5, 'glasses-redshades-01', 'Red shades', 4, 'rare', 'rotation', { earned: 1500 }, { lens: '#d32020', lensKind: 'shades' }),
+  sale('glasses', 6, 'glasses-ice-01', 'Ice visor', 8, 'epic', 'rotation', { premium: 35 }, { lens: '#9fe3ff', lensKind: 'visor' }),
+  sale('sleeves', 5, 'sleeves-white-01', 'White arm sleeve', 5, 'rare', 'rotation', { earned: 1200 }, { sleeve: '#f5f5f5', sleeveKind: 'sleeve' }),
+  sale('sleeves', 6, 'sleeves-goldwrist-01', 'Gold wristbands', 7, 'epic', 'rotation', { premium: 25 }, { sleeve: '#f2c230', sleeveKind: 'wrist' }),
+  sale('kit', 5, 'kit-whitehoops-01', 'White hoops', 5, 'rare', 'rotation', { earned: 1500 }, { kit: '#f5f5f5', kitKind: 'hoops' }),
+  sale('kit', 6, 'kit-voltyoke-01', 'Volt yoke', 8, 'epic', 'rotation', { premium: 40 }, { kit: '#c9f23a', kitKind: 'yoke' }),
+  sale('kit', 7, 'kit-goldhoops-01', 'Gold hoops', 12, 'legendary', 'rotation', { premium: 120 }, { kit: '#f2c230', kitKind: 'hoops' }),
 ];
 
 /** The items for `slot`, by number. */

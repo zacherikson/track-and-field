@@ -51,6 +51,13 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // The gear you've bought (src/economy/shop.js): yours to read, nobody's to write.
+    // The meet server keeps it, with your wallet (server/src/api.js /api/shop).
+    match /inventory/{uid} {
+      allow read: if isMember(uid);
+      allow write: if false;
+    }
+
     // Each player's level (src/economy/levels.js), public for name tags and the
     // leaderboards. Written only by the meet server, with their XP.
     match /players/{uid} {

@@ -1,6 +1,7 @@
 import { applyChange, cleanWallet, ledgerId, WALLET_VERSION, WalletError, MEDALS } from '../../src/economy/wallet.js';
 import { levelOf } from '../../src/economy/levels.js';
 import { cleanContract, countRaces, localDay } from '../../src/economy/contracts.js';
+import { cleanInventory } from '../../src/economy/shop.js';
 
 /**
  * THE SERVER'S ADMIN ACCESS TO FIRESTORE: what lets it, and only it, write
@@ -22,6 +23,8 @@ import { cleanContract, countRaces, localDay } from '../../src/economy/contracts
  *                                 (src/economy/levels.js), written with every wallet change
  *   contracts/{uid}             = your contract (src/economy/contracts.js), private to you: changed in
  *                                 the same transaction as the wallet (its pay, its clause's races)
+ *   inventory/{uid}             = { items: [item id] }: the gear you've bought (src/economy/shop.js),
+ *                                 private to you, changed in the same transaction as the price is paid
  */
 const SCOPE = 'https://www.googleapis.com/auth/datastore';
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
@@ -89,6 +92,7 @@ const walletName = (env, uid) => `${root(env)}/wallets/${uid}`;
 const entryName = (env, uid, id) => `${root(env)}/wallets/${uid}/ledger/${id}`;
 const playerName = (env, uid) => `${root(env)}/players/${uid}`;
 const contractName = (env, uid) => `${root(env)}/contracts/${uid}`;
+const inventoryName = (env, uid) => `${root(env)}/inventory/${uid}`;
 
 /** A REST call on the database as the service account: POST `body` to `${root}${path}`. */
 async function call(env, path, body, opts) {
@@ -153,14 +157,15 @@ export async function readProgress(env, uid, opts = {}) {
  * transaction with a ledger entry each. A change whose ledger entry is already
  * there (that payout landed before) is skipped.
  *
- * Or `changes` is a plan: ({ wallet, contract, now }) => { changes, contract },
- * which works out the changes from the wallet and contract as they are now
- * (contract pay, signing: api.js), and the contract to save with them.
+ * Or `changes` is a plan: ({ wallet, contract, inventory, now }) => { changes, contract, inventory },
+ * which works out the changes from the wallet, contract and inventory as they
+ * are now (contract pay, signing, buying: api.js), and the contract and
+ * inventory to save with them.
  *
  * Races that land (XP changes with reason 'race', carrying `place`) count
  * toward your contract's clause (src/economy/contracts.js countRaces).
  *
- * Resolves to { wallet, contract, entries, entry (the first), duplicate
+ * Resolves to { wallet, contract, inventory, entries, entry (the first), duplicate
  * (nothing new landed) }. Throws WalletError if a change can't be made (not
  * enough money, fines off): then none of them is.
  * `opts.now` (ms): the time (tests).
@@ -177,16 +182,18 @@ export async function changeWallet(env, uid, changes, opts = {}) {
   for (let attempt = 1; ; attempt++) {
     const { transaction } = await call(env, ':beginTransaction', { options: { readWrite: {} } }, opts);
     const rollback = () => call(env, ':rollback', { transaction }, opts).catch(() => {});
-    const reads = await call(env, ':batchGet', { documents: [walletName(env, uid), contractName(env, uid)], transaction }, opts);
+    const reads = await call(env, ':batchGet', { documents: [walletName(env, uid), contractName(env, uid), inventoryName(env, uid)], transaction }, opts);
     const doc = (name) => reads.find((r) => r.found?.name === name)?.found;
     const before = cleanWallet(numbers(doc(walletName(env, uid))?.fields));
     const hadContract = !!doc(contractName(env, uid));
     const stored = cleanContract(hadContract ? fieldsOf(doc(contractName(env, uid)).fields) : null);
+    const owned = cleanInventory(fieldsOf(doc(inventoryName(env, uid))?.fields).items);
     let list;
     let contract = stored;
+    let inventory = owned;
     let ids;
     try {
-      if (plan) ({ changes: list = [], contract = stored } = plan({ wallet: before, contract: stored, now }));
+      if (plan) ({ changes: list = [], contract = stored, inventory = owned } = plan({ wallet: before, contract: stored, inventory: owned, now }));
       else list = Array.isArray(changes) ? changes : [changes];
       ids = list.map(ledgerId);
       if (new Set(ids).size !== ids.length) throw new WalletError('invalid', 'the same change twice');
@@ -214,9 +221,11 @@ export async function changeWallet(env, uid, changes, opts = {}) {
     // A race that landed counts toward your contract (if you have one, or lost one).
     if (places.length && (contract.tier || contract.lost)) contract = countRaces(contract, localDay(now, contract.tz), places).contract;
     const contractChanged = JSON.stringify(contract) !== JSON.stringify(stored);
-    if (!entries.length && !contractChanged) {
+    inventory = cleanInventory(inventory);
+    const inventoryChanged = JSON.stringify(inventory) !== JSON.stringify(owned);
+    if (!entries.length && !contractChanged && !inventoryChanged) {
       await rollback();
-      return { wallet: before, contract, entries, entry: null, duplicate: true };
+      return { wallet: before, contract, inventory: owned, entries, entry: null, duplicate: true };
     }
     const stamp = [{ fieldPath: 'updatedAt', setToServerValue: 'REQUEST_TIME' }];
     const entryFields = (entry) => ({
@@ -237,9 +246,10 @@ export async function changeWallet(env, uid, changes, opts = {}) {
       );
     }
     if (contractChanged) writes.push({ update: { name: contractName(env, uid), fields: { ...contractFields(contract), v: int(1) } }, updateTransforms: stamp });
+    if (inventoryChanged) writes.push({ update: { name: inventoryName(env, uid), fields: { items: { arrayValue: { values: inventory.map(str) } }, v: int(1) } }, updateTransforms: stamp });
     try {
       await call(env, ':commit', { writes, transaction }, opts);
-      return { wallet, contract, entries, entry: entries[0]?.entry ?? null, duplicate: !entries.length };
+      return { wallet, contract, inventory, entries, entry: entries[0]?.entry ?? null, duplicate: !entries.length };
     } catch (e) {
       // 409: another change to this wallet got there first; read it again and retry.
       if (e.status !== 409 || attempt >= RETRIES) throw e;

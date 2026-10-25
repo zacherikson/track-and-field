@@ -562,7 +562,8 @@ src/economy/          the economy's shared rules (game and meet server): currenc
                       levels.js (XP per race by mode and place, the daily cap, the level curve),
                       payouts.js (a public live room's prize money, medals, Gems and XP, for the server),
                       contracts.js (offers, daily pay, the weekly clause, probation, losing one),
-                      items.js (the gear catalog: slots, levels that unlock it, its art)
+                      items.js (the gear catalog: slots, levels that unlock it, prices, its art),
+                      shop.js (the shop: the same for everyone each day, what you can buy)
 src/online/
   ghost.js            records a run's inputs and replays them as a ghost (pure)
   firebase.js         online leaderboards: lazy-loaded Firebase SDK, anonymous and Google sign-in, Firestore
@@ -573,6 +574,7 @@ src/online/
   wallet.js           your wallet, read-only (the meet server writes it), with the last balance kept for offline
   xp.js               reports each race you finish for XP (queued offline), and your level as last told
   contracts.js        your contract: opened at the menu (collects the day's pay), offers, signing
+  shop.js             the shop: today's (worked out from the date), buying, the gear you own
   liveResults.js      a live room's standings from every player's results (the server settles with it)
   live.js             live play: the waiting rooms (public, and each squad's Practice), shared start times, sending and receiving players
   liveRun.js          another player's runner in a live 100m, replayed as their taps arrive
@@ -594,6 +596,8 @@ src/scenes/profileScene.js      your username (unique, saved in Firebase), Googl
 src/scenes/lobbyScene.js        the live waiting room (any event, or the tournament)
 src/scenes/podiumScene.js       the podium after a live event: the top three, their medals, what you won
 src/scenes/contractScene.js     your contract (pay, the clause this week), your offers and Sign, the standards
+src/scenes/shopScene.js         the shop: this week's and today's gear, the basics; buying and wearing it
+src/scenes/gearPreview.js       gear close up on your athlete (the shop's cards, the Athlete Maker's Gear tab)
 src/meet/             squad meets (docs/meets.md): the rules shared with the meet server (rules, scoring,
                       heats, relayLegs, protocol), the meet you're in (meet.js), sign-up and lobby
                       (meetScene.js), standings between events (meetStandingsScene.js)

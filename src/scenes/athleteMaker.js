@@ -6,6 +6,8 @@ import { relaxed, emote } from '../brawl/poses.js';
 import { LOOK, parse, encode, randomLook, cleanAthleteName, lookColors, DEFAULT_NAME, NAME_MAX } from '../athletes/custom.js';
 import { SLOTS, SLOT_NAMES, slotItems, itemAt, noGear, owns } from '../economy/items.js';
 import { myLevel } from '../online/xp.js';
+import { myInventory, openShop } from '../online/shop.js';
+import { drawWearing, RARITY_COLOR } from './gearPreview.js';
 import { CONFIG } from '../config.js';
 import { getCustom, setCustom, setCharacter, getPlayerName } from '../core/storage.js';
 import { flow } from '../flow.js';
@@ -21,8 +23,7 @@ const ROWS = [
   { f: 'build', label: 'BUILD', tile: 'body' },
 ];
 /** The Gear tab's rows: a slot each (economy/items.js), its tiles close up on where it's worn. */
-const GEAR_ROWS = SLOTS.map((slot) => ({ slot, label: SLOT_NAMES[slot].toUpperCase(), tile: { spikes: 'feet', socks: 'feet', headband: 'head', glasses: 'head', sleeves: 'torso', kit: 'torso' }[slot] }));
-const RARITY = { common: null, rare: '#3B6CC2', epic: '#C2407E', legendary: '#F2B632' };
+const GEAR_ROWS = SLOTS.map((slot) => ({ slot, label: SLOT_NAMES[slot].toUpperCase() }));
 const REACTIONS = ['flex', 'dance', 'dab', 'taunt', 'laugh'];
 /** The preview's warm-up, round and round: [what, seconds]. */
 const WARMUP = [['stand', 2.2], ['run', 2.4], ['stand', 1.4], ['emote', 2.2]];
@@ -59,6 +60,14 @@ export class AthleteMakerScene {
     this.lookTab = new Button({ label: 'Look', icon: 'athlete', look: 'chip', h: 44, onTap: () => this.showTab('look') });
     this.gearTab = new Button({ label: 'Gear', icon: 'star', look: 'chip', h: 44, onTap: () => this.showTab('gear') });
     this.level = myLevel()?.level ?? 1; // gear unlocks by level (a guest: level 1)
+    this.inventory = myInventory(); // and what you've bought in the Shop (as last told; asked again now)
+    openShop()
+      .then((a) => {
+        if (!a || this.game.scene !== this) return;
+        this.inventory = a.inventory ?? [];
+        this.layout(this.game.view);
+      })
+      .catch(() => {});
     this.note = null; // { text, t }: a line under the picks (an item's name, or why it's locked)
     this.layout(this.game.view);
   }
@@ -71,6 +80,11 @@ export class AthleteMakerScene {
     this.tab = tab;
     this.note = null;
     this.layout(this.game.view);
+  }
+
+  /** What you have, for owns(): your level and the gear you've bought. */
+  get you() {
+    return { level: this.level, inventory: this.inventory };
   }
 
   /** The athlete as it stands, shaped like a roster athlete. */
@@ -123,7 +137,8 @@ export class AthleteMakerScene {
       const t = Math.floor(Math.min(rowH - 8, (rw - labelW) / most - gap));
       this.rows = GEAR_ROWS.map((r, i) => {
         const y = rowsTop + i * rowH;
-        const items = [null, ...slotItems(r.slot)]; // none first
+        // None first, then the starter set (locked until its level) and what you've bought; the rest is in the Shop.
+        const items = [null, ...slotItems(r.slot).filter((i) => i.price == null || this.inventory.includes(i.id))];
         return { ...r, y, h: rowH, labelX: rx, items, tiles: items.map((_, k) => ({ x: rx + labelW + k * (t + gap), y: y + (rowH - t) / 2, s: t })) };
       });
       this.noteY = bottom - 12;
@@ -165,7 +180,7 @@ export class AthleteMakerScene {
 
   /** Puts on `item` in `slot` (null: nothing there), if it's unlocked; else says what unlocks it. */
   wear(slot, item) {
-    if (!owns(item, { level: this.level })) {
+    if (!owns(item, this.you)) {
       this.note = { text: `${item.name}: unlocks at level ${item.level} (you're level ${this.level})`, t: 3, warn: true };
       return;
     }
@@ -200,7 +215,7 @@ export class AthleteMakerScene {
 
   save() {
     // Only gear you have goes on (a level-locked item can't be picked, but an old code might carry one).
-    const gear = Object.fromEntries(SLOTS.map((slot) => [slot, owns(itemAt(slot, this.gear[slot]), { level: this.level }) ? this.gear[slot] : 0]));
+    const gear = Object.fromEntries(SLOTS.map((slot) => [slot, owns(itemAt(slot, this.gear[slot]), this.you) ? this.gear[slot] : 0]));
     const code = encode(this.look, this.name, gear);
     setCustom(code);
     setCharacter(code);
@@ -256,7 +271,7 @@ export class AthleteMakerScene {
       else row.tiles.forEach((tl, k) => this.drawTile(ctx, row, tl, k, k === this.look[row.f], colors));
     }
     if (this.tab === 'gear') {
-      const note = this.note ?? { text: `Level ${this.level}: more gear unlocks as you level up` };
+      const note = this.note ?? { text: `Level ${this.level}: more gear unlocks as you level up, and more is in the Shop` };
       text(ctx, note.text, this.noteX, this.noteY, { size: 16, font: 'body', weight: 700, color: note.warn ? '#ffb35c' : 'rgba(245,234,208,0.8)', maxWidth: view.w - this.noteX + (view.w - this.noteX) });
     }
 
@@ -271,7 +286,7 @@ export class AthleteMakerScene {
   drawGearTile(ctx, row, tl, item) {
     const { x, y, s } = tl;
     const on = (item?.n ?? 0) === this.gear[row.slot];
-    const locked = !owns(item, { level: this.level });
+    const locked = !owns(item, this.you);
     if (on) {
       ctx.fillStyle = PAL.gold;
       chamfer(ctx, x - 4, y - 4, s + 8, s + 8, 6);
@@ -283,21 +298,7 @@ export class AthleteMakerScene {
     ctx.save();
     chamfer(ctx, x, y, s, s, 5);
     ctx.clip();
-    const colors = lookColors(this.look, { ...this.gear, [row.slot]: item?.n ?? 0 });
-    const c = { ...colors, height: 1, girth: 1 };
-    const pose = relaxed(0, 0, 0);
-    if (row.tile === 'feet') {
-      const H = s * 2.4;
-      drawFigure(ctx, x + s * 0.4, y + s * 0.74, H, pose, c, y + s * 0.74);
-    } else if (row.tile === 'head') {
-      const H = s * 3.2;
-      const feet = y + s * 0.58 + 0.93 * H;
-      drawFigure(ctx, x + s * 0.5, feet, H, pose, c, feet);
-    } else {
-      const H = s * 1.5;
-      const feet = y + s * 0.52 + 0.64 * H;
-      drawFigure(ctx, x + s * 0.5, feet, H, pose, c, feet);
-    }
+    drawWearing(ctx, x, y, s, this.look, { ...this.gear, [row.slot]: item?.n ?? 0 }, row.slot);
     if (!item) {
       // Nothing: a slash across.
       ctx.strokeStyle = 'rgba(38,34,79,0.45)';
@@ -307,7 +308,7 @@ export class AthleteMakerScene {
       ctx.lineTo(x + s * 0.8, y + s * 0.2);
       ctx.stroke();
     }
-    const tint = item && RARITY[item.rarity];
+    const tint = item && RARITY_COLOR[item.rarity];
     if (tint) {
       ctx.fillStyle = tint;
       ctx.beginPath();

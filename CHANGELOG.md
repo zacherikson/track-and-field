@@ -6,6 +6,17 @@ Gameplay and tuning changes, newest first. When you change a number in
 From 1.0.0 every push to master bumps `src/version.js` and heads its section
 here with the version.
 
+## 1.2.1 — The pole vault's sky meets the bleachers
+- **What happened:** the pole vault draws a tall sky (for the camera to rise
+  into) that fades to pale at the stands, and at Collegiate and High School
+  the bleachers' band then started its own, darker sky, so a hard line ran
+  across the top of the band. Not new in 1.1.5: it's been there since the
+  bleacher venues came in.
+- **Fix:** the vault's sky runs down to the boards and the band leaves its
+  own out (`vaultArena.js` `drawStands` → `{ sky: false }`); the range and
+  the town still stand in front of it. `drawBleacherStadium`'s 1.1.5
+  `backdrop` option is now two, `sky` and `range`.
+
 ## 1.2.0 — The wallet (economy phase 1)
 The foundation for the economy (the Economy & Progression design doc): a
 wallet only the server can pay into. Nothing earns money yet; live prize

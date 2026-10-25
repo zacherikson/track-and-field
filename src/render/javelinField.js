@@ -213,7 +213,7 @@ export class JavelinRenderer extends RunwayRenderer {
     this.drawSkyline(ctx, view, x, hy);
     ctx.save();
     ctx.translate(0, dy);
-    this.drawStands(ctx, view, camera, { backdrop: !bleachers });
+    this.drawStands(ctx, view, camera, bleachers ? { sky: false, range: false } : undefined);
     this.drawBoards(ctx, view, camera, this.L.boardsTop, this.L.grassTop - this.L.boardsTop, 0.24, 13);
     ctx.restore();
     // The field, seen side on, with distance boards along the far edge.

@@ -25,7 +25,12 @@ export class VaultRenderer extends RunwayRenderer {
     g.addColorStop(0, this.venue.sky.high);
     g.addColorStop(1, this.venue.sky.bottom);
     ctx.fillStyle = g;
-    ctx.fillRect(0, top, view.w, this.L.standsTop + 40 - top);
+    // Down to the boards: bleachers (Collegiate, High School) stand in front of this sky, not one of their own.
+    ctx.fillRect(0, top, view.w, this.L.boardsTop - top);
+  }
+
+  drawStands(ctx, view, camera, opts) {
+    return super.drawStands(ctx, view, camera, { sky: false, ...opts });
   }
 
   drawTrack(ctx, view, camera) {

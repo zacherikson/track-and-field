@@ -28,6 +28,16 @@ export const LOOK = {
   build: [1, 1.4, 1.8, 2.3], // drawFigure's girth (Chonk is 2.3)
 };
 
+/**
+ * The two looks a new player starts from (scenes/onboarding.js), as LOOK
+ * indexes: short hair or a ponytail, in a blue or a coral kit. The skin tone
+ * is picked alongside; the rest changes later in the Athlete Maker.
+ */
+export const STARTERS = {
+  male: { skin: 2, style: 1, hair: 1, shirt: 7, shorts: 0, height: 3, build: 0 },
+  female: { skin: 2, style: 4, hair: 1, shirt: 3, shorts: 0, height: 3, build: 0 },
+};
+
 /** The LOOK lists, in the order their digits go in a code. */
 export const FIELDS = ['skin', 'style', 'hair', 'shirt', 'shorts', 'height', 'build'];
 

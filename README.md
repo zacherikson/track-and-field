@@ -131,6 +131,17 @@ Squad tab has ⚔ Practice: live events with just your squad (see Squads).
 ‹ Back (or Esc) goes back a step, and Menu after a race comes back to the
 page you raced from.
 
+**First launch** ([`src/scenes/onboarding.js`](src/scenes/onboarding.js)) sets
+you up before the menu, in three steps: **Account** (Sign in with Google, or
+Play as guest), **Username** (claimed on the server, so it's yours alone) and
+**Athlete** (male or female, and a skin tone). A step you've already done is
+skipped: a player from before it came in goes through it once too (an
+athlete they'd made is simply theirs, no picking again), and signing out runs it again for the next
+player. **The Athlete tab** is just you: your athlete warming up, your
+username, level and height, **Customize** (the Athlete Maker: hair, kit,
+height, build, gear) and **Profile**, and a guest's Sign in with Google. The
+six cast athletes are rivals only.
+
 **❓ How to play** (top of the Play tab) has a page per event, the five and
 the special events: each step is the control as it looks on the track (the
 green target, the orange pads, HOLD, LET GO, 1 2 3, PASS / TAKE…) and one
@@ -158,7 +169,7 @@ who gets hurdled, tripped over, and hands out a red card for it, a conga line
 the referee ends up joining, and a relay handover that sprints off the wrong
 way. On
 Play they're on the track, in the far lanes either side of your athlete (who
-never takes part); on Athlete along the bottom under the cards; on Squad on
+never takes part); on Athlete along the bottom under your card; on Squad on
 the hills (not once you're in a squad: Practice is there). Each skit plays
 either way round, two at a time, a few seconds apart. They're only scenery:
 nothing to tap. The skits are in

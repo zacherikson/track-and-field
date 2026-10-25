@@ -64,3 +64,22 @@ test('playing as the athlete you made: still five rivals, the closest shirt sits
   assert.deepEqual(rivals('sprint100').map((c) => c.id), CHARACTERS.filter((c) => c.id !== 'okoro').map((c) => c.id));
   setCharacter(null);
 });
+
+test('the two starting looks (first-launch setup) are valid picks, in any skin tone', async () => {
+  const { STARTERS } = await import('../src/athletes/custom.js');
+  for (const [id, look] of Object.entries(STARTERS)) {
+    for (let skin = 0; skin < LOOK.skin.length; skin++) {
+      const code = encode({ ...look, skin }, 'Rookie');
+      assert.deepEqual(parse(code)?.look, { ...look, skin }, id);
+      assert.ok(athleteFromCode(code), id);
+    }
+  }
+  assert.notEqual(LOOK.style[STARTERS.male.style], LOOK.style[STARTERS.female.style]);
+});
+
+test('only the name a new phone is given counts as made up', async () => {
+  globalThis.localStorage ??= { getItem: () => null, setItem: () => {}, removeItem: () => {} };
+  const { isMadeUpName } = await import('../src/core/storage.js');
+  assert.ok(isMadeUpName('Runner 1234'));
+  for (const n of ['Runner', 'Runner 12345', 'runner 1234', 'Zippy', '', null]) assert.ok(!isMadeUpName(n), String(n));
+});

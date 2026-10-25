@@ -3,8 +3,10 @@ import { athleteFromCode } from './custom.js';
 import { survival } from '../survival/survival.js';
 
 /**
- * The athletes (original characters). You pick one (the Athlete tab) and they
- * do every event; in each event the other five are your rivals. Each has a kit, a skin tone and a hairstyle (`hair`
+ * The athletes (original characters): the Pro rivals, and the cast of the
+ * sideshow. You race as an athlete of your own (custom.js), set up on first
+ * launch (scenes/onboarding.js); before that you picked one of these.
+ * Each has a kit, a skin tone and a hairstyle (`hair`
  * color + `style`, drawn by drawFigure) so they read apart at a glance, and
  * Chonk has a heavier build (`girth`), Joey is two-thirds the height (`height`).
  * An athlete with drawn art names its sheet with `sprite` (e.g. `sprite: 'juno'`
@@ -60,7 +62,7 @@ export function myCustom() {
   return athleteFromCode(getCustom());
 }
 
-/** Your athlete (chosen on the Athlete tab, remembered on this device and your account). */
+/** Your athlete (made on first launch or on the Athlete tab, remembered on this device and your account). */
 export function myAthlete() {
   return byId(getCharacter()) ?? CHARACTERS[0];
 }

@@ -1,8 +1,8 @@
 import { Button, text, slab, chamfer, titlePlate, PAL } from '../core/ui.js';
-import { getPlayerName, setPlayerName, cleanName, forgetProgress } from '../core/storage.js';
-import { setUsername, accountInfo, startGoogleSignIn, signOut } from '../online/firebase.js';
-import { forgetBests, postBests } from '../online/bests.js';
-import { syncProgress } from '../online/progress.js';
+import { getPlayerName, setPlayerName, cleanName, forgetProgress, setOnboarded } from '../core/storage.js';
+import { setUsername, accountInfo, signOut } from '../online/firebase.js';
+import { forgetBests } from '../online/bests.js';
+import { goSignIn, completeSignIn, signInError, usernameError } from '../online/account.js';
 import { renameInSquad } from '../online/squads.js';
 import { flow } from '../flow.js';
 import { cachedWallet, refreshWallet, forgetWallet } from '../online/wallet.js';
@@ -98,10 +98,7 @@ export class ProfileScene {
       .catch((e) => {
         // The name wasn't claimed: the profile and claim are written together,
         // before anything else, so nothing changed.
-        let msg = 'Couldn’t reach the server. Your name wasn’t changed.';
-        if (e?.message === 'taken') msg = `“${name}” is taken. Try another name.`;
-        else if (e?.code === 'permission-denied') msg = 'The server didn’t accept that name. Try another.';
-        this.status = { text: msg, color: WARN };
+        this.status = { text: usernameError(e, name), color: WARN };
       })
       .finally(() => {
         this.saving = false;
@@ -118,14 +115,12 @@ export class ProfileScene {
   signIn() {
     this.busy = true;
     this.status = { text: 'Opening Google…', color: 'rgba(245,234,208,0.75)' };
-    // Back from Google's page without signing in (the browser kept this page as it was).
-    addEventListener('pageshow', (e) => {
-      if (!e.persisted) return;
-      this.busy = false;
-      this.status = null;
-    }, { once: true });
     try {
-      startGoogleSignIn();
+      // Back from Google's page without signing in: as you were.
+      goSignIn(() => {
+        this.busy = false;
+        this.status = null;
+      });
     } catch {
       this.busy = false;
       this.status = { text: 'Couldn’t open Google’s sign-in page.', color: WARN };
@@ -135,21 +130,10 @@ export class ProfileScene {
   finishSignIn(signingIn) {
     this.busy = true;
     this.status = { text: 'Signing in…', color: 'rgba(245,234,208,0.75)' };
-    signingIn
-      .then(async ({ switched }) => {
-        // What you did as a guest goes on the leaderboard now (only where it beats your entry).
-        this.status = { text: 'Signed in. Putting your bests on the leaderboard…', color: OK };
-        const posted = await postBests();
-        if (switched) {
-          // That Google account already had a player: this phone is them now.
-          // (This phone's campaign progress and athlete are merged into theirs as the menu loads.)
-          forgetBests();
-          this.status = { text: 'Loading your player…', color: OK };
-          location.reload();
-          return;
-        }
-        // Your campaign progress, top marks and athlete go up to your account too.
-        await syncProgress().catch((e) => console.warn('progress not synced', e));
+    // What you did as a guest goes on the leaderboard (only where it beats your entry), your progress and athlete to your account.
+    completeSignIn(signingIn, (t) => (this.status = { text: t, color: OK }))
+      .then(({ reloading, posted }) => {
+        if (reloading) return;
         this.status = { text: posted ? 'Signed in. Your bests are on the online leaderboard.' : 'Signed in. Your name, bests and progress are saved to your Google account.', color: OK };
       })
       .catch((e) => {
@@ -175,6 +159,7 @@ export class ProfileScene {
         forgetXp();
         forgetContract();
         forgetInventory();
+        setOnboarded(false); // the next player sets up from the start
         location.reload();
       })
       .catch(() => {
@@ -315,20 +300,4 @@ function walletLine(account, wallet) {
   if (account?.guest) return 'Sign in to earn and keep your winnings';
   if (!wallet) return account === 'offline' ? 'Shown once you’re back online' : 'Checking…';
   return CURRENCIES.map((c) => formatAmount(c, wallet[c])).join('  ·  ');
-}
-
-/** What to say when signing in didn't work. */
-function signInError(e) {
-  switch (e?.code ?? e?.message) {
-    case 'auth/user-cancelled':
-      return 'Sign-in cancelled.';
-    case 'auth/state-mismatch':
-      return 'Sign-in didn’t finish. Try again.';
-    case 'auth/operation-not-allowed':
-      return 'Google sign-in isn’t switched on for this game yet.';
-    case 'auth/network-request-failed':
-      return 'Couldn’t reach the server. Check your connection and try again.';
-    default:
-      return `Couldn’t sign in${e?.code ? ` (${e.code})` : ''}.`;
-  }
 }

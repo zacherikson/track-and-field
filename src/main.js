@@ -1,8 +1,9 @@
 import { Game } from './core/game.js';
 import { HomeScene } from './scenes/homeScene.js';
 import { ProfileScene } from './scenes/profileScene.js';
+import { OnboardingScene } from './scenes/onboarding.js';
 import { loadOverrides } from './tuning/store.js';
-import { canTune } from './core/storage.js';
+import { canTune, isOnboarded } from './core/storage.js';
 import { finishGoogleSignIn } from './online/firebase.js';
 import { CHARACTERS } from './athletes/roster.js';
 import { preloadSprites } from './athletes/sprites.js';
@@ -26,8 +27,14 @@ const signingIn = finishGoogleSignIn();
 await loadFonts();
 
 const game = new Game(document.getElementById('game'));
-game.start(signingIn ? new ProfileScene(signingIn) : new HomeScene(invite ? 'squad' : 'play'));
-if (invite && !signingIn) openInvite(game, invite);
+if (!isOnboarded()) {
+  // A new player (or the first time since it came in): set up first, sign-in, username and athlete.
+  // Back from Google's sign-in mid-setup lands here too; an invite waits until you're done.
+  game.start(new OnboardingScene(signingIn, invite));
+} else {
+  game.start(signingIn ? new ProfileScene(signingIn) : new HomeScene(invite ? 'squad' : 'play'));
+  if (invite && !signingIn) openInvite(game, invite);
+}
 
 // Handy from the desktop devtools console.
 window.game = game;

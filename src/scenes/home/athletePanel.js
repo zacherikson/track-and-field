@@ -1,24 +1,24 @@
 import { CONFIG } from '../../config.js';
 import { Button, text, slab, chamfer, titlePlate, PAL } from '../../core/ui.js';
-import { drawIcon } from '../../core/icons.js';
 import { pinebrook } from '../../render/posterScenery.js';
-import { drawFigure, runPose, POSES } from '../../athletes/stickFigure.js';
-import { CHARACTERS, myAthlete, myCustom, heightOf } from '../../athletes/roster.js';
-import { setCharacter } from '../../core/storage.js';
+import { drawFigure, runPose } from '../../athletes/stickFigure.js';
+import { myAthlete, heightOf } from '../../athletes/roster.js';
+import { cleanAthleteName } from '../../athletes/custom.js';
+import { getPlayerName } from '../../core/storage.js';
+import { isSignedIn } from '../../online/firebase.js';
+import { myLevel } from '../../online/xp.js';
+import { goSignIn } from '../../online/account.js';
 import { Sideshow } from './sideshow.js';
 import { flow } from '../../flow.js';
 
 
 /**
- * The home screen's left tab: your athlete, who does every event. Along the
- * top, a cream card in a flat spotlight: them warming up in Pinebrook Park,
- * their shirt colour, name, tagline and height; below, on a band, everyone as
- * cream cards (yours gold), and tapping one makes them yours. Remembered on this device and your
- * account (online/progress.js).
- *
- * The last card is the athlete you make yourself (the Athlete Maker,
- * scenes/athleteMaker.js): CREATE until you have, then them. Tap it again
- * once they're yours (or Edit on the big card) to change them.
+ * The home screen's left tab: you. A cream card in a flat spotlight: your
+ * athlete warming up in Pinebrook Park, your username, level and height,
+ * and Customize (the Athlete Maker, scenes/athleteMaker.js) and Profile.
+ * A guest gets Sign in with Google there too. Under it, on a band, the cast
+ * up to no good (they're your rivals: you don't pick them any more; everyone
+ * starts as an athlete of their own, scenes/onboarding.js).
  */
 export class AthletePanel {
   constructor(home) {
@@ -28,65 +28,74 @@ export class AthletePanel {
 
   enter() {
     this.phase = 0;
-    this.flashT = 0; // just changed: the spotlight lights up
-    this.cards = [...CHARACTERS.map((c) => ({ c, x: 0, y: 0, w: 0, h: 0, pressT: 0 })), { c: myCustom(), maker: true, x: 0, y: 0, w: 0, h: 0, pressT: 0 }];
-    this.editBtn = new Button({ label: 'Edit', icon: 'edit', look: 'chip', w: 104, h: 42, onTap: () => flow.maker(this.game) });
-    this.sideshow = new Sideshow(); // everyone, up to no good under the cards
+    this.status = null; // a sign-in that couldn't start
+    this.busy = false;
+    this.customizeBtn = new Button({ label: 'Customize', icon: 'edit', w: 200, h: 52, size: 21, color: PAL.orange, lip: PAL.orangeShade, onTap: () => flow.maker(this.game) });
+    this.profileBtn = new Button({ label: 'Profile', icon: 'profile', look: 'chip', w: 140, h: 46, onTap: () => flow.profile(this.game, 'athlete') });
+    this.signInBtn = new Button({ label: 'Sign in with Google', w: 250, h: 46, size: 18, color: PAL.blue, lip: PAL.blueShade, onTap: () => this.signIn() });
+    this.sideshow = new Sideshow(); // the cast, up to no good under your card
+  }
+
+  get buttons() {
+    return [this.customizeBtn, this.profileBtn, ...(isSignedIn() ? [] : [this.signInBtn])];
   }
 
   /** `bottom`: the top of the tab bar. */
   layout(view, bottom) {
     const margin = 20 + Math.max(view.safe.l, view.safe.r);
-    const gap = 12;
-    const n = this.cards.length;
-    const cw = Math.min(130, (view.w - margin * 2 - gap * (n - 1)) / n);
-    const ctotal = cw * n + gap * (n - 1);
-    const ch = Math.min(160, bottom - CARDS_Y - 14);
-    this.cards.forEach((k, i) => Object.assign(k, { x: (view.w - ctotal) / 2 + i * (cw + gap), y: CARDS_Y, w: cw, h: ch }));
-    const sw = Math.min(580, view.w - margin * 2);
-    this.spot = { x: view.w / 2 - sw / 2, y: 66, w: sw, h: BAND_Y - 66 - 16 };
-    Object.assign(this.editBtn, { x: this.spot.x + sw - this.editBtn.w - 12, y: this.spot.y + this.spot.h - this.editBtn.h - 16 });
+    const sw = Math.min(680, view.w - margin * 2);
+    const sh = Math.min(300, bottom - 66 - 60);
+    this.spot = { x: view.w / 2 - sw / 2, y: 66, w: sw, h: sh };
+    this.bandY = this.spot.y + sh + 16;
     this.bottom = bottom;
+    this.placeButtons();
+  }
+
+  placeButtons() {
+    const b = this.spot;
+    const vw = Math.min(220, b.w * 0.34);
+    const tx = b.x + vw + 30;
+    const y = b.y + b.h - 6 - 18 - this.customizeBtn.h;
+    Object.assign(this.customizeBtn, { x: tx, y });
+    Object.assign(this.profileBtn, { x: tx + this.customizeBtn.w + 12, y: y + 3 });
+    Object.assign(this.signInBtn, { x: tx, y: b.y + 140 }); // a guest's, under its note
   }
 
   onShow() {}
 
-  /** Tapped a card: that athlete becomes yours. The maker's card: make one (or, already yours, change them). */
-  tapCard(card) {
-    if (card.maker && (!card.c || card.c === myAthlete())) return flow.maker(this.game);
-    this.pick(card.c);
-  }
-
-  pick(c) {
-    if (c === myAthlete()) return;
-    setCharacter(c.id);
-    this.flashT = 0.5;
+  signIn() {
+    if (this.busy) return;
+    this.busy = true;
+    this.status = null;
+    try {
+      // Back from Google's page without signing in: as you were. Signed in: the Profile screen says how it went.
+      goSignIn(() => (this.busy = false));
+    } catch {
+      this.busy = false;
+      this.status = 'Couldn’t open Google’s sign-in page.';
+    }
   }
 
   /** `events`: this tab's taps and keys (the home screen has sorted out swipes). */
   update(dt, events) {
     this.phase += dt * 9;
-    this.flashT = Math.max(0, this.flashT - dt);
     this.sideshow.update(dt);
-    for (const k of this.cards) k.pressT = Math.max(0, k.pressT - dt);
-    this.editBtn.update(dt);
+    const buttons = this.buttons;
+    this.signInBtn.enabled = !this.busy;
+    for (const b of buttons) b.update(dt);
     for (const e of events) {
       if (e.type === 'key') {
-        // ← / →: the next athlete along.
-        const step = e.code === 'ArrowRight' ? 1 : e.code === 'ArrowLeft' ? -1 : 0;
-        const list = this.cards.map((k) => k.c).filter(Boolean);
-        if (step) this.pick(list[(list.indexOf(myAthlete()) + step + list.length) % list.length]);
-        else if (e.code === 'KeyE' || e.code === 'KeyM') flow.maker(this.game);
+        if (e.code === 'KeyE' || e.code === 'KeyM') flow.maker(this.game);
         continue;
       }
       if (e.type !== 'down') continue;
-      if (myAthlete().custom && this.editBtn.tap(e.x, e.y)) return;
-      const card = this.cards.find((k) => e.x >= k.x && e.x <= k.x + k.w && e.y >= k.y && e.y <= k.y + k.h);
-      if (card) {
-        card.pressT = 0.12;
-        this.tapCard(card);
+      if (buttons.some((b) => b.tap(e.x, e.y))) {
         if (this.game.scene !== this.home) return;
+        continue;
       }
+      // Tapping your athlete opens the Athlete Maker too.
+      const s = this.spot;
+      if (e.x >= s.x && e.x <= s.x + Math.min(220, s.w * 0.34) && e.y >= s.y && e.y <= s.y + s.h) return flow.maker(this.game);
     }
   }
 
@@ -96,26 +105,22 @@ export class AthletePanel {
     ctx.beginPath();
     ctx.moveTo(view.w / 2 - 60, 0);
     ctx.lineTo(view.w / 2 + 60, 0);
-    ctx.lineTo(view.w / 2 + 330, BAND_Y - 2);
-    ctx.lineTo(view.w / 2 - 330, BAND_Y - 2);
+    ctx.lineTo(view.w / 2 + 380, this.bandY - 2);
+    ctx.lineTo(view.w / 2 - 380, this.bandY - 2);
     ctx.fill();
     titlePlate(ctx, view, 'YOUR ATHLETE', '', { face: PAL.gold, ink: PAL.ink });
-    const me = myAthlete();
-    this.renderSpot(ctx, me);
-    // Everyone, on a band with a gold rule.
+    // The band under it, with a gold rule, and the cast's skits along it.
     ctx.fillStyle = PAL.ink2;
-    ctx.fillRect(0, BAND_Y, view.w, this.bottom - BAND_Y);
+    ctx.fillRect(0, this.bandY, view.w, this.bottom - this.bandY);
     ctx.fillStyle = PAL.gold;
-    ctx.fillRect(0, BAND_Y, view.w, 3);
+    ctx.fillRect(0, this.bandY, view.w, 3);
     this.sideshow.draw(ctx, this.sideshowSlots(view), { w: view.w, h: this.bottom });
-    for (const k of this.cards) this.drawCard(ctx, k, k.c === me);
+    this.renderSpot(ctx, myAthlete());
   }
 
-  /** Where the sideshow's skits play: along the bottom of the band, under the cards (if there's room). */
+  /** Where the sideshow's skits play: along the band under your card (if there's room). */
   sideshowSlots(view) {
-    const k = this.cards[0];
-    const room = this.bottom - (k.y + k.h);
-    const H = Math.min(60, room - 18);
+    const H = Math.min(60, this.bottom - this.bandY - 18);
     if (H < 36) return [];
     return [
       { x: view.w * 0.22, ground: this.bottom - 12, H },
@@ -123,64 +128,42 @@ export class AthletePanel {
     ];
   }
 
-  /** Your athlete's card: them warming up in Pinebrook Park, their shirt colour, name, tagline and height. */
+  /** Your card: your athlete warming up in Pinebrook Park, your username, level and height, and the buttons. */
   renderSpot(ctx, c) {
     const b = this.spot;
     const lipH = 6;
-    slab(ctx, b.x, b.y, b.w, b.h, { face: this.flashT > 0 ? '#FBF3DF' : PAL.cream, lip: PAL.creamShade, lipH, c: 8 });
+    slab(ctx, b.x, b.y, b.w, b.h, { face: PAL.cream, lip: PAL.creamShade, lipH, c: 8 });
     const fh = b.h - lipH;
-    const vw = Math.min(180, b.w * 0.32);
+    const vw = Math.min(220, b.w * 0.34);
     ctx.save();
     chamfer(ctx, b.x, b.y, vw, fh, 8);
     ctx.clip();
-    pinebrook(ctx, b.x - 60, b.y - 20, vw + 120, fh + 20, { trackH: 34, clouds: [[0.5, 0.2, 0.09]] });
+    pinebrook(ctx, b.x - 60, b.y - 20, vw + 120, fh + 20, { trackH: 40, clouds: [[0.5, 0.2, 0.09]] });
     ctx.restore();
     ctx.fillStyle = shirtBar(c);
     ctx.fillRect(b.x + vw, b.y, 8, fh);
     const fx = b.x + vw / 2;
-    const ground = b.y + fh - 16;
+    const ground = b.y + fh - 18;
     ctx.fillStyle = 'rgba(38,34,79,0.35)';
     ctx.beginPath();
-    ctx.ellipse(fx, ground + 2, 26, 6, 0, 0, Math.PI * 2);
+    ctx.ellipse(fx, ground + 2, 28, 6, 0, 0, Math.PI * 2);
     ctx.fill();
-    drawFigure(ctx, fx, ground, Math.min(112, fh - 24) * heightOf(c.colors), runPose(this.phase * 0.8, 0.9), c.colors, ground);
+    drawFigure(ctx, fx, ground, Math.min(150, fh - 40) * heightOf(c.colors), runPose(this.phase * 0.8, 0.9), c.colors, ground);
+
     const tx = b.x + vw + 30;
     const tw = b.x + b.w - 16 - tx;
-    text(ctx, c.name.toUpperCase(), tx, b.y + fh * 0.3, { size: 50, font: 'display', align: 'left', track: 2, color: PAL.ink, maxWidth: tw });
-    text(ctx, c.tagline, tx + 2, b.y + fh * 0.6, { size: 19, font: 'body', align: 'left', color: PAL.ink, maxWidth: tw });
-    text(ctx, `${(CONFIG.figure.height * heightOf(c.colors)).toFixed(2)} m`, tx + 2, b.y + fh * 0.8, { size: 17, font: 'body', align: 'left', color: PAL.muted, maxWidth: tw });
-    if (c.custom) this.editBtn.draw(ctx);
-  }
-
-  /** An athlete card: cream, with their shirt colour along the top; `on`: yours (gold, and warming up). */
-  drawCard(ctx, k, on) {
-    const { c } = k;
-    const lipH = 5;
-    const pressed = k.pressT > 0;
-    if (!c) return this.drawCreate(ctx, k, pressed);
-    slab(ctx, k.x, k.y, k.w, k.h, { face: on ? PAL.gold : PAL.cream, lip: on ? PAL.goldShade : PAL.creamShade, lipH, c: 7, pressed });
-    const y = k.y + (pressed ? lipH - 1 : 0);
-    ctx.fillStyle = shirtBar(c);
-    ctx.fillRect(k.x, y + 10, k.w, 8);
-    const ground = y + k.h - lipH - 36;
-    drawFigure(ctx, k.x + k.w / 2, ground, Math.min(76, k.h - 64) * heightOf(c.colors), on ? runPose(this.phase, 0.6) : POSES.stand, c.colors, ground);
-    text(ctx, c.name.toUpperCase(), k.x + k.w / 2, y + k.h - lipH - 16, { size: Math.min(21, Math.round(k.w * 0.17)), font: 'display', track: 1, color: PAL.ink, maxWidth: k.w - 12 });
-    if (k.maker) drawIcon(ctx, 'edit', k.x + k.w - 16, y + 32, 18, PAL.ink); // yours to change
-  }
-
-  /** The maker's card before you've made anyone: a big plus, CREATE. */
-  drawCreate(ctx, k, pressed) {
-    const lipH = 5;
-    slab(ctx, k.x, k.y, k.w, k.h, { face: PAL.ink3, lip: PAL.inkShade, lipH, c: 7, pressed });
-    const y = k.y + (pressed ? lipH - 1 : 0);
-    const cy = y + (k.h - lipH) * 0.42;
-    ctx.fillStyle = PAL.gold;
-    ctx.beginPath();
-    ctx.arc(k.x + k.w / 2, cy, Math.min(30, k.w * 0.28), 0, Math.PI * 2);
-    ctx.fill();
-    drawIcon(ctx, 'plus', k.x + k.w / 2, cy, Math.min(36, k.w * 0.34), PAL.ink);
-    text(ctx, 'CREATE', k.x + k.w / 2, y + k.h - lipH - 30, { size: Math.min(21, Math.round(k.w * 0.17)), font: 'display', track: 1, color: PAL.cream, maxWidth: k.w - 12 });
-    text(ctx, 'your own', k.x + k.w / 2, y + k.h - lipH - 12, { size: 14, font: 'body', weight: 700, color: 'rgba(245,234,208,0.75)', maxWidth: k.w - 12 });
+    const name = getPlayerName();
+    text(ctx, name.toUpperCase(), tx, b.y + 46, { size: 46, font: 'display', align: 'left', track: 2, color: PAL.ink, maxWidth: tw });
+    // Level (signed in) or guest; the athlete's own name if it isn't your username; their height.
+    const signedIn = isSignedIn();
+    const lv = signedIn ? myLevel() : null;
+    const bits = [signedIn ? (lv ? `Level ${lv.level}` : null) : 'Guest', `${(CONFIG.figure.height * heightOf(c.colors)).toFixed(2)} m`];
+    if (cleanAthleteName(name).toLowerCase() !== c.name.toLowerCase()) bits.splice(1, 0, `races as ${c.name}`);
+    text(ctx, bits.filter(Boolean).join('  ·  '), tx + 2, b.y + 88, { size: 18, font: 'body', weight: 700, align: 'left', color: PAL.muted, maxWidth: tw });
+    if (!signedIn) {
+      text(ctx, this.status ?? 'Sign in to keep your progress and winnings and go on the leaderboards.', tx + 2, b.y + 122, { size: 15, font: 'body', weight: 600, align: 'left', color: this.status ? PAL.brick : PAL.ink, maxWidth: tw });
+    }
+    for (const btn of this.buttons) btn.draw(ctx);
   }
 }
 
@@ -188,6 +171,3 @@ export class AthletePanel {
 function shirtBar(c) {
   return /^#f[0-9a-f]f[0-9a-f]f[0-9a-f]$/i.test(c.colors.shirt) || c.colors.shirt.toLowerCase() === '#ffffff' ? '#C9C3B2' : c.colors.shirt;
 }
-
-const BAND_Y = 228; // top of the band of athlete cards
-const CARDS_Y = 244; // top of the athlete cards

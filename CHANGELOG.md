@@ -6,6 +6,29 @@ Gameplay and tuning changes, newest first. When you change a number in
 From 1.0.0 every push to master bumps `src/version.js` and heads its section
 here with the version.
 
+## 1.8.0 — Set up your account first
+New players set themselves up before the menu, and the Athlete tab is just you.
+- **First launch** (`src/scenes/onboarding.js`): three steps, any already done
+  skipped. **Account**: Sign in with Google (big, blue) or Play as guest.
+  **Username**: claim one (the made-up `Runner 1234` until you do; skippable
+  only if the server can't be reached). **Athlete**: male (short hair, blue
+  kit) or female (ponytail, coral kit) (`custom.js` `STARTERS`) and a skin
+  tone. Once only: an athlete you'd already made is simply yours, gear and
+  all, with no male/female picking again.
+  Coming back from Google's sign-in mid-setup lands back in it; a squad
+  invite waits until you're done.
+- **Everyone runs it once**: players from before it came in too (storage
+  `onboarded`), so everyone ends up as an athlete of their own and the six
+  cast athletes are rivals only. Signed in with an athlete and a username
+  already: straight through to the menu. Signing out clears it.
+- **The Athlete tab** (`home/athletePanel.js`): no more cast cards. Your
+  athlete warming up, your username, level (or Guest), height, the athlete's
+  own name if it isn't your username, **Customize** (the Athlete Maker; tapping
+  your athlete opens it too) and **Profile**. A guest gets Sign in with Google
+  there: the reminder to set up the account later.
+- Signing in's shared steps (post your bests, sync your progress, reload as
+  the account's player) moved to `src/online/account.js`, used by the Profile
+  screen, the setup and the Athlete tab.
 ## 1.7.0 — The shop (economy phase 6)
 Buy gear with Coins and Gems. The shop is the same for everyone and changes
 every day.

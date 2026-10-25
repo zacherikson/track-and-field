@@ -179,6 +179,27 @@ export function setCustom(code) {
   save(data);
 }
 
+/**
+ * Whether this phone has been through the first-launch setup (scenes/onboarding.js):
+ * signed in or chosen to play as a guest, picked a username and an athlete.
+ * Signing out clears it, so the next player sets up too.
+ */
+export function isOnboarded() {
+  return load().onboarded === true;
+}
+
+export function setOnboarded(on) {
+  const data = load();
+  if (on) data.onboarded = true;
+  else delete data.onboarded;
+  save(data);
+}
+
+/** True for the name every new phone is given (`Runner 1234`) until a username is claimed. */
+export function isMadeUpName(name) {
+  return /^Runner \d{4}$/.test(name ?? '');
+}
+
 /** Your athlete (a character id from roster.js, or a made athlete's code), or null for the default. */
 export function getCharacter() {
   return load().character ?? null;

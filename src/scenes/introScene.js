@@ -10,6 +10,7 @@ import { tournament, ORDER } from '../tournament/tournament.js';
 import { serverNow } from '../online/live.js';
 import { prewarmSDK, isSignedIn } from '../online/firebase.js';
 import { counts } from '../online/bests.js';
+import { worldRecord } from '../online/worldRecords.js';
 import { meet } from '../meet/meet.js';
 import { formatPoints } from '../meet/scoring.js';
 import { MEET_ORDER } from '../meet/rules.js';
@@ -162,7 +163,7 @@ export class IntroScene {
     ctx.fillRect(cx - rule / 2, py + 112, rule, 5);
     ctx.fillStyle = PAL.gold;
     ctx.fillRect(cx - rule / 2, py + 120, rule, 5);
-    text(ctx, `World Record  ${formatMark(this.ev, this.ev.record)}`, cx, py + 152, { size: 24, font: 'body', weight: 800, color: PAL.ink, maxWidth: rw - 30 });
+    text(ctx, `World Record  ${formatMark(this.ev, worldRecord(this.ev))}`, cx, py + 152, { size: 24, font: 'body', weight: 800, color: PAL.ink, maxWidth: rw - 30 });
     text(ctx, `Your Best  ${formatMark(this.ev, this.best)}`, cx, py + 182, { size: 19, font: 'body', weight: 600, color: PAL.muted });
     if (this.meet) text(ctx, this.meetLine(), cx, py + 212, { size: 17, font: 'body', weight: 800, color: PAL.orangeShade, maxWidth: rw - 30 });
     if (survival.active) {

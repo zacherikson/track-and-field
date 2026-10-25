@@ -10,12 +10,12 @@ import { meet } from '../meet/meet.js';
 import { TimeTrial } from './timeTrial.js';
 
 // The list of events shown on the menu, in tournament order. Each available
-// event provides `create()` returning its play scene.
+// event provides `create()` returning its play scene. Their world records are
+// the top marks on their online boards (online/worldRecords.js).
 export const EVENTS = [
   {
     id: 'sprint100',
     name: '100m Dash',
-    record: 8.9,
     unit: 's',
     lowerIsBetter: true,
     available: true,
@@ -28,7 +28,6 @@ export const EVENTS = [
   {
     id: 'longjump',
     name: 'Long Jump',
-    record: 9.86,
     unit: 'm',
     lowerIsBetter: false,
     available: true,
@@ -42,7 +41,6 @@ export const EVENTS = [
   {
     id: 'hurdles110',
     name: '110m Hurdles',
-    record: 11.58,
     unit: 's',
     lowerIsBetter: true,
     available: true,
@@ -55,7 +53,6 @@ export const EVENTS = [
   {
     id: 'polevault',
     name: 'Pole Vault',
-    record: 6.95,
     unit: 'm',
     lowerIsBetter: false,
     available: true,
@@ -69,7 +66,6 @@ export const EVENTS = [
   {
     id: 'javelin',
     name: 'Javelin',
-    record: 104.8,
     unit: 'm',
     lowerIsBetter: false,
     available: true,
@@ -85,6 +81,7 @@ export const EVENTS = [
 // Special events: on their own list (home screen, Special Events), never in a
 // tournament, and not on the online leaderboards (yet). Always against rivals,
 // at Special Events' RIVALS level (`special`: results say that level, not Training).
+// With no board, their `record` is a target worked out with tools/simulate.mjs.
 export const SPECIAL_EVENTS = [
   {
     id: 'relay4x100',

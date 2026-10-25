@@ -4,6 +4,7 @@ import { formatMark } from '../events/registry.js';
 import { getBest, submitBest, getCampaign, getBeaten, saveGhostIfBetter, canTune, getSpecialLevel } from '../core/storage.js';
 import { postMark } from '../online/post.js';
 import { counts, recordTopMark } from '../online/bests.js';
+import { worldRecord, isWorldRecord } from '../online/worldRecords.js';
 import { flow } from '../flow.js';
 import { ResultsPanel } from '../brawl/aftermath.js';
 
@@ -38,7 +39,8 @@ export class ResultScene {
     if (me.status === 'ok') recordTopMark(this.ev, me.mark, !!this.stats?.live);
     this.best = getBest(this.ev.id);
     this.hadBest = prevBest != null;
-    this.beatWR = me.status === 'ok' && (this.ev.lowerIsBetter ? me.mark < this.ev.record : me.mark > this.ev.record);
+    // Beats the top of the online board (only a mark that could go on it: shipped tuning).
+    this.beatWR = me.status === 'ok' && (counts() || !this.ev.online) && isWorldRecord(this.ev, me.mark);
     this.online = null; // one line about the online leaderboard
     const run = this.stats?.run ?? null; // the recorded attempt: your ghost
     if (run && counts()) saveGhostIfBetter(this.ev, run);
@@ -146,7 +148,7 @@ export class ResultScene {
       y += 34;
     }
     text(ctx, `Personal best  ${formatMark(this.ev, this.best)}`, cx, y + 8, { size: 19, font: 'body', weight: 600, color: CREAM(0.85) });
-    text(ctx, `World record  ${formatMark(this.ev, this.ev.record)}`, cx, y + 36, { size: 19, font: 'body', weight: 600, color: CREAM(0.85) });
+    text(ctx, `World record  ${formatMark(this.ev, worldRecord(this.ev))}`, cx, y + 36, { size: 19, font: 'body', weight: 600, color: CREAM(0.85) });
     if (this.stats && me.status === 'ok') {
       // Numbers to talk about when tuning.
       const s = this.stats;

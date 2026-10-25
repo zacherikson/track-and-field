@@ -52,7 +52,7 @@ export class JavelinRenderer extends RunwayRenderer {
   constructor(cfg, record, venue = venueFor()) {
     super(cfg.runway, { from: 0, to: 0 }, cfg.runwayZones, venue);
     this.cfg = cfg;
-    this.record = record;
+    this.record = record; // the world record (m), or null: no WR board
   }
 
   drawTrack(ctx, view, camera) {
@@ -214,7 +214,7 @@ export class JavelinRenderer extends RunwayRenderer {
       }
     }
     for (let d = 10; d <= 110; d += 10) this.drawBoard(ctx, view.w * 0.45 + (d - x) * camera.ppm * 0.6, groundY + 4, String(d), false, 1);
-    this.drawBoard(ctx, view.w * 0.45 + (this.record - x) * camera.ppm * 0.6, groundY + 4, 'WR', true, 1);
+    if (this.record != null) this.drawBoard(ctx, view.w * 0.45 + (this.record - x) * camera.ppm * 0.6, groundY + 4, 'WR', true, 1);
   }
 
   /** A distance board: white sign (red for the record) on a red base. */

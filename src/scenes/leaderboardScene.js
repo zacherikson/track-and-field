@@ -7,6 +7,7 @@ import { leaderboard, cachedLeaderboard, fetchGhost, learnUid, isSignedIn, start
 import { chooseGhost, isReplayable, GHOST_VERSION } from '../online/ghost.js';
 import { isTrace } from '../online/trace.js';
 import { flow } from '../flow.js';
+import { setWorldRecord } from '../online/worldRecords.js';
 
 const ROW_H = 30;
 const BOX_Y = 124; // Global: top of the cream sheet
@@ -114,6 +115,7 @@ export class LeaderboardScene {
     if (cached) this.showRows(cached);
     leaderboard(board)
       .then((b) => {
+        setWorldRecord(board, b.top[0]?.mark ?? null); // the board's top mark is its world record
         if (board === this.board) this.showRows(b); // unless you switched tabs while it loaded
       })
       .catch(() => {

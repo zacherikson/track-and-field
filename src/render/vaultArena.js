@@ -10,12 +10,12 @@ import { venueFor } from './venues.js';
  * draws sky above the stadium.
  */
 export class VaultRenderer extends RunwayRenderer {
-  constructor(cfg, venue = venueFor()) {
+  constructor(cfg, venue = venueFor(), record = null) {
     super(cfg.runway, { from: 0, to: 0 }, cfg.runwayZones, venue);
     this.cfg = cfg;
     this.bar = null; // crossbar height (m), or null: the vault moves it (rising with you, stopping where you go over)
     this.lastHeight = null; // marker on the upright for the last vault (m)
-    this.record = 6.95;
+    this.record = record; // the world record (m), flagged on the far upright; null: no flag
   }
 
   drawSky(ctx, view) {
@@ -83,7 +83,7 @@ export class VaultRenderer extends RunwayRenderer {
   drawPost(ctx, view, camera, z, labels) {
     const x = this.cfg.uprightX;
     const base = this.point(camera, view, x, z, 0);
-    const top = this.point(camera, view, x, z, Math.max(7.4, this.record * (this.cfg.flight?.heightScale ?? 1) + 0.5));
+    const top = this.point(camera, view, x, z, Math.max(7.4, (this.record ?? 0) * (this.cfg.flight?.heightScale ?? 1) + 0.5));
     const w = Math.max(3, 0.07 * this.hPx(camera, z));
     ctx.fillStyle = this.venue.upright.post;
     ctx.fillRect(base.x - w / 2, top.y, w, base.y - top.y);
@@ -92,10 +92,12 @@ export class VaultRenderer extends RunwayRenderer {
     if (!labels) return;
     // The world record on the far post (as in the original), where a record vault is drawn: the
     // vault is drawn flight.heightScale higher than its mark, so no meter marks (they'd be wrong).
-    const wr = this.point(camera, view, x, z, this.record * (this.cfg.flight?.heightScale ?? 1));
-    ctx.fillStyle = '#e8281e';
-    ctx.fillRect(wr.x + w / 2, wr.y - 7, 24, 14);
-    text(ctx, 'WR', wr.x + w / 2 + 12, wr.y, { size: 10, color: '#fff' });
+    if (this.record != null) {
+      const wr = this.point(camera, view, x, z, this.record * (this.cfg.flight?.heightScale ?? 1));
+      ctx.fillStyle = '#e8281e';
+      ctx.fillRect(wr.x + w / 2, wr.y - 7, 24, 14);
+      text(ctx, 'WR', wr.x + w / 2 + 12, wr.y, { size: 10, color: '#fff' });
+    }
     if (this.lastHeight != null) {
       const p = this.point(camera, view, x, z, this.lastHeight);
       ctx.fillStyle = '#ff4b3e';

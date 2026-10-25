@@ -11,6 +11,7 @@ import { TOURNAMENT_KIND } from '../../tournament/tournament.js';
 import { SURVIVAL_KIND } from '../../online/liveRules.js';
 import { flow } from '../../flow.js';
 import { syncBests } from '../../online/bests.js';
+import { syncWorldRecords } from '../../online/worldRecords.js';
 import { syncProgress } from '../../online/progress.js';
 import { EventTile } from './eventTile.js';
 import { Sideshow } from './sideshow.js';
@@ -154,6 +155,8 @@ export class PlayPanel {
     syncBests()
       .then((changed) => changed && this.game.scene === this.home && this.showBests())
       .catch(() => {});
+    // The world records: each board's top mark (at most once a minute).
+    syncWorldRecords(EVENTS).catch(() => {});
     // Your campaign progress and athlete follow your account (online/progress.js):
     // catch up with it too. That needs the Firebase SDK (it's private), so not
     // every time you're back at the menu: your own changes go up as they happen.

@@ -6,6 +6,24 @@ Gameplay and tuning changes, newest first. When you change a number in
 From 1.0.0 every push to master bumps `src/version.js` and heads its section
 here with the version.
 
+## 1.0.1 — World records come from the global leaderboards
+- **What happened:** each event's world record was a fixed number (in
+  `registry.js`, and the pole vault's WR flag had its own 6.95). Players had
+  already beaten three of them (100m 8.52 vs 8.90, long jump 10.53 vs 9.86,
+  hurdles 11.38 vs 11.58), so the game showed records that weren't records.
+- **Now:** an event's world record is the best mark on its global board
+  (new `src/online/worldRecords.js`). It shows on the intro screen, the
+  results, the javelin's WR board and the pole vault's WR flag.
+  - Read at the menu (each board's top mark, at most once a minute; guests
+    too, the boards are public), and again whenever you open a board or your
+    mark goes to #1.
+  - Kept on the phone, so it shows at once and offline. Before the phone has
+    ever read a board it shows "—" and no WR marker.
+  - "NEW WORLD RECORD!" means you beat the board's top mark (with shipped
+    tuning, like a personal best).
+- **Special events** (4×100m relay, Time Trial) have no board, so they keep
+  their worked-out targets.
+
 ## 1.0.0 — App version on the tuning screens; one arc off the pole
 - **Version:** new `src/version.js`, starting at 1.0.0.
   - Shown on the tuning screens: the event list and each event's settings

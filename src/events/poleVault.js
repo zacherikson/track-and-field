@@ -11,6 +11,7 @@ import { runUpSpeed, runUpPose } from './runUpRules.js';
 import { liveRandom } from '../core/random.js';
 import { pressQuality, releaseQuality, releaseTarget, vaultHeight, rivalVault } from './poleVaultRules.js';
 import { VaultRenderer } from '../render/vaultArena.js';
+import { worldRecord } from '../online/worldRecords.js';
 import { getDifficulty, hasRivals } from '../core/storage.js';
 import { venueFor } from '../render/venues.js';
 import { flow } from '../flow.js';
@@ -107,7 +108,7 @@ export class PoleVault {
     this.tall = heightOf(chosenPlayer(this.ev.id).colors);
     this.figH = FIG_H * this.tall;
     this.measurePole();
-    this.track = new VaultRenderer(cfg, venueFor(this.live));
+    this.track = new VaultRenderer(cfg, venueFor(this.live), worldRecord(this.ev));
     this.camera = new Camera();
     const me = chosenPlayer(this.ev.id);
     this.player = { name: this.live ? this.live.name : me.name, colors: me.colors, isPlayer: true, jumps: [] }; // live: your username, as the others see you

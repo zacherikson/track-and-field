@@ -11,6 +11,7 @@ import { runUpSpeed, runUpPose } from './runUpRules.js';
 import { liveRandom } from '../core/random.js';
 import { angleAt, flightRange, rivalThrow } from './javelinRules.js';
 import { JavelinRenderer, drawJavelin } from '../render/javelinField.js';
+import { worldRecord } from '../online/worldRecords.js';
 import { getDifficulty, hasRivals } from '../core/storage.js';
 import { venueFor } from '../render/venues.js';
 import { flow } from '../flow.js';
@@ -61,7 +62,7 @@ export class Javelin {
   }
 
   enter() {
-    this.track = new JavelinRenderer(this.cfg, this.ev.record, venueFor(this.live));
+    this.track = new JavelinRenderer(this.cfg, worldRecord(this.ev), venueFor(this.live));
     this.camera = new Camera();
     const me = chosenPlayer(this.ev.id);
     this.player = { name: this.live ? this.live.name : me.name, colors: me.colors, isPlayer: true, jumps: [] }; // live: your username, as the others see you

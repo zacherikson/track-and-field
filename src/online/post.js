@@ -1,6 +1,7 @@
 import { formatMark } from '../events/registry.js';
 import { counts, posted } from './bests.js';
 import { submitMark, isSignedIn } from './firebase.js';
+import { noteTopMark } from './worldRecords.js';
 
 /**
  * Posts a mark to a board's online leaderboard (registry.js BOARDS), with the
@@ -23,6 +24,7 @@ export function postMark(board, mark, ghost, onStatus) {
   posted();
   submitMark(board, mark, ghost)
     .then((r) => {
+      if (r.improved && r.rank === 1) noteTopMark(board, r.best); // the new world record
       if (!r.improved) onStatus(`Online: your best ${formatMark(board, r.best)} is #${r.rank}`);
       else if (r.lost) onStatus(`Online leaderboard: #${r.rank} (ghost not uploaded: ${r.lost})`);
       else onStatus(`Online leaderboard: #${r.rank}`);

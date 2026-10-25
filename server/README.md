@@ -17,6 +17,7 @@ src/socket.js         the WebSocket handshake (hello with a Firebase ID token), 
 src/auth.js           checks the Firebase ID token against Google's keys
 src/firestore.js      reads a squad's members from Firestore (public), to let only them in
 src/firestoreAdmin.js writes wallets as the Firebase project's service account (the only thing that can)
+src/api.js            the game's HTTP calls: POST /api/xp, the races you finished, for XP
 tools/wallet.mjs      looks at or grants a player's wallet from your computer, with the same access
 src/lobbyCore.js      live waiting rooms (public ones in the Lobby, Practice in each SquadHub)
 src/roomCore.js       one live room's play: passes each player's updates on to the others

@@ -3,7 +3,7 @@ import { Button, text, slab, chamfer, PAL } from '../core/ui.js';
 import { drawIcon } from '../core/icons.js';
 import { BOARDS, formatMark } from '../events/registry.js';
 import { getTopMarks, TOP_N, getBoardView, setBoardView, LEVEL_NAMES } from '../core/storage.js';
-import { leaderboard, cachedLeaderboard, fetchGhost, learnUid, isSignedIn, startGoogleSignIn } from '../online/firebase.js';
+import { leaderboard, cachedLeaderboard, fetchGhost, learnUid, isSignedIn, startGoogleSignIn, playerLevels } from '../online/firebase.js';
 import { chooseGhost, isReplayable, GHOST_VERSION } from '../online/ghost.js';
 import { isTrace } from '../online/trace.js';
 import { flow } from '../flow.js';
@@ -129,6 +129,13 @@ export class LeaderboardScene {
     this.rows = rows.map((r) => ({ ...r, btn: this.raceButton(r) }));
     this.state = 'ready';
     this.layout(this.game.view);
+    // Each player's level beside their name (public: online/firebase.js playerLevels).
+    const shown = this.rows;
+    playerLevels(shown.map((r) => r.uid))
+      .then((lv) => {
+        if (this.rows === shown) for (const r of shown) r.level = lv.get(r.uid) ?? null;
+      })
+      .catch(() => {});
   }
 
   /**
@@ -271,7 +278,16 @@ export class LeaderboardScene {
           ctx.fillRect(x0, y - ROW_H / 2, w, ROW_H);
         }
         text(ctx, String(r.rank), x0 + 32, y + 1, { size: 20, font: 'display', color: PAL.ink });
-        text(ctx, String(r.name ?? ''), x0 + 60, y + 1, { size: 18, font: 'body', align: 'left', weight: r.me ? 800 : 700, color: PAL.ink, maxWidth: w - 280 });
+        let nx = x0 + 60;
+        if (r.level) {
+          // A small ink pill with their level, before the name.
+          ctx.fillStyle = r.me ? PAL.ink : PAL.ink2;
+          chamfer(ctx, nx, y - 10, 42, 20, 4);
+          ctx.fill();
+          text(ctx, `Lv ${r.level}`, nx + 21, y + 1, { size: 13, font: 'body', weight: 800, color: PAL.cream });
+          nx += 50;
+        }
+        text(ctx, String(r.name ?? ''), nx, y + 1, { size: 18, font: 'body', align: 'left', weight: r.me ? 800 : 700, color: PAL.ink, maxWidth: w - 280 - (nx - x0 - 60) });
         text(ctx, formatMark(this.board, r.mark), x0 + w - 110, y + 1, { size: 18, font: 'body', weight: 800, align: 'right', color: PAL.ink });
       });
     }

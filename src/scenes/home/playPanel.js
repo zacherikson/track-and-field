@@ -12,6 +12,7 @@ import { SURVIVAL_KIND } from '../../online/liveRules.js';
 import { flow } from '../../flow.js';
 import { syncBests } from '../../online/bests.js';
 import { syncWorldRecords } from '../../online/worldRecords.js';
+import { myLevel, onXp, flushXp } from '../../online/xp.js';
 import { syncProgress } from '../../online/progress.js';
 import { EventTile } from './eventTile.js';
 import { Sideshow } from './sideshow.js';
@@ -154,6 +155,8 @@ export class PlayPanel {
     this.helpButton = chip({ label: 'How to play', icon: 'howto', w: 172, onTap: () => flow.tutorial(this.game) });
     // Your profile (username for the online leaderboard), top right.
     this.profileButton = chip({ label: getPlayerName(), icon: 'profile', w: 200, onTap: () => flow.profile(this.game) });
+    this.showLevel();
+    this.stopXp = onXp(() => this.showLevel());
     this.fsButton = document.fullscreenEnabled ? chip({ label: '', icon: 'fullscreen', w: 48, onTap: () => toggleFullscreen() }) : null;
     // Your bests come from the online boards: catch up with them, then show them.
     syncBests()
@@ -161,6 +164,8 @@ export class PlayPanel {
       .catch(() => {});
     // The world records: each board's top mark (at most once a minute).
     syncWorldRecords(EVENTS).catch(() => {});
+    // Races finished offline go toward your XP now (online/xp.js).
+    flushXp().catch(() => {});
     // Your campaign progress and athlete follow your account (online/progress.js):
     // catch up with it too. That needs the Firebase SDK (it's private), so not
     // every time you're back at the menu: your own changes go up as they happen.
@@ -170,6 +175,16 @@ export class PlayPanel {
         .then((changed) => changed && this.game.scene === this.home && this.showProgress())
         .catch((e) => console.warn('progress not synced', e));
     }
+  }
+
+  exit() {
+    this.stopXp?.();
+  }
+
+  /** The profile chip: your name, and your level once the server has told us it. */
+  showLevel() {
+    const lv = myLevel();
+    this.profileButton.label = lv ? `${getPlayerName()} · Lv ${lv.level}` : getPlayerName();
   }
 
   /** Your progress came in from your account: the campaign cards and your athlete again. */

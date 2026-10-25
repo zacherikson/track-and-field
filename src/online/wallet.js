@@ -1,5 +1,6 @@
 import { connectSDK, isSignedIn, knownUid } from './firebase.js';
 import { cleanWallet } from '../economy/wallet.js';
+import { rememberXp } from './xp.js';
 
 /**
  * YOUR WALLET, as the game sees it: read-only. Only the meet server changes a
@@ -34,6 +35,7 @@ export async function refreshWallet() {
   const snap = await fs.getDoc(fs.doc(db, 'wallets', uid));
   const wallet = cleanWallet(snap.exists() ? snap.data() : null); // none yet: all zero
   remember(wallet);
+  rememberXp(wallet.xp); // your XP is kept with your wallet
   return wallet;
 }
 

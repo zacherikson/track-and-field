@@ -174,23 +174,3 @@ test('points add up for everyone, hidden; catchUp settles every event that is al
   liveSurvival.end();
 });
 
-test('your points go on your XP once, when you are out', async () => {
-  const mem = new Map();
-  globalThis.localStorage ??= { getItem: (k) => mem.get(k) ?? null, setItem: (k, v) => mem.set(k, String(v)), removeItem: (k) => mem.delete(k) };
-  const { getXp } = await import('../src/core/storage.js');
-  const before = getXp();
-  const s = room(['a', 'b', 'c'], 'c');
-  liveSurvival.start(s);
-  const ev = liveSurvival.eventId;
-  play(s, marksFor(ev, ['a', 'b', 'c'], ['b']));
-  liveSurvival.decide(0);
-  liveSurvival.bankPoints();
-  assert.equal(getXp(), before, 'still in: nothing banked yet');
-  play(s, marksFor(liveSurvival.eventId, ['a', 'c'], ['c']));
-  liveSurvival.decide(0);
-  liveSurvival.bankPoints();
-  liveSurvival.bankPoints();
-  assert.equal(getXp(), before + liveSurvival.totals.get('c'));
-  assert.ok(liveSurvival.totals.get('c') > 0);
-  liveSurvival.end();
-});

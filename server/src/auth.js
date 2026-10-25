@@ -38,7 +38,9 @@ const b64urlBytes = (s) => {
 const b64urlJson = (s) => JSON.parse(new TextDecoder().decode(b64urlBytes(s)));
 
 /**
- * The player a token belongs to: { uid, name?, dev? }, or null if it doesn't check out.
+ * The player a token belongs to: { uid, provider, name?, dev? }, or null if it
+ * doesn't check out. `provider` = how they signed in ('google.com', or
+ * 'anonymous' for a guest; 'dev' for a dev token).
  * @param token    the hello's token
  * @param env      the Worker's env (FIREBASE_PROJECT, DEV_AUTH)
  * @param opts     { now: s, fetchKeys } (tests)
@@ -47,7 +49,7 @@ export async function verifyToken(token, env, { now = Date.now() / 1000, fetchKe
   if (typeof token !== 'string' || token.length > 4096) return null;
   if (env.DEV_AUTH === '1' && token.startsWith('dev:')) {
     const [, uid, name] = token.split(':');
-    return uid ? { uid: uid.slice(0, 64), name: (name ?? uid).slice(0, 16), dev: true } : null;
+    return uid ? { uid: uid.slice(0, 64), name: (name ?? uid).slice(0, 16), dev: true, provider: 'dev' } : null;
   }
   const parts = token.split('.');
   if (parts.length !== 3) return null;
@@ -62,7 +64,7 @@ export async function verifyToken(token, env, { now = Date.now() / 1000, fetchKe
     const key = (await signingKeys(fetchKeys))[head.kid];
     if (!key) return null;
     const ok = await crypto.subtle.verify('RSASSA-PKCS1-v1_5', key, b64urlBytes(parts[2]), new TextEncoder().encode(`${parts[0]}.${parts[1]}`));
-    return ok ? { uid: claims.sub } : null;
+    return ok ? { uid: claims.sub, provider: claims.firebase?.sign_in_provider ?? null } : null;
   } catch {
     return null;
   }

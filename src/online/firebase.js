@@ -457,6 +457,24 @@ export async function myEntries(boardIds) {
   return out;
 }
 
+const levels = new Map(); // uid -> level, as read this session
+
+/**
+ * Players' levels (players/{uid}: public, written by the server with their XP,
+ * server/src/firestoreAdmin.js), in one request: a Map of uid -> level for
+ * those who have one. Remembered for the session.
+ */
+export async function playerLevels(uids) {
+  const want = [...new Set(uids)].filter((u) => typeof u === 'string' && u && !levels.has(u)).slice(0, 100);
+  if (want.length) {
+    const base = REST.slice(REST.indexOf('projects/'));
+    const res = await rest(':batchGet', { documents: want.map((u) => `${base}/players/${u}`) });
+    for (const u of want) levels.set(u, null);
+    for (const r of res ?? []) if (r.found) levels.set(docId(r.found), Number(fields(r.found.fields).level) || null);
+  }
+  return new Map(uids.map((u) => [u, levels.get(u) ?? null]).filter(([, l]) => l));
+}
+
 /**
  * A player's recording for their mark on a board, or null if they've moved on
  * since (their mark changed) or it isn't there.

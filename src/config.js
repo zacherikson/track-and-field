@@ -548,6 +548,17 @@ export const CONFIG = {
   economy: {
     fines: false, // built in, switched off at launch: a 'fine' change is refused while false
     premiumToEarned: 100, // earned currency for each premium converted (placeholder)
+    // XP for finishing a race (src/economy/levels.js), by who you raced: `finish` for
+    // finishing, plus `place[0]` for 1st, [1] for 2nd, [2] for 3rd when you raced anyone.
+    // computer = campaigns, Special Events and Survival; live = people. Placeholders.
+    xp: {
+      training: { finish: 0, place: [] }, // open question (design doc): no XP for now
+      computer: { finish: 10, place: [15, 10, 5] },
+      live: { finish: 20, place: [30, 20, 10] },
+      dailyCap: 1000, // XP a day at most: races are reported by the phones, so this limits a faked one
+    },
+    // Level L takes step·L·(L−1)/2 XP in all: level 2 at 100, 3 at 300, 4 at 600, 10 at 4,500.
+    levels: { step: 100, max: 99 },
   },
 
   // A rival's wrong-side tap costs what yours does: sprint100.targets' missSpeedLoss and

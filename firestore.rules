@@ -44,6 +44,13 @@ service cloud.firestore {
       }
     }
 
+    // Each player's level (src/economy/levels.js), public for name tags and the
+    // leaderboards. Written only by the meet server, with their XP.
+    match /players/{uid} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // One doc per username (lowercased), so no two players share a name.
     match /usernames/{key} {
       allow read: if true;

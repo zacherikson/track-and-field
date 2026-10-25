@@ -61,8 +61,13 @@ export function meetServer() {
   }
 }
 
+/** The server's address for plain HTTP calls (online/xp.js): meetServer() as https. */
+export function serverHttp() {
+  return meetServer().replace(/^ws/, 'http');
+}
+
 /** Your Firebase ID token (a fresh one if it's near expiry), or a dev token from `?devuid=` for local tests. */
-async function token() {
+export async function token() {
   const dev = testParam('devuid');
   if (dev) return `dev:${dev}`;
   const { auth } = await connectSDK();

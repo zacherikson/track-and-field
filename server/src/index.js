@@ -2,6 +2,7 @@ import { DurableObject } from 'cloudflare:workers';
 import { acceptSocket } from './socket.js';
 import { loadSquad } from './firestore.js';
 import { hasAdmin, readWallet } from './firestoreAdmin.js';
+import { handleApi } from './api.js';
 import { MeetCore } from './meetCore.js';
 import { SquadHubCore } from './squadHubCore.js';
 import { MatchmakerCore } from './matchmakerCore.js';
@@ -18,7 +19,8 @@ import { LIVE_KINDS } from '../../src/online/liveRules.js';
  *   /lobby/public        the Lobby: live waiting rooms anyone can join
  *   /room/<room id>      a Room: one live room's play (public or Practice)
  *
- * and answers two plain checks: /health (it's up) and /health/firebase (its
+ * answers the game's HTTP calls under /api/ (api.js: the races you finished,
+ * for XP), and two plain checks: /health (it's up) and /health/firebase (its
  * admin access to Firestore works: firestoreAdmin.js, the wallets).
  *
  * and the objects talk to each other by RPC: a SquadHub asks the Matchmaker
@@ -35,6 +37,7 @@ export default {
       name = raw ? decodeURIComponent(raw) : null;
     } catch {}
     if (kind === 'health') return name === 'firebase' ? firebaseHealth(env) : new Response('ok');
+    if (kind === 'api') return handleApi(request, env, name ?? '');
     if (!name || name.length > 160) return new Response('Not found', { status: 404 });
     if (kind === 'squad') return env.SQUADS.get(env.SQUADS.idFromName(name)).fetch(request);
     if (kind === 'meet' && /^[a-z0-9]{6,40}$/.test(name)) return env.MEETS.get(env.MEETS.idFromName(name)).fetch(request);

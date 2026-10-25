@@ -558,7 +558,8 @@ src/render/javelinField.js  javelin runway, foul line and sector; the flight sho
 src/render/vaultArena.js  pole vault runway, plant box, landing mat, uprights with height marks, tall sky
 src/render/road.js    time trial road side on (real hills, exaggerated), scenery, arches; the rider on a TT bike
 src/economy/          the economy's shared rules (game and meet server): currencies.js (the ids and the
-                      one table of names players see), wallet.js (changes, never below zero, fines off)
+                      one table of names players see), wallet.js (changes, never below zero, fines off),
+                      levels.js (XP per race by mode and place, the daily cap, the level curve)
 src/online/
   ghost.js            records a run's inputs and replays them as a ghost (pure)
   firebase.js         online leaderboards: lazy-loaded Firebase SDK, anonymous and Google sign-in, Firestore
@@ -567,6 +568,7 @@ src/online/
   bests.js            personal bests: your board entries, synced to the phone's copy
   progress.js         campaign progress, top five marks and your athlete, synced to your account (merged)
   wallet.js           your wallet, read-only (the meet server writes it), with the last balance kept for offline
+  xp.js               reports each race you finish for XP (queued offline), and your level as last told
   live.js             live play: the waiting rooms (public, and each squad's Practice), shared start times, sending and receiving players
   liveRun.js          another player's runner in a live 100m, replayed as their taps arrive
   liveTrace.js        sends your athlete frame by frame in live play, and draws the others' (all but the 100m)

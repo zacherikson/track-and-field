@@ -6,6 +6,8 @@ import { syncProgress } from '../online/progress.js';
 import { renameInSquad } from '../online/squads.js';
 import { flow } from '../flow.js';
 import { cachedWallet, refreshWallet, forgetWallet } from '../online/wallet.js';
+import { myLevel, forgetXp } from '../online/xp.js';
+import { levelProgress } from '../economy/levels.js';
 import { CURRENCIES, formatAmount } from '../economy/currencies.js';
 
 const WARN = '#ffb35c';
@@ -41,6 +43,7 @@ export class ProfileScene {
     this.busy = false; // signing in or out
     this.account = null; // accountInfo() once it answers; 'offline' if it can't
     this.wallet = cachedWallet(); // the last balance seen here, until the account answers
+    this.level = myLevel(); // the same for your level
     if (this.signingIn) this.finishSignIn(this.signingIn);
     else this.loadAccount();
     this.layout(this.game.view);
@@ -63,6 +66,7 @@ export class ProfileScene {
     refreshWallet()
       .then((w) => {
         if (w) this.wallet = w;
+        if (w) this.level = levelProgress(w.xp);
       })
       .catch((e) => console.warn('wallet not read', e?.code ?? e));
   }
@@ -166,6 +170,7 @@ export class ProfileScene {
         forgetBests();
         forgetProgress();
         forgetWallet();
+        forgetXp();
         location.reload();
       })
       .catch(() => {
@@ -224,6 +229,16 @@ export class ProfileScene {
     ctx.fillStyle = PAL.orange;
     ctx.fillRect(x0, by + 16, w, 26);
     text(ctx, 'USERNAME', cx, by + 30, { size: 18, font: 'display', track: 3, color: PAL.cream });
+    // Your level on the band's right, and how far into it you are along the bib's foot.
+    const lv = this.account?.guest ? null : this.level;
+    if (lv) {
+      text(ctx, `LEVEL ${lv.level}`, x0 + w - 18, by + 30, { size: 18, font: 'display', track: 2, color: PAL.ink, align: 'right' });
+      const share = lv.to == null ? 1 : (lv.xp - lv.from) / (lv.to - lv.from);
+      ctx.fillStyle = PAL.creamShade;
+      ctx.fillRect(x0 + 30, by + bh - 9, w - 60, 4);
+      ctx.fillStyle = PAL.orange;
+      ctx.fillRect(x0 + 30, by + bh - 9, (w - 60) * Math.max(0, Math.min(1, share)), 4);
+    }
     ctx.fillStyle = PAL.creamShade;
     for (const [px, py] of [[x0 + 14, by + 12], [x0 + w - 14, by + 12], [x0 + 14, by + bh - 12], [x0 + w - 14, by + bh - 12]]) {
       ctx.beginPath();
@@ -231,7 +246,12 @@ export class ProfileScene {
       ctx.fill();
     }
     text(ctx, getPlayerName().toUpperCase(), cx, by + 78, { size: 56, font: 'display', track: 2, color: PAL.ink, maxWidth: w - 50 });
-    text(ctx, 'Shown on the online leaderboard. No two players can have the same name.', cx, by + 114, { size: 16, font: 'body', weight: 600, color: PAL.muted, maxWidth: w - 30 });
+    const bibNote = !lv
+      ? 'Shown on the online leaderboard. No two players can have the same name.'
+      : lv.to == null
+        ? `${lv.xp.toLocaleString('en-US')} XP · top level`
+        : `${(lv.xp - lv.from).toLocaleString('en-US')} / ${(lv.to - lv.from).toLocaleString('en-US')} XP to level ${lv.level + 1}`;
+    text(ctx, bibNote, cx, lv ? by + 112 : by + 114, { size: lv ? 15 : 16, font: 'body', weight: 600, color: PAL.muted, maxWidth: w - 30 });
 
     // Your account.
     const ay = 234;

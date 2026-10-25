@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { CONFIG } from '../src/config.js';
 import { applyChange, ledgerId, cleanWallet, emptyWallet, WalletError } from '../src/economy/wallet.js';
 import { CURRENCIES, CURRENCY_NAMES, currencyName, formatAmount } from '../src/economy/currencies.js';
+import { xpForRace, levelOf, xpForLevel, levelProgress, cleanRace } from '../src/economy/levels.js';
 
 const change = (kind, currency, amount, ref = 'r1', reason = 'admin') => ({ kind, currency, amount, reason, ref });
 const refused = (fn, code) => assert.throws(fn, (e) => e instanceof WalletError && e.code === code);
@@ -16,7 +17,7 @@ test('every currency has a name, and names come only from the table', () => {
 
 test('a grant adds, a spend takes, and a spend never goes below zero', () => {
   let { wallet, entry } = applyChange(emptyWallet(), change('grant', 'earned', 500));
-  assert.deepEqual(wallet, { earned: 500, premium: 0 });
+  assert.deepEqual(wallet, { earned: 500, premium: 0, xp: 0, xpDay: 0, xpToday: 0 });
   assert.equal(entry.amount, 500);
   ({ wallet, entry } = applyChange(wallet, change('spend', 'earned', 200, 'r2')));
   assert.equal(wallet.earned, 300);
@@ -56,6 +57,44 @@ test('bad changes are refused, and the same payout always gets the same ledger i
 });
 
 test('whatever is read, a wallet comes out whole and not below zero', () => {
-  assert.deepEqual(cleanWallet({ earned: -4, premium: '7.9', junk: 3 }), { earned: 0, premium: 7 });
-  assert.deepEqual(cleanWallet(null), { earned: 0, premium: 0 });
+  assert.deepEqual(cleanWallet({ earned: -4, premium: '7.9', junk: 3 }), { earned: 0, premium: 7, xp: 0, xpDay: 0, xpToday: 0 });
+  assert.deepEqual(cleanWallet(null), { earned: 0, premium: 0, xp: 0, xpDay: 0, xpToday: 0 });
+});
+
+test('XP is only granted, with its day, and stops at the daily cap', () => {
+  const cap = CONFIG.economy.xp.dailyCap;
+  const xp = (amount, day, ref) => ({ kind: 'grant', currency: 'xp', amount, reason: 'race', ref, day });
+  refused(() => applyChange({}, { kind: 'spend', currency: 'xp', amount: 5, reason: 'race', ref: 'a', day: 1 }), 'invalid');
+  refused(() => applyChange({}, { kind: 'grant', currency: 'xp', amount: 5, reason: 'race', ref: 'a' }), 'invalid');
+  let { wallet } = applyChange({}, xp(cap - 10, 100, 'a'));
+  let r = applyChange(wallet, xp(50, 100, 'b'));
+  assert.equal(r.entry.amount, 10, 'only what was left of the day');
+  assert.equal(r.wallet.xp, cap);
+  r = applyChange(r.wallet, xp(50, 101, 'c'));
+  assert.equal(r.entry.amount, 50, 'a new day starts again');
+  assert.equal(r.wallet.xp, cap + 50);
+  assert.equal(r.wallet.xpToday, 50);
+});
+
+test('levels: 100 XP for level 2, 300 for 3, and every boundary lands right', () => {
+  assert.equal(xpForLevel(1), 0);
+  assert.equal(xpForLevel(2), 100);
+  assert.equal(xpForLevel(3), 300);
+  assert.equal(xpForLevel(10), 4500);
+  for (let L = 1; L < 99; L++) {
+    assert.equal(levelOf(xpForLevel(L)), L, `exactly level ${L}`);
+    assert.equal(levelOf(xpForLevel(L + 1) - 1), L, `just under level ${L + 1}`);
+  }
+  assert.equal(levelOf(1e9), CONFIG.economy.levels.max);
+  assert.deepEqual(levelProgress(350), { level: 3, xp: 350, from: 300, to: 600 });
+});
+
+test('race XP: more for a better place, none in Training, nothing for nonsense', () => {
+  const t = CONFIG.economy.xp;
+  assert.equal(xpForRace({ mode: 'computer', place: 1, field: 6 }), t.computer.finish + t.computer.place[0]);
+  assert.equal(xpForRace({ mode: 'live', place: 4, field: 6 }), t.live.finish);
+  assert.equal(xpForRace({ mode: 'live', place: 1, field: 1 }), t.live.finish, 'no place bonus racing nobody');
+  assert.equal(xpForRace({ mode: 'training', place: 1, field: 1 }), 0);
+  assert.equal(xpForRace({ mode: 'live', place: 7, field: 6 }), 0);
+  assert.equal(cleanRace({ mode: 'cheat', place: 1, field: 2 }), null);
 });

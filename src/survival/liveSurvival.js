@@ -2,7 +2,6 @@ import { CONFIG } from '../config.js';
 import { points } from '../events/scoring.js';
 import { seededRandom } from '../core/random.js';
 import { EVENT_IDS } from './survival.js';
-import { addXp } from '../core/storage.js';
 
 /**
  * LIVE SURVIVAL: up to ten people (online/liveRules.js), the five events in a
@@ -22,8 +21,8 @@ import { addXp } from '../core/storage.js';
  *   one whose result never comes (GIVE_UP).
  *
  * Points add up as in a tournament (scoring.js), for every player, but nobody
- * is shown them: they're for levelling up one day (`totals`; yours go on your
- * XP when you're out or it's over, bankPoints).
+ * is shown them (`totals`). Your XP comes from each race you finish, as
+ * everywhere (flow.results, online/xp.js).
  *
  * The players who are out keep the room open to watch (survival/liveSurvivalScene.js):
  * `decide` keeps settling each event as the results come in, on their phone
@@ -114,7 +113,7 @@ export const liveSurvival = {
     this.live = session;
     this.players = new Map(session.players.map((p) => [p.uid, { uid: p.uid, name: p.name, athlete: p.athlete, me: p.uid === session.uid }]));
     this.alive = new Set(this.players.keys());
-    Object.assign(this, { out: [], history: [], totals: new Map(), step: 0, gone: new Set(), over: false, winner: null, waitSince: null, banked: false });
+    Object.assign(this, { out: [], history: [], totals: new Map(), step: 0, gone: new Set(), over: false, winner: null, waitSince: null });
     this.unlisten = session.listen((uid, doc) => {
       if (doc.left && this.alive.has(uid) && !this.over) this.gone.add(uid);
     });
@@ -192,13 +191,6 @@ export const liveSurvival = {
     this.step++;
     this.waitSince = null;
     return entry;
-  },
-
-  /** Your points from this game go on your XP (core/storage.js), once: when you're out, or it's over. */
-  bankPoints() {
-    if (this.banked || (this.meIn && !this.over)) return;
-    this.banked = true;
-    addXp(this.totals.get(this.uid) ?? 0);
   },
 
   /** Settles every step whose results are all in (an eliminated phone, watching). Returns the entries settled. */

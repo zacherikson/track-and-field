@@ -24,7 +24,8 @@ test('a good token names its user; anything off is refused', async () => {
   const now = 1_700_000_000;
   const good = { aud: 'proj', iss: 'https://securetoken.google.com/proj', sub: 'user1', iat: now - 10, auth_time: now - 100, exp: now + 3000 };
   const opts = { now, fetchKeys };
-  assert.deepEqual(await verifyToken(await sign(good), env, opts), { uid: 'user1' });
+  assert.deepEqual(await verifyToken(await sign(good), env, opts), { uid: 'user1', provider: null });
+  assert.deepEqual(await verifyToken(await sign({ ...good, firebase: { sign_in_provider: 'google.com' } }), env, opts), { uid: 'user1', provider: 'google.com' });
   assert.equal(await verifyToken(await sign({ ...good, aud: 'other' }), env, opts), null);
   assert.equal(await verifyToken(await sign({ ...good, exp: now - 1000 }), env, opts), null);
   assert.equal(await verifyToken(await sign({ ...good, sub: '' }), env, opts), null);
@@ -34,5 +35,5 @@ test('a good token names its user; anything off is refused', async () => {
   const forged = t.slice(0, t.lastIndexOf('.') + 1) + b64url(new Uint8Array(256));
   assert.equal(await verifyToken(forged, env, opts), null);
   assert.equal(await verifyToken('dev:bot1:Bot', env, opts), null, 'dev tokens only with DEV_AUTH');
-  assert.deepEqual(await verifyToken('dev:bot1:Bot', { ...env, DEV_AUTH: '1' }, opts), { uid: 'bot1', name: 'Bot', dev: true });
+  assert.deepEqual(await verifyToken('dev:bot1:Bot', { ...env, DEV_AUTH: '1' }, opts), { uid: 'bot1', name: 'Bot', dev: true, provider: 'dev' });
 });

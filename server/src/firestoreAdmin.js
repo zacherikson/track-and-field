@@ -1,4 +1,5 @@
 import { applyChange, cleanWallet, ledgerId, WALLET_VERSION, WalletError } from '../../src/economy/wallet.js';
+import { levelOf } from '../../src/economy/levels.js';
 
 /**
  * THE SERVER'S ADMIN ACCESS TO FIRESTORE: what lets it, and only it, write
@@ -12,9 +13,11 @@ import { applyChange, cleanWallet, ledgerId, WALLET_VERSION, WalletError } from 
  * token, and talks to Firestore's REST API.
  *
  * Firestore layout:
- *   wallets/{uid}               = { earned, premium, v, updatedAt }
- *   wallets/{uid}/ledger/{id}   = { kind, currency, amount, reason, ref, earned, premium, gained?, at }
+ *   wallets/{uid}               = { earned, premium, xp, xpDay, xpToday, v, updatedAt }  private to you
+ *   wallets/{uid}/ledger/{id}   = { kind, currency, amount, reason, ref, <balances after>, gained?, at }
  *                                 one per change; `id` = ledgerId(change), so a payout lands once
+ *   players/{uid}               = { level, updatedAt }  public: your level, for name tags and boards
+ *                                 (src/economy/levels.js), written with every wallet change
  */
 const SCOPE = 'https://www.googleapis.com/auth/datastore';
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
@@ -80,6 +83,7 @@ export async function accessToken(env, { fetcher = fetch, now = Date.now() } = {
 const root = (env) => `projects/${env.FIREBASE_PROJECT}/databases/(default)/documents`;
 const walletName = (env, uid) => `${root(env)}/wallets/${uid}`;
 const entryName = (env, uid, id) => `${root(env)}/wallets/${uid}/ledger/${id}`;
+const playerName = (env, uid) => `${root(env)}/players/${uid}`;
 
 /** A REST call on the database as the service account: POST `body` to `${root}${path}`. */
 async function call(env, path, body, opts) {
@@ -153,6 +157,7 @@ export async function changeWallet(env, uid, change, opts = {}) {
     const writes = [
       { update: { name: walletName(env, uid), fields: { ...Object.fromEntries(Object.entries(wallet).map(([c, v]) => [c, int(v)])), v: int(WALLET_VERSION) } }, updateTransforms: now },
       { update: { name: entryName(env, uid, id), fields: entryFields }, currentDocument: { exists: false }, updateTransforms: [{ fieldPath: 'at', setToServerValue: 'REQUEST_TIME' }] },
+      { update: { name: playerName(env, uid), fields: { level: int(levelOf(wallet.xp)) } }, updateTransforms: now },
     ];
     try {
       await call(env, ':commit', { writes, transaction }, opts);

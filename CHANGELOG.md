@@ -6,6 +6,41 @@ Gameplay and tuning changes, newest first. When you change a number in
 From 1.0.0 every push to master bumps `src/version.js` and heads its section
 here with the version.
 
+## 1.3.0 — Levels and XP (economy phase 2)
+Every race you finish earns XP, kept on your account by the server, and your
+level shows across the game. Levels will unlock shop items (a later phase).
+- **XP per race** (`src/economy/levels.js`, `CONFIG.economy.xp`;
+  placeholders):
+  - **Against the computer** (campaigns, Special Events, Survival): 10 for
+    finishing, plus 15 / 10 / 5 for 1st / 2nd / 3rd.
+  - **Live:** 20 for finishing, plus 30 / 20 / 10.
+  - **Training:** none (still an open question in the design doc).
+  - At most 1,000 XP a day.
+- **Levels:** level 2 at 100 XP, 3 at 300, 4 at 600, 10 at 4,500 (each level
+  takes 100 more than the last), up to 99.
+- **The server keeps it.** Phones report each race they finish (mode,
+  place, field) to `POST /api/xp` (`server/src/api.js`), with the player's
+  sign-in. The server works out the XP and adds it to the wallet (XP is a
+  balance there, grant-only, with the daily cap). It also writes your level
+  to the public `players/{uid}`.
+  - Guests earn nothing.
+  - Each race has its own ref, so it never counts twice.
+  - Races finished offline wait on the phone (`src/online/xp.js`) and go up
+    at the menu.
+- **Shown:**
+  - **Results:** "+20 XP", and "LEVEL UP! LV 4" when the server says so.
+  - **Home:** your level on the profile chip ("Runner · Lv 3").
+  - **Profile:** your level on your bib, with the XP to the next one and a
+    bar.
+  - **Global leaderboard:** each player's level in a pill before their name.
+- **Removed:** live Survival's old points-to-XP (kept on the phone, never
+  shown) and its test. Live Survival races earn XP like any other.
+- **Database:** `firestore.rules` adds `players/{uid}`: public to read,
+  written only by the server.
+- **Tests:** level curve and boundaries, race XP, the daily cap; the XP
+  endpoint (guests refused, a race counted once, junk dropped, CORS); the
+  sign-in check now says how you signed in.
+
 ## 1.2.1 — The pole vault's sky meets the bleachers
 - **What happened:** the pole vault draws a tall sky (for the camera to rise
   into) that fades to pale at the stands, and at Collegiate and High School

@@ -29,6 +29,20 @@ import { ORDER, TOURNAMENT_KIND } from './tournament/tournament.js';
 import { startLive, endLive, currentLive } from './online/live.js';
 import { resetScars } from './brawl/wounds.js';
 import { getCampaign, setCampaign, markBeaten, canTune } from './core/storage.js';
+import { reportRace } from './online/xp.js';
+
+/**
+ * Reports a finished race for XP: who you raced (people, the computer, or
+ * nobody: Training), your place among them (ghosts aside) and how many there
+ * were. Returns the XP it should be worth (0: none, a guest, or you didn't finish).
+ */
+function reportFinish(ev, results, stats) {
+  const field = results.filter((r) => !r.ghost);
+  const me = field.find((r) => r.isPlayer);
+  if (!me || me.status !== 'ok') return 0;
+  const mode = stats?.live ? 'live' : getCampaign() || survival.active || ev.special || tournament.active ? 'computer' : 'training';
+  return reportRace({ mode, place: field.indexOf(me) + 1, field: Math.min(12, field.length) });
+}
 
 export const flow = {
   // The home screen, on its Play tab (or `tab`: homeScene.js TABS).
@@ -82,10 +96,12 @@ export const flow = {
     // A campaign event won (first place, ghosts aside) is ticked off.
     const winner = results.find((r) => !r.ghost);
     if (getCampaign() && !stats?.live && winner?.isPlayer && winner.status === 'ok') markBeaten(getCampaign(), ev.id);
+    // A race you finished goes toward your XP (online/xp.js; the server works out what it's worth).
+    const xp = reportFinish(ev, results, stats);
     // The event carries on under the results with its late hits (brawl/aftermath.js).
     const backdrop = game.scene?.lateRender ? game.scene : null;
     if (backdrop) backdrop.handedOver = true; // it stays open until the results scene leaves it
-    game.setScene(
+    const scene =
       meet.active
         ? new MeetStandingsScene(ev, results, stats, backdrop)
         : tournament.active
@@ -94,8 +110,9 @@ export const flow = {
             ? new LiveSurvivalScene(ev, results, stats, backdrop)
             : survival.active
               ? new SurvivalScene(ev, results.filter((r) => !r.ghost), stats, backdrop)
-              : new ResultScene(ev, results, stats, backdrop),
-    );
+              : new ResultScene(ev, results, stats, backdrop);
+    scene.xpGained = xp; // what this race should add to your XP (the results screen shows it)
+    game.setScene(scene);
   },
   leaderboard: (game, board) => {
     setCampaign(null); // a Race from the board is training

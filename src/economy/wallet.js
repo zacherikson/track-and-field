@@ -6,7 +6,9 @@ import { CURRENCIES } from './currencies.js';
  * wallets: server/src/firestoreAdmin.js) and the game (which only shows them:
  * online/wallet.js).
  *
- * A wallet is { earned, premium }: whole amounts, never below zero. It only
+ * A wallet is { earned, premium, xp }: whole amounts, never below zero (`xp`
+ * isn't money: it's your XP, src/economy/levels.js, kept here so it has the
+ * same protection; with `xpDay`/`xpToday` for its daily cap). It only
  * ever changes through applyChange, and every change is written with a
  * ledger entry whose id (ledgerId) comes from what the change was for, so the
  * same payout can never land twice.
@@ -19,8 +21,12 @@ import { CURRENCIES } from './currencies.js';
  *   convert  turn `amount` premium into earned, at CONFIG.economy.premiumToEarned each
  * `reason` says what kind of thing it was for ('live-prize', 'contract',
  * 'admin', ...) and `ref` which one (a race, a day, ...).
+ * XP only takes grants, each carrying `day` (levels.js xpDay): a grant past
+ * that day's cap (CONFIG.economy.xp.dailyCap) is cut down to what's left.
  */
 export const WALLET_VERSION = 1;
+export const BALANCES = [...CURRENCIES, 'xp']; // what a wallet holds: the currencies, and your XP
+const FIELDS = [...BALANCES, 'xpDay', 'xpToday']; // all of it as stored
 export const KINDS = ['grant', 'spend', 'fine', 'convert'];
 
 const REASON = /^[a-z0-9-]{1,32}$/;
@@ -36,13 +42,13 @@ export class WalletError extends Error {
 }
 
 export function emptyWallet() {
-  return Object.fromEntries(CURRENCIES.map((c) => [c, 0]));
+  return Object.fromEntries(FIELDS.map((c) => [c, 0]));
 }
 
-/** A wallet as stored, whatever was read: every currency a whole number from 0 up. */
+/** A wallet as stored, whatever was read: every field a whole number from 0 up. */
 export function cleanWallet(w) {
   const out = emptyWallet();
-  for (const c of CURRENCIES) {
+  for (const c of FIELDS) {
     const v = Number(w?.[c]);
     out[c] = Number.isFinite(v) && v > 0 ? Math.min(MAX, Math.floor(v)) : 0;
   }
@@ -53,8 +59,9 @@ export function cleanWallet(w) {
 export function checkChange(change) {
   const { kind, currency, amount, reason, ref } = change ?? {};
   if (!KINDS.includes(kind)) throw new WalletError('invalid', `kind ${kind}`);
-  if (!CURRENCIES.includes(currency)) throw new WalletError('invalid', `currency ${currency}`);
+  if (!BALANCES.includes(currency)) throw new WalletError('invalid', `currency ${currency}`);
   if (kind === 'convert' && currency !== 'premium') throw new WalletError('invalid', 'only premium converts');
+  if (currency === 'xp' && (kind !== 'grant' || !Number.isInteger(change.day) || change.day < 0)) throw new WalletError('invalid', 'xp: a grant with its day');
   if (!Number.isInteger(amount) || amount <= 0 || amount > MAX) throw new WalletError('invalid', `amount ${amount}`);
   if (typeof reason !== 'string' || !REASON.test(reason)) throw new WalletError('invalid', `reason ${reason}`);
   if (typeof ref !== 'string' || !REF.test(ref)) throw new WalletError('invalid', `ref ${ref}`);
@@ -79,7 +86,14 @@ export function applyChange(wallet, change) {
   const E = CONFIG.economy;
   let moved = amount;
   let gained;
-  if (kind === 'grant') {
+  if (kind === 'grant' && currency === 'xp') {
+    // Up to the day's cap: a new day starts the count again.
+    const today = w.xpDay === change.day ? w.xpToday : 0;
+    moved = Math.max(0, Math.min(amount, E.xp.dailyCap - today));
+    w.xp = Math.min(MAX, w.xp + moved);
+    w.xpDay = change.day;
+    w.xpToday = today + moved;
+  } else if (kind === 'grant') {
     w[currency] = Math.min(MAX, w[currency] + amount);
   } else if (kind === 'spend') {
     if (w[currency] < amount) throw new WalletError('insufficient', `${currency} ${w[currency]} < ${amount}`);

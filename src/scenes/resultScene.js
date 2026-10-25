@@ -5,6 +5,7 @@ import { getBest, submitBest, getCampaign, getBeaten, saveGhostIfBetter, canTune
 import { postMark } from '../online/post.js';
 import { counts, recordTopMark } from '../online/bests.js';
 import { worldRecord, isWorldRecord } from '../online/worldRecords.js';
+import { onXp } from '../online/xp.js';
 import { flow } from '../flow.js';
 import { ResultsPanel } from '../brawl/aftermath.js';
 
@@ -27,6 +28,11 @@ export class ResultScene {
 
   enter() {
     this.age = 0;
+    // XP: what this race adds (flow.results set xpGained), and a level up once the server says so.
+    this.levelUp = null;
+    this.stopXp = onXp((r) => {
+      if (r.levelUp) this.levelUp = r.level;
+    });
     const me = this.results.find((r) => r.isPlayer);
     this.me = me;
     this.place = this.results.indexOf(me) + 1;
@@ -58,7 +64,7 @@ export class ResultScene {
     if (this.backdrop) {
       // Over the late hits: just the results and the two buttons.
       this.buttons = this.buttons.slice(0, 2);
-      this.panel = new ResultsPanel(this.buttons, () => `RESULTS · ${this.ev.name.toUpperCase()}${this.beaten ? ` · ${LEVEL_NAMES[getCampaign()].toUpperCase()} BEATEN!` : ''}`, () =>
+      this.panel = new ResultsPanel(this.buttons, () => `RESULTS · ${this.ev.name.toUpperCase()}${this.beaten ? ` · ${LEVEL_NAMES[getCampaign()].toUpperCase()} BEATEN!` : ''}${this.xpLine() ? ` · ${this.xpLine()}` : ''}`, () =>
         this.results.map((r, i) => ({
           place: r.status === 'ok' ? String(i + 1) : '–',
           name: r.name,
@@ -76,7 +82,14 @@ export class ResultScene {
   }
 
   exit() {
+    this.stopXp?.();
     this.backdrop?.leave();
+  }
+
+  /** "+25 XP", with "LEVEL UP! LV 4" once the server says so; '' when this race added none. */
+  xpLine() {
+    if (!this.xpGained) return '';
+    return `+${this.xpGained} XP${this.levelUp ? ` · LEVEL UP! LV ${this.levelUp}` : ''}`;
   }
 
   onResize(view) {
@@ -136,9 +149,10 @@ export class ResultScene {
     text(ctx, `${this.ev.name.toUpperCase()} · ${where}${this.beaten ? ' · BEATEN!' : ''}`, cx, 52, { size: 22, font: 'display', track: 1.5, color: this.beaten ? PAL.gold : CREAM(0.75), maxWidth: colW });
     text(ctx, headline, cx, 118, { size: me.status === 'ok' ? 84 : 44, font: 'display', track: 2, color: PAL.cream, maxWidth: colW });
     if (me.status === 'ok' && this.results.length > 1) text(ctx, `${ordinal(this.place).toUpperCase()} PLACE`, cx, 180, { size: 34, font: 'display', track: 2, color: this.place === 1 ? PAL.gold : PAL.cream });
+    if (this.xpLine()) text(ctx, this.xpLine(), cx, 210, { size: 18, font: 'display', track: 1.5, color: this.levelUp ? PAL.gold : CREAM(0.8), maxWidth: colW });
 
     const flash = 0.65 + 0.35 * Math.sin(this.age * 8);
-    let y = 236;
+    let y = this.xpLine() ? 254 : 236; // under the XP line, when there is one
     if (this.beatWR) {
       text(ctx, 'NEW WORLD RECORD!', cx, y, { size: 28, font: 'display', track: 1.5, color: `rgba(242,182,50,${flash})` });
       y += 34;

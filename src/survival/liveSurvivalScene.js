@@ -67,7 +67,6 @@ export class LiveSurvivalScene {
     const s = liveSurvival;
     if (s.over || !s.meIn) {
       this.live.done = true; // you've played your part: leaving now isn't leaving early
-      s.bankPoints();
       if (s.over && s.winner === s.uid) {
         Object.assign(this.main, { label: 'Play again', color: PAL.liveGreen, lip: PAL.liveShade });
         this.other.label = 'Menu';

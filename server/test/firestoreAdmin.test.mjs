@@ -48,6 +48,7 @@ function fakeGoogle({ conflicts = 0 } = {}) {
 }
 
 const grant = (amount, ref, currency = 'earned') => ({ kind: 'grant', currency, amount, reason: 'admin', ref });
+const money = (w) => ({ earned: w.earned, premium: w.premium });
 
 test('signs in as the service account with a signed JWT, and keeps the token', async () => {
   resetToken();
@@ -63,15 +64,15 @@ test('a grant lands once with its ledger entry; the same payout again changes no
   resetToken();
   const g = fakeGoogle();
   const r = await changeWallet(env, 'uid1', grant(250, 'race-1'), { fetcher: g.fetcher });
-  assert.deepEqual(r.wallet, { earned: 250, premium: 0 });
+  assert.deepEqual(money(r.wallet), { earned: 250, premium: 0 });
   assert.equal(r.duplicate, false);
   const entry = g.docs.get(`projects/${PROJECT}/databases/(default)/documents/wallets/uid1/ledger/grant-admin-race-1`);
   assert.equal(entry.amount.integerValue, '250');
   const again = await changeWallet(env, 'uid1', grant(250, 'race-1'), { fetcher: g.fetcher });
   assert.equal(again.duplicate, true);
-  assert.deepEqual(await readWallet(env, 'uid1', { fetcher: g.fetcher }), { earned: 250, premium: 0 });
+  assert.deepEqual(money(await readWallet(env, 'uid1', { fetcher: g.fetcher })), { earned: 250, premium: 0 });
   await changeWallet(env, 'uid1', grant(3, 'race-2', 'premium'), { fetcher: g.fetcher });
-  assert.deepEqual(await readWallet(env, 'uid1', { fetcher: g.fetcher }), { earned: 250, premium: 3 });
+  assert.deepEqual(money(await readWallet(env, 'uid1', { fetcher: g.fetcher })), { earned: 250, premium: 3 });
 });
 
 test('spending more than you have is refused and writes nothing', async () => {
@@ -80,7 +81,7 @@ test('spending more than you have is refused and writes nothing', async () => {
   await changeWallet(env, 'uid2', grant(100, 'a'), { fetcher: g.fetcher });
   const spend = { kind: 'spend', currency: 'earned', amount: 101, reason: 'shop', ref: 'item-1' };
   await assert.rejects(changeWallet(env, 'uid2', spend, { fetcher: g.fetcher }), (e) => e instanceof WalletError && e.code === 'insufficient');
-  assert.deepEqual(await readWallet(env, 'uid2', { fetcher: g.fetcher }), { earned: 100, premium: 0 });
+  assert.deepEqual(money(await readWallet(env, 'uid2', { fetcher: g.fetcher })), { earned: 100, premium: 0 });
   assert.ok(g.log.some((u) => u.endsWith(':rollback')));
 });
 

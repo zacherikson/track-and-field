@@ -5,7 +5,7 @@ import { seededRandom } from '../core/random.js';
 /**
  * THE SHOP (the design doc's "Shop and items"): pure rules, shared by the
  * meet server (which alone sells: server/src/api.js /api/shop) and the game
- * (which shows it: online/shop.js, scenes/shopScene.js).
+ * (which shows it: online/shop.js, scenes/home/shopPanel.js (the Shop tab)).
  *
  * The same shop for everyone, worked out from the date (no database, no
  * scheduled jobs):

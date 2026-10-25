@@ -1,14 +1,13 @@
-import { Button, text, slab, chamfer, titlePlate, PAL } from '../core/ui.js';
-import { drawIcon } from '../core/icons.js';
-import { getBest, getBeaten } from '../core/storage.js';
-import { EVENTS, formatMark } from '../events/registry.js';
-import { CONFIG } from '../config.js';
-import { TIERS, tierOf, medalPoints, STANDARD_EVENTS } from '../economy/contracts.js';
-import { formatAmount } from '../economy/currencies.js';
-import { isSignedIn } from '../online/firebase.js';
-import { cachedContract, openContract, signContract } from '../online/contracts.js';
-import { cachedWallet } from '../online/wallet.js';
-import { flow } from '../flow.js';
+import { Button, text, slab, chamfer, titlePlate, PAL } from '../../core/ui.js';
+import { drawIcon } from '../../core/icons.js';
+import { getBest, getBeaten } from '../../core/storage.js';
+import { EVENTS, formatMark } from '../../events/registry.js';
+import { CONFIG } from '../../config.js';
+import { TIERS, tierOf, medalPoints, STANDARD_EVENTS } from '../../economy/contracts.js';
+import { formatAmount } from '../../economy/currencies.js';
+import { isSignedIn } from '../../online/firebase.js';
+import { cachedContract, openContract, signContract } from '../../online/contracts.js';
+import { cachedWallet } from '../../online/wallet.js';
 
 const WARN = '#ffb35c';
 const OK = '#7fd8a0';
@@ -16,32 +15,47 @@ const DIM = 'rgba(245,234,208,0.75)';
 const SHORT = { sprint100: '100m', hurdles110: 'Hurdles', longjump: 'Long jump', polevault: 'Pole vault', javelin: 'Javelin' };
 
 /**
- * YOUR CONTRACT (the design doc's "Contracts"; rules: economy/contracts.js):
+ * THE CONTRACT tab (the home screen's far right; the design doc's "Contracts"; rules: economy/contracts.js):
  * on the left the one you have, as a cream contract sheet: its daily pay, how
  * it stands (active, on probation), and the clause's races this week; or why
  * you haven't one. On the right your offers, each with Sign; with none, what
  * to do for one, and the standards your best marks are measured against.
  *
- * Shows the last answer at once (online/contracts.js keeps it), then asks the
- * server again: that also collects today's pay.
+ * Shows the last answer at once (online/contracts.js keeps it), then, each
+ * time you come to the tab, asks the server again: that also collects today's
+ * pay. Its tab has a dot while an offer is waiting (`badge`).
  */
-export class ContractScene {
-  /** `backTab`: the home screen tab Back returns to. */
-  constructor(backTab = 'play') {
-    this.backTab = backTab;
+export class ContractPanel {
+  constructor(home) {
+    this.home = home;
+    this.game = home.game;
+  }
+
+  /** An offer waiting: a dot on the tab. */
+  get badge() {
+    return !!cachedContract()?.offers?.length;
   }
 
   enter() {
-    this.backBtn = new Button({ label: 'Back', w: 188, h: 56, size: 24, color: PAL.ink2, lip: PAL.inkShade, onTap: () => flow.menu(this.game, this.backTab) });
+    this.signButtons = [];
+    this.show(false);
+    if (this.home.panels[this.home.tab] === this) this.onShow(); // the home screen opened on this tab
+  }
+
+  onShow() {
+    this.show(true);
+  }
+
+  /** What you had last time at once; `ask`: and the server again. */
+  show(ask) {
     const saved = cachedContract();
     this.contract = saved?.contract ?? null;
     this.offers = saved?.offers ?? [];
     this.wallet = cachedWallet();
     this.status = null; // { text, color }
     this.busy = false;
-    this.signButtons = [];
-    if (!isSignedIn()) this.status = { text: 'Sign in with Google (Profile) to get contracts.', color: WARN };
-    else {
+    if (!isSignedIn()) this.status = { text: 'Sign in with Google (Athlete tab) to get contracts.', color: WARN };
+    else if (ask) {
       if (!saved) this.status = { text: 'Checking…', color: DIM };
       openContract({ force: true })
         .then((a) => a && this.take(a))
@@ -49,7 +63,7 @@ export class ContractScene {
           this.status = { text: saved ? 'Offline: this is your contract as it was last seen.' : 'Couldn’t reach the server. Try again when you’re online.', color: WARN };
         });
     }
-    this.layout(this.game.view);
+    if (this.bottom != null) this.layout(this.game.view, this.bottom);
   }
 
   /** An answer from the server: what it says, and what it paid. */
@@ -59,7 +73,7 @@ export class ContractScene {
     this.wallet = cachedWallet();
     const got = [a.bonus ? `+${formatAmount('earned', a.bonus)} signing bonus` : null, a.paid ? `+${formatAmount('earned', a.paid)} today’s pay` : null].filter(Boolean);
     this.status = got.length ? { text: got.join('  ·  '), color: OK } : null;
-    this.layout(this.game.view);
+    this.layout(this.game.view, this.bottom);
   }
 
   sign(offer) {
@@ -84,11 +98,9 @@ export class ContractScene {
       });
   }
 
-  onResize(view) {
-    this.layout(view);
-  }
-
-  layout(view) {
+  /** `bottom`: the top of the tab bar. */
+  layout(view, bottom) {
+    this.bottom = bottom;
     this.colW = Math.min(440, (view.w - 60) / 2);
     this.leftX = view.w / 2 - this.colW - 10;
     this.rightX = view.w / 2 + 10;
@@ -98,29 +110,24 @@ export class ContractScene {
       x: this.rightX + this.colW - 104 - 12, y: this.top + 36 + i * 94 + 18,
       onTap: () => this.sign(o),
     }));
-    Object.assign(this.backBtn, { x: view.w / 2 - this.backBtn.w / 2, y: 430 });
   }
 
-  update(dt, t) {
-    for (const e of this.game.input.consume(t + dt)) {
-      if (e.type === 'down') [...this.signButtons, this.backBtn].some((b) => b.tap(e.x, e.y));
-      else if (e.code === 'Escape') flow.menu(this.game, this.backTab);
-    }
+  /** `events`: this tab's taps and keys (the home screen has sorted out swipes). */
+  update(dt, events) {
+    for (const e of events) if (e.type === 'down') this.signButtons.some((b) => b.tap(e.x, e.y));
     this.signButtons.forEach((b) => {
       b.enabled = !this.busy;
       b.update(dt);
     });
-    this.backBtn.update(dt);
   }
 
   render(ctx, view) {
     ctx.fillStyle = PAL.ink;
     ctx.fillRect(0, 0, view.w, view.h);
-    titlePlate(ctx, view, 'CONTRACT', '', { y: 40, face: PAL.gold, ink: PAL.ink });
+    titlePlate(ctx, view, 'CONTRACT', '', { face: PAL.gold, ink: PAL.ink });
     this.drawSheet(ctx, this.leftX, this.top, this.colW, 320);
     this.drawRight(ctx, this.rightX, this.top, this.colW);
-    if (this.status) text(ctx, this.status.text, view.w / 2, 414, { size: 18, font: 'body', weight: 700, color: this.status.color, maxWidth: view.w - 40 });
-    this.backBtn.draw(ctx);
+    if (this.status) text(ctx, this.status.text, view.w / 2, Math.min(430, this.bottom - 22), { size: 18, font: 'body', weight: 700, color: this.status.color, maxWidth: view.w - 40 });
   }
 
   /** Your contract, on a cream sheet: or no contract, or the one you lost. */

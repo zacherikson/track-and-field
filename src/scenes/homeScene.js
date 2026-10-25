@@ -4,13 +4,17 @@ import { chooseGhost } from '../online/ghost.js';
 import { AthletePanel } from './home/athletePanel.js';
 import { PlayPanel } from './home/playPanel.js';
 import { SquadPanel } from './home/squadPanel.js';
+import { ShopPanel } from './home/shopPanel.js';
+import { ContractPanel } from './home/contractPanel.js';
 
 /** The home screen's tabs, left to right. */
-export const TABS = ['athlete', 'play', 'squad'];
+export const TABS = ['shop', 'athlete', 'play', 'squad', 'contract'];
 const TAB_LOOK = [
+  { icon: 'shop', label: 'Shop' },
   { icon: 'athlete', label: 'Athlete' },
   { icon: 'play', label: 'Play' },
   { icon: 'squad', label: 'Squad' },
+  { icon: 'contract', label: 'Contract' },
 ];
 
 const BAR_H = 58; // the tab bar, above the bottom safe area
@@ -19,8 +23,8 @@ const DRAG = 14; // past this the panels follow the finger, and the touch is no 
 const TAP = 24; // a touch that ends within this of where it started is a tap
 
 /**
- * The home screen, Clash Royale style: three panels side by side, Athlete |
- * Play | Squad, with a tab bar along the bottom. Tap a tab or swipe sideways
+ * The home screen, Clash Royale style: five panels side by side, Shop |
+ * Athlete | Play | Squad | Contract, with a tab bar along the bottom. Tap a tab or swipe sideways
  * to move between them; the panels slide.
  *
  * Panels (home/*.js) are laid out over the whole screen above the tab bar and
@@ -29,7 +33,8 @@ const TAP = 24; // a touch that ends within this of where it started is a tap
  * lifts, so a swipe that starts on a button doesn't press it), and keys too.
  * Tapping the tab you're already on takes it back to its start (Play: the
  * vs Computer and Live buttons, out of any list).
- * Keyboard: 1 / 2 / 3 or Q / E change tab, Esc steps back within a tab, then to Play.
+ * A panel with `badge` true gets a dot on its tab (Contract: an offer waiting).
+ * Keyboard: 1 to 5 or Q / E change tab, Esc steps back within a tab, then to Play.
  */
 export class HomeScene {
   constructor(tab = 'play') {
@@ -43,7 +48,7 @@ export class HomeScene {
     this.drag = 0; // how far a finger has dragged them, px
     this.press = null; // the touch being followed: { id, x, y, down, dragging, lost }
     this.tabPressT = TABS.map(() => 0);
-    this.panels = [new AthletePanel(this), new PlayPanel(this), new SquadPanel(this)];
+    this.panels = [new ShopPanel(this), new AthletePanel(this), new PlayPanel(this), new SquadPanel(this), new ContractPanel(this)];
     this.panels.forEach((p) => p.enter());
     this.layout(this.game.view);
   }
@@ -75,7 +80,7 @@ export class HomeScene {
     const events = []; // for the panel showing
     for (const e of this.game.input.consume(t + dt)) {
       if (e.type === 'key') {
-        const digit = ['Digit1', 'Digit2', 'Digit3'].indexOf(e.code);
+        const digit = ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5'].indexOf(e.code);
         if (digit >= 0) this.show(digit);
         else if (e.code === 'KeyQ' || e.code === 'KeyE') this.show(this.tab + (e.code === 'KeyE' ? 1 : -1));
         else if (e.code === 'Escape') {
@@ -178,6 +183,16 @@ export class HomeScene {
       const iconS = on ? 28 : 24;
       const x0 = b.x + b.w / 2 - (iconS + 8 + lw) / 2;
       drawIcon(ctx, icon, x0 + iconS / 2, cy - 1, iconS, ink);
+      if (this.panels[i].badge) {
+        // Something waiting there: a dot on the icon's corner.
+        ctx.fillStyle = PAL.brick;
+        ctx.beginPath();
+        ctx.arc(x0 + iconS - 1, cy - iconS / 2 + 2, 7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = PAL.cream;
+        ctx.stroke();
+      }
       text(ctx, label.toUpperCase(), x0 + iconS + 8, cy, { size, font: 'display', align: 'left', track: 1, color: ink });
     });
   }

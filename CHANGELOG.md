@@ -6,6 +6,21 @@ Gameplay and tuning changes, newest first. When you change a number in
 From 1.0.0 every push to master bumps `src/version.js` and heads its section
 here with the version.
 
+## 1.9.0 — Shop and Contract tabs
+- The home screen has five tabs now: **Shop | Athlete | Play | Squad |
+  Contract** (`homeScene.js` `TABS`). Shop and Contract were screens opened
+  from chips at the top of the Play tab; they're tabs of their own
+  (`home/shopPanel.js`, `home/contractPanel.js`, moved from `scenes/`), and
+  the chips are gone. Keys 1 to 5 pick a tab.
+- They ask the server when you come to the tab (`onShow`), not every time the
+  home screen opens: the Contract tab collects today's pay as before, and the
+  Play tab still opens your contract when the menu loads.
+- An offer waiting puts a red dot on the Contract tab (a panel's `badge`),
+  where it was on the Contract chip. The contract news card says to sign it
+  on the Contract tab.
+- Their sign-in hints point to the Athlete tab (where a guest's Sign in with
+  Google is). Wearing a bought item keeps your username on your athlete.
+
 ## 1.8.1 — Your athlete goes by your username
 - Athletes no longer have names of their own: yours shows your username
   everywhere (races, results, the Athlete tab, the Athlete Maker's stage).

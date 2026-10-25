@@ -116,8 +116,9 @@ body parts into an athlete's sprite sheet (see [src/athletes/sprites/](src/athle
 
 ## The home screen
 
-Like Clash Royale: three tabs along the bottom, **Athlete | Play | Squad**. Tap
-one or swipe sideways to slide between them. The game opens on **Play**: two
+Like Clash Royale: five tabs along the bottom, **Shop | Athlete | Play | Squad |
+Contract**. Tap one or swipe sideways to slide between them. Contract's tab
+has a red dot while an offer is waiting. The game opens on **Play**: two
 big buttons, **🤖 vs Computer** and **🌐 Live**, over your athlete warming up on
 the track (tap them to change who it is). Live opens the tournament and the
 five events. vs Computer opens six big buttons (three across, or two on a narrow screen): **High School**,
@@ -152,7 +153,7 @@ play, no longer lists the rules: just its controls in the order you use them
 (Run › Lean, Run › Aim › Throw…) and a ❓ How to play button that opens that
 event's steps over the card (any tap closes them; in live play the countdown
 carries on underneath). H on a keyboard opens them too.
-Keyboard: 1 / 2 / 3 or Q / E change tab, Esc goes back to Play.
+Keyboard: 1 to 5 or Q / E change tab, Esc goes back to Play.
 
 **The sideshow.** In the background of every tab the other athletes (and the
 referee) are up to no good, one little skit at a time: punching out the
@@ -606,8 +607,8 @@ src/scenes/howTo.js             each event's steps and controls strip, and their
 src/scenes/profileScene.js      your username (unique, saved in Firebase), Google sign-in, level, wallet and medals
 src/scenes/lobbyScene.js        the live waiting room (any event, or the tournament)
 src/scenes/podiumScene.js       the podium after a live event: the top three, their medals, what you won
-src/scenes/contractScene.js     your contract (pay, the clause this week), your offers and Sign, the standards
-src/scenes/shopScene.js         the shop: this week's and today's gear, the basics; buying and wearing it
+src/scenes/home/contractPanel.js the Contract tab: your contract (pay, the clause this week), your offers and Sign, the standards
+src/scenes/home/shopPanel.js    the Shop tab: this week's and today's gear, the basics; buying and wearing it
 src/scenes/gearPreview.js       gear close up on your athlete (the shop's cards, the Athlete Maker's Gear tab)
 src/meet/             squad meets (docs/meets.md): the rules shared with the meet server (rules, scoring,
                       heats, relayLegs, protocol), the meet you're in (meet.js), sign-up and lobby

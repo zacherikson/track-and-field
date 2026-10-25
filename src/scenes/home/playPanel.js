@@ -14,7 +14,7 @@ import { syncBests } from '../../online/bests.js';
 import { syncWorldRecords } from '../../online/worldRecords.js';
 import { myLevel, onXp, flushXp } from '../../online/xp.js';
 import { syncProgress } from '../../online/progress.js';
-import { openContract, cachedContract } from '../../online/contracts.js';
+import { openContract } from '../../online/contracts.js';
 import { tierOf } from '../../economy/contracts.js';
 import { formatAmount } from '../../economy/currencies.js';
 import { EventTile } from './eventTile.js';
@@ -161,11 +161,8 @@ export class PlayPanel {
     this.helpButton = chip({ label: 'How to play', icon: 'howto', w: 172, onTap: () => flow.tutorial(this.game) });
     // Your profile (username for the online leaderboard), top right.
     this.profileButton = chip({ label: getPlayerName(), icon: 'profile', w: 200, onTap: () => flow.profile(this.game) });
-    // Your contract, beside it (a dot: an offer waiting).
-    this.contractButton = chip({ label: 'Contract', icon: 'contract', w: 150, onTap: () => flow.contract(this.game) });
-    this.shopButton = chip({ label: 'Shop', icon: 'shop', w: 110, onTap: () => flow.shop(this.game) });
+    // (Shop and Contract are tabs of their own: the home screen's far left and far right.)
     this.noticeT = 0; // contract news (pay in, probation...): a card over the track
-    this.offerDot = !!cachedContract()?.offers?.length;
     this.showLevel();
     this.stopXp = onXp(() => this.showLevel());
     this.fsButton = document.fullscreenEnabled ? chip({ label: '', icon: 'fullscreen', w: 48, onTap: () => toggleFullscreen() }) : null;
@@ -206,10 +203,9 @@ export class PlayPanel {
     if (a.news?.includes('lost')) [title, detail] = ['Contract lost', `You missed the clause two weeks running. Finish top 3 in ${c.requalNeed} races for offers.`];
     else if (a.news?.includes('probation')) [title, detail] = ['On probation', `You missed the clause. Race ${c.need} times this week for full pay. ${paid}`];
     else if (a.news?.includes('restored')) [title, detail] = ['Full pay is back', `You kept the clause. ${paid}`];
-    else if (a.offers?.length && offerKey(a.offers) !== offersShown) [title, detail] = ['Contract offer!', `${tierOf(a.offers.at(-1).tier).name}: ${formatAmount('earned', a.offers.at(-1).pay)} a day. Tap Contract to sign.`];
+    else if (a.offers?.length && offerKey(a.offers) !== offersShown) [title, detail] = ['Contract offer!', `${tierOf(a.offers.at(-1).tier).name}: ${formatAmount('earned', a.offers.at(-1).pay)} a day. Sign it on the Contract tab.`];
     else if (a.paid) [title, detail] = ['Contract pay', `${paid} · ${name}`];
     offersShown = offerKey(a.offers ?? []);
-    this.offerDot = !!a.offers?.length;
     if (!title) return;
     this.noticeTitle = title;
     this.noticeDetail = detail.trim();
@@ -387,18 +383,11 @@ export class PlayPanel {
     this.backBtn.x = 14 + view.safe.l;
     if (this.fsButton) this.fsButton.x = view.w - 48 - 14 - view.safe.r;
     this.profileButton.x = (this.fsButton ? this.fsButton.x - 10 : view.w - 14 - view.safe.r) - this.profileButton.w;
-    // How to play next to the Leaderboard; Shop and Contract next to your profile. Where the
-    // words won't all fit, How to play goes to just its icon first, then Shop and Contract.
+    // How to play next to the Leaderboard (just its icon where the words won't fit).
     const helpX = this.onlineButton.x + this.onlineButton.w + 8;
-    const room = this.profileButton.x - helpX;
-    const fits = (help, shop, contract) => help + shop + contract + 30 <= room;
-    const [hw, shopW, cw] = fits(172, 110, 150) ? [172, 110, 150] : fits(48, 110, 150) ? [48, 110, 150] : [48, 48, 48];
+    const hw = 172 + 10 <= this.profileButton.x - helpX ? 172 : 48;
     Object.assign(this.helpButton, { x: helpX, w: hw, label: hw > 48 ? 'How to play' : '' });
-    Object.assign(this.contractButton, { w: cw, label: cw > 48 ? 'Contract' : '' });
-    Object.assign(this.shopButton, { w: shopW, label: shopW > 48 ? 'Shop' : '' });
-    this.contractButton.x = this.profileButton.x - 10 - this.contractButton.w;
-    this.shopButton.x = this.contractButton.x - 10 - this.shopButton.w;
-    for (const b of [this.tuneButton, this.onlineButton, this.helpButton, this.backBtn, this.fsButton, this.shopButton, this.contractButton, this.profileButton]) if (b) b.y = top;
+    for (const b of [this.tuneButton, this.onlineButton, this.helpButton, this.backBtn, this.fsButton, this.profileButton]) if (b) b.y = top;
 
     // The two big buttons, side by side.
     const bigs = [this.offlineBig, this.liveBig];
@@ -468,7 +457,7 @@ export class PlayPanel {
     if (this.list === 'offline') return [this.backBtn, ...this.gridButtons];
     if (this.list === 'live') return [this.backBtn, ...this.liveButtons];
     if (this.list === 'special') return [this.backBtn, ...this.specialButtons, ...this.rivalButtons];
-    return [this.fsButton, this.tuneButton, this.onlineButton, this.helpButton, this.shopButton, this.contractButton, this.profileButton, this.offlineBig, this.liveBig].filter(Boolean);
+    return [this.fsButton, this.tuneButton, this.onlineButton, this.helpButton, this.profileButton, this.offlineBig, this.liveBig].filter(Boolean);
   }
 
   /** `events`: this tab's taps and keys (the home screen has sorted out swipes). */
@@ -511,18 +500,7 @@ export class PlayPanel {
 
   renderButtons(ctx, view) {
     wordmark(ctx, view.w / 2, 94, 58);
-    for (const b of [this.fsButton, this.tuneButton, this.onlineButton, this.helpButton, this.shopButton, this.contractButton, this.profileButton, this.offlineBig, this.liveBig]) b?.draw(ctx);
-    // An offer waiting: a dot on Contract.
-    if (this.offerDot) {
-      const b = this.contractButton;
-      ctx.fillStyle = PAL.brick;
-      ctx.beginPath();
-      ctx.arc(b.x + b.w - 4, b.y + 4, 8, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = PAL.cream;
-      ctx.stroke();
-    }
+    for (const b of [this.fsButton, this.tuneButton, this.onlineButton, this.helpButton, this.profileButton, this.offlineBig, this.liveBig]) b?.draw(ctx);
 
     // Your athlete, warming up on the track, their name on an ink tag.
     const { me } = this;

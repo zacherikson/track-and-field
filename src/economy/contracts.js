@@ -4,7 +4,7 @@ import { MEDALS } from './wallet.js';
 /**
  * CONTRACTS (the design doc's "Contracts"): pure rules, shared by the meet
  * server (which alone keeps them: server/src/firestoreAdmin.js, api.js) and the
- * game (which shows them: online/contracts.js, scenes/contractScene.js).
+ * game (which shows them: online/contracts.js, scenes/home/contractPanel.js (the Contract tab)).
  *
  * - Offers: beat a campaign's tournament for its contract (High School: the
  *   Scholarship, Collegiate: an NIL deal, Pro: a Pro contract, which also needs

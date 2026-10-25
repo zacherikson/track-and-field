@@ -132,13 +132,14 @@ export class TrackRenderer {
     ctx.fillRect(0, 0, view.w, this.L.standsTop + 40);
   }
 
-  drawStands(ctx, view, camera) {
+  /** `opts.backdrop` false: a bleacher stadium leaves out its sky (and range), drawn behind it already (the javelin's flight shot). */
+  drawStands(ctx, view, camera, opts) {
     const s = this.venue.stands;
     if (!s) return this.drawBackdrop(ctx, view, camera);
     const top = this.L.standsTop;
     const bottom = this.L.boardsTop;
     if (this.venue.colosseum) return this.drawColosseum(ctx, view, camera, top, bottom);
-    if (this.venue.mountains || this.venue.town) return this.drawBleacherStadium(ctx, view, camera, top, bottom);
+    if (this.venue.mountains || this.venue.town) return this.drawBleacherStadium(ctx, view, camera, top, bottom, opts);
     ctx.fillStyle = s.body;
     ctx.fillRect(0, top, view.w, bottom - top);
     ctx.fillStyle = s.roof;
@@ -380,20 +381,24 @@ export class TrackRenderer {
    * bleachers in sections along the bottom with people dotted along them, a
    * press box on every third where there is one. The trees, poles and
    * bleachers are on the stand's parallax; what's behind moves slower.
+   * `backdrop: false` leaves out the sky and the range, for a shot that has
+   * drawn its own behind the band (the javelin's flight); the town stays.
    */
-  drawBleacherStadium(ctx, view, camera, top, bottom) {
+  drawBleacherStadium(ctx, view, camera, top, bottom, { backdrop = true } = {}) {
     const M = this.venue.mountains;
     const T = this.venue.town;
     const B = M ?? T; // trees and poles
     const S = this.venue.stands;
-    const g = ctx.createLinearGradient(0, 0, 0, bottom);
-    g.addColorStop(0, this.venue.sky.top);
-    g.addColorStop(1, this.venue.sky.bottom);
-    ctx.fillStyle = g;
-    ctx.fillRect(0, top, view.w, bottom - top);
     const offset = camera.x * camera.ppm * 0.2;
     const H = bottom - top;
-    if (M) {
+    if (backdrop) {
+      const g = ctx.createLinearGradient(0, 0, 0, bottom);
+      g.addColorStop(0, this.venue.sky.top);
+      g.addColorStop(1, this.venue.sky.bottom);
+      ctx.fillStyle = g;
+      ctx.fillRect(0, top, view.w, bottom - top);
+    }
+    if (M && backdrop) {
       drawMountains(ctx, view.w, offset * 0.15, top + 2, bottom - H * 0.12, { face: M.far, shade: M.farShade, snow: M.snow, snowShade: M.snowShade, spacing: 170, seed: 7919, snowDepth: H * 0.22 });
       drawMountains(ctx, view.w, offset * 0.3, top + H * 0.3, bottom - H * 0.12, { face: M.near, shade: M.nearShade, snow: M.snow, snowShade: M.snowShade, spacing: 120, seed: 104729, snowDepth: H * 0.1 });
     }

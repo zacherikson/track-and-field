@@ -139,6 +139,7 @@ export class JavelinRenderer extends RunwayRenderer {
     }
     // Collegiate's: the snow-capped range all along the horizon.
     const M = this.venue.mountains;
+    if (this.venue.town && !M) return; // High School's: the town in the stand's band is the view
     if (M) {
       drawMountains(ctx, view.w, x * 2, hy - 150, hy, { face: M.far, shade: M.farShade, snow: M.snow, snowShade: M.snowShade, spacing: 260, seed: 7919, snowDepth: 40 });
       drawMountains(ctx, view.w, x * 3.5, hy - 80, hy, { face: M.near, shade: M.nearShade, snow: M.snow, snowShade: M.snowShade, spacing: 190, seed: 104729, snowDepth: 18 });
@@ -204,10 +205,15 @@ export class JavelinRenderer extends RunwayRenderer {
   drawFlight(ctx, view, camera, x, y) {
     const groundY = this.flightGround(view, y); // screen y of the field's near edge
     const dy = groundY - this.L.grassTop;
-    this.drawSkyline(ctx, view, x, this.L.standsTop + dy - 6);
+    // Bleachers (Collegiate, High School): one sky down to their foot, the range
+    // (or the town) right behind them, not a second landscape stacked over the band.
+    const bleachers = !!(this.venue.stands && !this.venue.colosseum && (this.venue.mountains || this.venue.town));
+    const band = this.L.boardsTop - this.L.standsTop;
+    const hy = bleachers ? this.L.boardsTop + dy - (this.venue.mountains ? band * 0.12 : 0) : this.L.standsTop + dy - 6;
+    this.drawSkyline(ctx, view, x, hy);
     ctx.save();
     ctx.translate(0, dy);
-    this.drawStands(ctx, view, camera);
+    this.drawStands(ctx, view, camera, { backdrop: !bleachers });
     this.drawBoards(ctx, view, camera, this.L.boardsTop, this.L.grassTop - this.L.boardsTop, 0.24, 13);
     ctx.restore();
     // The field, seen side on, with distance boards along the far edge.

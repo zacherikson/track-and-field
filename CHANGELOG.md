@@ -6,6 +6,18 @@ Gameplay and tuning changes, newest first. When you change a number in
 From 1.0.0 every push to master bumps `src/version.js` and heads its section
 here with the version.
 
+## 1.1.5 — One range behind the javelin
+- **What happened:** in the javelin's flight shot at Collegiate, the sky
+  drew the snow-capped range and then the bleachers' band drew its own sky
+  and a second, smaller range under it, so you saw mountains above mountains
+  with a strip of pale sky between them. High School had the same seam: the
+  sea and hills, then a second sky with the town in it.
+- **Fix:** with bleachers, the flight shot's sky runs all the way down to
+  them and its range sits right behind the trees and bleachers
+  (`javelinField.js` `drawFlight`); the band leaves out its own sky and range
+  (`drawStands`/`drawBleacherStadium` `{ backdrop: false }`). High School
+  keeps the town and drops the sea and hills. Other venues are unchanged.
+
 ## 1.1.4 — Spikes under the toes
 - The Athlete tab's shoe icon (`icons.js` `athlete`): its four spikes were
   spread from the heel to the middle of the sole. They're under the front

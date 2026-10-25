@@ -55,7 +55,7 @@ export function livePayouts({ kind, room, standings, day }) {
       const xp = xpForRace({ mode: 'live', place: r.place, field });
       if (!xp) continue;
       const e = entry(r.uid);
-      e.changes.push({ kind: 'grant', currency: 'xp', amount: xp, reason: 'race', ref: `${room}-${ev.step}`, day });
+      e.changes.push({ kind: 'grant', currency: 'xp', amount: xp, reason: 'race', ref: `${room}-${ev.step}`, day, place: r.place }); // place: for your contract's clause
       e.summary.xp += xp;
     }
   }

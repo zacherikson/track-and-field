@@ -9,6 +9,7 @@ import { HomeScene } from './scenes/homeScene.js';
 import { IntroScene } from './scenes/introScene.js';
 import { ResultScene } from './scenes/resultScene.js';
 import { LeaderboardScene } from './scenes/leaderboardScene.js';
+import { ContractScene } from './scenes/contractScene.js';
 import { ProfileScene } from './scenes/profileScene.js';
 import { AthleteMakerScene } from './scenes/athleteMaker.js';
 import { TutorialScene } from './scenes/tutorialScene.js';
@@ -141,6 +142,8 @@ export const flow = {
   maker: (game) => game.setScene(new AthleteMakerScene()),
   // Your profile; Back returns to the home screen's `tab`.
   profile: (game, tab = 'play') => game.setScene(new ProfileScene(null, tab)),
+  // Your contract (economy/contracts.js): its pay and clause, your offers.
+  contract: (game, tab = 'play') => game.setScene(new ContractScene(tab)),
   // Live: the waiting room for an event or the tournament (`kind`), then play with everyone in it (online/live.js).
   // `squad` ({ key, name }): that squad's practice room, which only its members see (Squad tab).
   live: (game, kind, squad = null) => {

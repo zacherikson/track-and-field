@@ -6,6 +6,48 @@ Gameplay and tuning changes, newest first. When you change a number in
 From 1.0.0 every push to master bumps `src/version.js` and heads its section
 here with the version.
 
+## 1.5.0 — Contracts (economy phase 4)
+Beat a campaign's tournament for a contract that pays every day you open the
+game. Keep its one clause each week or lose it.
+- **Contracts** (`src/economy/contracts.js`, `CONFIG.economy.contracts`;
+  placeholders):
+  - **Scholarship** (beat High School): 150 Coins a day.
+  - **NIL deal** (beat Collegiate): 1,500 a day.
+  - **Pro contract** (beat Pro, plus a live medal: a gold or two silvers):
+    7,000 a day.
+  - **How good the offer is:** Rookie, Starter (×1.3 pay) or Star (×1.7),
+    from your medals (gold 6, silver 3, bronze 2 points) plus 2 points for
+    each of the contract's five qualifying standards your best marks meet.
+    The standards are about what wins a race at that level.
+  - **Offers** only show when they pay more than what you have. Signing one
+    replaces it, with a signing bonus of a day's pay.
+- **Pay:** collected when you open the game, once a day; a day you don't is
+  lost. Days end at your own midnight (your time zone, which can change once
+  a week).
+- **The clause:** race 3 times a week (any race but Training), counted from
+  the day you signed. Miss a week: probation, 20% less pay. Meet it again:
+  full pay. Miss two in a row: the contract is gone, and offers come back
+  after 3 top-3 finishes.
+- **The server keeps it** (`contracts/{uid}`, changed in the same transaction
+  as the wallet). `POST /api/contract` opens it (catching up on the weeks
+  gone by, then paying today) or signs an offer, which the server works out
+  from your account's progress and medals. Races count toward the clause as
+  their XP lands, from `/api/xp` and from live payouts. No scheduled jobs.
+- **Shown:**
+  - **Home:** a Contract chip (a red dot when an offer is waiting) and a card
+    over the track when pay comes in, an offer arrives, or you go on or off
+    probation or lose the contract.
+  - **Contract screen** (`src/scenes/contractScene.js`): your contract as a
+    cream sheet (pay, status, the clause's races this week, days left), your
+    offers with Sign. With no offer, what to do for the next one and the
+    standards against your bests.
+- **Database:** `firestore.rules` adds `contracts/{uid}` (yours to read,
+  only the server writes).
+- **Tests:** the contract rules (offers, grades, pay, the clause, probation,
+  losing and requalifying, time zones), and the server end to end against a
+  fake Firestore (sign, pay once a day, races counted, probation, lost,
+  offers back).
+
 ## 1.4.0 — Live prize money and medals (economy phase 3)
 Public live races now pay out, decided by the server, and the top three go up
 on a podium.

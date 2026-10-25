@@ -25,6 +25,13 @@ const DOC_VERSION = 1;
 const PUSH_DELAY = 3000; // ms after a change before it goes up (a race's results change several things at once)
 
 let running = null;
+const synced = new Set();
+
+/** `fn(progress)` each time your progress has gone up to your account (contracts' offers come from it). Returns a way to stop. */
+export function onProgressSynced(fn) {
+  synced.add(fn);
+  return () => synced.delete(fn);
+}
 let again = false;
 let timer = null;
 
@@ -76,6 +83,7 @@ async function sync() {
     if (err?.code !== 'permission-denied' || !getProgress().beaten?.highschool) throw err;
     await write((d) => ({ ...d, beaten: Object.fromEntries(Object.entries(d.beaten).filter(([level]) => level !== 'highschool')) }));
   }
+  for (const fn of synced) fn(merged);
   // Anything that changed here while that was on its way gets merged in too.
   const local = getProgress();
   const next = merge(local, merged);

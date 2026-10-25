@@ -1,6 +1,8 @@
 import { verifyToken } from './auth.js';
-import { changeWallet, readWallet, hasAdmin } from './firestoreAdmin.js';
+import { changeWallet, readWallet, readProgress, hasAdmin } from './firestoreAdmin.js';
 import { xpForRace, xpDay, levelOf } from '../../src/economy/levels.js';
+import { WalletError } from '../../src/economy/wallet.js';
+import { advance, collect, contractView, localDay, offers, setZone, sign } from '../../src/economy/contracts.js';
 
 /**
  * THE GAME'S HTTP CALLS to the server (besides the live sockets), under /api/:
@@ -10,6 +12,14 @@ import { xpForRace, xpDay, levelOf } from '../../src/economy/levels.js';
  *                  The server works out each one's XP (src/economy/levels.js) and adds it to
  *                  your wallet, up to the day's cap; `ref` makes each race count once.
  *                  → { done: [ref], gained, xp, level, levelUp }
+ *                  Each race also counts toward your contract's clause (src/economy/contracts.js).
+ *
+ *   POST /api/contract  { action: 'open' | 'sign', tz, tier? }  (same sign-in)
+ *                  Your contract (src/online/contracts.js). 'open' (the game at its menu): today's
+ *                  pay if it isn't collected yet, after catching up on the weeks gone by. 'sign':
+ *                  signs your offer for `tier` (worked out here, from your progress and medals),
+ *                  with its signing bonus, then the same. `tz` = your time zone (minutes behind UTC).
+ *                  → { contract, offers, paid, bonus, news, wallet }
  *
  * Signed in with Google only: a guest earns nothing (`guest`). Any website may
  * call it (CORS *): it does nothing without a player's own token.
@@ -31,7 +41,7 @@ const json = (body, status = 200) => new Response(JSON.stringify(body), { status
  */
 export async function handleApi(request, env, path, deps = {}) {
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
-  if (path !== 'xp') return json({ error: 'not-found' }, 404);
+  if (path !== 'xp' && path !== 'contract') return json({ error: 'not-found' }, 404);
   if (request.method !== 'POST') return json({ error: 'method' }, 405);
   if (!hasAdmin(env) && !deps.change) return json({ error: 'not-set-up' }, 503);
   const token = (request.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '');
@@ -46,6 +56,7 @@ export async function handleApi(request, env, path, deps = {}) {
   } catch {
     return json({ error: 'bad-json' }, 400);
   }
+  if (path === 'contract') return contract(env, who.uid, body, deps);
   const claims = Array.isArray(body?.claims) ? body.claims.slice(0, MAX_CLAIMS) : [];
   const change = deps.change ?? changeWallet;
   const read = deps.read ?? readWallet;
@@ -60,7 +71,8 @@ export async function handleApi(request, env, path, deps = {}) {
       if (typeof c?.ref !== 'string' || !REF.test(c.ref)) continue; // no ref to answer to: dropped
       const amount = xpForRace(c);
       if (amount > 0) {
-        const r = await change(env, who.uid, { kind: 'grant', currency: 'xp', amount, reason: 'race', ref: c.ref, day });
+        const place = Number.isInteger(c.place) ? c.place : 0; // for your contract's clause
+        const r = await change(env, who.uid, { kind: 'grant', currency: 'xp', amount, reason: 'race', ref: c.ref, day, place });
         wallet = r.wallet;
         if (!r.duplicate) gained += r.entry.amount;
       }
@@ -71,5 +83,49 @@ export async function handleApi(request, env, path, deps = {}) {
     console.warn('api xp', e?.message);
     // What landed before the failure is done; the rest the phone sends again.
     return json({ error: 'server', done }, 502);
+  }
+}
+
+const ACTIONS = ['open', 'sign'];
+
+/** POST /api/contract: your contract opened (today's pay) or an offer signed. */
+async function contract(env, uid, body, deps) {
+  const action = body?.action;
+  if (!ACTIONS.includes(action)) return json({ error: 'bad-action' }, 400);
+  const change = deps.change ?? changeWallet;
+  let out;
+  try {
+    const progress = await (deps.progress ?? readProgress)(env, uid);
+    const r = await change(env, uid, ({ wallet, contract: stored, now }) => {
+      let c = Number.isInteger(body.tz) ? setZone(stored, body.tz, localDay(now, stored.tz)) : stored;
+      const day = localDay(now, c.tz);
+      const caught = advance(c, day);
+      c = caught.contract;
+      const changes = [];
+      let bonus = 0;
+      if (action === 'sign') {
+        const offer = offers({ contract: c, progress, wallet }).find((o) => o.tier === body.tier);
+        if (!offer) throw new WalletError('no-offer');
+        ({ contract: c, bonus } = sign(c, offer, day));
+        if (bonus) changes.push({ kind: 'grant', currency: 'earned', amount: bonus, reason: 'signing', ref: `${offer.tier}-${offer.grade}-${day}` });
+      }
+      const pay = collect(c, day);
+      if (pay.amount) changes.push({ kind: 'grant', currency: 'earned', amount: pay.amount, reason: 'contract', ref: `day-${day}` });
+      out = { day, paid: pay.amount, bonus, news: [...caught.news, ...pay.news] };
+      return { changes, contract: pay.contract };
+    });
+    const { gold, silver, bronze, earned, premium, xp } = r.wallet;
+    return json({
+      contract: contractView(r.contract, out.day),
+      offers: offers({ contract: r.contract, progress, wallet: r.wallet }),
+      paid: out.paid,
+      bonus: out.bonus,
+      news: out.news,
+      wallet: { earned, premium, xp, gold, silver, bronze },
+    });
+  } catch (e) {
+    if (e instanceof WalletError) return json({ error: e.code }, 409);
+    console.warn('api contract', e?.message);
+    return json({ error: 'server' }, 502);
   }
 }

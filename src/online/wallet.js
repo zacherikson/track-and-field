@@ -28,6 +28,14 @@ function remember(wallet) {
   } catch {}
 }
 
+/** Keeps balances the server just sent (with a contract's pay: online/contracts.js) as your wallet. */
+export function rememberWallet(balances) {
+  const wallet = cleanWallet({ ...cachedWallet(), ...balances });
+  remember(wallet);
+  if (balances.xp != null) rememberXp(wallet.xp);
+  return wallet;
+}
+
 /** Reads your wallet from your account: resolves to it, or null as a guest. Rejects offline. */
 export async function refreshWallet() {
   if (!isSignedIn()) return null;

@@ -14,10 +14,16 @@ import { syncBests } from '../../online/bests.js';
 import { syncWorldRecords } from '../../online/worldRecords.js';
 import { myLevel, onXp, flushXp } from '../../online/xp.js';
 import { syncProgress } from '../../online/progress.js';
+import { openContract, cachedContract } from '../../online/contracts.js';
+import { tierOf } from '../../economy/contracts.js';
+import { formatAmount } from '../../economy/currencies.js';
 import { EventTile } from './eventTile.js';
 import { Sideshow } from './sideshow.js';
 
 const SHORT = { sprint100: '100m', longjump: 'Long jump', hurdles110: 'Hurdles', polevault: 'Pole vault', javelin: 'Javelin' };
+
+// The offers last announced over the track (contractNews), so each is announced once.
+let offersShown = '';
 
 // When the menu last fetched your progress from your account (see enter()).
 let lastPull = -Infinity;
@@ -155,6 +161,10 @@ export class PlayPanel {
     this.helpButton = chip({ label: 'How to play', icon: 'howto', w: 172, onTap: () => flow.tutorial(this.game) });
     // Your profile (username for the online leaderboard), top right.
     this.profileButton = chip({ label: getPlayerName(), icon: 'profile', w: 200, onTap: () => flow.profile(this.game) });
+    // Your contract, beside it (a dot: an offer waiting).
+    this.contractButton = chip({ label: 'Contract', icon: 'contract', w: 150, onTap: () => flow.contract(this.game) });
+    this.noticeT = 0; // contract news (pay in, probation...): a card over the track
+    this.offerDot = !!cachedContract()?.offers?.length;
     this.showLevel();
     this.stopXp = onXp(() => this.showLevel());
     this.fsButton = document.fullscreenEnabled ? chip({ label: '', icon: 'fullscreen', w: 48, onTap: () => toggleFullscreen() }) : null;
@@ -166,6 +176,10 @@ export class PlayPanel {
     syncWorldRecords(EVENTS).catch(() => {});
     // Races finished offline go toward your XP now (online/xp.js).
     flushXp().catch(() => {});
+    // Opening the game collects your contract's pay for today (online/contracts.js).
+    openContract()
+      .then((a) => a && this.game.scene === this.home && this.contractNews(a))
+      .catch((e) => console.warn('contract not opened', e?.message));
     // Your campaign progress and athlete follow your account (online/progress.js):
     // catch up with it too. That needs the Firebase SDK (it's private), so not
     // every time you're back at the menu: your own changes go up as they happen.
@@ -179,6 +193,26 @@ export class PlayPanel {
 
   exit() {
     this.stopXp?.();
+  }
+
+  /** What the server said about your contract, on a card over the track for a few seconds. */
+  contractNews(a) {
+    const c = a.contract ?? {};
+    const name = tierOf(c.tier || c.lost)?.name ?? 'contract';
+    const paid = a.paid ? `+${formatAmount('earned', a.paid)} today` : '';
+    let title = null;
+    let detail = '';
+    if (a.news?.includes('lost')) [title, detail] = ['Contract lost', `You missed the clause two weeks running. Finish top 3 in ${c.requalNeed} races for offers.`];
+    else if (a.news?.includes('probation')) [title, detail] = ['On probation', `You missed the clause. Race ${c.need} times this week for full pay. ${paid}`];
+    else if (a.news?.includes('restored')) [title, detail] = ['Full pay is back', `You kept the clause. ${paid}`];
+    else if (a.offers?.length && offerKey(a.offers) !== offersShown) [title, detail] = ['Contract offer!', `${tierOf(a.offers.at(-1).tier).name}: ${formatAmount('earned', a.offers.at(-1).pay)} a day. Tap Contract to sign.`];
+    else if (a.paid) [title, detail] = ['Contract pay', `${paid} · ${name}`];
+    offersShown = offerKey(a.offers ?? []);
+    this.offerDot = !!a.offers?.length;
+    if (!title) return;
+    this.noticeTitle = title;
+    this.noticeDetail = detail.trim();
+    this.noticeT = 5;
   }
 
   /** The profile chip: your name, and your level once the server has told us it. */
@@ -352,11 +386,14 @@ export class PlayPanel {
     this.backBtn.x = 14 + view.safe.l;
     if (this.fsButton) this.fsButton.x = view.w - 48 - 14 - view.safe.r;
     this.profileButton.x = (this.fsButton ? this.fsButton.x - 10 : view.w - 14 - view.safe.r) - this.profileButton.w;
-    // How to play, next to the Leaderboard: just its icon where the words won't fit.
+    // How to play, next to the Leaderboard, and Contract, next to your profile: just their icons where the words won't fit.
     const helpX = this.onlineButton.x + this.onlineButton.w + 8;
-    const roomy = helpX + 172 + 10 <= this.profileButton.x;
+    const roomy = helpX + 172 + 10 + 150 + 10 <= this.profileButton.x;
+    const snug = helpX + 48 + 10 + 150 + 10 <= this.profileButton.x;
     Object.assign(this.helpButton, { x: helpX, w: roomy ? 172 : 48, label: roomy ? 'How to play' : '' });
-    for (const b of [this.tuneButton, this.onlineButton, this.helpButton, this.backBtn, this.fsButton, this.profileButton]) if (b) b.y = top;
+    Object.assign(this.contractButton, { w: snug ? 150 : 48, label: snug ? 'Contract' : '' });
+    this.contractButton.x = this.profileButton.x - 10 - this.contractButton.w;
+    for (const b of [this.tuneButton, this.onlineButton, this.helpButton, this.backBtn, this.fsButton, this.contractButton, this.profileButton]) if (b) b.y = top;
 
     // The two big buttons, side by side.
     const bigs = [this.offlineBig, this.liveBig];
@@ -426,7 +463,7 @@ export class PlayPanel {
     if (this.list === 'offline') return [this.backBtn, ...this.gridButtons];
     if (this.list === 'live') return [this.backBtn, ...this.liveButtons];
     if (this.list === 'special') return [this.backBtn, ...this.specialButtons, ...this.rivalButtons];
-    return [this.fsButton, this.tuneButton, this.onlineButton, this.helpButton, this.profileButton, this.offlineBig, this.liveBig].filter(Boolean);
+    return [this.fsButton, this.tuneButton, this.onlineButton, this.helpButton, this.contractButton, this.profileButton, this.offlineBig, this.liveBig].filter(Boolean);
   }
 
   /** `events`: this tab's taps and keys (the home screen has sorted out swipes). */
@@ -445,6 +482,7 @@ export class PlayPanel {
     this.sideshow.update(dt);
     this.fade = Math.min(1, this.fade + dt * 6);
     this.warnT = Math.max(0, this.warnT - dt);
+    this.noticeT = Math.max(0, this.noticeT - dt);
     this.phase += dt * 5; // your athlete warming up
     // The runner under a list goes along the track.
     const speed = 9;
@@ -468,7 +506,18 @@ export class PlayPanel {
 
   renderButtons(ctx, view) {
     wordmark(ctx, view.w / 2, 94, 58);
-    for (const b of [this.fsButton, this.tuneButton, this.onlineButton, this.helpButton, this.profileButton, this.offlineBig, this.liveBig]) b?.draw(ctx);
+    for (const b of [this.fsButton, this.tuneButton, this.onlineButton, this.helpButton, this.contractButton, this.profileButton, this.offlineBig, this.liveBig]) b?.draw(ctx);
+    // An offer waiting: a dot on Contract.
+    if (this.offerDot) {
+      const b = this.contractButton;
+      ctx.fillStyle = PAL.brick;
+      ctx.beginPath();
+      ctx.arc(b.x + b.w - 4, b.y + 4, 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = PAL.cream;
+      ctx.stroke();
+    }
 
     // Your athlete, warming up on the track, their name on an ink tag.
     const { me } = this;
@@ -480,6 +529,7 @@ export class PlayPanel {
     ctx.fill();
     drawFigure(ctx, x, ground, Math.min(124, ground - this.trackTop - 10) * heightOf(me.colors), runPose(this.phase, 0.12), me.colors, ground);
     nameTag(ctx, me.name, x, ground + 18);
+    this.drawNotice(ctx, view);
   }
 
   /**
@@ -518,6 +568,25 @@ export class PlayPanel {
     }
     this.drawRunner(ctx, view);
     this.drawWarning(ctx, view);
+  }
+
+  /** Contract news (contractNews): a gold-edged ink card over the track, fading out. */
+  drawNotice(ctx, view) {
+    if (this.noticeT <= 0) return;
+    ctx.save();
+    ctx.globalAlpha *= Math.min(1, this.noticeT * 2);
+    const pw = Math.min(view.w - 40, 560);
+    const y = 292;
+    slab(ctx, view.w / 2 - pw / 2 - 3, y - 3, pw + 6, 86, { face: PAL.gold, lip: PAL.goldShade, lipH: 6, c: 9 });
+    slab(ctx, view.w / 2 - pw / 2, y, pw, 78, { face: PAL.ink, lip: PAL.inkShade, lipH: 5, c: 8 });
+    ctx.font = `900 24px ${FONT_DISPLAY}`;
+    ctx.letterSpacing = '1px';
+    const tw = Math.min(pw - 80, ctx.measureText(this.noticeTitle.toUpperCase()).width);
+    ctx.letterSpacing = '0px';
+    drawIcon(ctx, 'contract', view.w / 2 - tw / 2 - 18, y + 24, 24, PAL.gold);
+    text(ctx, this.noticeTitle.toUpperCase(), view.w / 2 + 14, y + 25, { size: 24, font: 'display', track: 1, color: PAL.gold, maxWidth: pw - 80 });
+    if (this.noticeDetail) text(ctx, this.noticeDetail, view.w / 2, y + 53, { size: 16, font: 'body', weight: 700, color: PAL.cream, maxWidth: pw - 28 });
+    ctx.restore();
   }
 
   /** Clash Royale style: say what's missing, on an ink card over the buttons, with a lock. */
@@ -764,3 +833,6 @@ function toggleFullscreen() {
     .then(() => screen.orientation?.lock?.('landscape'))
     .catch(() => {});
 }
+
+/** What's on offer, as a key: a new or better offer changes it. */
+const offerKey = (offers) => offers.map((o) => `${o.tier}${o.grade}`).join(',');

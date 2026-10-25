@@ -7,6 +7,7 @@ import { renameInSquad } from '../online/squads.js';
 import { flow } from '../flow.js';
 import { cachedWallet, refreshWallet, forgetWallet } from '../online/wallet.js';
 import { myLevel, forgetXp } from '../online/xp.js';
+import { forgetContract } from '../online/contracts.js';
 import { levelProgress } from '../economy/levels.js';
 import { CURRENCIES, formatAmount } from '../economy/currencies.js';
 
@@ -171,6 +172,7 @@ export class ProfileScene {
         forgetProgress();
         forgetWallet();
         forgetXp();
+        forgetContract();
         location.reload();
       })
       .catch(() => {

@@ -2,7 +2,7 @@ rules_version = '2';
 
 // Security rules for the online leaderboard, usernames (see src/online/firebase.js),
 // squads (src/online/squads.js), your saved progress (src/online/progress.js) and
-// your wallet (src/online/wallet.js: read-only here, the meet server writes it).
+// your wallet (src/online/wallet.js: read-only here, the meet server writes it) and contract.
 // Paste into Firebase console > Firestore Database > Rules, then Publish.
 //
 // Anyone can read. Every player is signed in, as a guest (anonymous sign-in)
@@ -42,6 +42,13 @@ service cloud.firestore {
         allow read: if isMember(uid);
         allow write: if false;
       }
+    }
+
+    // Your contract (src/economy/contracts.js): yours to read, nobody's to write.
+    // The meet server keeps it, with your wallet (server/src/api.js /api/contract).
+    match /contracts/{uid} {
+      allow read: if isMember(uid);
+      allow write: if false;
     }
 
     // Each player's level (src/economy/levels.js), public for name tags and the

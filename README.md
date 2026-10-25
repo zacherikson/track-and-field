@@ -560,7 +560,8 @@ src/render/road.js    time trial road side on (real hills, exaggerated), scenery
 src/economy/          the economy's shared rules (game and meet server): currencies.js (the ids and the
                       one table of names players see), wallet.js (changes, never below zero, fines off),
                       levels.js (XP per race by mode and place, the daily cap, the level curve),
-                      payouts.js (a public live room's prize money, medals, Gems and XP, for the server)
+                      payouts.js (a public live room's prize money, medals, Gems and XP, for the server),
+                      contracts.js (offers, daily pay, the weekly clause, probation, losing one)
 src/online/
   ghost.js            records a run's inputs and replays them as a ghost (pure)
   firebase.js         online leaderboards: lazy-loaded Firebase SDK, anonymous and Google sign-in, Firestore
@@ -570,6 +571,7 @@ src/online/
   progress.js         campaign progress, top five marks and your athlete, synced to your account (merged)
   wallet.js           your wallet, read-only (the meet server writes it), with the last balance kept for offline
   xp.js               reports each race you finish for XP (queued offline), and your level as last told
+  contracts.js        your contract: opened at the menu (collects the day's pay), offers, signing
   liveResults.js      a live room's standings from every player's results (the server settles with it)
   live.js             live play: the waiting rooms (public, and each squad's Practice), shared start times, sending and receiving players
   liveRun.js          another player's runner in a live 100m, replayed as their taps arrive
@@ -590,6 +592,7 @@ src/scenes/howTo.js             each event's steps and controls strip, and their
 src/scenes/profileScene.js      your username (unique, saved in Firebase), Google sign-in, level, wallet and medals
 src/scenes/lobbyScene.js        the live waiting room (any event, or the tournament)
 src/scenes/podiumScene.js       the podium after a live event: the top three, their medals, what you won
+src/scenes/contractScene.js     your contract (pay, the clause this week), your offers and Sign, the standards
 src/meet/             squad meets (docs/meets.md): the rules shared with the meet server (rules, scoring,
                       heats, relayLegs, protocol), the meet you're in (meet.js), sign-up and lobby
                       (meetScene.js), standings between events (meetStandingsScene.js)

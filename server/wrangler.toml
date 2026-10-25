@@ -37,6 +37,8 @@ new_sqlite_classes = ["Lobby", "Room"]
 
 [vars]
 FIREBASE_PROJECT = "track-royale-f18ad"
+# Secret, not here: FIREBASE_SERVICE_ACCOUNT, the project's service account key
+# (JSON), so the server can write wallets (src/firestoreAdmin.js, README.md).
 # DEV_AUTH = "1" accepts made-up "dev:<uid>:<name>" tokens instead of Firebase
 # sign-ins, for local testing with bots (npm run dev). Never set it when deploying.
 

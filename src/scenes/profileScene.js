@@ -5,6 +5,8 @@ import { forgetBests, postBests } from '../online/bests.js';
 import { syncProgress } from '../online/progress.js';
 import { renameInSquad } from '../online/squads.js';
 import { flow } from '../flow.js';
+import { cachedWallet, refreshWallet, forgetWallet } from '../online/wallet.js';
+import { CURRENCIES, formatAmount } from '../economy/currencies.js';
 
 const WARN = '#ffb35c';
 const OK = '#7fd8a0';
@@ -38,6 +40,7 @@ export class ProfileScene {
     this.saving = false;
     this.busy = false; // signing in or out
     this.account = null; // accountInfo() once it answers; 'offline' if it can't
+    this.wallet = cachedWallet(); // the last balance seen here, until the account answers
     if (this.signingIn) this.finishSignIn(this.signingIn);
     else this.loadAccount();
     this.layout(this.game.view);
@@ -47,11 +50,21 @@ export class ProfileScene {
     accountInfo()
       .then((a) => {
         this.account = a;
+        if (!a.guest) this.loadWallet();
       })
       .catch(() => {
         this.account = 'offline';
       })
       .finally(() => this.layout(this.game.view));
+  }
+
+  /** Your balance from your account (keeps the saved one if it can't be read). */
+  loadWallet() {
+    refreshWallet()
+      .then((w) => {
+        if (w) this.wallet = w;
+      })
+      .catch((e) => console.warn('wallet not read', e?.code ?? e));
   }
 
   change() {
@@ -152,6 +165,7 @@ export class ProfileScene {
       .then(() => {
         forgetBests();
         forgetProgress();
+        forgetWallet();
         location.reload();
       })
       .catch(() => {
@@ -174,7 +188,7 @@ export class ProfileScene {
     const gap = 16;
     let x = view.w / 2 - (btns.reduce((s, b) => s + b.w, 0) + gap * (btns.length - 1)) / 2;
     for (const b of btns) {
-      Object.assign(b, { x, y: 400 });
+      Object.assign(b, { x, y: 414 });
       x += b.w + gap;
     }
   }
@@ -200,7 +214,7 @@ export class ProfileScene {
     const x0 = view.w / 2 - w / 2;
     const cx = view.w / 2;
     const by = 84;
-    const bh = 150;
+    const bh = 136;
     ctx.fillStyle = PAL.inkShade;
     chamfer(ctx, x0 + 6, by + 7, w, bh, 8);
     ctx.fill();
@@ -216,18 +230,24 @@ export class ProfileScene {
       ctx.arc(px, py, 5, 0, Math.PI * 2);
       ctx.fill();
     }
-    text(ctx, getPlayerName().toUpperCase(), cx, by + 84, { size: 56, font: 'display', track: 2, color: PAL.ink, maxWidth: w - 50 });
-    text(ctx, 'Shown on the online leaderboard. No two players can have the same name.', cx, by + 124, { size: 16, font: 'body', weight: 600, color: PAL.muted, maxWidth: w - 30 });
+    text(ctx, getPlayerName().toUpperCase(), cx, by + 78, { size: 56, font: 'display', track: 2, color: PAL.ink, maxWidth: w - 50 });
+    text(ctx, 'Shown on the online leaderboard. No two players can have the same name.', cx, by + 114, { size: 16, font: 'body', weight: 600, color: PAL.muted, maxWidth: w - 30 });
 
     // Your account.
-    const ay = 256;
-    slab(ctx, x0, ay, w, 96, { face: PAL.ink2, lip: PAL.inkShade, lipH: 5, c: 7 });
-    text(ctx, 'ACCOUNT', cx, ay + 18, { size: 16, font: 'display', track: 3, color: PAL.gold });
+    const ay = 234;
+    slab(ctx, x0, ay, w, 88, { face: PAL.ink2, lip: PAL.inkShade, lipH: 5, c: 7 });
+    text(ctx, 'ACCOUNT', cx, ay + 16, { size: 16, font: 'display', track: 3, color: PAL.gold });
     const [line, note] = accountLines(this.account);
-    text(ctx, line, cx, ay + 45, { size: 26, font: 'body', weight: 800, color: PAL.cream, maxWidth: w - 30 });
-    text(ctx, note, cx, ay + 72, { size: 15, font: 'body', weight: 600, color: 'rgba(245,234,208,0.75)', maxWidth: w - 30 });
+    text(ctx, line, cx, ay + 41, { size: 26, font: 'body', weight: 800, color: PAL.cream, maxWidth: w - 30 });
+    text(ctx, note, cx, ay + 66, { size: 15, font: 'body', weight: 600, color: 'rgba(245,234,208,0.75)', maxWidth: w - 30 });
 
-    if (this.status) text(ctx, this.status.text, cx, 375, { size: 18, font: 'body', color: this.status.color, maxWidth: view.w - 40 });
+    // Your wallet: what you've earned (the server pays it in; this only shows it).
+    const wy = 334;
+    slab(ctx, x0, wy, w, 44, { face: PAL.ink2, lip: PAL.inkShade, lipH: 5, c: 7 });
+    text(ctx, 'WALLET', x0 + 18, wy + 22, { size: 16, font: 'display', track: 3, color: PAL.gold, align: 'left' });
+    text(ctx, walletLine(this.account, this.wallet), cx + 40, wy + 22, { size: 20, font: 'body', weight: 800, color: PAL.cream, maxWidth: w - 140 });
+
+    if (this.status) text(ctx, this.status.text, cx, 396, { size: 18, font: 'body', color: this.status.color, maxWidth: view.w - 40 });
 
     this.changeBtn.enabled = !this.saving && !this.busy;
     this.accountBtn.enabled = !this.saving && !this.busy && !!this.account && this.account !== 'offline';
@@ -243,6 +263,13 @@ function accountLines(account) {
   if (account === 'offline') return ['Offline', 'Signing in needs a connection.'];
   if (account.guest) return ['Guest on this phone', 'Sign in to go on the online leaderboard and keep your name and bests on any phone.'];
   return [`Signed in with ${account.via}`, account.email ?? 'Sign in with the same account on another phone to play as you there.'];
+}
+
+/** The wallet's line: your balance in every currency, or why there isn't one. */
+function walletLine(account, wallet) {
+  if (account?.guest) return 'Sign in to earn and keep your winnings';
+  if (!wallet) return account === 'offline' ? 'Shown once you’re back online' : 'Checking…';
+  return CURRENCIES.map((c) => formatAmount(c, wallet[c])).join('  ·  ');
 }
 
 /** What to say when signing in didn't work. */

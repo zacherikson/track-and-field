@@ -16,6 +16,8 @@ src/matchmakerCore.js which lobby a squad goes in
 src/socket.js         the WebSocket handshake (hello with a Firebase ID token), pings for the clock
 src/auth.js           checks the Firebase ID token against Google's keys
 src/firestore.js      reads a squad's members from Firestore (public), to let only them in
+src/firestoreAdmin.js writes wallets as the Firebase project's service account (the only thing that can)
+tools/wallet.mjs      looks at or grants a player's wallet from your computer, with the same access
 src/lobbyCore.js      live waiting rooms (public ones in the Lobby, Practice in each SquadHub)
 src/roomCore.js       one live room's play: passes each player's updates on to the others
 ```
@@ -66,6 +68,38 @@ with the game deploy it by themselves
 the repo has two secrets: `CLOUDFLARE_API_TOKEN` (a token with the "Edit
 Cloudflare Workers" template) and `CLOUDFLARE_ACCOUNT_ID`. Without them the
 workflow only runs the tests.
+
+## Admin access to Firebase (wallets)
+
+Wallets (`src/economy/`) can only be written by this server: the database
+rules let a player read their own wallet and nobody write one. The server
+writes them as the Firebase project's **service account**, which needs its key
+as a Worker secret, once:
+
+1. Firebase console > Project settings > **Service accounts** > **Generate new
+   private key**. It downloads a JSON file. Keep it private: anyone with it can
+   change any data in the project. Never commit it (`.gitignore` skips the
+   usual `*-firebase-adminsdk-*.json` name).
+2. Cloudflare dashboard > Workers & Pages > `track-royale-live` > Settings >
+   Variables and Secrets > **Add**: type **Secret**, name
+   `FIREBASE_SERVICE_ACCOUNT`, value = the whole JSON file's contents. (Or from
+   `server/`: `npx wrangler secret put FIREBASE_SERVICE_ACCOUNT < key.json`.)
+3. Check it: `https://track-royale-live.trackroyale.workers.dev/health/firebase`
+   says `{"firebase":"ok"}` (`"not set up"` = no secret yet, `"error"` = the
+   Worker's logs say why).
+4. Publish `firestore.rules` (the `wallets` rules).
+
+To look at or grant a wallet by hand (testing, putting things right), with the
+key file on your computer:
+
+```sh
+FIREBASE_SERVICE_ACCOUNT_FILE=~/keys/key.json node tools/wallet.mjs show <uid>
+FIREBASE_SERVICE_ACCOUNT_FILE=~/keys/key.json node tools/wallet.mjs grant <uid> earned 500
+```
+
+A player's uid is in Firebase console > Authentication > Users. Every change
+lands in the wallet's ledger (`wallets/{uid}/ledger`), and the same payout
+(`ref`) never lands twice.
 
 The game and the server have to agree on the protocol (`PROTOCOL` in
 `src/meet/protocol.js`). GitHub Pages lets phones keep the old game for about

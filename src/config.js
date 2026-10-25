@@ -541,6 +541,15 @@ export const CONFIG = {
     },
   },
 
+  /**
+   * THE ECONOMY (src/economy/): the numbers both the game and the meet server
+   * use. Currency names live in src/economy/currencies.js, not here.
+   */
+  economy: {
+    fines: false, // built in, switched off at launch: a 'fine' change is refused while false
+    premiumToEarned: 100, // earned currency for each premium converted (placeholder)
+  },
+
   // A rival's wrong-side tap costs what yours does: sprint100.targets' missSpeedLoss and
   // missLockout (athletes/ai.js). An event with rules of its own says so (hurdles110.js).
   ai: {

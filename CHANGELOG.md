@@ -6,6 +6,35 @@ Gameplay and tuning changes, newest first. When you change a number in
 From 1.0.0 every push to master bumps `src/version.js` and heads its section
 here with the version.
 
+## 1.2.0 — The wallet (economy phase 1)
+The foundation for the economy (the Economy & Progression design doc): a
+wallet only the server can pay into. Nothing earns money yet; live prize
+money, medals and contracts come in the next phases.
+- **Two currencies, names not final:** `earned` and `premium` internally.
+  What players see comes from one table (`src/economy/currencies.js`, for now
+  "Coins" and "Gems"), so a rename is one change there.
+- **The wallet's rules** (`src/economy/wallet.js`), shared by the game and the
+  server:
+  - changes are grant, spend, fine and convert (premium to earned only);
+  - a balance never goes below zero;
+  - fines are built in but off (`CONFIG.economy.fines`);
+  - every change has a ledger id made from what it's for, so the same payout
+    can't land twice.
+- **The server writes wallets** (`server/src/firestoreAdmin.js`). It signs in
+  as the Firebase project's service account (its key is a Worker secret) and
+  changes a wallet and its ledger entry in one transaction, retrying if two
+  changes collide.
+  - `/health/firebase` says whether that access works.
+  - `server/tools/wallet.mjs` looks at or grants a wallet by hand.
+- **Database:** `firestore.rules` lets you read your own wallet and its
+  ledger; nobody can write them but the server.
+- **Profile** shows your wallet, kept on the phone for offline. Guests are told
+  to sign in to earn.
+- **Server deploys** now also run when `src/economy/` changes.
+- Tests: `test/wallet.test.mjs`, `server/test/firestoreAdmin.test.mjs`
+  (against a fake Google: signing in, a payout landing once, refusing an
+  overspend, retrying a collision).
+
 ## 1.1.5 — One range behind the javelin
 - **What happened:** in the javelin's flight shot at Collegiate, the sky
   drew the snow-capped range and then the bleachers' band drew its own sky

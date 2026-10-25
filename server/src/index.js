@@ -1,6 +1,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { acceptSocket } from './socket.js';
 import { loadSquad } from './firestore.js';
+import { hasAdmin, readWallet } from './firestoreAdmin.js';
 import { MeetCore } from './meetCore.js';
 import { SquadHubCore } from './squadHubCore.js';
 import { MatchmakerCore } from './matchmakerCore.js';
@@ -17,6 +18,9 @@ import { LIVE_KINDS } from '../../src/online/liveRules.js';
  *   /lobby/public        the Lobby: live waiting rooms anyone can join
  *   /room/<room id>      a Room: one live room's play (public or Practice)
  *
+ * and answers two plain checks: /health (it's up) and /health/firebase (its
+ * admin access to Firestore works: firestoreAdmin.js, the wallets).
+ *
  * and the objects talk to each other by RPC: a SquadHub asks the Matchmaker
  * for a lobby and hands its squad to that Meet; a Meet tells the Matchmaker
  * and its squads' SquadHubs how it stands. All the rules are in the *Core
@@ -30,7 +34,7 @@ export default {
     try {
       name = raw ? decodeURIComponent(raw) : null;
     } catch {}
-    if (kind === 'health') return new Response('ok');
+    if (kind === 'health') return name === 'firebase' ? firebaseHealth(env) : new Response('ok');
     if (!name || name.length > 160) return new Response('Not found', { status: 404 });
     if (kind === 'squad') return env.SQUADS.get(env.SQUADS.idFromName(name)).fetch(request);
     if (kind === 'meet' && /^[a-z0-9]{6,40}$/.test(name)) return env.MEETS.get(env.MEETS.idFromName(name)).fetch(request);
@@ -39,6 +43,23 @@ export default {
     return new Response('Not found', { status: 404 });
   },
 };
+
+/**
+ * Whether the server can reach Firestore as the service account: signs in and
+ * reads a wallet nobody has. Says only 'ok', 'not set up' or 'error' (the
+ * details go to the Worker's logs, never to whoever asked).
+ */
+async function firebaseHealth(env) {
+  const reply = (firebase, status = 200) => new Response(JSON.stringify({ firebase }), { status, headers: { 'Content-Type': 'application/json' } });
+  if (!hasAdmin(env)) return reply('not set up', 503);
+  try {
+    await readWallet(env, 'health-check');
+    return reply('ok');
+  } catch (e) {
+    console.warn('firebase health', e?.message);
+    return reply('error', 503);
+  }
+}
 
 const TICK = 100; // ms
 const ROOM_ID = /^[a-z0-9]{6,40}$/;

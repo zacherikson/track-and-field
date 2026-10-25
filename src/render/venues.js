@@ -4,7 +4,8 @@ import { SURVIVAL_KIND } from '../online/liveRules.js';
 
 /**
  * Where each mode is played: Training is a rundown community track in the
- * woods, High School a decent high-school stadium with a half-full stand,
+ * woods, High School a small-town school track with a few bleachers and the
+ * town behind (the church steeple, the water tower),
  * Collegiate a university track under snow-capped mountains (modest
  * bleachers, lanes in two blues), Pro a packed Olympic one with a blue track
  * under the lights. Live play uses Pro.
@@ -23,12 +24,18 @@ import { SURVIVAL_KIND } from '../online/liveRules.js';
  *   stands     grandstand, or null for none (then `backdrop` fills the band)
  *              { body, roof, rows, rowH, seatW, emptyEvery, shade, crowd[] }
  *              emptyEvery: 1 seat in N is empty (0 = packed solid)
- *              With `mountains` it's bleachers instead: low sections along the
- *              bottom of the band, { ..., plank, frame, rail, box, boxWindow }
- *   mountains  a range behind the bleachers, the sky over it (track.js
- *              drawMountainStadium): { far, farShade, near, nearShade, snow,
- *              snowShade, tree, treeLit, trunk, pole }; the javelin's flight
- *              shot looks out over it instead of the sea
+ *              With `mountains` or `town` it's bleachers instead (track.js
+ *              drawBleacherStadium): low sections along the bottom of the band,
+ *              { body, rows, rowH, seatW, seated, crowd[], sectionW, sectionGap,
+ *                plank, frame, rail, box?, boxWindow } seated: 1 seat in N taken;
+ *                box: a press box on every third section, or unset for none
+ *   mountains  a range behind the bleachers, the sky over it: { far, farShade,
+ *              near, nearShade, snow, snowShade, tree, treeLit, trunk, pole };
+ *              the javelin's flight shot looks out over it instead of the sea
+ *   town       a small town behind the bleachers (track.js drawTown): { hill,
+ *              buildings[], roofs[], window, tower: { tank, shade, leg, text,
+ *              name }, church: { wall, shade, roof, window }, tree, treeLit,
+ *              trunk, treeGap, treeEvery } treeEvery: 1 tree spot in N planted
  *   backdrop   what's behind the track instead of a stand: { hillFar, hill, tree, treeLit, trunk }
  *   boards     hoardings: kind 'ads' (painted sponsor boards), 'fence'
  *              (chainlink, nothing sold) or 'led' (lit panels), plus words/colors
@@ -67,15 +74,32 @@ const HIGH_SCHOOL = {
   id: 'highschool',
   name: 'Westfield High',
   sky: { top: '#5aa9e6', bottom: '#a9d6f5', high: '#2f7fc8' },
+  // A couple of small bleachers: parents, a few friends, a lot of empty seats.
   stands: {
-    body: '#39465e',
-    roof: '#2a3346',
-    rows: 6,
-    rowH: 14,
-    seatW: 14,
-    emptyEvery: 4, // a school meet: plenty of spare seats
-    shade: 'rgba(0,0,0,0.18)',
-    crowd: ['#f4d35e', '#ee964b', '#f95738', '#faf0ca', '#0d3b66', '#8ecae6', '#e9edc9', '#b5838d'],
+    body: '#8a929c',
+    rows: 3,
+    rowH: 11,
+    seatW: 12,
+    seated: 6,
+    crowd: ['#f4d35e', '#ee964b', '#f95738', '#faf0ca', '#0d3b66', '#8ecae6', '#c2452f', '#b5838d'],
+    sectionW: 170,
+    sectionGap: 330,
+    plank: '#d4d8de',
+    frame: '#5a616b',
+    rail: '#a3abb5',
+  },
+  town: {
+    hill: '#9fbf9c',
+    buildings: ['#d6c3a5', '#b9775c', '#e2d9c8', '#a9b4c2', '#c99f7a', '#e8cfa2'],
+    roofs: ['#6e4a3a', '#56606f', '#7b3f32', '#4f5a4a'],
+    window: '#f6edcf',
+    tower: { tank: '#d3d9e0', shade: '#afb8c4', leg: '#8a919c', text: '#c2452f', name: 'WESTFIELD' },
+    church: { wall: '#f6f3ec', shade: '#d9d4c7', roof: '#56606f', window: '#6f86a8' },
+    tree: '#3f7d3a',
+    treeLit: '#5d9c48',
+    trunk: '#4a3b2e',
+    treeGap: 34,
+    treeEvery: 2,
   },
   backdrop: null,
   boards: {
@@ -121,13 +145,13 @@ const COLLEGIATE = {
   sky: { top: '#3f86d4', bottom: '#cfe4f6', high: '#2563ad' }, // clear mountain air
   stands: {
     body: '#7d8794', // the risers, in shadow
-    roof: null,
     rows: 4,
     rowH: 11,
     seatW: 12,
-    emptyEvery: 3, // a dual meet: room to spread out
-    shade: 'rgba(0,0,0,0.18)',
+    seated: 3, // a dual meet: room to spread out
     crowd: ['#0b2d5b', '#f4f6f8', '#1f5fae', '#0b2d5b', '#f4f6f8', '#7fb2e0', '#e4572e', '#f1c40f', '#1f5fae'],
+    sectionW: 300,
+    sectionGap: 110,
     plank: '#d9dee5', // aluminium seats
     frame: '#4a525e',
     rail: '#aab3be',

@@ -138,7 +138,7 @@ export class TrackRenderer {
     const top = this.L.standsTop;
     const bottom = this.L.boardsTop;
     if (this.venue.colosseum) return this.drawColosseum(ctx, view, camera, top, bottom);
-    if (this.venue.mountains) return this.drawMountainStadium(ctx, view, camera, top, bottom);
+    if (this.venue.mountains || this.venue.town) return this.drawBleacherStadium(ctx, view, camera, top, bottom);
     ctx.fillStyle = s.body;
     ctx.fillRect(0, top, view.w, bottom - top);
     ctx.fillStyle = s.roof;
@@ -374,14 +374,17 @@ export class TrackRenderer {
   }
 
   /**
-   * Collegiate's (venues.js `mountains`): the sky all the way down the band,
-   * a snow-capped range behind (two ridges, barely moving), a line of trees
-   * and light poles, and low aluminium bleachers in sections along the
-   * bottom, people dotted along them, a press box on every third. The trees,
-   * poles and bleachers are on the stand's parallax.
+   * A small stadium's backdrop (venues.js `mountains` or `town`): the sky all
+   * the way down the band, Collegiate's snow-capped range or High School's
+   * town behind, a line of trees (and light poles), and low aluminium
+   * bleachers in sections along the bottom with people dotted along them, a
+   * press box on every third where there is one. The trees, poles and
+   * bleachers are on the stand's parallax; what's behind moves slower.
    */
-  drawMountainStadium(ctx, view, camera, top, bottom) {
+  drawBleacherStadium(ctx, view, camera, top, bottom) {
     const M = this.venue.mountains;
+    const T = this.venue.town;
+    const B = M ?? T; // trees and poles
     const S = this.venue.stands;
     const g = ctx.createLinearGradient(0, 0, 0, bottom);
     g.addColorStop(0, this.venue.sky.top);
@@ -390,39 +393,45 @@ export class TrackRenderer {
     ctx.fillRect(0, top, view.w, bottom - top);
     const offset = camera.x * camera.ppm * 0.2;
     const H = bottom - top;
-    drawMountains(ctx, view.w, offset * 0.15, top + 2, bottom - H * 0.12, { face: M.far, shade: M.farShade, snow: M.snow, snowShade: M.snowShade, spacing: 170, seed: 7919, snowDepth: H * 0.22 });
-    drawMountains(ctx, view.w, offset * 0.3, top + H * 0.3, bottom - H * 0.12, { face: M.near, shade: M.nearShade, snow: M.snow, snowShade: M.snowShade, spacing: 120, seed: 104729, snowDepth: H * 0.1 });
+    if (M) {
+      drawMountains(ctx, view.w, offset * 0.15, top + 2, bottom - H * 0.12, { face: M.far, shade: M.farShade, snow: M.snow, snowShade: M.snowShade, spacing: 170, seed: 7919, snowDepth: H * 0.22 });
+      drawMountains(ctx, view.w, offset * 0.3, top + H * 0.3, bottom - H * 0.12, { face: M.near, shade: M.nearShade, snow: M.snow, snowShade: M.snowShade, spacing: 120, seed: 104729, snowDepth: H * 0.1 });
+    }
+    if (T) drawTown(ctx, view.w, offset * 0.5, top, bottom - 8, T);
 
-    // Trees along the foot of the range, light poles standing over them.
-    const treeW = 30;
+    // Trees along the bottom of the band, light poles standing over them.
+    const treeW = B.treeGap ?? 30;
     const tFirst = Math.floor(offset / treeW) - 1;
     for (let i = tFirst; i < tFirst + Math.ceil(view.w / treeW) + 2; i++) {
       const h = hash(i * 3571);
+      if (B.treeEvery && h % B.treeEvery) continue; // a gap: the town shows through
       const x = i * treeW - offset + (h % 12);
       const r = 9 + (h % 7);
       const base = bottom - 2;
-      ctx.fillStyle = M.trunk;
+      ctx.fillStyle = B.trunk;
       ctx.fillRect(x - 1.5, base - r, 3, r);
-      ctx.fillStyle = h % 3 ? M.tree : M.treeLit;
+      ctx.fillStyle = h % 3 ? B.tree : B.treeLit;
       ctx.beginPath();
       ctx.arc(x, base - r - r * 0.7, r, 0, Math.PI * 2);
       ctx.arc(x + r * 0.7, base - r - r * 0.2, r * 0.7, 0, Math.PI * 2);
       ctx.fill();
     }
-    const poleW = 420;
-    for (let i = Math.floor(offset / poleW) - 1; i < Math.floor(offset / poleW) + Math.ceil(view.w / poleW) + 2; i++) {
-      const x = i * poleW - offset + 150;
-      const y0 = top + H * 0.08;
-      ctx.fillStyle = M.pole;
-      ctx.fillRect(x - 1.5, y0, 3, bottom - y0);
-      ctx.fillRect(x - 11, y0 - 6, 22, 7);
-      ctx.fillStyle = '#f4f1e2';
-      for (let k = 0; k < 3; k++) ctx.fillRect(x - 9 + k * 7, y0 - 4.5, 5, 4);
+    if (B.pole) {
+      const poleW = 420;
+      for (let i = Math.floor(offset / poleW) - 1; i < Math.floor(offset / poleW) + Math.ceil(view.w / poleW) + 2; i++) {
+        const x = i * poleW - offset + 150;
+        const y0 = top + H * 0.08;
+        ctx.fillStyle = B.pole;
+        ctx.fillRect(x - 1.5, y0, 3, bottom - y0);
+        ctx.fillRect(x - 11, y0 - 6, 22, 7);
+        ctx.fillStyle = '#f4f1e2';
+        for (let k = 0; k < 3; k++) ctx.fillRect(x - 9 + k * 7, y0 - 4.5, 5, 4);
+      }
     }
 
-    // The bleachers: sections with gaps of trees between them.
-    const secW = 300;
-    const period = secW + 110;
+    // The bleachers: sections with gaps between them.
+    const secW = S.sectionW;
+    const period = secW + S.sectionGap;
     const rows = S.rows;
     const bTop = bottom - rows * S.rowH - 4;
     const head = Math.max(4, S.seatW - 6);
@@ -438,11 +447,11 @@ export class TrackRenderer {
         ctx.fillRect(x0 + inset, y + 3, secW - inset * 2, S.rowH - 3);
         ctx.fillStyle = S.plank;
         ctx.fillRect(x0 + inset, y, secW - inset * 2, 3);
-        // People sitting on this row (their heads over the plank, shirts below it).
+        // People sitting on this row (their heads over the plank, shirts below it): 1 seat in `seated`.
         const n = Math.floor((secW - inset * 2 - 8) / S.seatW);
         for (let k = 0; k < n; k++) {
           const hh = hash(i * 7307 + r * 131 + k * 17);
-          if (S.emptyEvery && hh % S.emptyEvery !== 0) continue; // most seats free: a modest crowd
+          if (hh % S.seated !== 0) continue;
           const px = x0 + inset + 4 + k * S.seatW + (hh % 3);
           ctx.fillStyle = S.crowd[(hh >>> 4) % S.crowd.length];
           ctx.fillRect(px, y - 2, head, 6);
@@ -454,7 +463,7 @@ export class TrackRenderer {
       ctx.fillRect(x0, bTop - 4, 2, 4);
       ctx.fillRect(x0 + secW - 2, bTop - 4, 2, 4);
       ctx.fillRect(x0, bTop - 4, secW, 1.5);
-      if (((i % 3) + 3) % 3 === 1) {
+      if (S.box && ((i % 3) + 3) % 3 === 1) {
         // A press box on its posts over the top row.
         const bw = secW * 0.34;
         const bx = x0 + (secW - bw) / 2;
@@ -1009,4 +1018,134 @@ export function drawMountains(ctx, w, off, crest, base, { face, shade, snow, sno
     ctx.closePath();
     ctx.fill();
   }
+}
+
+/**
+ * High School's town behind the bleachers, scrolled by `off` px: low hills,
+ * then blocks of houses and shops with their windows, and over them a water
+ * tower with the town's name on it and a white church with its steeple
+ * (`T`: venues.js `town`). Everything stands on `base`.
+ */
+export function drawTown(ctx, w, off, top, base, T) {
+  const H = base - top;
+  // Low hills behind the town.
+  ctx.fillStyle = T.hill;
+  ctx.beginPath();
+  ctx.moveTo(0, base);
+  for (let sx = 0; sx <= w + 16; sx += 16) {
+    const wx = sx + off * 0.4;
+    ctx.lineTo(sx, top + H * 0.5 - 7 * Math.sin(wx / 170) - 4 * Math.sin(wx / 61));
+  }
+  ctx.lineTo(w, base);
+  ctx.closePath();
+  ctx.fill();
+
+  const P = 560; // one stretch of town: its landmark, then houses and shops
+  const first = Math.floor(off / P) - 1;
+  for (let i = first; i < first + Math.ceil(w / P) + 2; i++) {
+    const x0 = i * P - off;
+    const kind = ((i % 3) + 3) % 3; // 0: the water tower, 1: the church, 2: just more town
+    // Houses and shops along the stretch.
+    let x = x0 + 8;
+    for (let k = 0; x < x0 + P - 20; k++) {
+      const h = hash(i * 92821 + k * 613);
+      const bw = 34 + (h % 46);
+      const bh = H * (0.16 + ((h >>> 7) % 22) / 100);
+      const landmarkAt = kind === 0 ? x0 + P * 0.35 : kind === 1 ? x0 + P * 0.62 : null;
+      if (landmarkAt != null && x + bw > landmarkAt - 30 && x < landmarkAt + 30) {
+        x += bw + 6; // leave room for the landmark
+        continue;
+      }
+      ctx.fillStyle = T.buildings[h % T.buildings.length];
+      ctx.fillRect(x, base - bh, bw, bh);
+      ctx.fillStyle = T.roofs[(h >>> 3) % T.roofs.length];
+      if ((h >>> 11) % 2) {
+        // A pitched roof (a house).
+        ctx.beginPath();
+        ctx.moveTo(x - 3, base - bh);
+        ctx.lineTo(x + bw / 2, base - bh - bw * 0.32);
+        ctx.lineTo(x + bw + 3, base - bh);
+        ctx.closePath();
+        ctx.fill();
+      } else {
+        ctx.fillRect(x - 2, base - bh - 3, bw + 4, 3); // a flat one with a ledge (a shop)
+      }
+      ctx.fillStyle = T.window;
+      for (let wy = base - bh + 5; wy < base - 8; wy += 9) for (let wx = x + 5; wx < x + bw - 7; wx += 10) if (hash(wx * 31 + wy * 7) % 4) ctx.fillRect(wx, wy, 4, 5);
+      x += bw + 6 + ((h >>> 17) % 14);
+    }
+    if (kind === 0) drawWaterTower(ctx, x0 + P * 0.35, base, H, T);
+    if (kind === 1) drawChurch(ctx, x0 + P * 0.62, base, H, T);
+  }
+}
+
+/** The water tower: four legs, the tank with its cap, the town's name around it. */
+function drawWaterTower(ctx, cx, base, H, T) {
+  const W = T.tower;
+  const tankW = 46;
+  const tankH = H * 0.2;
+  const tankY = base - H * 0.86;
+  ctx.fillStyle = W.leg;
+  for (const dx of [-17, -6, 6, 17]) ctx.fillRect(cx + dx - 1.2 + (dx < 0 ? -2 : 2), tankY + tankH, 2.4, base - tankY - tankH);
+  ctx.fillRect(cx - 20, tankY + tankH + (base - tankY - tankH) * 0.45, 40, 1.6);
+  ctx.fillStyle = W.tank;
+  ctx.beginPath();
+  ctx.ellipse(cx, tankY + tankH, tankW / 2, 5, 0, 0, Math.PI);
+  ctx.fill();
+  ctx.fillRect(cx - tankW / 2, tankY, tankW, tankH);
+  ctx.fillStyle = W.shade;
+  ctx.fillRect(cx + tankW * 0.22, tankY, tankW * 0.28, tankH);
+  ctx.fillStyle = W.tank;
+  ctx.beginPath();
+  ctx.moveTo(cx - tankW / 2 - 2, tankY);
+  ctx.lineTo(cx, tankY - tankH * 0.55);
+  ctx.lineTo(cx + tankW / 2 + 2, tankY);
+  ctx.closePath();
+  ctx.fill();
+  text(ctx, W.name, cx - 2, tankY + tankH * 0.52, { size: 8, weight: 800, color: W.text });
+}
+
+/** A white church: its hall with a pitched roof, the tower beside it, the steeple on top. */
+function drawChurch(ctx, cx, base, H, T) {
+  const C = T.church;
+  const hallW = 56;
+  const hallH = H * 0.24;
+  const hx = cx - 4;
+  ctx.fillStyle = C.wall;
+  ctx.fillRect(hx, base - hallH, hallW, hallH);
+  ctx.fillStyle = C.roof;
+  ctx.beginPath();
+  ctx.moveTo(hx - 3, base - hallH);
+  ctx.lineTo(hx + hallW / 2, base - hallH - 16);
+  ctx.lineTo(hx + hallW + 3, base - hallH);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = C.window;
+  for (let k = 0; k < 3; k++) ctx.fillRect(hx + 10 + k * 16, base - hallH * 0.7, 5, 9);
+  // The tower and its steeple, the shaded side to the right.
+  const tw = 16;
+  const ty = base - H * 0.52;
+  ctx.fillStyle = C.wall;
+  ctx.fillRect(cx - tw, ty, tw, base - ty);
+  ctx.fillStyle = C.shade;
+  ctx.fillRect(cx - tw * 0.35, ty, tw * 0.35, base - ty);
+  ctx.fillStyle = C.window;
+  ctx.beginPath();
+  ctx.arc(cx - tw / 2, ty + 10, 3, Math.PI, 0);
+  ctx.fillRect(cx - tw / 2 - 3, ty + 10, 6, 6);
+  ctx.fill();
+  ctx.fillStyle = C.wall;
+  ctx.beginPath();
+  ctx.moveTo(cx - tw - 1, ty);
+  ctx.lineTo(cx - tw / 2, ty - H * 0.36);
+  ctx.lineTo(cx + 1, ty);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = C.shade;
+  ctx.beginPath();
+  ctx.moveTo(cx - tw / 2, ty - H * 0.36);
+  ctx.lineTo(cx + 1, ty);
+  ctx.lineTo(cx - tw / 2, ty);
+  ctx.closePath();
+  ctx.fill();
 }

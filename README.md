@@ -64,8 +64,9 @@ Each mode has a venue of its own ([`src/render/venues.js`](src/render/venues.js)
 - **Training** — a rundown community track. Overcast, faded surface worn to
   dirt, chalk lines, dry unmown grass, rusty blocks, pine woods behind a
   chainlink fence. No stand, because nobody came.
-- **High School** — Westfield High: brick-red track, mowed stripes, a low
-  stand that's a good way from full, painted sponsor boards.
+- **High School** — Westfield High: brick-red track, mowed stripes, a couple of
+  small bleachers with a few parents on them, the town behind (houses, the
+  water tower, the church steeple), painted sponsor boards.
 - **Collegiate** — Wasatch University, after the track in Provo: snow-capped
   mountains behind, a line of trees and light poles, modest aluminium
   bleachers with a press box, a pale blue track with its lanes in two blues.

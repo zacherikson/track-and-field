@@ -6,6 +6,20 @@ Gameplay and tuning changes, newest first. When you change a number in
 From 1.0.0 every push to master bumps `src/version.js` and heads its section
 here with the version.
 
+## 1.1.1 — Westfield High: a small-town track
+- **High School's stadium redone** to match its menu art: no grandstand. The
+  town is behind the track instead (track.js `drawTown`):
+  - low hills, houses and shops with their windows;
+  - a water tower with WESTFIELD on it;
+  - a white church with its steeple;
+  - a scattering of trees.
+- **Small bleachers:** three rows, a section every 500 px or so, about one
+  seat in six taken (venues.js `stands.seated`).
+- Collegiate's bleachers share the code (`drawBleacherStadium`, was
+  `drawMountainStadium`): its sections, crowd and press box are unchanged.
+- The menu art (`westfield`): two small bleacher sections instead of one big
+  stand, a few people on them.
+
 ## 1.1.0 — High School, Collegiate and Pro
 - **Three campaigns:** High School → Collegiate → Pro, each locked until the
   one before is beaten. Amateur is now Collegiate: what you'd beaten there

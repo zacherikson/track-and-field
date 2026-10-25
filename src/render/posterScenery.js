@@ -108,11 +108,15 @@ export function westfield(ctx, x, y, w, h, { trackH = 0, crowd = true } = {}) {
   const st = x + w * 0.56; ctx.fillStyle = PAL.snow; ctx.fillRect(st - 8, y + H * 0.42, 16, H); ctx.beginPath(); ctx.moveTo(st - 8, y + H * 0.42); ctx.lineTo(st, y + H * 0.22); ctx.lineTo(st + 8, y + H * 0.42); ctx.fill();
   ctx.fillStyle = '#B9AED9'; ctx.beginPath(); ctx.moveTo(st, y + H * 0.22); ctx.lineTo(st + 8, y + H * 0.42); ctx.lineTo(st, y + H * 0.42); ctx.fill();
   for (let i = 0; i < 9; i++) roundTree(ctx, x + w * (0.02 + i * 0.12), gy - H * 0.26, H * 0.06, '#8DB352', '#4E7F3E');
-  // bleachers: aluminium tiers, centred
-  const bx = x + w * 0.2, bw = w * 0.6, btop = gy - H * 0.36;
-  const tiers = 6, th = (gy - H * 0.1 - btop) / tiers;
-  for (let i = 0; i < tiers; i++) { const ty = btop + i * th; const inset = (tiers - i) * w * 0.006; ctx.fillStyle = i % 2 ? '#C9CCD6' : '#DADDE6'; ctx.fillRect(bx + inset, ty, bw - inset * 2, th); ctx.fillStyle = '#9EA2B4'; ctx.fillRect(bx + inset, ty + th - 2, bw - inset * 2, 2); }
-  if (crowd) { const cols = [PAL.orange, PAL.blue, PAL.gold, PAL.brick, PAL.deep, PAL.magenta]; let k = 0; for (let i = 0; i < tiers - 1; i++) for (let j = 0; j < 22; j++) { if ((j * 7 + i * 3) % 5 > 1) continue; const px = bx + 14 + j * (bw - 28) / 22, py = btop + i * th + th * 0.1; ctx.fillStyle = cols[k++ % cols.length]; ctx.fillRect(px, py + th * 0.25, th * 0.7, th * 0.6); ctx.beginPath(); ctx.arc(px + th * 0.35, py + th * 0.12, th * 0.24, 0, 7); ctx.fill(); } }
+  // bleachers: two small aluminium sections, a few people dotted along them
+  const tiers = 3;
+  const cols = [PAL.orange, PAL.blue, PAL.gold, PAL.brick, PAL.deep, PAL.magenta];
+  let k = 0;
+  [[0.14, 0.24], [0.62, 0.2]].forEach(([fx, fw], s) => {
+    const bx = x + w * fx, bw = w * fw, btop = gy - H * 0.27, th = (gy - H * 0.1 - btop) / tiers;
+    for (let i = 0; i < tiers; i++) { const ty = btop + i * th; const inset = (tiers - i) * w * 0.005; ctx.fillStyle = i % 2 ? '#C9CCD6' : '#DADDE6'; ctx.fillRect(bx + inset, ty, bw - inset * 2, th); ctx.fillStyle = '#9EA2B4'; ctx.fillRect(bx + inset, ty + th - 2, bw - inset * 2, 2); }
+    if (crowd) for (let i = 0; i < tiers - 1; i++) for (let j = 0; j < 10; j++) { if ((j * 7 + i * 3 + s * 2) % 5) continue; const px = bx + 8 + (j * (bw - 16)) / 10, py = btop + i * th + th * 0.1; ctx.fillStyle = cols[k++ % cols.length]; ctx.fillRect(px, py + th * 0.25, th * 0.7, th * 0.6); ctx.beginPath(); ctx.arc(px + th * 0.35, py + th * 0.12, th * 0.24, 0, 7); ctx.fill(); }
+  });
   // hand-painted plywood boards
   const boards = [[PAL.cream, PAL.brick], [PAL.gold, PAL.ink], [PAL.cream, PAL.deep], [PAL.brick, PAL.cream], [PAL.cream, PAL.blue], [PAL.gold, PAL.brick]];
   const bwid = w / boards.length, bh = H * 0.1;

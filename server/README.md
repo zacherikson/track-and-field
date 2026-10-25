@@ -20,7 +20,8 @@ src/firestoreAdmin.js writes wallets as the Firebase project's service account (
 src/api.js            the game's HTTP calls: POST /api/xp, the races you finished, for XP
 tools/wallet.mjs      looks at or grants a player's wallet from your computer, with the same access
 src/lobbyCore.js      live waiting rooms (public ones in the Lobby, Practice in each SquadHub)
-src/roomCore.js       one live room's play: passes each player's updates on to the others
+src/roomCore.js       one live room's play: passes each player's updates on to the others, and settles
+                      a public room once everyone's done (prize money, medals, XP: src/economy/payouts.js)
 ```
 
 The `*Core.js` files don't touch Cloudflare's APIs, so the tests run them on a

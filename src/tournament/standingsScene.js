@@ -3,6 +3,7 @@ import { drawIcon } from '../core/icons.js';
 import { ordinal } from '../core/math.js';
 import { formatMark } from '../events/registry.js';
 import { submitBest, saveGhostIfBetter, getCampaign, markBeaten, LEVEL_NAMES } from '../core/storage.js';
+import { formatAmount } from '../economy/currencies.js';
 import { postMark } from '../online/post.js';
 import { counts, recordTopMark } from '../online/bests.js';
 import { tournament, ORDER, TOURNAMENT_KIND } from './tournament.js';
@@ -97,7 +98,7 @@ export class StandingsScene {
       Object.assign(main, { label: this.final ? 'Final standings ›' : 'Standings ›', icon: this.live ? main.icon : null, onTap: () => this.showOverall() });
       this.panel = new ResultsPanel(
         this.buttons,
-        () => (this.page === 'round' ? this.roundTitle() : this.final ? `${this.table[0].name.toUpperCase()} WINS · ${this.campaignWin ? `${getCampaign().toUpperCase()} TOURNAMENT BEATEN!` : 'FINAL STANDINGS'}` : `STANDINGS · AFTER ${tournament.history.length} OF ${ORDER.length}`),
+        () => (this.page === 'round' ? this.roundTitle() : this.final ? `${this.table[0].name.toUpperCase()} WINS · ${this.campaignWin ? `${LEVEL_NAMES[getCampaign()].toUpperCase()} TOURNAMENT BEATEN!` : 'FINAL STANDINGS'}` : `STANDINGS · AFTER ${tournament.history.length} OF ${ORDER.length}`),
         () =>
           this.page === 'round' ? this.roundRows() : this.table.map((t, i) => {
             const pts = this.rows.find((r) => (r.isPlayer ? 'you' : r.key ?? r.name) === t.key)?.pts;
@@ -244,6 +245,10 @@ export class StandingsScene {
         ? `You win with ${me.total} points!${this.campaignWin ? ` ${LEVEL_NAMES[getCampaign()]} tournament beaten!` : ''}${tournament.newBest ? ' New best score!' : ''}`
         : `You finished ${ordinal(this.myPlace)} with ${me.total} points${tournament.newBest ? ' · new best score!' : ''}`;
       text(ctx, line, cx, 114, { size: 20, font: 'body', weight: 700, color: champ.isPlayer ? PAL.gold : CREAM(0.85), maxWidth: view.w - 40 });
+      // A public live tournament: what the server paid you for it (online/live.js payout).
+      const p = tournament.live && !tournament.live.squad ? tournament.live.payout : null;
+      const won = p && [p.medal ? `${p.medal.toUpperCase()} MEDAL` : null, p.earned ? `+${formatAmount('earned', p.earned)}` : null, p.premium ? `+${formatAmount('premium', p.premium)}` : null, p.xp ? `+${p.xp} XP` : null].filter(Boolean).join('  ·  ');
+      if (won) text(ctx, won, cx, 140, { size: 18, font: 'display', track: 1, color: PAL.gold, maxWidth: view.w - 40 });
     } else {
       text(ctx, `TOURNAMENT · EVENT ${n} OF ${ORDER.length}`, cx, 30, { size: 20, font: 'display', track: 2, color: CREAM(0.75) });
       text(ctx, this.ev.name.toUpperCase(), cx, 72, { size: 48, font: 'display', track: 2, color: PAL.gold });

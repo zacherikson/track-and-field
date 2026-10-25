@@ -559,7 +559,8 @@ src/render/vaultArena.js  pole vault runway, plant box, landing mat, uprights wi
 src/render/road.js    time trial road side on (real hills, exaggerated), scenery, arches; the rider on a TT bike
 src/economy/          the economy's shared rules (game and meet server): currencies.js (the ids and the
                       one table of names players see), wallet.js (changes, never below zero, fines off),
-                      levels.js (XP per race by mode and place, the daily cap, the level curve)
+                      levels.js (XP per race by mode and place, the daily cap, the level curve),
+                      payouts.js (a public live room's prize money, medals, Gems and XP, for the server)
 src/online/
   ghost.js            records a run's inputs and replays them as a ghost (pure)
   firebase.js         online leaderboards: lazy-loaded Firebase SDK, anonymous and Google sign-in, Firestore
@@ -569,6 +570,7 @@ src/online/
   progress.js         campaign progress, top five marks and your athlete, synced to your account (merged)
   wallet.js           your wallet, read-only (the meet server writes it), with the last balance kept for offline
   xp.js               reports each race you finish for XP (queued offline), and your level as last told
+  liveResults.js      a live room's standings from every player's results (the server settles with it)
   live.js             live play: the waiting rooms (public, and each squad's Practice), shared start times, sending and receiving players
   liveRun.js          another player's runner in a live 100m, replayed as their taps arrive
   liveTrace.js        sends your athlete frame by frame in live play, and draws the others' (all but the 100m)
@@ -585,8 +587,9 @@ src/scenes/home/                its panels: athletePanel.js (pick your athlete),
 src/scenes/leaderboardScene.js  online leaderboards, a tab per event, with Race buttons
 src/scenes/tutorialScene.js     How to play: a tab per event with its steps, and Practice
 src/scenes/howTo.js             each event's steps and controls strip, and their icons (drawn with the game's pads)
-src/scenes/profileScene.js      your username (unique, saved in Firebase) and Google sign-in
+src/scenes/profileScene.js      your username (unique, saved in Firebase), Google sign-in, level, wallet and medals
 src/scenes/lobbyScene.js        the live waiting room (any event, or the tournament)
+src/scenes/podiumScene.js       the podium after a live event: the top three, their medals, what you won
 src/meet/             squad meets (docs/meets.md): the rules shared with the meet server (rules, scoring,
                       heats, relayLegs, protocol), the meet you're in (meet.js), sign-up and lobby
                       (meetScene.js), standings between events (meetStandingsScene.js)

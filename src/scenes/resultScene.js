@@ -6,6 +6,9 @@ import { postMark } from '../online/post.js';
 import { counts, recordTopMark } from '../online/bests.js';
 import { worldRecord, isWorldRecord } from '../online/worldRecords.js';
 import { onXp } from '../online/xp.js';
+import { currentLive } from '../online/live.js';
+import { formatAmount } from '../economy/currencies.js';
+import { serverPays } from '../flow.js';
 import { flow } from '../flow.js';
 import { ResultsPanel } from '../brawl/aftermath.js';
 
@@ -33,6 +36,10 @@ export class ResultScene {
     this.stopXp = onXp((r) => {
       if (r.levelUp) this.levelUp = r.level;
     });
+    // A public live room: the server's payout (prize money, medal, XP) once it's settled.
+    const room = serverPays(this.stats) ? currentLive() : null;
+    this.payout = room?.payout ?? null;
+    this.stopPayout = room?.onPayout((p) => (this.payout = p));
     const me = this.results.find((r) => r.isPlayer);
     this.me = me;
     this.place = this.results.indexOf(me) + 1;
@@ -61,9 +68,15 @@ export class ResultScene {
     if (canTune()) this.buttons.push(new Button({ label: 'Tuning', icon: 'tuning', color: PAL.ink2, lip: PAL.inkShade, onTap: () => flow.tuning(this.game) }));
     if (this.ev.online) this.buttons.splice(2, 0, new Button({ label: 'Leaderboard', icon: 'leaderboard', color: PAL.ink2, lip: PAL.inkShade, onTap: () => flow.leaderboard(this.game, this.ev) }));
     const live = !!this.stats?.live;
+    // Live, with someone to share it with: the podium (scenes/podiumScene.js), going on from there as from here.
+    const finishers = this.results.filter((r) => !r.ghost && r.status === 'ok').length;
+    const actions = this.buttons.slice(0, 2).map((b) => ({ label: b.label, color: b.color, lip: b.lip, onTap: b.onTap }));
+    this.podiumBtn = live && finishers >= 2 ? new Button({ label: 'Podium', icon: 'medal', color: PAL.gold, lip: PAL.goldShade, onTap: () => flow.podium(this.game, this.ev, this.results, actions) }) : null;
+    if (this.podiumBtn && !this.backdrop) this.buttons.splice(1, 0, this.podiumBtn);
     if (this.backdrop) {
-      // Over the late hits: just the results and the two buttons.
+      // Over the late hits: just the results and the two buttons (and the podium, under the results).
       this.buttons = this.buttons.slice(0, 2);
+      if (this.podiumBtn) this.buttons.push(this.podiumBtn);
       this.panel = new ResultsPanel(this.buttons, () => `RESULTS · ${this.ev.name.toUpperCase()}${this.beaten ? ` · ${LEVEL_NAMES[getCampaign()].toUpperCase()} BEATEN!` : ''}${this.xpLine() ? ` · ${this.xpLine()}` : ''}`, () =>
         this.results.map((r, i) => ({
           place: r.status === 'ok' ? String(i + 1) : '–',
@@ -83,11 +96,17 @@ export class ResultScene {
 
   exit() {
     this.stopXp?.();
+    this.stopPayout?.();
     this.backdrop?.leave();
   }
 
   /** "+25 XP", with "LEVEL UP! LV 4" once the server says so; '' when this race added none. */
   xpLine() {
+    const p = this.payout;
+    if (p) {
+      const bits = [p.medal ? `${p.medal.toUpperCase()} MEDAL` : null, p.earned ? `+${formatAmount('earned', p.earned)}` : null, p.premium ? `+${formatAmount('premium', p.premium)}` : null, p.xp ? `+${p.xp} XP` : null];
+      return bits.filter(Boolean).join(' · ');
+    }
     if (!this.xpGained) return '';
     return `+${this.xpGained} XP${this.levelUp ? ` · LEVEL UP! LV ${this.levelUp}` : ''}`;
   }
@@ -127,6 +146,8 @@ export class ResultScene {
   render(ctx, view) {
     if (this.backdrop) {
       this.backdrop.lateRender(ctx, view);
+      // The podium button just under the results (clear of your fight controls, along the bottom).
+      if (this.podiumBtn) Object.assign(this.podiumBtn, { x: this.panel.x, y: this.panel.y + this.panel.h + 16, w: this.panel.w, h: 46, size: 18 });
       this.panel.draw(ctx, view);
       this.backdrop.after?.drawControls(ctx, view);
       return;
@@ -149,7 +170,7 @@ export class ResultScene {
     text(ctx, `${this.ev.name.toUpperCase()} · ${where}${this.beaten ? ' · BEATEN!' : ''}`, cx, 52, { size: 22, font: 'display', track: 1.5, color: this.beaten ? PAL.gold : CREAM(0.75), maxWidth: colW });
     text(ctx, headline, cx, 118, { size: me.status === 'ok' ? 84 : 44, font: 'display', track: 2, color: PAL.cream, maxWidth: colW });
     if (me.status === 'ok' && this.results.length > 1) text(ctx, `${ordinal(this.place).toUpperCase()} PLACE`, cx, 180, { size: 34, font: 'display', track: 2, color: this.place === 1 ? PAL.gold : PAL.cream });
-    if (this.xpLine()) text(ctx, this.xpLine(), cx, 210, { size: 18, font: 'display', track: 1.5, color: this.levelUp ? PAL.gold : CREAM(0.8), maxWidth: colW });
+    if (this.xpLine()) text(ctx, this.xpLine(), cx, 210, { size: 18, font: 'display', track: 1.5, color: this.levelUp || this.payout?.medal ? PAL.gold : CREAM(0.8), maxWidth: colW });
 
     const flash = 0.65 + 0.35 * Math.sin(this.age * 8);
     let y = this.xpLine() ? 254 : 236; // under the XP line, when there is one

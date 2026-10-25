@@ -1,7 +1,9 @@
 import { DurableObject } from 'cloudflare:workers';
 import { acceptSocket } from './socket.js';
 import { loadSquad } from './firestore.js';
-import { hasAdmin, readWallet } from './firestoreAdmin.js';
+import { hasAdmin, readWallet, changeWallet } from './firestoreAdmin.js';
+import { livePayouts } from '../../src/economy/payouts.js';
+import { xpDay } from '../../src/economy/levels.js';
 import { handleApi } from './api.js';
 import { MeetCore } from './meetCore.js';
 import { SquadHubCore } from './squadHubCore.js';
@@ -68,8 +70,8 @@ const TICK = 100; // ms
 const ROOM_ID = /^[a-z0-9]{6,40}$/;
 const newId = () => crypto.randomUUID().replace(/-/g, '').slice(0, 20);
 
-/** Hands a live room's players to its Room (lobbyCore.js openRoom). */
-const openRoom = (env, id, info) => later('open room', () => env.ROOMS.get(env.ROOMS.idFromName(id)).init(info));
+/** Hands a live room's players to its Room (lobbyCore.js openRoom), with its id. */
+const openRoom = (env, id, info) => later('open room', () => env.ROOMS.get(env.ROOMS.idFromName(id)).init({ ...info, id }));
 
 /** Calls `fn` (an RPC to another object) without waiting, logging a failure. */
 const later = (what, fn) => Promise.resolve().then(fn).catch((e) => console.error(what, e));
@@ -210,7 +212,8 @@ export class Meet extends DurableObject {
 export class Lobby extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
-    this.core = new LobbyCore({ now: () => Date.now(), newId, openRoom: (id, info) => openRoom(env, id, info), changed: () => {} }, LIVE_KINDS);
+    // Public rooms pay out (prize money, medals: Room.payOut); a squad's Practice doesn't.
+    this.core = new LobbyCore({ now: () => Date.now(), newId, openRoom: (id, info) => openRoom(env, id, { ...info, public: true }), changed: () => {} }, LIVE_KINDS);
     this.timer = null;
   }
 
@@ -232,8 +235,34 @@ export class Lobby extends DurableObject {
 export class Room extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
-    this.core = new RoomCore({ now: () => Date.now(), ended: () => clearInterval(this.timer) });
+    this.core = new RoomCore({
+      now: () => Date.now(),
+      ended: () => clearInterval(this.timer),
+      settle: (standings) => this.payOut(standings).catch((e) => console.error('payout', e)),
+    });
     this.timer = null;
+  }
+
+  /**
+   * A public room's standings are in: each player's prize money, medal and XP
+   * (src/economy/payouts.js) go on their wallet, and they're told what they got.
+   * Each payout's refs are this room's, so it lands once even if settled again.
+   */
+  async payOut(standings) {
+    const info = this.core.info;
+    if (!info?.public || !info.id || !hasAdmin(this.env)) return;
+    const pay = livePayouts({ kind: info.kind, room: info.id, standings, day: xpDay() });
+    for (const [uid, p] of pay) {
+      let xp = p.summary.xp;
+      try {
+        const r = await changeWallet(this.env, uid, p.changes);
+        if (!r.duplicate) xp = r.entries.filter((e) => e.entry.currency === 'xp').reduce((s, e) => s + e.entry.amount, 0); // after the daily cap
+      } catch (e) {
+        console.error('payout', uid, e?.message);
+        continue;
+      }
+      this.core.sendTo(uid, { t: 'payout', ...p.summary, xp });
+    }
   }
 
   // RPC from the waiting room that closed.

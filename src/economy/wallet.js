@@ -6,9 +6,11 @@ import { CURRENCIES } from './currencies.js';
  * wallets: server/src/firestoreAdmin.js) and the game (which only shows them:
  * online/wallet.js).
  *
- * A wallet is { earned, premium, xp }: whole amounts, never below zero (`xp`
- * isn't money: it's your XP, src/economy/levels.js, kept here so it has the
- * same protection; with `xpDay`/`xpToday` for its daily cap). It only
+ * A wallet is { earned, premium, xp, gold, silver, bronze }: whole amounts,
+ * never below zero. `xp` and the medals aren't money: your XP
+ * (src/economy/levels.js, with `xpDay`/`xpToday` for its daily cap) and your
+ * medal counts (src/economy/payouts.js), kept here for the same protection,
+ * and only ever granted. It only
  * ever changes through applyChange, and every change is written with a
  * ledger entry whose id (ledgerId) comes from what the change was for, so the
  * same payout can never land twice.
@@ -25,7 +27,9 @@ import { CURRENCIES } from './currencies.js';
  * that day's cap (CONFIG.economy.xp.dailyCap) is cut down to what's left.
  */
 export const WALLET_VERSION = 1;
-export const BALANCES = [...CURRENCIES, 'xp']; // what a wallet holds: the currencies, and your XP
+export const MEDALS = ['gold', 'silver', 'bronze']; // your medals: won in public live races, kept forever
+export const BALANCES = [...CURRENCIES, 'xp', ...MEDALS]; // what a wallet holds: the currencies, your XP, your medals
+const GRANT_ONLY = ['xp', ...MEDALS]; // never spent, fined or converted
 const FIELDS = [...BALANCES, 'xpDay', 'xpToday']; // all of it as stored
 export const KINDS = ['grant', 'spend', 'fine', 'convert'];
 
@@ -61,7 +65,8 @@ export function checkChange(change) {
   if (!KINDS.includes(kind)) throw new WalletError('invalid', `kind ${kind}`);
   if (!BALANCES.includes(currency)) throw new WalletError('invalid', `currency ${currency}`);
   if (kind === 'convert' && currency !== 'premium') throw new WalletError('invalid', 'only premium converts');
-  if (currency === 'xp' && (kind !== 'grant' || !Number.isInteger(change.day) || change.day < 0)) throw new WalletError('invalid', 'xp: a grant with its day');
+  if (GRANT_ONLY.includes(currency) && kind !== 'grant') throw new WalletError('invalid', `${currency} is only ever granted`);
+  if (currency === 'xp' && (!Number.isInteger(change.day) || change.day < 0)) throw new WalletError('invalid', 'xp: a grant with its day');
   if (!Number.isInteger(amount) || amount <= 0 || amount > MAX) throw new WalletError('invalid', `amount ${amount}`);
   if (typeof reason !== 'string' || !REASON.test(reason)) throw new WalletError('invalid', `reason ${reason}`);
   if (typeof ref !== 'string' || !REF.test(ref)) throw new WalletError('invalid', `ref ${ref}`);

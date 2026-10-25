@@ -30,6 +30,9 @@ import { startLive, endLive, currentLive } from './online/live.js';
 import { resetScars } from './brawl/wounds.js';
 import { getCampaign, setCampaign, markBeaten, canTune } from './core/storage.js';
 import { reportRace } from './online/xp.js';
+import { isSignedIn } from './online/firebase.js';
+import { xpForRace } from './economy/levels.js';
+import { PodiumScene } from './scenes/podiumScene.js';
 
 /**
  * Reports a finished race for XP: who you raced (people, the computer, or
@@ -41,7 +44,15 @@ function reportFinish(ev, results, stats) {
   const me = field.find((r) => r.isPlayer);
   if (!me || me.status !== 'ok') return 0;
   const mode = stats?.live ? 'live' : getCampaign() || survival.active || ev.special || tournament.active ? 'computer' : 'training';
-  return reportRace({ mode, place: field.indexOf(me) + 1, field: Math.min(12, field.length) });
+  const race = { mode, place: field.indexOf(me) + 1, field: Math.min(12, field.length) };
+  // A public live room is settled and paid by the server, XP and all (server/src/roomCore.js): just say what it's worth.
+  if (serverPays(stats)) return isSignedIn() ? xpForRace(race) : 0;
+  return reportRace(race);
+}
+
+/** True if this live race is in a public room, which the server settles and pays (not a squad's Practice, a meet or live survival). */
+export function serverPays(stats) {
+  return !!stats?.live && !meet.active && !liveSurvival.active && !!currentLive() && !currentLive().squad;
 }
 
 export const flow = {
@@ -114,6 +125,8 @@ export const flow = {
     scene.xpGained = xp; // what this race should add to your XP (the results screen shows it)
     game.setScene(scene);
   },
+  // The podium after a live event (scenes/podiumScene.js); `actions` = the results screen's buttons.
+  podium: (game, ev, results, actions) => game.setScene(new PodiumScene(ev, results, actions)),
   leaderboard: (game, board) => {
     setCampaign(null); // a Race from the board is training
     endLive();

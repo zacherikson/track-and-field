@@ -6,6 +6,39 @@ Gameplay and tuning changes, newest first. When you change a number in
 From 1.0.0 every push to master bumps `src/version.js` and heads its section
 here with the version.
 
+## 1.4.0 — Live prize money and medals (economy phase 3)
+Public live races now pay out, decided by the server, and the top three go up
+on a podium.
+- **What a public live room pays** (`src/economy/payouts.js`,
+  `CONFIG.economy.live`; placeholders):
+  - **Every finisher:** 25 Coins.
+  - **1st / 2nd / 3rd** (2+ finished): +200 / +100 / +50 Coins.
+  - **Medals** (3+ finished): gold, silver or bronze, kept forever, with
+    6 / 3 / 2 Gems.
+  - **XP** for each event, as before (20 for finishing, +30 / 20 / 10).
+  - **Live tournament:** 3x the Coins and Gems, by overall standing.
+  - Squad Practice, meets and live Survival don't pay yet (XP only, as before).
+- **The server settles it.** The room works out the standings from every
+  player's results (`src/online/liveResults.js`). It settles once everyone has
+  finished or left, or 90 s after the last result. Then it pays each player
+  in one wallet transaction (`server/src/roomCore.js`, `index.js`). A room pays
+  once, however often it's settled. Each phone is told what it won.
+  - Public live XP now comes from the server, not the phone.
+  - Medal counts go on the public `players/{uid}` with your level.
+- **Shown:**
+  - **Results:** "GOLD MEDAL · +225 Coins · +6 Gems · +50 XP" under your place,
+    and a gold **Podium** button.
+  - **Podium** (`src/scenes/podiumScene.js`): the top three on their blocks
+    under the lights, medals on, celebrating, confetti, and your payout.
+  - **Tournament final standings:** your payout line.
+  - **Profile:** your medal cabinet (gold, silver, bronze counts) in the
+    wallet strip.
+- **Fixed:** the live tournament's final standings showed "HIGHSCHOOL"
+  instead of the level's name.
+- **Tests:** payouts (prize, medal thresholds, tournament factor, XP), room
+  settling (all done, someone left, give-up timer, once only), several
+  wallet changes in one transaction.
+
 ## 1.3.0 — Levels and XP (economy phase 2)
 Every race you finish earns XP, kept on your account by the server, and your
 level shows across the game. Levels will unlock shop items (a later phase).

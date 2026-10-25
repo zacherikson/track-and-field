@@ -265,7 +265,9 @@ export class ProfileScene {
     const wy = 334;
     slab(ctx, x0, wy, w, 44, { face: PAL.ink2, lip: PAL.inkShade, lipH: 5, c: 7 });
     text(ctx, 'WALLET', x0 + 18, wy + 22, { size: 16, font: 'display', track: 3, color: PAL.gold, align: 'left' });
-    text(ctx, walletLine(this.account, this.wallet), cx + 40, wy + 22, { size: 20, font: 'body', weight: 800, color: PAL.cream, maxWidth: w - 140 });
+    const cabinet = !!this.wallet && !this.account?.guest; // your medals, on the right
+    text(ctx, walletLine(this.account, this.wallet), cabinet ? x0 + 104 : cx + 40, wy + 22, { size: 20, font: 'body', weight: 800, color: PAL.cream, align: cabinet ? 'left' : 'center', maxWidth: cabinet ? w - 290 : w - 140 });
+    if (cabinet) drawMedals(ctx, x0 + w - 186, wy + 22, this.wallet);
 
     if (this.status) text(ctx, this.status.text, cx, 396, { size: 18, font: 'body', color: this.status.color, maxWidth: view.w - 40 });
 
@@ -283,6 +285,25 @@ function accountLines(account) {
   if (account === 'offline') return ['Offline', 'Signing in needs a connection.'];
   if (account.guest) return ['Guest on this phone', 'Sign in to go on the online leaderboard and keep your name and bests on any phone.'];
   return [`Signed in with ${account.via}`, account.email ?? 'Sign in with the same account on another phone to play as you there.'];
+}
+
+const MEDAL_LOOK = { gold: ['#F2C230', '#B8891A'], silver: ['#D3D8DE', '#8E979F'], bronze: ['#D98F4E', '#9A5B26'] };
+
+/** Your medal cabinet: a disc and a count for gold, silver and bronze, from `x` (centre line `y`). */
+function drawMedals(ctx, x, y, wallet) {
+  ['gold', 'silver', 'bronze'].forEach((m, i) => {
+    const mx = x + i * 58 + 10;
+    const [face, rim] = MEDAL_LOOK[m];
+    ctx.fillStyle = rim;
+    ctx.beginPath();
+    ctx.arc(mx, y, 10, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = face;
+    ctx.beginPath();
+    ctx.arc(mx, y, 7.5, 0, Math.PI * 2);
+    ctx.fill();
+    text(ctx, String(wallet[m] ?? 0), mx + 16, y + 1, { size: 19, font: 'body', weight: 800, color: PAL.cream, align: 'left' });
+  });
 }
 
 /** The wallet's line: your balance in every currency, or why there isn't one. */

@@ -41,6 +41,10 @@ export { MAX_PLAYERS, CLOSE_BEFORE };
  * `b` and `h` are the late hits between events: where you are and who you
  * hit (brawl/liveBrawl.js). `left`: your socket closed before the end (the
  * server says so for you), until it's back.
+ *
+ * A public room is settled by the server once everyone's results are in
+ * (server/src/roomCore.js): it pays each player (src/economy/payouts.js) and
+ * tells them what they got, `payout` { place, field, earned, premium, medal, xp }.
  */
 const SEND_EVERY = 100; // ms between updates during a stage
 const READY_WAIT = 20000; // ms after the first player is ready for a stage that it starts without the others
@@ -149,6 +153,8 @@ export class LiveSession {
     this.starts = new Map([[this.eventStage(first), info.startAt]]); // stage -> start (server ms), once known
     this.done = false; // played to the end: leaving now isn't leaving early
     this.mine = {}; // stage -> your result, as sent (the others have it as your doc's `res`)
+    this.payout = null; // what the server paid you for this room, once it's settled
+    this.payoutListeners = new Set();
     const me = info.players.find((p) => p.uid === info.uid);
     this.send({ v: 2, name: info.name ?? '', athlete: me?.athlete ?? '' }, true);
   }
@@ -160,6 +166,10 @@ export class LiveSession {
       message: (m) => {
         if (m.t === 'docs') for (const [id, doc] of Object.entries(m.docs ?? {})) this.update(id, () => doc);
         else if (m.t === 'doc') this.update(m.u, (doc) => applyPatch(doc, m.p));
+        else if (m.t === 'payout') {
+          this.payout = m;
+          for (const fn of this.payoutListeners) fn(m);
+        }
       },
       status: (s) => s === 'open' && this.flush(),
     });
@@ -181,6 +191,12 @@ export class LiveSession {
     this.listeners.add(fn);
     for (const [id, doc] of this.docs) fn(id, doc);
     return () => this.listeners.delete(fn);
+  }
+
+  /** `fn(payout)` when the server says what you got for this room. Returns a function that stops it. */
+  onPayout(fn) {
+    this.payoutListeners.add(fn);
+    return () => this.payoutListeners.delete(fn);
   }
 
   /** True if that player has left (or their phone dropped off). */

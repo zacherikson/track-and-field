@@ -1,4 +1,4 @@
-import { applyChange, cleanWallet, ledgerId, WALLET_VERSION, WalletError } from '../../src/economy/wallet.js';
+import { applyChange, cleanWallet, ledgerId, WALLET_VERSION, WalletError, MEDALS } from '../../src/economy/wallet.js';
 import { levelOf } from '../../src/economy/levels.js';
 
 /**
@@ -16,7 +16,8 @@ import { levelOf } from '../../src/economy/levels.js';
  *   wallets/{uid}               = { earned, premium, xp, xpDay, xpToday, v, updatedAt }  private to you
  *   wallets/{uid}/ledger/{id}   = { kind, currency, amount, reason, ref, <balances after>, gained?, at }
  *                                 one per change; `id` = ledgerId(change), so a payout lands once
- *   players/{uid}               = { level, updatedAt }  public: your level, for name tags and boards
+ *   players/{uid}               = { level, gold, silver, bronze, updatedAt }  public: your level and medals,
+ *                                 for name tags and boards
  *                                 (src/economy/levels.js), written with every wallet change
  */
 const SCOPE = 'https://www.googleapis.com/auth/datastore';
@@ -118,34 +119,43 @@ export async function readWallet(env, uid, opts = {}) {
 }
 
 /**
- * Changes `uid`'s wallet (a change as src/economy/wallet.js describes it), in
- * one transaction with its ledger entry. Resolves to { wallet, entry,
- * duplicate }: `duplicate` = this payout already landed, and nothing changed.
- * Throws WalletError if the change can't be made (not enough money, fines off).
+ * Changes `uid`'s wallet: one change as src/economy/wallet.js describes it, or
+ * a list of them (a live room's payout: prize, medal, premium, XP), all in one
+ * transaction with a ledger entry each. A change whose ledger entry is already
+ * there (that payout landed before) is skipped. Resolves to { wallet, entries,
+ * entry (the first), duplicate (nothing new landed) }. Throws WalletError if a
+ * change can't be made (not enough money, fines off): then none of them is.
  */
-export async function changeWallet(env, uid, change, opts = {}) {
+export async function changeWallet(env, uid, changes, opts = {}) {
   checkUid(uid);
-  const id = ledgerId(change); // checks the change too
+  const list = Array.isArray(changes) ? changes : [changes];
+  const ids = list.map(ledgerId); // checks each change too
+  if (!list.length || new Set(ids).size !== ids.length) throw new WalletError('invalid', 'no changes, or the same one twice');
   for (let attempt = 1; ; attempt++) {
     const { transaction } = await call(env, ':beginTransaction', { options: { readWrite: {} } }, opts);
-    const reads = await call(env, ':batchGet', { documents: [walletName(env, uid), entryName(env, uid, id)], transaction }, opts);
+    const reads = await call(env, ':batchGet', { documents: [walletName(env, uid), ...ids.map((id) => entryName(env, uid, id))], transaction }, opts);
     const found = (name) => reads.find((r) => r.found?.name === name)?.found;
     const before = cleanWallet(numbers(found(walletName(env, uid))?.fields));
     const rollback = () => call(env, ':rollback', { transaction }, opts).catch(() => {});
-    if (found(entryName(env, uid, id))) {
-      await rollback();
-      return { wallet: before, entry: null, duplicate: true };
-    }
-    let result;
+    let wallet = before;
+    const entries = [];
     try {
-      result = applyChange(before, change);
+      list.forEach((change, i) => {
+        if (found(entryName(env, uid, ids[i]))) return; // already landed
+        const r = applyChange(wallet, change);
+        wallet = r.wallet;
+        entries.push({ id: ids[i], entry: r.entry });
+      });
     } catch (e) {
       await rollback();
       throw e;
     }
-    const { wallet, entry } = result;
+    if (!entries.length) {
+      await rollback();
+      return { wallet: before, entries, entry: null, duplicate: true };
+    }
     const now = [{ fieldPath: 'updatedAt', setToServerValue: 'REQUEST_TIME' }];
-    const entryFields = {
+    const entryFields = (entry) => ({
       kind: str(entry.kind),
       currency: str(entry.currency),
       amount: int(entry.amount),
@@ -153,15 +163,15 @@ export async function changeWallet(env, uid, change, opts = {}) {
       ref: str(entry.ref),
       ...Object.fromEntries(Object.entries(entry.after).map(([c, v]) => [c, int(v)])),
       ...(entry.gained != null ? { gained: int(entry.gained) } : {}),
-    };
+    });
     const writes = [
       { update: { name: walletName(env, uid), fields: { ...Object.fromEntries(Object.entries(wallet).map(([c, v]) => [c, int(v)])), v: int(WALLET_VERSION) } }, updateTransforms: now },
-      { update: { name: entryName(env, uid, id), fields: entryFields }, currentDocument: { exists: false }, updateTransforms: [{ fieldPath: 'at', setToServerValue: 'REQUEST_TIME' }] },
-      { update: { name: playerName(env, uid), fields: { level: int(levelOf(wallet.xp)) } }, updateTransforms: now },
+      ...entries.map(({ id, entry }) => ({ update: { name: entryName(env, uid, id), fields: entryFields(entry) }, currentDocument: { exists: false }, updateTransforms: [{ fieldPath: 'at', setToServerValue: 'REQUEST_TIME' }] })),
+      { update: { name: playerName(env, uid), fields: { level: int(levelOf(wallet.xp)), ...Object.fromEntries(MEDALS.map((m) => [m, int(wallet[m])])) } }, updateTransforms: now },
     ];
     try {
       await call(env, ':commit', { writes, transaction }, opts);
-      return { wallet, entry, duplicate: false };
+      return { wallet, entries, entry: entries[0].entry, duplicate: false };
     } catch (e) {
       // 409: another change to this wallet got there first; read it again and retry.
       if (e.status !== 409 || attempt >= RETRIES) throw e;

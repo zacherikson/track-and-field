@@ -100,3 +100,17 @@ test('bad uids and bad changes never reach the database', async () => {
   await assert.rejects(changeWallet(env, 'uid4', grant(-5, 'a'), { fetcher: g.fetcher }), WalletError);
   assert.equal(g.log.length, 0);
 });
+
+test('several changes land together (a payout), and a repeat lands none of them', async () => {
+  resetToken();
+  const g = fakeGoogle();
+  const pay = [grant(225, 'room9'), { kind: 'grant', currency: 'gold', amount: 1, reason: 'medal', ref: 'room9' }, { kind: 'grant', currency: 'premium', amount: 6, reason: 'medal-pay', ref: 'room9' }];
+  const r = await changeWallet(env, 'uid5', pay, { fetcher: g.fetcher });
+  assert.equal(r.entries.length, 3);
+  assert.deepEqual([r.wallet.earned, r.wallet.gold, r.wallet.premium], [225, 1, 6]);
+  const pub = g.docs.get(`projects/${PROJECT}/databases/(default)/documents/players/uid5`);
+  assert.equal(pub.gold.integerValue, '1', 'medals are public with the level');
+  const again = await changeWallet(env, 'uid5', pay, { fetcher: g.fetcher });
+  assert.equal(again.duplicate, true);
+  assert.equal((await readWallet(env, 'uid5', { fetcher: g.fetcher })).gold, 1);
+});

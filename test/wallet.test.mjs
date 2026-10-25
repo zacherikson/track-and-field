@@ -17,7 +17,7 @@ test('every currency has a name, and names come only from the table', () => {
 
 test('a grant adds, a spend takes, and a spend never goes below zero', () => {
   let { wallet, entry } = applyChange(emptyWallet(), change('grant', 'earned', 500));
-  assert.deepEqual(wallet, { earned: 500, premium: 0, xp: 0, xpDay: 0, xpToday: 0 });
+  assert.deepEqual(wallet, { earned: 500, premium: 0, xp: 0, gold: 0, silver: 0, bronze: 0, xpDay: 0, xpToday: 0 });
   assert.equal(entry.amount, 500);
   ({ wallet, entry } = applyChange(wallet, change('spend', 'earned', 200, 'r2')));
   assert.equal(wallet.earned, 300);
@@ -47,7 +47,8 @@ test('premium converts into earned, never the other way', () => {
 });
 
 test('bad changes are refused, and the same payout always gets the same ledger id', () => {
-  refused(() => applyChange({}, change('grant', 'gold', 5)), 'invalid');
+  refused(() => applyChange({}, change('grant', 'diamonds', 5)), 'invalid');
+  refused(() => applyChange({ gold: 2 }, change('spend', 'gold', 1)), 'invalid'); // medals are only ever granted
   refused(() => applyChange({}, change('grant', 'earned', 0)), 'invalid');
   refused(() => applyChange({}, change('grant', 'earned', 2.5)), 'invalid');
   refused(() => applyChange({}, change('grant', 'earned', 5, 'a/b')), 'invalid');
@@ -57,8 +58,8 @@ test('bad changes are refused, and the same payout always gets the same ledger i
 });
 
 test('whatever is read, a wallet comes out whole and not below zero', () => {
-  assert.deepEqual(cleanWallet({ earned: -4, premium: '7.9', junk: 3 }), { earned: 0, premium: 7, xp: 0, xpDay: 0, xpToday: 0 });
-  assert.deepEqual(cleanWallet(null), { earned: 0, premium: 0, xp: 0, xpDay: 0, xpToday: 0 });
+  assert.deepEqual(cleanWallet({ earned: -4, premium: '7.9', junk: 3 }), { earned: 0, premium: 7, xp: 0, gold: 0, silver: 0, bronze: 0, xpDay: 0, xpToday: 0 });
+  assert.deepEqual(cleanWallet(null), { earned: 0, premium: 0, xp: 0, gold: 0, silver: 0, bronze: 0, xpDay: 0, xpToday: 0 });
 });
 
 test('XP is only granted, with its day, and stops at the daily cap', () => {

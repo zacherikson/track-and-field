@@ -559,6 +559,17 @@ export const CONFIG = {
     },
     // Level L takes step·L·(L−1)/2 XP in all: level 2 at 100, 3 at 300, 4 at 600, 10 at 4,500.
     levels: { step: 100, max: 99 },
+    // What a PUBLIC live room pays (src/economy/payouts.js; squad Practice pays nothing),
+    // worked out by the server from everyone's results (src/online/liveResults.js). Placeholders.
+    live: {
+      finish: 25, // earned currency for finishing
+      prize: [200, 100, 50], // ...plus this for 1st, 2nd, 3rd
+      prizeMin: 2, // finishers needed for the place prizes (alone: just finishing)
+      medalsMin: 3, // finishers needed for medals (no gold for beating one friend)
+      medalPremium: [6, 3, 2], // premium currency with a gold, silver, bronze (1 gold = 2 silver = 3 bronze)
+      tournament: 3, // a live tournament pays this many times as much (it's five events)
+      giveUp: 90000, // ms waiting for a player's result once the others' are in; then it's settled without them
+    },
   },
 
   // A rival's wrong-side tap costs what yours does: sprint100.targets' missSpeedLoss and

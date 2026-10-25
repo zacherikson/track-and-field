@@ -260,6 +260,15 @@ export class PlayPanel {
     return true;
   }
 
+  /** Straight back to the big buttons (vs Computer, Live) from any list: the Play tab tapped again. */
+  top() {
+    if (!this.list) return;
+    this.list = lastList = null;
+    this.warnT = 0;
+    this.fade = 0;
+    this.relayout();
+  }
+
   relayout() {
     if (this.view) this.layout(this.view, this.bottom);
   }

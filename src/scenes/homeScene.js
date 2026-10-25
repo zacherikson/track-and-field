@@ -27,6 +27,8 @@ const TAP = 24; // a touch that ends within this of where it started is a tap
  * get the same calls as a scene, except that input comes sorted: taps go to
  * the panel showing (as a 'down' at the touch's start, sent once the finger
  * lifts, so a swipe that starts on a button doesn't press it), and keys too.
+ * Tapping the tab you're already on takes it back to its start (Play: the
+ * vs Computer and Live buttons, out of any list).
  * Keyboard: 1 / 2 / 3 or Q / E change tab, Esc steps back within a tab, then to Play.
  */
 export class HomeScene {
@@ -88,7 +90,8 @@ export class HomeScene {
           const k = this.tabBoxes.findIndex((b) => e.x >= b.x && e.x <= b.x + b.w);
           if (k >= 0) {
             this.tabPressT[k] = 0.12;
-            this.show(k);
+            if (k === this.tab) this.panels[k].top?.(); // already here: back to the tab's start
+            else this.show(k);
           }
         } else if (!this.press) {
           this.press = { id: e.id, x: e.x, y: e.y, down: e, dragging: false, lost: 0 };

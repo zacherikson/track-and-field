@@ -6,6 +6,11 @@ Gameplay and tuning changes, newest first. When you change a number in
 From 1.0.0 every push to master bumps `src/version.js` and heads its section
 here with the version.
 
+## 1.1.3 — Tap Play again to get back to the start
+- On the Play tab, tapping **Play** in the tab bar again goes straight back
+  to the vs Computer and Live buttons, out of whatever list you're in
+  (`PlayPanel.top`). Coming to Play from another tab still keeps your place.
+
 ## 1.1.2 — Westfield's windows stop flickering
 - **What happened:** which of the town's windows were lit came from each
   window's spot on the screen, so as the town scrolled the pattern reshuffled

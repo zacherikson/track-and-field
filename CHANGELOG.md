@@ -6,6 +6,11 @@ Gameplay and tuning changes, newest first. When you change a number in
 From 1.0.0 every push to master bumps `src/version.js` and heads its section
 here with the version.
 
+## 1.1.4 — Spikes under the toes
+- The Athlete tab's shoe icon (`icons.js` `athlete`): its four spikes were
+  spread from the heel to the middle of the sole. They're under the front
+  of the foot now, as on a real sprint spike, and the heel is flat.
+
 ## 1.1.3 — Tap Play again to get back to the start
 - On the Play tab, tapping **Play** in the tab bar again goes straight back
   to the vs Computer and Live buttons, out of whatever list you're in

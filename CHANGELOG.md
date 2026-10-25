@@ -6,6 +6,12 @@ Gameplay and tuning changes, newest first. When you change a number in
 From 1.0.0 every push to master bumps `src/version.js` and heads its section
 here with the version.
 
+## 1.0.4 — Hurdles rivals back as they were
+- **Reverted 1.0.3:** hurdles rivals have `CONFIG.ai`'s gun reaction again
+  (Amateur 0.20–0.35 s, Pro 0.16–0.24 s) and their old reading and tapping
+  speeds (Amateur setReact 0.55–0.78, tapGap 0.21–0.30; Pro setReact
+  0.42–0.56, tapGap 0.16–0.22). The slower start made them feel too slow.
+
 ## 1.0.3 — Hurdles rivals react to the gun like players do
 - **What happened:** hurdles rivals reacted to the gun as fast as the 100m's
   used to (`CONFIG.ai`: Pro 0.16–0.24 s), quicker than a player can see the

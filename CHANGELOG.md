@@ -6,6 +6,16 @@ Gameplay and tuning changes, newest first. When you change a number in
 From 1.0.0 every push to master bumps `src/version.js` and heads its section
 here with the version.
 
+## 1.8.1 — Your athlete goes by your username
+- Athletes no longer have names of their own: yours shows your username
+  everywhere (races, results, the Athlete tab, the Athlete Maker's stage).
+  `roster.js` `myAthlete()` gives your made athlete your username as its name.
+- The Athlete Maker's **Rename** is gone (Random takes its place, full width).
+- The name still inside an athlete's code (older builds and other phones read
+  it) is your username, cut to 12 letters, and follows a username change on
+  the Profile screen.
+- The Athlete tab drops its "races as …" line.
+
 ## 1.8.0 — Set up your account first
 New players set themselves up before the menu, and the Athlete tab is just you.
 - **First launch** (`src/scenes/onboarding.js`): three steps, any already done

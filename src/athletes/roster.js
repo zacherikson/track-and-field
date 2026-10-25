@@ -1,4 +1,4 @@
-import { getCharacter, getCustom } from '../core/storage.js';
+import { getCharacter, getCustom, getPlayerName } from '../core/storage.js';
 import { athleteFromCode } from './custom.js';
 import { survival } from '../survival/survival.js';
 
@@ -57,14 +57,28 @@ export function athleteById(id) {
 }
 const byId = athleteById;
 
-/** The athlete you made in the Athlete Maker (whether or not it's the one you play as), or null. */
-export function myCustom() {
-  return athleteFromCode(getCustom());
+const yours = new Map(); // `${code}|${username}` -> your athlete under your name (the same object each time: screens compare athletes by identity)
+
+/**
+ * An athlete you made, going by your username: athletes don't have names of
+ * their own (the one in a code is only for older builds). A cast athlete as it is.
+ */
+function asYou(a) {
+  if (!a?.custom) return a;
+  const name = getPlayerName();
+  const key = `${a.id}|${name}`;
+  if (!yours.has(key)) yours.set(key, { ...a, name });
+  return yours.get(key);
 }
 
-/** Your athlete (made on first launch or on the Athlete tab, remembered on this device and your account). */
+/** The athlete you made in the Athlete Maker (whether or not it's the one you play as), or null. */
+export function myCustom() {
+  return asYou(athleteFromCode(getCustom()));
+}
+
+/** Your athlete (made on first launch or on the Athlete tab, remembered on this device and your account), under your username. */
 export function myAthlete() {
-  return byId(getCharacter()) ?? CHARACTERS[0];
+  return asYou(byId(getCharacter())) ?? CHARACTERS[0];
 }
 
 /** The athlete you play an event as: always yours. */

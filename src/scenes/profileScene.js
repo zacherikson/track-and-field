@@ -1,10 +1,11 @@
 import { Button, text, slab, chamfer, titlePlate, PAL } from '../core/ui.js';
-import { getPlayerName, setPlayerName, cleanName, forgetProgress, setOnboarded } from '../core/storage.js';
+import { getPlayerName, setPlayerName, cleanName, forgetProgress, setOnboarded, getCharacter, getCustom, setCustom, setCharacter } from '../core/storage.js';
 import { setUsername, accountInfo, signOut } from '../online/firebase.js';
 import { forgetBests } from '../online/bests.js';
 import { goSignIn, completeSignIn, signInError, usernameError } from '../online/account.js';
 import { renameInSquad } from '../online/squads.js';
 import { flow } from '../flow.js';
+import { parse, encode, cleanAthleteName, DEFAULT_NAME } from '../athletes/custom.js';
 import { cachedWallet, refreshWallet, forgetWallet } from '../online/wallet.js';
 import { myLevel, forgetXp } from '../online/xp.js';
 import { forgetContract } from '../online/contracts.js';
@@ -88,6 +89,7 @@ export class ProfileScene {
     setUsername(name)
       .then(async (renamedBoards) => {
         setPlayerName(name);
+        renameAthlete(name);
         // Your squad's member list too (if you're in one); if that fails it keeps the old name for now.
         await renameInSquad(name).catch((e) => console.warn('name not changed in your squad', e));
         // The name is saved either way; your board rows may still show the old one.
@@ -300,4 +302,18 @@ function walletLine(account, wallet) {
   if (account?.guest) return 'Sign in to earn and keep your winnings';
   if (!wallet) return account === 'offline' ? 'Shown once you’re back online' : 'Checking…';
   return CURRENCIES.map((c) => formatAmount(c, wallet[c])).join('  ·  ');
+}
+
+/**
+ * Your athlete goes by your username, so the copy of it in their code (what
+ * other phones and older builds read) follows a new one.
+ */
+function renameAthlete(name) {
+  const code = getCharacter();
+  const p = parse(code);
+  if (!p) return;
+  const next = encode(p.look, cleanAthleteName(name) || DEFAULT_NAME, p.gear);
+  if (next === code) return;
+  if (getCustom() === code) setCustom(next);
+  setCharacter(next);
 }

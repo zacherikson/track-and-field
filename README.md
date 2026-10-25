@@ -378,13 +378,13 @@ and at Pro the other five of the cast are your rivals
 ([`src/athletes/roster.js`](src/athletes/roster.js) `castOf`). The athletes only
 look different for now; they all run on the same physics.
 
-**Make your own** (the last card, CREATE): the Athlete Maker, Mii style. Pick
+**Your athlete** (Customize on the Athlete tab): the Athlete Maker, Mii style. Pick
 a skin tone, a hairstyle (headband, short, spiky, afro, ponytail, bun,
 fringe, bald, mohawk, long) and its colour, a shirt, shorts, a height (Joey's
-to a bit taller than everyone) and a build (up to Chonk's), and give them a
-name (Rename, up to 12 letters; it starts as your username). Random rolls a
+to a bit taller than everyone) and a build (up to Chonk's). No name of their
+own: your athlete goes by your username everywhere. Random rolls a
 whole new look. They warm up on the left as you go and react to every change.
-Save makes them yours; tap their card again (or Edit) to change them. One of
+Save keeps the change. One of
 your own at a time. Playing as them, the cast member whose shirt is most like
 theirs sits out, so there are still five rivals.
 

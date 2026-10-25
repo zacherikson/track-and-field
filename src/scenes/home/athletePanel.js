@@ -3,7 +3,6 @@ import { Button, text, slab, chamfer, titlePlate, PAL } from '../../core/ui.js';
 import { pinebrook } from '../../render/posterScenery.js';
 import { drawFigure, runPose } from '../../athletes/stickFigure.js';
 import { myAthlete, heightOf } from '../../athletes/roster.js';
-import { cleanAthleteName } from '../../athletes/custom.js';
 import { getPlayerName } from '../../core/storage.js';
 import { isSignedIn } from '../../online/firebase.js';
 import { myLevel } from '../../online/xp.js';
@@ -154,11 +153,10 @@ export class AthletePanel {
     const tw = b.x + b.w - 16 - tx;
     const name = getPlayerName();
     text(ctx, name.toUpperCase(), tx, b.y + 46, { size: 46, font: 'display', align: 'left', track: 2, color: PAL.ink, maxWidth: tw });
-    // Level (signed in) or guest; the athlete's own name if it isn't your username; their height.
+    // Level (signed in) or guest, and their height.
     const signedIn = isSignedIn();
     const lv = signedIn ? myLevel() : null;
     const bits = [signedIn ? (lv ? `Level ${lv.level}` : null) : 'Guest', `${(CONFIG.figure.height * heightOf(c.colors)).toFixed(2)} m`];
-    if (cleanAthleteName(name).toLowerCase() !== c.name.toLowerCase()) bits.splice(1, 0, `races as ${c.name}`);
     text(ctx, bits.filter(Boolean).join('  ·  '), tx + 2, b.y + 88, { size: 18, font: 'body', weight: 700, align: 'left', color: PAL.muted, maxWidth: tw });
     if (!signedIn) {
       text(ctx, this.status ?? 'Sign in to keep your progress and winnings and go on the leaderboards.', tx + 2, b.y + 122, { size: 15, font: 'body', weight: 600, align: 'left', color: this.status ? PAL.brick : PAL.ink, maxWidth: tw });

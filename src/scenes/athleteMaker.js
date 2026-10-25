@@ -3,7 +3,7 @@ import { drawIcon } from '../core/icons.js';
 import { pinebrook } from '../render/posterScenery.js';
 import { drawFigure, runPose } from '../athletes/stickFigure.js';
 import { relaxed, emote } from '../brawl/poses.js';
-import { LOOK, parse, encode, randomLook, cleanAthleteName, lookColors, DEFAULT_NAME, NAME_MAX } from '../athletes/custom.js';
+import { LOOK, parse, encode, randomLook, cleanAthleteName, lookColors, DEFAULT_NAME } from '../athletes/custom.js';
 import { SLOTS, SLOT_NAMES, slotItems, itemAt, noGear, owns } from '../economy/items.js';
 import { myLevel } from '../online/xp.js';
 import { myInventory, openShop } from '../online/shop.js';
@@ -31,8 +31,8 @@ const WARMUP = [['stand', 2.2], ['run', 2.4], ['stand', 1.4], ['emote', 2.2]];
 /**
  * The Athlete Maker, Mii style: make an athlete of your own. Your athlete
  * warms up on the left (and reacts to each change); on the right a row of
- * picks for each part of their look (custom.js LOOK); Rename and Random
- * under them. The Gear tab: a row per gear slot (economy/items.js), each item
+ * picks for each part of their look (custom.js LOOK); Random under them.
+ * No name of their own: your athlete goes by your username. The Gear tab: a row per gear slot (economy/items.js), each item
  * unlocked by your level (a lock and the level on the ones you haven't
  * reached). Save makes them the athlete you play as (Athlete tab), Cancel
  * leaves things as they were. One athlete of your own: making a new one
@@ -44,7 +44,6 @@ export class AthleteMakerScene {
     const p = parse(code);
     this.look = p ? { ...p.look } : randomLook();
     this.gear = p ? { ...p.gear } : noGear();
-    this.name = p ? p.name : cleanAthleteName(getPlayerName()) || DEFAULT_NAME;
     this.isNew = !p;
     this.tab = 'look';
   }
@@ -55,7 +54,6 @@ export class AthleteMakerScene {
     this.flashT = 0;
     this.cancelBtn = new Button({ label: 'Cancel', icon: 'back', look: 'chip', w: 128, h: 46, onTap: () => this.cancel() });
     this.saveBtn = new Button({ label: 'Save', icon: 'check', w: 150, h: 50, color: PAL.liveGreen, lip: PAL.liveShade, onTap: () => this.save() });
-    this.renameBtn = new Button({ label: 'Rename', icon: 'edit', look: 'chip', h: 46, onTap: () => this.rename() });
     this.randomBtn = new Button({ label: 'Random', icon: 'dice', look: 'chip', h: 46, onTap: () => this.randomize() });
     this.lookTab = new Button({ label: 'Look', icon: 'athlete', look: 'chip', h: 44, onTap: () => this.showTab('look') });
     this.gearTab = new Button({ label: 'Gear', icon: 'star', look: 'chip', h: 44, onTap: () => this.showTab('gear') });
@@ -73,7 +71,7 @@ export class AthleteMakerScene {
   }
 
   get buttons() {
-    return [this.cancelBtn, this.saveBtn, this.renameBtn, this.randomBtn, this.lookTab, this.gearTab];
+    return [this.cancelBtn, this.saveBtn, this.randomBtn, this.lookTab, this.gearTab];
   }
 
   showTab(tab) {
@@ -104,12 +102,10 @@ export class AthleteMakerScene {
     Object.assign(this.saveBtn, { x: view.w - margin - this.saveBtn.w, y: top - 2 });
     const bottom = view.h - 12 - s.b;
     const bodyTop = 80 + s.t;
-    // Left: the stage, Rename and Random under it.
+    // Left: the stage, Random under it.
     const sw = Math.max(230, Math.min(380, view.w * 0.32));
     this.stage = { x: margin, y: bodyTop, w: sw, h: bottom - 56 - bodyTop };
-    const bw = (sw - 10) / 2;
-    Object.assign(this.renameBtn, { x: margin, y: bottom - 46, w: bw });
-    Object.assign(this.randomBtn, { x: margin + bw + 10, y: bottom - 46, w: bw });
+    Object.assign(this.randomBtn, { x: margin, y: bottom - 46, w: sw });
     // Right: the Look and Gear tabs, then a row of tiles per pick (Gear: a line for notes at the foot).
     const rx = margin + sw + 22;
     const rw = view.w - margin - rx;
@@ -202,21 +198,11 @@ export class AthleteMakerScene {
     this.changed();
   }
 
-  rename() {
-    const typed = window.prompt(`Your athlete's name (up to ${NAME_MAX} letters)`, this.name);
-    this.game.input.clear(); // the dialog swallowed the rest of that tap
-    if (typed == null) return;
-    const name = cleanAthleteName(typed);
-    if (name) {
-      this.name = name;
-      this.changed();
-    }
-  }
-
   save() {
     // Only gear you have goes on (a level-locked item can't be picked, but an old code might carry one).
     const gear = Object.fromEntries(SLOTS.map((slot) => [slot, owns(itemAt(slot, this.gear[slot]), this.you) ? this.gear[slot] : 0]));
-    const code = encode(this.look, this.name, gear);
+    // The code still carries a name (older builds show it): your username, as far as it fits.
+    const code = encode(this.look, cleanAthleteName(getPlayerName()) || DEFAULT_NAME, gear);
     setCustom(code);
     setCharacter(code);
     flow.menu(this.game, 'athlete');
@@ -260,7 +246,7 @@ export class AthleteMakerScene {
     const hop = this.react ? Math.sin(Math.min(1, this.react.t / 0.3) * Math.PI) * 14 : 0;
     drawFigure(ctx, st.x + st.w / 2, ground - hop, H, this.pose(), colors, ground);
     ctx.restore();
-    nameTag(ctx, this.name, st.x + st.w / 2, st.y + 26, 22);
+    nameTag(ctx, getPlayerName(), st.x + st.w / 2, st.y + 26, 22);
     text(ctx, `${(CONFIG.figure.height * colors.height).toFixed(2)} m`, st.x + st.w - 14, st.y + st.h - 22, { size: 16, font: 'body', weight: 700, align: 'right', color: PAL.cream });
 
     // The picks.

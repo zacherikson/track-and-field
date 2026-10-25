@@ -50,13 +50,16 @@ test('playing as the athlete you made: still five rivals, the closest shirt sits
   // Storage keeps to localStorage: an in-memory one (each test file runs on its own).
   const mem = new Map();
   globalThis.localStorage ??= { getItem: (k) => mem.get(k) ?? null, setItem: (k, v) => mem.set(k, String(v)), removeItem: (k) => mem.delete(k) };
-  const { setCharacter, setCustom } = await import('../src/core/storage.js');
+  const { setCharacter, setCustom, setPlayerName } = await import('../src/core/storage.js');
   const { rivals, myAthlete, CHARACTERS, athleteById } = await import('../src/athletes/roster.js');
   const code = encode({ skin: 0, style: 0, hair: 0, shirt: 0, shorts: 0, height: 3, build: 0 }, 'Goldie'); // shirt 0: Juno's yellow
   setCustom(code);
   setCharacter(code);
+  setPlayerName('Speedy McFast');
   assert.equal(myAthlete().id, code);
-  assert.equal(athleteById(code), myAthlete());
+  assert.deepEqual(myAthlete().colors, athleteById(code).colors);
+  assert.equal(myAthlete().name, 'Speedy McFast', 'your athlete goes by your username, not the name in its code');
+  assert.equal(myAthlete(), myAthlete(), 'the same object each time');
   const r = rivals('sprint100');
   assert.equal(r.length, 5);
   assert.ok(!r.some((c) => c.id === 'juno'), 'Juno, in the same yellow, sits out');

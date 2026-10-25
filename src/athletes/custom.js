@@ -6,13 +6,16 @@
  * A made athlete travels as its CODE, which is also its id everywhere an
  * athlete id goes (your saved character, your account's progress, a live
  * room's or a meet's player list, a ghost's runner): "~1", one base-36 digit
- * per LOOK list (in FIELDS order: the pick's index), then the name. At most
- * 21 characters, inside every limit on the way (a live room keeps 24, a meet
- * and your account 32). A phone that doesn't know codes (an older build)
- * shows the default athlete instead.
+ * per LOOK list (in FIELDS order: the pick's index), then the name. With gear
+ * on (economy/items.js), "~2": the same, then one digit per gear slot (in
+ * SLOTS order: the item's number, 0 for none), then the name. At most 27
+ * characters, inside every limit on the way (a live room, a meet and your
+ * account keep 32). A phone that doesn't know a code (an older build) shows
+ * the default athlete instead; gear this build doesn't know is left off.
  *
  * Looks only: everyone runs on the same physics, whatever their height.
  */
+import { SLOTS, noGear, itemAt, gearColors } from '../economy/items.js';
 
 export const LOOK = {
   skin: ['#f8dfc8', '#f3d3b8', '#f1c9a5', '#eccb9f', '#d9a77c', '#c68863', '#a46a45', '#7a4a2e', '#5c3a24', '#3f2718'],
@@ -29,6 +32,7 @@ export const LOOK = {
 export const FIELDS = ['skin', 'style', 'hair', 'shirt', 'shorts', 'height', 'build'];
 
 const PREFIX = '~1';
+const GEAR_PREFIX = '~2'; // with gear
 export const NAME_MAX = 12;
 export const DEFAULT_NAME = 'Rookie';
 
@@ -43,18 +47,22 @@ export function cleanAthleteName(s) {
 
 /** Is `id` a made athlete's code (not one of the cast)? */
 export function isCode(id) {
-  return typeof id === 'string' && id.startsWith(PREFIX);
+  return typeof id === 'string' && (id.startsWith(PREFIX) || id.startsWith(GEAR_PREFIX));
 }
 
-/** A look ({ skin: index, style: index, ... }) and a name, as a code. */
-export function encode(look, name) {
+/** A look ({ skin: index, style: index, ... }), a name and gear ({ spikes: n, ... }: economy/items.js), as a code. */
+export function encode(look, name, gear = null) {
   const digits = FIELDS.map((f) => clamp(look[f] ?? 0, 0, LOOK[f].length - 1).toString(36)).join('');
-  return PREFIX + digits + (cleanAthleteName(name) || DEFAULT_NAME);
+  const worn = SLOTS.map((s) => clamp(itemAt(s, gear?.[s]) ? gear[s] : 0, 0, 35));
+  const tail = cleanAthleteName(name) || DEFAULT_NAME;
+  if (worn.every((n) => !n)) return PREFIX + digits + tail; // nothing on: the old code, which every build knows
+  return GEAR_PREFIX + digits + worn.map((n) => n.toString(36)).join('') + tail;
 }
 
-/** A code back to { look, name }, or null if it isn't one (or is from a newer build with picks this one doesn't have). */
+/** A code back to { look, name, gear }, or null if it isn't one (or is from a newer build with picks this one doesn't have). */
 export function parse(code) {
   if (!isCode(code)) return null;
+  const geared = code.startsWith(GEAR_PREFIX);
   const digits = code.slice(PREFIX.length, PREFIX.length + FIELDS.length);
   if (digits.length < FIELDS.length) return null;
   const look = {};
@@ -63,7 +71,32 @@ export function parse(code) {
     if (!Number.isInteger(n) || n >= LOOK[FIELDS[i]].length) return null;
     look[FIELDS[i]] = n;
   }
-  return { look, name: cleanAthleteName(code.slice(PREFIX.length + FIELDS.length)) || DEFAULT_NAME };
+  const gear = noGear();
+  let at = PREFIX.length + FIELDS.length;
+  if (geared) {
+    const g = code.slice(at, at + SLOTS.length);
+    if (g.length < SLOTS.length) return null;
+    SLOTS.forEach((s, i) => {
+      const n = parseInt(g[i], 36);
+      gear[s] = itemAt(s, n) ? n : 0; // an item this build doesn't know: left off
+    });
+    at += SLOTS.length;
+  }
+  return { look, gear, name: cleanAthleteName(code.slice(at)) || DEFAULT_NAME };
+}
+
+/** What a look and gear look like on the figure: drawFigure's colors. */
+export function lookColors(look, gear = null) {
+  return {
+    skin: LOOK.skin[look.skin],
+    style: LOOK.style[look.style],
+    hair: LOOK.hair[look.hair],
+    shirt: LOOK.shirt[look.shirt],
+    shorts: LOOK.shorts[look.shorts],
+    height: LOOK.height[look.height],
+    girth: LOOK.build[look.build],
+    ...gearColors(gear),
+  };
 }
 
 const made = new Map(); // code -> its athlete: the same object each time (screens compare athletes by identity)
@@ -73,22 +106,15 @@ export function athleteFromCode(code) {
   if (made.has(code)) return made.get(code);
   const p = parse(code);
   if (!p) return null;
-  const { look } = p;
+  const { look, gear } = p;
   const a = {
     id: code,
     name: p.name,
     tagline: 'Made by you.',
     custom: true,
     look,
-    colors: {
-      skin: LOOK.skin[look.skin],
-      style: LOOK.style[look.style],
-      hair: LOOK.hair[look.hair],
-      shirt: LOOK.shirt[look.shirt],
-      shorts: LOOK.shorts[look.shorts],
-      height: LOOK.height[look.height],
-      girth: LOOK.build[look.build],
-    },
+    gear,
+    colors: lookColors(look, gear),
   };
   made.set(code, a);
   return a;

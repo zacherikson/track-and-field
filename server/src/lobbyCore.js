@@ -39,7 +39,7 @@ export class LobbyCore {
       node = { room: this.io.newId(), players: new Map(), startAt: null, setLen: null };
       this.nodes.set(kind, node);
     }
-    node.players.set(peer, { uid: peer.uid, name: String(msg.name ?? peer.name ?? '?').slice(0, 16), athlete: String(msg.athlete ?? '').slice(0, 24), at: now, ready: false });
+    node.players.set(peer, { uid: peer.uid, name: String(msg.name ?? peer.name ?? '?').slice(0, 16), athlete: String(msg.athlete ?? '').slice(0, 32), at: now, ready: false });
     this.where.set(peer, kind);
     this.restart(node, now, kind);
     this.changed(kind);

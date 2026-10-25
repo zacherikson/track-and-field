@@ -2,6 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { LOOK, FIELDS, encode, parse, athleteFromCode, randomLook, cleanAthleteName, isCode, NAME_MAX } from '../src/athletes/custom.js';
+import { noGear } from '../src/economy/items.js';
 import { seededRandom } from '../src/core/random.js';
 
 test('a look and name go into a code and come back out the same', () => {
@@ -10,11 +11,11 @@ test('a look and name go into a code and come back out the same', () => {
     const look = randomLook(rng);
     const code = encode(look, 'Zippy');
     assert.ok(isCode(code));
-    assert.deepEqual(parse(code), { look, name: 'Zippy' });
+    assert.deepEqual(parse(code), { look, gear: noGear(), name: 'Zippy' });
   }
 });
 
-test('every pick, the last of each list too, fits in a code that fits a live room (24) and a meet (32)', () => {
+test('every pick, the last of each list too, fits in a code that fits a live room and a meet (32)', () => {
   const most = Object.fromEntries(FIELDS.map((f) => [f, LOOK[f].length - 1]));
   for (const f of FIELDS) assert.ok(LOOK[f].length <= 36, `${f}: one base-36 digit each`);
   const code = encode(most, 'W'.repeat(40));

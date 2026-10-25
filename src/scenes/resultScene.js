@@ -1,3 +1,4 @@
+import { unlockedAt } from '../economy/items.js';
 import { Button, text, slab, chamfer, PAL } from '../core/ui.js';
 import { ordinal } from '../core/math.js';
 import { formatMark } from '../events/registry.js';
@@ -108,7 +109,7 @@ export class ResultScene {
       return bits.filter(Boolean).join(' · ');
     }
     if (!this.xpGained) return '';
-    return `+${this.xpGained} XP${this.levelUp ? ` · LEVEL UP! LV ${this.levelUp}` : ''}`;
+    return `+${this.xpGained} XP${this.levelUp ? ` · LEVEL UP! LV ${this.levelUp}${newGear(this.levelUp)}` : ''}`;
   }
 
   onResize(view) {
@@ -236,4 +237,11 @@ export class ResultScene {
 
     this.buttons.forEach((b) => b.draw(ctx));
   }
+}
+
+/** The gear a new level unlocks (economy/items.js), for the LEVEL UP line: ' · NEW: Blaze spikes', or ''. */
+function newGear(level) {
+  const items = unlockedAt(level);
+  if (!items.length) return '';
+  return items.length === 1 ? ` · NEW: ${items[0].name}` : ` · ${items.length} NEW GEAR`;
 }

@@ -6,6 +6,39 @@ Gameplay and tuning changes, newest first. When you change a number in
 From 1.0.0 every push to master bumps `src/version.js` and heads its section
 here with the version.
 
+## 1.6.0 — Gear (economy phase 5)
+The Athlete Maker has a Gear tab: cosmetic items for the athlete you make,
+unlocked as you level up. Looks only; nobody runs any differently.
+- **Six slots, 23 items** (`src/economy/items.js`, data; names and colours
+  are placeholders):
+  - **Spikes:** the shoe and its sole.
+  - **Socks:** crew or tall, one striped.
+  - **Headband:** over any hairstyle.
+  - **Glasses:** shades or a wraparound visor.
+  - **Sleeves:** wristbands, or an arm sleeve.
+  - **Kit:** a stripe, hoops or a yoke on the shirt.
+  - Each item has a rarity (common to legendary) and the level that unlocks
+    it. This starter set is free and spread from level 1 to 13, with
+    something new at levels 2, 3, 5, 7 and 10. Priced items for the shop come
+    next.
+- **Worn in every pose:** drawn on the figure's own skeleton
+  (`stickFigure.js`): far-side gear a shade darker, like the skin. Checked
+  standing, in the blocks, at the gun, running, over a hurdle, and in the
+  emotes, at every build.
+- **Others see it:** gear rides in your athlete's code. A code with gear
+  starts `~2` and has one digit per slot (the item's permanent number); with
+  nothing on it stays the old `~1` code. Gear a phone doesn't know is left
+  off. The live waiting room now keeps 32 characters (was 24) so the longest
+  code fits.
+- **Athlete Maker:** Look and Gear tabs. Gear tiles show your athlete close
+  up wearing each item. Locked ones show a lock and their level; tapping one
+  says what unlocks it.
+- **Results:** a level-up names the gear it unlocks ("LEVEL UP! LV 4 · NEW:
+  Blaze spikes").
+- **Tests:** the catalog (unique ids and numbers, art), unlocking by level,
+  gear in codes (round trip, the old code without gear, the longest code
+  fits, unknown gear left off).
+
 ## 1.5.0 — Contracts (economy phase 4)
 Beat a campaign's tournament for a contract that pays every day you open the
 game. Keep its one clause each week or lose it.

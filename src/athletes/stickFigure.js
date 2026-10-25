@@ -776,6 +776,39 @@ function drawHair(ctx, hx, hy, r, lean, colors) {
   ctx.restore();
 }
 
+/** Glasses on a head at (hx, hy), radius r (as drawHair): shades, or a wraparound visor. */
+function drawGlasses(ctx, hx, hy, r, lean, colors) {
+  ctx.save();
+  ctx.translate(hx, hy);
+  ctx.rotate(lean);
+  // Local frame: +x forward (face), -y up. The arm back to the ear first.
+  ctx.strokeStyle = '#1b1b1b';
+  ctx.lineWidth = r * 0.14;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(r * 0.35, -r * 0.16);
+  ctx.lineTo(-r * 0.5, -r * 0.08);
+  ctx.stroke();
+  ctx.fillStyle = colors.lens;
+  ctx.beginPath();
+  if (colors.lensKind === 'visor') {
+    ctx.moveTo(r * 0.05, -r * 0.34);
+    ctx.lineTo(r * 1.06, -r * 0.3);
+    ctx.quadraticCurveTo(r * 1.12, -r * 0.02, r * 0.95, r * 0.04);
+    ctx.lineTo(r * 0.12, -r * 0.04);
+    ctx.closePath();
+  } else {
+    ctx.ellipse(r * 0.66, -r * 0.14, r * 0.34, r * 0.21, 0, 0, Math.PI * 2);
+  }
+  ctx.fill();
+  // A glint.
+  ctx.fillStyle = 'rgba(255,255,255,0.55)';
+  ctx.beginPath();
+  ctx.ellipse(r * 0.78, -r * 0.2, r * 0.09, r * 0.05, -0.4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
 /** Screen position of hand `i` (0 near, 1 far) for a figure drawn with drawFigure(ctx, x, y, H, pose). */
 export function handPos(x, y, H, pose, i = 0) {
   if (pose.flip) {
@@ -865,7 +898,8 @@ export function drawShadow(ctx, x, y, H, groundY = y) {
 /**
  * Draw a figure with feet at (x, y) in logical pixels.
  * @param H figure height in pixels
- * @param colors { shirt, skin, shorts }
+ * @param colors { shirt, skin, shorts, ... } and any gear (economy/items.js art: shoe, sole, sock, sockH,
+ *   sockStripe, band, lens, lensKind, sleeve, sleeveKind, kit, kitKind)
  * @param groundY where its shadow goes (defaults to y; lower when the figure is in the air)
  */
 export function drawFigure(ctx, x, y, H, pose, colors, groundY = y) {
@@ -895,7 +929,24 @@ export function drawFigure(ctx, x, y, H, pose, colors, groundY = y) {
 
   drawShadow(ctx, x, y, H, groundY);
 
-  const drawLeg = (leg, color) => {
+  // Gear (economy/items.js, from gearColors): on the far side a shade darker, like the skin.
+  const tint = (c, far) => (far ? shade(c, 0.7) : c);
+  const toward = (a, b, d) => {
+    const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+    return { x: a.x + ((b.x - a.x) / len) * d, y: a.y + ((b.y - a.y) / len) * d };
+  };
+  const seg = (a, b, color, w, cap = 'round') => {
+    ctx.lineCap = cap;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = w;
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.stroke();
+    ctx.lineCap = 'round';
+  };
+
+  const drawLeg = (leg, color, far = false) => {
     const knee = limb(hip, leg.thigh, THIGH);
     const foot = limb(knee, leg.shin, SHIN);
     ctx.strokeStyle = color;
@@ -906,10 +957,22 @@ export function drawFigure(ctx, x, y, H, pose, colors, groundY = y) {
     ctx.lineTo(foot.x, foot.y);
     // Foot: flat and pointing forward, or tilted toes-down (`toe` rad) on the blocks.
     const toe = leg.toe ?? 0;
-    ctx.lineTo(foot.x + FOOT_L * H * Math.cos(toe), foot.y + FOOT_L * H * Math.sin(toe));
+    const tip = { x: foot.x + FOOT_L * H * Math.cos(toe), y: foot.y + FOOT_L * H * Math.sin(toe) };
+    ctx.lineTo(tip.x, tip.y);
     ctx.stroke();
+    // Socks up the shin from the ankle (a stripe round the top), then the shoe and its sole.
+    if (colors.sock) {
+      const top = toward(foot, knee, Math.min(SHIN * 0.8, (colors.sockH ?? 0.04) * H));
+      seg(foot, top, tint(colors.sock, far), lw * 1.04);
+      if (colors.sockStripe) seg(toward(top, foot, lw * 0.15), toward(top, foot, lw * 0.7), tint(colors.sockStripe, far), lw * 1.06, 'butt');
+    }
+    if (colors.shoe) {
+      seg(toward(foot, knee, 0.012 * H), tip, tint(colors.shoe, far), lw * 1.12);
+      const down = { x: -Math.sin(toe) * lw * 0.5, y: Math.cos(toe) * lw * 0.5 };
+      seg({ x: foot.x + down.x, y: foot.y + down.y }, { x: tip.x + down.x, y: tip.y + down.y }, tint(colors.sole ?? '#3d3d3d', far), lw * 0.32);
+    }
   };
-  const drawArm = (arm, color) => {
+  const drawArm = (arm, color, far = false) => {
     const elbow = limb(shoulder, arm.upper, UPPER);
     const hand = limb(elbow, arm.fore, FORE);
     ctx.strokeStyle = color;
@@ -919,11 +982,26 @@ export function drawFigure(ctx, x, y, H, pose, colors, groundY = y) {
     ctx.lineTo(elbow.x, elbow.y);
     ctx.lineTo(hand.x, hand.y);
     ctx.stroke();
+    // Wristbands on both arms; an arm sleeve (biceps to wrist) on the near one.
+    if (colors.sleeve && colors.sleeveKind === 'wrist') {
+      seg(toward(hand, elbow, 0.012 * H), toward(hand, elbow, 0.04 * H), tint(colors.sleeve, far), lw * 0.95, 'butt');
+    } else if (colors.sleeve && !far) {
+      const c = colors.sleeve;
+      ctx.strokeStyle = c;
+      ctx.lineWidth = lw * 0.9;
+      ctx.beginPath();
+      const from = toward(shoulder, elbow, 0.05 * H);
+      const to = toward(hand, elbow, 0.018 * H);
+      ctx.moveTo(from.x, from.y);
+      ctx.lineTo(elbow.x, elbow.y);
+      ctx.lineTo(to.x, to.y);
+      ctx.stroke();
+    }
   };
 
   // Far side limbs first (darker = further away), then body, then near limbs.
-  drawArm(pose.arms[1], shade(colors.skin, 0.7));
-  drawLeg(pose.legs[1], shade(colors.skin, 0.7));
+  drawArm(pose.arms[1], shade(colors.skin, 0.7), true);
+  drawLeg(pose.legs[1], shade(colors.skin, 0.7), true);
 
   const torsoW = Math.max(2, 0.065 * H) * 1.9 * girth;
   ctx.strokeStyle = colors.shorts;
@@ -946,6 +1024,20 @@ export function drawFigure(ctx, x, y, H, pose, colors, groundY = y) {
     ctx.ellipse(b.x + Math.cos(pose.lean) * r * 0.45, b.y + Math.sin(pose.lean) * r * 0.45, r, r * 1.15, pose.lean, 0, Math.PI * 2);
     ctx.fill();
   }
+  // The kit's pattern on the shirt: a stripe, two hoops, or a yoke across the shoulders.
+  if (colors.kit) {
+    const at = (k) => ({ x: lerp(hip.x, neck.x, k), y: lerp(hip.y, neck.y, k) });
+    const top = girth > 1 ? 0.85 : 1;
+    const bands = { stripe: [[0.55, 0.67]], hoops: [[0.42, 0.5], [0.62, 0.7]], yoke: [[0.8, top]] }[colors.kitKind] ?? [];
+    for (const [a, b] of bands) seg(at(a), at(b), colors.kit, torsoW, 'butt');
+    if (colors.kitKind === 'yoke') {
+      // The shirt's rounded end at the neck, in the yoke's colour too.
+      ctx.fillStyle = colors.kit;
+      ctx.beginPath();
+      ctx.arc(at(top).x, at(top).y, torsoW / 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
 
   drawLeg(pose.legs[0], colors.skin);
   drawArm(pose.arms[0], colors.skin);
@@ -964,6 +1056,7 @@ export function drawFigure(ctx, x, y, H, pose, colors, groundY = y) {
     ctx.fill();
   }
   drawHair(ctx, hx, hy, HEAD, pose.lean, colors);
+  if (colors.lens) drawGlasses(ctx, hx, hy, HEAD, pose.lean, colors);
 
   ctx.restore();
   return { headX: hx, headY: hy - HEAD };

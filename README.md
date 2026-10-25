@@ -561,7 +561,8 @@ src/economy/          the economy's shared rules (game and meet server): currenc
                       one table of names players see), wallet.js (changes, never below zero, fines off),
                       levels.js (XP per race by mode and place, the daily cap, the level curve),
                       payouts.js (a public live room's prize money, medals, Gems and XP, for the server),
-                      contracts.js (offers, daily pay, the weekly clause, probation, losing one)
+                      contracts.js (offers, daily pay, the weekly clause, probation, losing one),
+                      items.js (the gear catalog: slots, levels that unlock it, its art)
 src/online/
   ghost.js            records a run's inputs and replays them as a ghost (pure)
   firebase.js         online leaderboards: lazy-loaded Firebase SDK, anonymous and Google sign-in, Firestore
@@ -582,7 +583,7 @@ src/online/
   ghosts.js           picks which ghost races: best tournament, a leaderboard pick, or your best
 src/scenes/inviteScreen.js      the invite screen a squad invite link opens: pick a username, join
 src/scenes/homeScene.js         the home screen: Athlete | Play | Squad tabs, swipes, the tab bar
-src/scenes/athleteMaker.js      the Athlete Maker: make your own athlete (looks in src/athletes/custom.js)
+src/scenes/athleteMaker.js      the Athlete Maker: make your own athlete (looks in src/athletes/custom.js), and its gear
 src/scenes/home/                its panels: athletePanel.js (pick your athlete),
                                 playPanel.js (the events, tournament and settings), squadPanel.js (your squad, Practice),
                                 sideshow.js + skits.js (the skits in the background of all three)

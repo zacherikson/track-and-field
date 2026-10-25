@@ -6,6 +6,7 @@ import { ORANGE, blinkLit, drawPad, drawX } from '../render/pads.js';
 import { drawDrop, drawHitRing } from '../render/targetPads.js';
 import { isReplayable } from '../online/ghost.js';
 import { pickGhost } from '../online/ghosts.js';
+import { aiLevel } from '../survival/survival.js';
 
 
 const LEFT_KEYS = ['ArrowLeft', 'KeyA', 'KeyZ', 'KeyF'];
@@ -40,6 +41,8 @@ const DIP_KEYS = ['Space', 'ArrowUp', 'ArrowDown'];
 export class Sprint100 extends LaneRace {
   constructor(ev) {
     super(ev, CONFIG.sprint100);
+    // The shared rival levels, with the 100m's slower start (CONFIG.sprint100.ai).
+    this.difficulty = { ...this.difficulty, ...aiLevel(CONFIG.sprint100.ai, this.level) };
     this.recordGhost = true;
   }
 

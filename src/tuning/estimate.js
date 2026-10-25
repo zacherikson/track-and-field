@@ -44,7 +44,7 @@ export function estimateTime(rate, { missAt = null, reaction = 0.25 } = {}) {
 /** Typical winning time of an Amateur rival field (median of `races` races). */
 export function estimateRivalWin(races = 15) {
   const D = CONFIG.sprint100.distance;
-  const level = CONFIG.ai.amateur;
+  const level = { ...CONFIG.ai.amateur, ...CONFIG.sprint100.ai.amateur };
   const winners = [];
   for (let i = 0; i < races; i++) {
     let best = Infinity;

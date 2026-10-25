@@ -6,6 +6,27 @@ Gameplay and tuning changes, newest first. When you change a number in
 From 1.0.0 every push to master bumps `src/version.js` and heads its section
 here with the version.
 
+## 1.0.2 — 100m rivals start like players do
+- **What happened:** Pro rivals got out of the blocks faster than any player.
+  The six recorded runs on the 100m board take their first stride 0.25–0.32 s
+  after GO (the GO has to show on the phone first), and their first few
+  strides come about 20% slower than their rhythm later. Pro rivals took
+  their first stride at 0.16–0.24 s and ran their full rhythm from stride
+  one. After 1 s a Pro rival was about 7.4 m out, players 6.1–6.4 m, even
+  though most Pros finish slower than those players.
+- **New `sprint100.ai`** (over `CONFIG.ai`, the 100m only):
+  - Reaction to the gun: Amateur 0.20–0.35 → 0.30–0.45 s, Pro 0.16–0.24 →
+    0.26–0.36 s.
+  - New `startSlow` 0.2 / `startStrides` 3: the first stride gaps are 20%
+    longer, fading out over three strides (`athletes/ai.js`).
+  - Cadence raised to make up for it, so finish times stay put: Amateur
+    2.3–3.1 → 2.42–3.26, Pro 3.0–3.68 → 3.13–3.85 strides/s. Amateur median
+    10.77 → 10.80 s, Pro 9.76 → 9.77 s.
+- **After 1 s now:** Pro 6.2 m (level with players), Amateur 5.5 m.
+- The tuning panel's rival pace rows now set the 100m's rival cadence.
+- Unchanged: hurdles, relays and the field events' run-ups (they still use
+  `CONFIG.ai`'s reaction).
+
 ## 1.0.1 — World records come from the global leaderboards
 - **What happened:** each event's world record was a fixed number (in
   `registry.js`, and the pole vault's WR flag had its own 6.95). Players had

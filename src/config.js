@@ -138,6 +138,15 @@ export const CONFIG = {
         grow: 1.35, // it expands from the pad's rim to this many radii
       },
     },
+    // The 100m's rivals (over CONFIG.ai): as slow to react to the gun as players
+    // are (the GO has to show on the phone first: the board's recorded runs take
+    // 0.25–0.32 s), and a few strides finding their rhythm, as players do (the
+    // first gaps about 20% longer). Their cadence makes up for it, so finish
+    // times stay where they were (tools/simulate.mjs).
+    ai: {
+      amateur: { reaction: [0.3, 0.45], startSlow: 0.2, startStrides: 3, cadence: [2.42, 3.26] },
+      pro: { reaction: [0.26, 0.36], startSlow: 0.2, startStrides: 3, cadence: [3.13, 3.85] },
+    },
     driveDistance: 12, // m out of the blocks over which runners rise from a low, forward drive to upright
     finishHold: 2.4, // s after you cross before the results screen
     maxRaceTime: 25, // s; give up and DNF after this

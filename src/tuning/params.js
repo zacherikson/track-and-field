@@ -71,8 +71,8 @@ export const GROUPS = [
     events: ['sprint100', 'hurdles110'],
     blurb: 'Rivals hit targets at their own pace, through the same physics as you.',
     params: [
-      { path: 'ai.amateur.cadence.0', label: 'Slowest rival pace', unit: 'taps/s', min: 1.5, max: 7, step: 0.1, help: 'Each rival gets a pace between slowest and fastest.' },
-      { path: 'ai.amateur.cadence.1', label: 'Fastest rival pace', unit: 'taps/s', min: 1.5, max: 7, step: 0.1, help: 'Raise to make the field harder to beat.' },
+      { path: 'sprint100.ai.amateur.cadence.0', label: 'Slowest rival pace', unit: 'taps/s', min: 1.5, max: 7, step: 0.1, help: 'Each rival gets a pace between slowest and fastest.' },
+      { path: 'sprint100.ai.amateur.cadence.1', label: 'Fastest rival pace', unit: 'taps/s', min: 1.5, max: 7, step: 0.1, help: 'Raise to make the field harder to beat.' },
     ],
   },
   {
@@ -80,8 +80,8 @@ export const GROUPS = [
     events: ['sprint100', 'hurdles110'],
     blurb: 'The field you race when Pro is picked on the menu.',
     params: [
-      { path: 'ai.pro.cadence.0', label: 'Slowest rival pace', unit: 'taps/s', min: 1.5, max: 7, step: 0.1, help: 'Each rival gets a pace between slowest and fastest.' },
-      { path: 'ai.pro.cadence.1', label: 'Fastest rival pace', unit: 'taps/s', min: 1.5, max: 7, step: 0.1, help: 'Raise to make the Pro field harder to beat.' },
+      { path: 'sprint100.ai.pro.cadence.0', label: 'Slowest rival pace', unit: 'taps/s', min: 1.5, max: 7, step: 0.1, help: 'Each rival gets a pace between slowest and fastest.' },
+      { path: 'sprint100.ai.pro.cadence.1', label: 'Fastest rival pace', unit: 'taps/s', min: 1.5, max: 7, step: 0.1, help: 'Raise to make the Pro field harder to beat.' },
     ],
   },
   {

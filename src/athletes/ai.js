@@ -5,6 +5,9 @@ import { rand } from '../core/math.js';
  * AI "thumbs": hits stride targets at a personal cadence (with reaction-time
  * jitter and the occasional misread) and feeds them into a Runner, exactly like
  * the player's input does. Difficulty = the cadence range in CONFIG.ai.<level>.
+ * `startSlow` (optional): the first stride gaps are this fraction longer,
+ * fading to none over `startStrides` gaps, as a player takes a few strides to
+ * find their rhythm off the blocks.
  */
 export class AIController {
   /** `rng`: where its randomness comes from (a seeded one runs the same on every phone: events/relaySim.js). */
@@ -16,6 +19,7 @@ export class AIController {
     this.reaction = rand(...level.reaction, rng);
     this.nextTapT = Infinity;
     this.dipError = rand(...level.dipError, rng);
+    this.taps = 0; // strides (and misses) so far
   }
 
   go(t) {
@@ -34,6 +38,8 @@ export class AIController {
     const tired = 1 - lv.fatigue * Math.max(0, (progress - 0.6) / 0.4);
     while (this.nextTapT < t + dt) {
       let interval = (1 / (this.cadence * tired)) * (1 + rand(-lv.jitter, lv.jitter, this.rng));
+      if (lv.startSlow) interval *= 1 + lv.startSlow * Math.max(0, 1 - this.taps / lv.startStrides);
+      this.taps++;
       if (this.rng() < lv.missChance) {
         // Rivals misread a target now and then, and pay the same price the player does
         // (the 100m's targets, unless the event has its own: hurdles110.js).

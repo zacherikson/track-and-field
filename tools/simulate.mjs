@@ -138,7 +138,7 @@ for (const name of Object.keys(CONFIG.ai)) {
   const winners = [];
   const all = [];
   for (let i = 0; i < 200; i++) {
-    const times = Array.from({ length: CONFIG.sprint100.lanes - 1 }, () => aiRace(CONFIG.ai[name]));
+    const times = Array.from({ length: CONFIG.sprint100.lanes - 1 }, () => aiRace({ ...CONFIG.ai[name], ...CONFIG.sprint100.ai[name] }));
     winners.push(Math.min(...times));
     all.push(...times);
   }
@@ -548,7 +548,7 @@ for (const round of [1, 2, 3, 4, 5, 6, 8, 10, 15, 20]) {
   CONFIG.ai[key] = mix(CONFIG.ai);
   HC.ai[key] = mix(HC.ai);
   const med = (arr) => [...arr].sort((a, b) => a - b)[Math.floor(arr.length / 2)];
-  const sprint = med(Array.from({ length: 200 }, () => aiRace(CONFIG.ai[key])));
+  const sprint = med(Array.from({ length: 200 }, () => aiRace({ ...CONFIG.ai[key], ...mix(CONFIG.sprint100.ai) })));
   const hurdles = med(Array.from({ length: 150 }, () => hurdleAiRace(key)));
   const field = (cfg, attempt, runUpAt, failed) => {
     const lv = { ...mix(CONFIG.ai), ...mix(cfg.ai) };

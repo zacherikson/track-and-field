@@ -5,7 +5,7 @@ import { CONFIG } from '../src/config.js';
 import { survival, skillFor, blend, aiLevel, survives, EVENT_IDS, RIVAL_NAMES } from '../src/survival/survival.js';
 import { seededRandom } from '../src/core/random.js';
 
-const SECTIONS = ['longJump', 'javelin', 'poleVault', 'hurdles110'];
+const SECTIONS = ['sprint100', 'longJump', 'javelin', 'poleVault', 'hurdles110'];
 
 test('the rival: a weak Pro in round 1, a strong Pro in 2, then better every round by less each time', () => {
   assert.ok(skillFor(1) > 0.5 && skillFor(1) < 1, 'round 1: a weak Pro');

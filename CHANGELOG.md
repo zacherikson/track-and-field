@@ -6,6 +6,25 @@ Gameplay and tuning changes, newest first. When you change a number in
 From 1.0.0 every push to master bumps `src/version.js` and heads its section
 here with the version.
 
+## 1.0.3 — Hurdles rivals react to the gun like players do
+- **What happened:** hurdles rivals reacted to the gun as fast as the 100m's
+  used to (`CONFIG.ai`: Pro 0.16–0.24 s), quicker than a player can see the
+  GO on the phone.
+- **`hurdles110.ai` reaction** (the 100m's, 1.0.2): Amateur 0.20–0.35 →
+  0.30–0.45 s, Pro 0.16–0.24 → 0.26–0.36 s.
+- **No warm-up:** hurdles pace comes from each button set, not a rhythm to
+  find, and a rival already reads the first set like a player does.
+- To keep finish times, rivals read and tap 2% quicker: Amateur setReact
+  0.55–0.78 → 0.54–0.76, tapGap 0.21–0.30 → 0.206–0.294; Pro setReact
+  0.42–0.56 → 0.41–0.55, tapGap 0.16–0.22 → 0.157–0.216. Medians 14.24 →
+  14.29 s and 12.43 → 12.49 s (within the simulator's noise).
+- **After 1 s:** Pro 4.6 → 3.7 m, Amateur 3.1 → 2.3 m. The four recorded
+  player runs on the board (11.35–13.36 s) are 0.7–5.3 m out.
+- Survival's later rounds (skill beyond Pro): about 0.1 s slower in the
+  hurdles.
+- **Field-event run-ups unchanged:** rivals' run-ups aren't on screen (only
+  their speed at the end counts), so the gun reaction doesn't matter there.
+
 ## 1.0.2 — 100m rivals start like players do
 - **What happened:** Pro rivals got out of the blocks faster than any player.
   The six recorded runs on the 100m board take their first stride 0.25–0.32 s

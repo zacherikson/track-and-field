@@ -200,9 +200,12 @@ export const CONFIG = {
     },
     // Rivals read a new set in `setReact` s, then tap `tapGap` s apart (their
     // reaction to the gun, miss chance, jitter and lean timing come from CONFIG.ai).
+    // Rivals react to the gun as slowly as the 100m's do (CONFIG.sprint100.ai):
+    // no faster than a player can see the GO on the phone. They read and tap a
+    // little quicker to make up for it, so finish times stay put.
     ai: {
-      amateur: { setReact: [0.55, 0.78], tapGap: [0.21, 0.3] }, // typical rival about 14.3s
-      pro: { setReact: [0.42, 0.56], tapGap: [0.16, 0.22] }, // typical rival about 12.5s
+      amateur: { reaction: [0.3, 0.45], setReact: [0.54, 0.76], tapGap: [0.206, 0.294] }, // typical rival about 14.3s
+      pro: { reaction: [0.26, 0.36], setReact: [0.41, 0.55], tapGap: [0.157, 0.216] }, // typical rival about 12.5s
     },
   },
 

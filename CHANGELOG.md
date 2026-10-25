@@ -6,6 +6,13 @@ Gameplay and tuning changes, newest first. When you change a number in
 From 1.0.0 every push to master bumps `src/version.js` and heads its section
 here with the version.
 
+## 1.1.2 — Westfield's windows stop flickering
+- **What happened:** which of the town's windows were lit came from each
+  window's spot on the screen, so as the town scrolled the pattern reshuffled
+  every frame and the windows flickered.
+- **Now:** it comes from the building (track.js `drawTown`), so a building
+  keeps the same lit windows as it goes by.
+
 ## 1.1.1 — Westfield High: a small-town track
 - **High School's stadium redone** to match its menu art: no grandstand. The
   town is behind the track instead (track.js `drawTown`):

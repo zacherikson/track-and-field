@@ -1071,7 +1071,9 @@ export function drawTown(ctx, w, off, top, base, T) {
         ctx.fillRect(x - 2, base - bh - 3, bw + 4, 3); // a flat one with a ledge (a shop)
       }
       ctx.fillStyle = T.window;
-      for (let wy = base - bh + 5; wy < base - 8; wy += 9) for (let wx = x + 5; wx < x + bw - 7; wx += 10) if (hash(wx * 31 + wy * 7) % 4) ctx.fillRect(wx, wy, 4, 5);
+      // Which windows are lit belongs to the building (not where it is on screen), so they don't flicker as it scrolls.
+      let n = 0;
+      for (let wy = base - bh + 5; wy < base - 8; wy += 9) for (let wx = x + 5; wx < x + bw - 7; wx += 10) if (hash(h + n++ * 7919) % 4) ctx.fillRect(wx, wy, 4, 5);
       x += bw + 6 + ((h >>> 17) % 14);
     }
     if (kind === 0) drawWaterTower(ctx, x0 + P * 0.35, base, H, T);

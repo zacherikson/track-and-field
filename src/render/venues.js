@@ -142,7 +142,7 @@ const HIGH_SCHOOL = {
 const COLLEGIATE = {
   id: 'collegiate',
   name: 'Wasatch University',
-  sky: { top: '#3f86d4', bottom: '#cfe4f6', high: '#2563ad' }, // clear mountain air
+  sky: { top: '#3f86d4', bottom: '#8fc0ea', high: '#2a6cbf' }, // clear mountain air
   stands: {
     body: '#7d8794', // the risers, in shadow
     rows: 4,

@@ -6,6 +6,17 @@ Gameplay and tuning changes, newest first. When you change a number in
 From 1.0.0 every push to master bumps `src/version.js` and heads its section
 here with the version.
 
+## 1.9.2 — Wasatch University: a deeper blue sky
+- Collegiate's sky faded to almost white at the horizon (`#cfe4f6`), so most
+  scenes showed a washed-out light blue. Only the javelin's flight shot is
+  tall enough to show the deep blue at the top. The pole vault was worst: its
+  tall sky (for the camera to pan up into) spent nearly all of its height on
+  the pale end.
+- `venues.js` COLLEGIATE `sky`: `bottom` `#cfe4f6` → `#8fc0ea`, `high`
+  `#2563ad` → `#2a6cbf`. `top` stays `#3f86d4`, the javelin's blue. The
+  vault's sky is now a steady mid blue, and every other Collegiate scene is
+  a shade deeper down by the mountains.
+
 ## 1.9.1 — Pro 100m rivals: a narrower, slower pace range
 Track Royale v1.9.0 tuning, copied from the phone:
 

@@ -146,7 +146,7 @@ export const CONFIG = {
     ai: {
       highschool: { reaction: [0.33, 0.52], startSlow: 0.2, startStrides: 3, cadence: [1.85, 2.79] },
       collegiate: { reaction: [0.3, 0.45], startSlow: 0.2, startStrides: 3, cadence: [2.42, 3.26] },
-      pro: { reaction: [0.26, 0.36], startSlow: 0.2, startStrides: 3, cadence: [3.13, 3.85] },
+      pro: { reaction: [0.26, 0.36], startSlow: 0.2, startStrides: 3, cadence: [3.2, 3.6] },
     },
     driveDistance: 12, // m out of the blocks over which runners rise from a low, forward drive to upright
     finishHold: 2.4, // s after you cross before the results screen

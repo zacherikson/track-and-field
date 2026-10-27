@@ -6,6 +6,20 @@ Gameplay and tuning changes, newest first. When you change a number in
 From 1.0.0 every push to master bumps `src/version.js` and heads its section
 here with the version.
 
+## 1.9.1 — Pro 100m rivals: a narrower, slower pace range
+Track Royale v1.9.0 tuning, copied from the phone:
+
+| Setting | Old → new |
+|---|---|
+| `sprint100.ai.pro.cadence.0` (slowest rival pace) | 3.13 (shown as 3.1) → 3.2 taps/s |
+| `sprint100.ai.pro.cadence.1` (fastest rival pace) | 3.85 (shown as 3.9) → 3.6 taps/s |
+
+- The Pro 100m field is closer together and its fastest rivals are slower.
+  Simulator (three runs): winner median 9.40 → 9.63 s, fastest 10% 9.25 →
+  9.49 s, rival median 9.77 → 9.85 s.
+- Survival's 100m rival is mixed from these levels, so it slows too: about
+  10.0 s in round 1 (was 9.95) and 9.20 s by round 20 (was 9.03).
+
 ## 1.9.0 — Shop and Contract tabs
 - The home screen has five tabs now: **Shop | Athlete | Play | Squad |
   Contract** (`homeScene.js` `TABS`). Shop and Contract were screens opened

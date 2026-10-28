@@ -6,6 +6,14 @@ Gameplay and tuning changes, newest first. When you change a number in
 From 1.0.0 every push to master bumps `src/version.js` and heads its section
 here with the version.
 
+## 1.10.1 — Runways 5 m longer, for the glide
+- The glide (1.10.0) took 5 m of tapping off each run-up. The runways are 5 m
+  longer to give it back: long jump 45 → 50 m, javelin 50 → 55 m, pole vault
+  60 → 65 m (to the box; the plant is about 4 m short of it). You tap for
+  33 m, 30 m and about 39 m again, as before the glide.
+- Simulator: marks are back to where they were without the glide (long jump
+  good 8.12 m, perfect 10.33; pole vault 4.51, 6.50; javelin 85.0, 100.7).
+
 ## 1.10.0 — A glide before the field events' zones (to try out)
 - Long jump, pole vault and javelin: 5 m before the zone where the pads turn
   orange, the targets go. Taps do nothing and your speed holds (no slowing

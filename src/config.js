@@ -342,7 +342,7 @@ export const CONFIG = {
    */
   longJump: {
     rounds: 3, // attempts; your best counts
-    runway: 45, // m from the start to the foul line (front edge of the board)
+    runway: 50, // m from the start to the foul line (front edge of the board); 45 before the glide took 5 m of strides
     // The runway's edge stripes are colored before the board, as in the
     // original, so the line doesn't sneak up on you (m before the foul line).
     runwayZones: [
@@ -430,7 +430,7 @@ export const CONFIG = {
    */
   javelin: {
     rounds: 3, // throws; your best counts
-    runway: 50, // m from the start to the foul line
+    runway: 55, // m from the start to the foul line (50 before the glide took 5 m of strides)
     zoneDistance: 20, // m before the line: orange pads, strides stop, press and hold both to draw the javelin back
     glide: 5, // m before the zone: the targets go, taps do nothing, your speed holds (0 = none)
     // Runway edge stripes, in m before the line (as in the original: yellow, then red).
@@ -464,7 +464,7 @@ export const CONFIG = {
    */
   poleVault: {
     rounds: 3, // attempts; your best counts
-    runway: 60, // m from the start to the box (a long run-up, as in the original)
+    runway: 65, // m from the start to the box (a long run-up, as in the original; 60 before the glide took 5 m of strides)
     // The pole plants when your hips reach plantX: hands overhead at gripY,
     // pole tip in the box (plantX = -sqrt(length² - gripY²)).
     // m (box to the top hand, which holds the very end); top hand's height at the plant (m, overhead);

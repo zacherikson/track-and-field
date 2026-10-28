@@ -295,6 +295,7 @@ for (const [label, rate, aim, sd, delay] of [
   ['casual   3.0/s, aim 0.06s ±0.05, stretch 0.2s', 3.0, 0.06, 0.05, 0.2],
   ['good     3.7/s, aim 0.04s ±0.03, stretch 0.12s', 3.7, 0.04, 0.03, 0.12],
   ['expert   4.7/s, aim 0.03s ±0.02, stretch 0.08s', 4.7, 0.03, 0.02, 0.08],
+  ['perfect  5.2/s, aim 0.02s ±0.01, stretch 0.05s', 5.2, 0.02, 0.01, 0.05],
   ['expert, risky  aim 0.015s ±0.02', 4.7, 0.015, 0.02, 0.08],
   ['good, never stretches', 3.7, 0.04, 0.03, null],
 ]) {

@@ -111,7 +111,7 @@ export const SPECIAL_EVENTS = [
   },
 ];
 
-// The tournament's online leaderboard (total decathlon points). Not playable
+// The tournament's online leaderboard (total points, scoring.js). Not playable
 // on its own, so it isn't in EVENTS. (The Team Tournament's board,
 // 'teamtournament', is retired: still in the database, no longer shown.)
 export const TOURNAMENT_BOARD = { id: 'tournament', name: 'Tournament', unit: 'pts', lowerIsBetter: false, online: true, points: true, tournament: true };

@@ -5,7 +5,7 @@ import { points } from '../events/scoring.js';
  * SURVIVAL MODE, as in the original: you against one computer rival. A round
  * is the five events in a random order; win all five and a new round starts,
  * the rival a little better (and under a new name). Lose any event and it's
- * over. Every event scores decathlon points (scoring.js), added up across the
+ * over. Every event scores tournament points (scoring.js), added up across the
  * whole run: your total goes on the Survival leaderboard (registry.js
  * SURVIVAL_BOARD).
  *

@@ -188,7 +188,7 @@ five and the next round starts, against the same rival (a native South
 American runner: shirtless, green shorts, long black hair under a red
 headband) under a new Quechua name (Inti, Amaru, Yupanqui…), a little better
 than before. Lose any event and it's
-game over. Every event scores decathlon points, as in the tournament, and they
+game over. Every event scores tournament points, as in the tournament, and they
 add up over the whole run: your total goes on the **Survival** leaderboard,
 and the game over screen shows how many rounds you survived and events you
 won.
@@ -561,7 +561,7 @@ src/brawl/            late hits after each event: the fight (brawl.js, fighter.j
                       controls with the emote wheel, the rivals' brains (bots.js), live sync
                       (liveBrawl.js), the event's venue (venue.js), the late hits run inside the event
                       (aftermath.js, fieldLateHits.js) and the results panel over them (aftermath.js)
-src/events/scoring.js decathlon points (official World Athletics tables)
+src/events/scoring.js tournament points: a table per event, 1200 for a perfect run in each
 src/render/track.js   stadium with one-point perspective (camera 1m ahead of the player), parallax crowd
 src/render/pads.js    glossy tap targets, numbered buttons and the red ✕
 src/render/targetPads.js  falling target + hit ring animations (100m, long jump run-up)

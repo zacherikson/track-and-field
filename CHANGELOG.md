@@ -6,6 +6,34 @@ Gameplay and tuning changes, newest first. When you change a number in
 From 1.0.0 every push to master bumps `src/version.js` and heads its section
 here with the version.
 
+## 1.9.3 — Even tournament scoring: about 6000 for a perfect tournament
+The tournament scored the official decathlon tables, made for real marks, and
+the game's marks run past them unevenly: rawnald's best long jump (10.53 m)
+was worth 1761 points, his best javelin (99.26 m) 1343. His Collegiate
+tournament came to 6884.
+- `scoring.js` is now one table per event, set from `tools/simulate.mjs`'s
+  players so the same skill scores the same everywhere:
+
+  | | zero | casual 650 | good 900 | expert 1100 | perfect 1200 |
+  |---|---|---|---|---|---|
+  | 100m | 18 s | 9.70 | 8.75 | 8.25 | 8.15 |
+  | 110m hurdles | 28.5 s | 14.40 | 12.30 | 11.60 | 11.25 |
+  | long jump | 2.20 m | 6.85 | 8.10 | 9.50 | 10.35 |
+  | pole vault | 1.00 m | 3.65 | 4.50 | 5.80 | 6.50 |
+  | javelin | 7 m | 77 | 85 | 95.5 | 100.5 |
+
+  In between, a mark scores in proportion; past perfect it keeps climbing at
+  the good-to-perfect rate. The zero marks are the official tables' own.
+- Old → new for the boards' best marks: 100m 8.28 s 1559 → 1088, long jump
+  10.53 m 1761 → 1224, hurdles 11.33 s 1348 → 1177, pole vault 6.38 m 1359 →
+  1182, javelin 99.26 m 1343 → 1175. Together 7370 → 5846.
+- Simulated totals: perfect 5976, expert 5499, good 4502, casual 3244. Rival
+  winners: High School about 2840, Collegiate 3670, Pro 4840.
+- Survival scores the same tables. The Tournament and Survival boards still
+  hold totals from the old tables.
+- Simulator: a perfect long jumper (5.2/s), as the other field events have.
+- New `test/scoring.test.mjs`.
+
 ## 1.9.2 — Wasatch University: a deeper blue sky
 - Collegiate's sky faded to almost white at the horizon (`#cfe4f6`), so most
   scenes showed a washed-out light blue. Only the javelin's flight shot is

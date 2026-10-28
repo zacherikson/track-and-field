@@ -13,8 +13,8 @@ export function liveAthletes() {
 }
 
 /**
- * Tournament mode: the five events back to back, in this order, scored like a
- * real decathlon (see scoring.js). Points add up after each event; the most
+ * Tournament mode: the five events back to back, in this order, each scored
+ * from its own points table (see scoring.js). Points add up after each event; the most
  * points at the end is the champion. State lives here for the length of one
  * tournament.
  *

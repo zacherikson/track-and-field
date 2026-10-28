@@ -67,7 +67,7 @@ export const flow = {
     liveSurvival.end(); // or a live one
     game.setScene(new HomeScene(tab));
   },
-  // Tournament: the five events in a row, decathlon points, a champion at the end.
+  // Tournament: the five events in a row, points for each (scoring.js), a champion at the end.
   tournament: (game) => {
     resetScars();
     endLive();

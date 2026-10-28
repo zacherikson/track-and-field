@@ -1,23 +1,39 @@
 /**
- * Decathlon points, from the official World Athletics scoring tables (the
- * same formulas real decathletes are scored with):
- *   running events:  points = A * (B - time)^C        (time in seconds)
- *   jumps:           points = A * (mark - B)^C        (mark in centimetres)
- *   throws:          points = A * (mark - B)^C        (mark in metres)
- * Rounded down, never below 0. No mark, a DNF or a foul-out scores 0.
+ * Tournament points (also Survival's), one table per event, set so the same
+ * skill scores the same in every event: a perfect run is worth 1200 in each,
+ * so a perfect tournament comes to about 6000.
+ *
+ * Each table is a list of [mark, points], worst first. A mark between two rows
+ * scores in proportion; a mark past the best row keeps climbing at the
+ * good-to-perfect rate (a new record still scores more). Rounded down, never
+ * below 0. No mark, a DNF or a foul-out scores 0.
+ *
+ * The rows are the players in tools/simulate.mjs (100m: the "reader" players;
+ * the others: casual 3.0/s, good 3.7/s, expert 4.7/s, perfect 5.2/s, or the
+ * hurdles' "machine"), with 0 where the official decathlon tables give 0:
+ *
+ *            zero    casual 650   good 900   expert 1100   perfect 1200
  */
 const TABLE = {
-  sprint100: { A: 25.4347, B: 18, C: 1.81, track: true },
-  hurdles110: { A: 5.74352, B: 28.5, C: 1.92, track: true },
-  longjump: { A: 0.14354, B: 220, C: 1.4, cm: true },
-  polevault: { A: 0.2797, B: 100, C: 1.35, cm: true },
-  javelin: { A: 10.14, B: 7, C: 1.08 },
+  sprint100: [[18, 0], [9.7, 650], [8.75, 900], [8.25, 1100], [8.15, 1200]], // s
+  hurdles110: [[28.5, 0], [14.4, 650], [12.3, 900], [11.6, 1100], [11.25, 1200]], // s
+  longjump: [[2.2, 0], [6.85, 650], [8.1, 900], [9.5, 1100], [10.35, 1200]], // m
+  polevault: [[1, 0], [3.65, 650], [4.5, 900], [5.8, 1100], [6.5, 1200]], // m
+  javelin: [[7, 0], [77, 650], [85, 900], [95.5, 1100], [100.5, 1200]], // m
 };
 
 export function points(eventId, mark, status = 'ok') {
   const t = TABLE[eventId];
-  if (!t || status !== 'ok' || mark == null) return 0;
-  const m = t.cm ? mark * 100 : mark;
-  const d = t.track ? t.B - m : m - t.B;
-  return d > 0 ? Math.floor(t.A * Math.pow(d, t.C)) : 0;
+  if (!t || status !== 'ok' || mark == null || !Number.isFinite(mark)) return 0;
+  // Times go down as they get better: score them as how far under the zero mark.
+  const dir = Math.sign(t[t.length - 1][0] - t[0][0]);
+  const at = (i) => (t[i][0] - t[0][0]) * dir;
+  const m = (mark - t[0][0]) * dir;
+  if (m <= 0) return 0;
+  let i = 1;
+  while (i < t.length - 1 && m > at(i)) i++;
+  // Past the best row: the good-to-perfect rate.
+  const [a, b] = m > at(t.length - 1) ? [t.length - 3, t.length - 1] : [i - 1, i];
+  const p = t[a][1] + ((t[b][1] - t[a][1]) * (m - at(a))) / (at(b) - at(a));
+  return Math.max(0, Math.floor(p + 1e-9));
 }

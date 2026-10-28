@@ -9,6 +9,16 @@ import { venueFor } from './venues.js';
  * with distance signs every meter from the line, as in the original.
  * One "lane" deep; the athlete runs down its middle.
  */
+/**
+ * A field event's runway stripes (`cfg.runwayZones`) with its glide's in front
+ * of them (`cfg.glide` m, white): where the targets go and your speed holds.
+ */
+export function runwayZones(cfg) {
+  const z = cfg.runwayZones ?? [];
+  if (!cfg.glide || !z.length) return z;
+  return [{ from: z[0].from + cfg.glide, to: z[0].from, color: '#ffffff' }, ...z];
+}
+
 export class RunwayRenderer extends TrackRenderer {
   constructor(runway, pit, zones = [], venue = venueFor()) {
     super(1, 0, null, venue);

@@ -11,9 +11,10 @@ import { clamp } from '../core/math.js';
  * AIController a 100m rival has. Your own run-up, on the screen, is runUp.js.
  *
  * Every run-up goes the same way: from the back of the runway on strides,
- * until `zoneDistance` before the `line` (the board, the foul line, the
- * plant), where the strides stop and the athlete carries their speed in
- * (Runner.carry), to the point the event takes over.
+ * until `glide` m before the zone, where the strides stop and their speed
+ * holds (Runner.hold), then `zoneDistance` before the `line` (the board, the
+ * foul line, the plant), where they carry their speed in (Runner.carry), to
+ * the point the event takes over.
  */
 
 /**
@@ -25,9 +26,10 @@ import { clamp } from '../core/math.js';
  * @param from          where they start (m; the line is at `line`)
  * @param line          where the event's line is: the strides stop zoneDistance before it
  * @param end           where the run-up ends (the board, a step short of it, the plant)
- * @param zoneDistance  m before `line` that the strides stop
+ * @param zoneDistance  m before `line` that the zone starts
+ * @param glide         m before the zone that the strides stop (the event's `glide`)
  */
-export function runUpSpeed({ from, line, end, zoneDistance, level = null, cadence = null, rate = 0 }) {
+export function runUpSpeed({ from, line, end, zoneDistance, glide = 0, level = null, cadence = null, rate = 0 }) {
   const step = CONFIG.loop.fixedStep;
   const r = new Runner(undefined, undefined, from);
   const ai = level && new AIController(r, level, cadence);
@@ -36,6 +38,7 @@ export function runUpSpeed({ from, line, end, zoneDistance, level = null, cadenc
   let next = 0.25; // a steady tapper's first stride
   for (let t = 0; r.x < end && t < 20; t += step) {
     if (line - r.x <= zoneDistance) r.carry();
+    else if (line - r.x <= zoneDistance + glide) r.hold();
     else if (ai) ai.update(t, step, 0, Infinity);
     else if (t >= next) {
       r.stride(t);

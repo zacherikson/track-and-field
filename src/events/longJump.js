@@ -10,7 +10,7 @@ import { Thumbs } from '../core/thumbs.js';
 import { runUpSpeed, runUpPose } from './runUpRules.js';
 import { liveRandom } from '../core/random.js';
 import { flightPath, rivalJump } from './longJumpRules.js';
-import { RunwayRenderer } from '../render/runway.js';
+import { RunwayRenderer, runwayZones } from '../render/runway.js';
 import { getDifficulty, hasRivals } from '../core/storage.js';
 import { venueFor } from '../render/venues.js';
 import { flow } from '../flow.js';
@@ -58,7 +58,7 @@ export class LongJump {
 
   enter() {
     const cfg = this.cfg;
-    this.track = new RunwayRenderer(cfg.runway, { from: 1, to: 10.5 }, cfg.runwayZones, venueFor(this.live));
+    this.track = new RunwayRenderer(cfg.runway, { from: 1, to: 10.5 }, runwayZones(cfg), venueFor(this.live));
     this.camera = new Camera();
     const me = chosenPlayer(this.ev.id);
     this.player = { name: this.live ? this.live.name : me.name, colors: me.colors, isPlayer: true, jumps: [] }; // live: your username, as the others see you
@@ -218,8 +218,8 @@ export class LongJump {
     const r = this.runner;
     if (this.state === 'ready' || this.state === 'run' || this.state === 'overrun') {
       r.update(dt, t);
-      // Takeoff zone: strides stop, the pads turn orange and blink.
-      if (this.state === 'run' && this.runUp.striding && -r.x <= cfg.zoneDistance) this.runUp.enterZone(t, t + dt);
+      // The glide (no strides, your speed holds), then the takeoff zone: the pads turn orange and blink.
+      if (this.state === 'run') this.runUp.approach(-r.x, cfg, t, t + dt);
       if (this.state === 'run' && r.x > cfg.overrun) {
         // Ran over the line without jumping: foul.
         this.mark = { foul: true };
@@ -306,7 +306,7 @@ export class LongJump {
 
   /** A rival's speed at takeoff after their run-up (same physics as yours). */
   rivalRunUp(rv, runway) {
-    return runUpSpeed({ from: -runway, line: 0, end: -1, zoneDistance: this.cfg.zoneDistance, level: this.lv, cadence: rv.cadence });
+    return runUpSpeed({ from: -runway, line: 0, end: -1, zoneDistance: this.cfg.zoneDistance, glide: this.cfg.glide, level: this.lv, cadence: rv.cadence });
   }
 
   next() {

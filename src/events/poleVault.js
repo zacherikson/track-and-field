@@ -326,8 +326,8 @@ export class PoleVault {
     if (this.state === 'ready' || this.state === 'run') {
       r.update(dt, t);
       this.hip = { x: r.x, y: 0.5 * this.figH };
-      // Plant zone: strides stop, the pads turn orange, the pole comes down.
-      if (this.state === 'run' && this.runUp.striding && this.plantX - r.x <= cfg.zoneDistance) this.runUp.enterZone(t, end);
+      // The glide (no strides, your speed holds), then the plant zone: the pads turn orange, the pole comes down.
+      if (this.state === 'run') this.runUp.approach(this.plantX - r.x, cfg, t, end);
       if (this.state === 'run' && r.x >= this.plantX) this.plant(end);
     } else if (this.state === 'vault') {
       const vt = this.vault;
@@ -587,7 +587,7 @@ export class PoleVault {
 
   /** A rival's speed at the plant (same physics as yours). */
   rivalRunUp(rv) {
-    return runUpSpeed({ from: -this.cfg.runway, line: this.plantX, end: this.plantX, zoneDistance: this.cfg.zoneDistance, level: this.lv, cadence: rv.cadence });
+    return runUpSpeed({ from: -this.cfg.runway, line: this.plantX, end: this.plantX, zoneDistance: this.cfg.zoneDistance, glide: this.cfg.glide, level: this.lv, cadence: rv.cadence });
   }
 
 

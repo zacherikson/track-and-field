@@ -1,5 +1,5 @@
 import { text } from '../core/ui.js';
-import { RunwayRenderer } from './runway.js';
+import { RunwayRenderer, runwayZones } from './runway.js';
 import { venueFor } from './venues.js';
 import { drawMountains } from './track.js';
 
@@ -51,7 +51,7 @@ export function drawJavelin(ctx, x, y, len, ang, w = 4) {
  */
 export class JavelinRenderer extends RunwayRenderer {
   constructor(cfg, record, venue = venueFor()) {
-    super(cfg.runway, { from: 0, to: 0 }, cfg.runwayZones, venue);
+    super(cfg.runway, { from: 0, to: 0 }, runwayZones(cfg), venue);
     this.cfg = cfg;
     this.record = record; // the world record (m), or null: no WR board
   }

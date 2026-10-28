@@ -273,7 +273,7 @@ for (const level of LEVELS) {
 const LJ = CONFIG.longJump;
 /** Speed at takeoff after a run-up hitting targets at `rate` per s (or as a rival at `level`), carrying through the zone: the game's own (runUpRules.js). */
 function ljRunUp(rate, level = null) {
-  return runUpSpeed({ from: -LJ.runway, line: 0, end: -1, zoneDistance: LJ.zoneDistance, level, rate });
+  return runUpSpeed({ from: -LJ.runway, line: 0, end: -1, zoneDistance: LJ.zoneDistance, glide: LJ.glide, level, rate });
 }
 /**
  * A player aiming to take off `aim` s before reaching the line, with timing
@@ -331,7 +331,7 @@ const PV = CONFIG.poleVault;
 const pvPlantX = -Math.sqrt(PV.pole.length ** 2 - PV.pole.gripY ** 2);
 /** Speed at the plant after a run-up tapping at `rate` (or driven by `ai`). */
 function pvRunUp(rate, level = null) {
-  return runUpSpeed({ from: -PV.runway, line: pvPlantX, end: pvPlantX, zoneDistance: PV.zoneDistance, level, rate });
+  return runUpSpeed({ from: -PV.runway, line: pvPlantX, end: pvPlantX, zoneDistance: PV.zoneDistance, glide: PV.glide, level, rate });
 }
 /** A player pressing with timing error sd `psd` and releasing with sd `rsd` (s). */
 function pvPlayer(rate, psd, rsd) {
@@ -384,7 +384,7 @@ for (const level of LEVELS) {
 const JV = CONFIG.javelin;
 /** Speed arriving at the line after a run-up tapping at `rate` (or driven by `level`'s AI). */
 function jvRunUp(rate, level = null) {
-  return runUpSpeed({ from: -JV.runway, line: 0, end: -1, zoneDistance: JV.zoneDistance, level, rate });
+  return runUpSpeed({ from: -JV.runway, line: 0, end: -1, zoneDistance: JV.zoneDistance, glide: JV.glide, level, rate });
 }
 /** A player letting go `aim` s before the line (timing error sd `sd`), angle off by sd `asd` deg. */
 function jvPlayer(rate, aim, sd, asd) {

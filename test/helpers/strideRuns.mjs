@@ -68,7 +68,7 @@ export async function run100(seed = 'ghost-100', { leanHold = null } = {}) {
 }
 
 /** A long jump run-up to the zone: { results, hits, misses, v } (v = speed as the pads light). */
-export async function runUpLJ(seed = 'ghost-lj') {
+export async function runUpLJ(seed = 'ghost-lj', watch = null) {
   const real = Math.random;
   Math.random = seededRandom(seed);
   try {
@@ -85,9 +85,11 @@ export async function runUpLJ(seed = 'ghost-lj') {
     };
     const tap = tapper(rig, () => (sc.runUp.striding ? sc.runUp.judge.target : null));
     rig.runUntil(() => {
+      watch?.(sc, rig);
       tap();
       return !sc.runUp.striding;
     }, 30);
+    watch?.(sc, rig);
     return { results, hits: sc.stats.hits, misses: sc.stats.misses, v: sc.runner.v };
   } finally {
     Math.random = real;

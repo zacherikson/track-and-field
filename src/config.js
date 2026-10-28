@@ -351,6 +351,7 @@ export const CONFIG = {
       { from: 4, to: 0.2, color: '#e8281e' }, // red: jump now
     ],
     zoneDistance: 12, // m before the line where the pads turn orange: strides stop, press both to take off
+    glide: 5, // m before the zone: the targets go, taps do nothing, your speed holds (0 = none)
     blink: { period: 0.6, on: 0.3 }, // s: the orange takeoff pads blink, as in the original
     chordWindow: 0.08, // s: left + right presses this close together count as both (a snap tap); holding both down counts however far apart they landed
     overrun: 0.4, // m past the line without jumping and it's a foul
@@ -431,6 +432,7 @@ export const CONFIG = {
     rounds: 3, // throws; your best counts
     runway: 50, // m from the start to the foul line
     zoneDistance: 20, // m before the line: orange pads, strides stop, press and hold both to draw the javelin back
+    glide: 5, // m before the zone: the targets go, taps do nothing, your speed holds (0 = none)
     // Runway edge stripes, in m before the line (as in the original: yellow, then red).
     runwayZones: [
       { from: 20, to: 10, color: '#ffd21f' },
@@ -474,6 +476,7 @@ export const CONFIG = {
     // starts about 0.17 s after the pads light). docs/pole-vault-original.md has the measurements.
     pole: { length: 4.5, gripY: 2.0, carryAngle: 0.698132, grip: 0.55, dropShare: 0.85, sparkDelay: 0.1 },
     zoneDistance: 17, // m before the plant: orange pads, strides stop, the pole tip drops to the box and the spark runs down it (about 1.55 s at 40 km/h; Zachary's tuning, the original's is 1.37 s)
+    glide: 5, // m before the zone: the targets go, taps do nothing, your speed holds (0 = none)
     // Runway edge stripes, in m before the box (the plant is about 4.1 m out).
     runwayZones: [
       { from: 22, to: 16, color: '#ffd21f' },

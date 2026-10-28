@@ -1,5 +1,5 @@
 import { text } from '../core/ui.js';
-import { RunwayRenderer } from './runway.js';
+import { RunwayRenderer, runwayZones } from './runway.js';
 import { venueFor } from './venues.js';
 
 /**
@@ -11,7 +11,7 @@ import { venueFor } from './venues.js';
  */
 export class VaultRenderer extends RunwayRenderer {
   constructor(cfg, venue = venueFor(), record = null) {
-    super(cfg.runway, { from: 0, to: 0 }, cfg.runwayZones, venue);
+    super(cfg.runway, { from: 0, to: 0 }, runwayZones(cfg), venue);
     this.cfg = cfg;
     this.bar = null; // crossbar height (m), or null: the vault moves it (rising with you, stopping where you go over)
     this.lastHeight = null; // marker on the upright for the last vault (m)

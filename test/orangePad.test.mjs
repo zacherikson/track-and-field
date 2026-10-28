@@ -384,7 +384,14 @@ test('#22 strides: the same taps give the same hits, misses and race time as mas
     assert.equal(r.misses, 3);
     near(r.mark, mark, 1e-9, `${seed} race time`);
   }
-  const lj = await runUpLJ('ghost-lj');
+  const glide = CONFIG.longJump.glide;
+  CONFIG.longJump.glide = 0; // master had no glide before the zone
+  let lj;
+  try {
+    lj = await runUpLJ('ghost-lj');
+  } finally {
+    CONFIG.longJump.glide = glide;
+  }
   assert.deepEqual(lj.results, [...Array(8).fill(H), M, ...Array(4).fill(H)]);
   near(lj.v, 11.391891948276308, 1e-9, 'long jump speed into the zone');
 });

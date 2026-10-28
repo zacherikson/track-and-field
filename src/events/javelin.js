@@ -226,8 +226,8 @@ export class Javelin {
       r.update(dt, t);
     }
     if (this.state === 'run') {
-      // Throw zone: strides stop, the pads turn orange and blink.
-      if (this.runUp.striding && -r.x <= cfg.zoneDistance) this.runUp.enterZone(t, end);
+      // The glide (no strides, your speed holds), then the throw zone: the pads turn orange and blink.
+      this.runUp.approach(-r.x, cfg, t, end);
       if (this.holdT != null) this.spark(t, Math.min(1, (end - this.holdT) / 1.2));
       if (r.x > cfg.overrun) {
         // Reached the line still holding (or never pressed): foul.
@@ -315,7 +315,7 @@ export class Javelin {
 
   /** A rival's speed arriving at the line (same physics as yours). */
   rivalRunUp(rv) {
-    return runUpSpeed({ from: -this.cfg.runway, line: 0, end: -1, zoneDistance: this.cfg.zoneDistance, level: this.lv, cadence: rv.cadence });
+    return runUpSpeed({ from: -this.cfg.runway, line: 0, end: -1, zoneDistance: this.cfg.zoneDistance, glide: this.cfg.glide, level: this.lv, cadence: rv.cadence });
   }
 
 

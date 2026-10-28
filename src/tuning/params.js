@@ -131,6 +131,7 @@ export const GROUPS = [
       { path: 'longJump.landing.slide', label: 'Landing slide', unit: 'm', min: 0, max: 2, step: 0.1, help: 'How far you slide on through the sand after a stretched landing. Look only (the mark is where your heels went in).' },
       { path: 'longJump.landing.splash', label: 'Sand splash', unit: 'puffs', min: 0, max: 60, step: 2, help: 'Sand kicked up on landing. Look only.' },
       { path: 'longJump.zoneDistance', label: 'Takeoff zone', unit: 'm', min: 4, max: 20, step: 1, help: 'Meters before the board where the pads turn orange and you can take off.' },
+      { path: 'longJump.glide', label: 'Glide before the zone', unit: 'm', min: 0, max: 10, step: 1, help: 'Meters before the takeoff zone where the targets go: taps do nothing and your speed holds. 0 = no glide.' },
     ],
   },
   {
@@ -154,6 +155,7 @@ export const GROUPS = [
     blurb: 'Press and hold both as the spark reaches the tip of the pole (the plant). Let go as it climbs back to your hands (the release).',
     params: [
       { path: 'poleVault.zoneDistance', label: 'Plant zone', unit: 'm', min: 5, max: 20, step: 1, help: 'Meters before the plant where the pads turn orange and the spark starts down the pole. Shorter = the spark runs down faster.' },
+      { path: 'poleVault.glide', label: 'Glide before the zone', unit: 'm', min: 0, max: 10, step: 1, help: 'Meters before the plant zone where the targets go: taps do nothing and your speed holds. 0 = no glide.' },
       { path: 'poleVault.press.window', label: 'Plant window', unit: 'ms', scale: 1000, min: 0.08, max: 0.5, step: 0.01, help: 'How far either side of the plant your press can be and still count for something. Tighter = harder.' },
       { path: 'poleVault.press.miss', label: 'Run-through', unit: 'ms', scale: 1000, min: 0.15, max: 0.8, step: 0.01, help: 'No press within this long of the plant and you run through: no height.' },
       { path: 'poleVault.swing.timeAt10', label: 'Swing time at 36 km/h', unit: 'ms', scale: 1000, min: 0.4, max: 2, step: 0.05, help: 'From the plant to the top of the pole (the spark reaching your hands) at 10 m/s. Faster runs swing a little quicker (Swing vs speed).' },
@@ -195,6 +197,7 @@ export const GROUPS = [
     blurb: 'Hold both to draw the javelin back (its angle rises), let go to throw.',
     params: [
       { path: 'javelin.zoneDistance', label: 'Throw zone', unit: 'm', min: 8, max: 30, step: 1, help: 'Meters before the foul line where the pads turn orange and you can start holding.' },
+      { path: 'javelin.glide', label: 'Glide before the zone', unit: 'm', min: 0, max: 10, step: 1, help: 'Meters before the throw zone where the targets go: taps do nothing and your speed holds. 0 = no glide.' },
       { path: 'javelin.angle.rate', label: 'Angle climb', unit: '°/s', min: 8, max: 60, step: 1, help: 'How fast the javelin tips up while you hold. Lower = more time to find the angle.' },
       { path: 'javelin.angle.best', label: 'Best angle', unit: '°', min: 20, max: 50, step: 1, help: 'The release angle that throws furthest.' },
       { path: 'javelin.angle.spread', label: 'Angle forgiveness', unit: '°', min: 15, max: 80, step: 1, help: 'How far off the best angle you can be before the throw is worth nothing. Higher = more forgiving.' },

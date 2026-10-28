@@ -50,8 +50,14 @@ export class Runner {
     return this.x + Math.max(this.dip.torsoLead, this.reach);
   }
 
+  /** Glide (the field events' run-up, just before their zone): strides do nothing, your speed holds. */
+  hold() {
+    if (this.mode === 'run' && !this.finished) this.mode = 'hold';
+  }
+
   /** Enter the dip zone: stop reacting to strides, carry your speed. */
   carry() {
+    if (this.mode === 'hold') this.mode = 'run'; // off a glide: as from a run
     // Only a runner with real momentum can coast: a slow one keeps running normally.
     if (this.mode === 'run' && !this.dipUsed && !this.finished && this.v >= this.dip.minCarrySpeed) this.mode = 'carry';
   }
@@ -154,6 +160,8 @@ export class Runner {
     } else if (this.mode === 'carry') {
       this.v = Math.max(0, this.v - this.dip.carryDecel * dt);
       if (this.v < this.dip.minCarrySpeed) this.mode = 'run';
+    } else if (this.mode === 'hold') {
+      // Gliding: the same speed all the way.
     } else if (this.started && t >= this.stumbleFrom && t < this.stumbleUntil) {
       this.v = Math.max(0, this.v - this.stumbleDecel * dt); // stumbling: braking hard, no acceleration
     } else if (this.started) {

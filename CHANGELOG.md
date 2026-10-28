@@ -6,6 +6,22 @@ Gameplay and tuning changes, newest first. When you change a number in
 From 1.0.0 every push to master bumps `src/version.js` and heads its section
 here with the version.
 
+## 1.10.0 — A glide before the field events' zones (to try out)
+- Long jump, pole vault and javelin: 5 m before the zone where the pads turn
+  orange, the targets go. Taps do nothing and your speed holds (no slowing
+  down) until the zone, which works as before.
+- The runway's edge stripes are white over those 5 m, ahead of the yellow.
+- Rivals glide too (`runUpRules.js`), and the simulator's players with them.
+- New `glide` in each event's config (5 m), on the tuning screens as **Glide
+  before the zone** (0 = off, as before).
+- Simulator, glide off → on: long jump good 8.10 → 8.17 m, perfect 10.33 →
+  10.30; pole vault good 4.51 → 4.58 m, perfect 6.50 → 6.47; javelin good
+  84.9 → 86.0 m, perfect 100.7 → 100.4. Slower tappers gain a little (their
+  speed no longer sags between taps over those 5 m); the best lose a hair.
+- Code: `Runner.hold()` (a mode that keeps your speed), `RunUp.approach()`
+  starts the glide and then the zone, `runway.js` `runwayZones()` adds the
+  white stripe.
+
 ## 1.9.4 — The 100m record is worth 1250
 - 1.9.3 set the 100m's 1200 at 8.15 s, the simulator's 5.7-taps-a-second
   player, faster than any event's perfect player and than anyone has run.

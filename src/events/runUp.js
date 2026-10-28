@@ -11,8 +11,9 @@ import { drawDrop, drawHitRing } from '../render/targetPads.js';
  *
  * Each round: begin() puts a new Runner at the back of the runway with the
  * first target up; stride() takes your taps (a hit is a stride, the wrong
- * side a stumble, as in the 100m); enterZone() stops the targets when you
- * reach the event's zone, where you carry your speed in and the event takes
+ * side a stumble, as in the 100m); approach() starts the glide `glide` m
+ * before the event's zone (the targets go, taps do nothing, your speed holds)
+ * and stops the targets when you reach the zone, where you carry your speed in and the event takes
  * over (the takeoff, the throw, the plant: its orange pads are its own).
  *
  * `stats` ({ hits, misses }) counts your taps over the whole competition.
@@ -43,6 +44,7 @@ export class RunUp {
     this.rings = [];
     this.missSide = null;
     this.missT = -Infinity;
+    this.glideT = null; // when the targets went for the glide before the zone (null: no glide yet)
     this.zoneT = null; // when the targets stopped for the event's zone
     this.armT = null; // presses from this time on are presses on the orange pads (see enterZone)
     return this.runner;
@@ -53,9 +55,14 @@ export class RunUp {
     return this.zoneT == null;
   }
 
-  /** A tap on side 'L' or 'R' at t: StrideTargets' answer ('hit', 'miss', ...). */
+  /** Gliding: past the targets, not in the zone yet. */
+  get gliding() {
+    return this.glideT != null && this.zoneT == null;
+  }
+
+  /** A tap on side 'L' or 'R' at t: StrideTargets' answer ('hit', 'miss', ...). Nothing while gliding. */
   stride(side, t) {
-    if (side !== 'L' && side !== 'R') return null;
+    if ((side !== 'L' && side !== 'R') || this.glideT != null) return null;
     const result = this.judge.press(side, t);
     if (result === 'hit') {
       this.stats.hits++;
@@ -69,6 +76,20 @@ export class RunUp {
       navigator.vibrate?.(40);
     }
     return result;
+  }
+
+  /**
+   * You're `toLine` m before the event's line at t: `cfg.glide` m before its
+   * zone (`cfg.zoneDistance`) the glide starts, then the zone (enterZone).
+   */
+  approach(toLine, cfg, t, armT = t) {
+    if (!this.striding) return;
+    if (toLine <= cfg.zoneDistance) this.enterZone(t, armT);
+    else if (this.glideT == null && toLine <= cfg.zoneDistance + (cfg.glide ?? 0)) {
+      this.glideT = t;
+      this.judge.target = null;
+      this.runner.hold();
+    }
   }
 
   /**

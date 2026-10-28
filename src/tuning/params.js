@@ -198,6 +198,7 @@ export const GROUPS = [
     params: [
       { path: 'javelin.zoneDistance', label: 'Throw zone', unit: 'm', min: 8, max: 30, step: 1, help: 'Meters before the foul line where the pads turn orange and you can start holding.' },
       { path: 'javelin.glide', label: 'Glide before the zone', unit: 'm', min: 0, max: 10, step: 1, help: 'Meters before the throw zone where the targets go: taps do nothing and your speed holds. 0 = no glide.' },
+      { path: 'javelin.regrip', label: 'Re-grip window', unit: 'ms', scale: 1000, min: 0, max: 0.6, step: 0.05, help: 'A thumb that comes up this soon after the hold starts and goes back down doesn’t throw (your last stride’s thumb gripping again). 0 = any lift throws.' },
       { path: 'javelin.angle.rate', label: 'Angle climb', unit: '°/s', min: 8, max: 60, step: 1, help: 'How fast the javelin tips up while you hold. Lower = more time to find the angle.' },
       { path: 'javelin.angle.best', label: 'Best angle', unit: '°', min: 20, max: 50, step: 1, help: 'The release angle that throws furthest.' },
       { path: 'javelin.angle.spread', label: 'Angle forgiveness', unit: '°', min: 15, max: 80, step: 1, help: 'How far off the best angle you can be before the throw is worth nothing. Higher = more forgiving.' },

@@ -443,6 +443,9 @@ export const CONFIG = {
     // Held: the javelin's angle climbs from `start` at `rate` deg/s, up to `max`.
     // The best release angle is `best`; efficiency falls to 0 at `spread` deg off it.
     angle: { start: 8, rate: 22, max: 78, best: 36, spread: 42 },
+    // s after the hold starts: a thumb that comes up this soon and is down again inside it doesn't throw
+    // (the thumb from your last stride gripping again). Up for good: thrown when it came up.
+    regrip: 0.3,
     // Distance before the angle and the gap: base + perMps * (speed - vRef), in m.
     distance: { base: 89, perMps: 8, vRef: 11 },
     javelinLength: 2.6, // m

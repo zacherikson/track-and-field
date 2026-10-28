@@ -293,6 +293,25 @@ test('#17 javelin: left thumb from the run-up, right pressed at 0.6: holding fro
   near(j.letGo, 1.4);
 });
 
+test('#17b javelin: the stride thumb comes up to grip again just after the hold starts: still holding, thrown at the real release', () => {
+  // Left thumb down from the run-up; in the zone the right goes down (the hold starts), the left comes up and down again.
+  const j = javelin((rig, z) => rig.at(z + 0.1, down(2, RX)).at(z + 0.15, up(1, LX)).at(z + 0.2, down(3, LX)).at(z + 1.3, up(2, RX)).at(z + 1.32, up(3, LX)), { v: 6, before: (rig) => rig.at(rig.time + 0.005, down(1, LX)) });
+  near(j.hold, 0.1);
+  near(j.letGo, 1.3);
+  near(j.sc.shot.deg, CONFIG.javelin.angle.start + CONFIG.javelin.angle.rate * 1.2, 1e-6, 'angle');
+});
+
+test('#17c javelin: a thumb up inside the re-grip window and not back down: thrown when it came up', () => {
+  const j = javelin((rig, z) => both(rig, z + 0.5, 0.1).at(z + 0.62, up(9, LX)), { v: 6 });
+  near(j.hold, 0.51, 1e-6);
+  near(j.letGo, 0.6, 1e-6);
+  near(j.sc.shot.deg, CONFIG.javelin.angle.start + CONFIG.javelin.angle.rate * 0.09, 1e-6, 'angle');
+  withConfig(CONFIG.javelin, { regrip: 0 }, () => {
+    const k = javelin((rig, z) => rig.at(z + 0.1, down(2, RX)).at(z + 0.15, up(1, LX)).at(z + 0.2, down(3, LX)).at(z + 1.3, up(2, RX)), { v: 6, before: (rig) => rig.at(rig.time + 0.005, down(1, LX)) });
+    near(k.letGo, 0.15, 1e-6, 'regrip 0: the old behaviour');
+  });
+});
+
 // ---------------------------------------------------------------- keyboard, cancels
 
 test('#18 keyboard: Space held 2 s works as a 2 s two-thumb hold in every event', () => {

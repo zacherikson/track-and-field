@@ -113,6 +113,7 @@ export class Javelin {
     this.runner = this.runUp.begin(-this.cfg.runway, t, liveRandom(this.live, this.live?.stage(this.ev.id, this.round), 'targets')); // live: this round's run-up targets are the same for everyone
     this.thumbs.reset();
     this.holdT = null; // both thumbs down: drawing the javelin back
+    this.liftT = null; // a lift too soon after the hold started: a throw then, unless you grip again (see lift)
     this.shot = null; // after letting go: { t0, x0, v, deg, range, foul, vx, vy, T, outT }
     this.flightT = null; // when the flight shot started
     this.landT = null;
@@ -161,7 +162,7 @@ export class Javelin {
       if (e.type === 'down' || e.type === 'key') this.press(side, e);
       else this.lift(side, e);
     }
-    this.holdGates();
+    this.holdGates(end);
     this.simulate(dt, t);
     this.runUp.update(end);
   }
@@ -178,12 +179,24 @@ export class Javelin {
     if (this.thumbs.both(this.runUp.armT) != null) this.holdT = t;
   }
 
+  /**
+   * A thumb comes up while holding: the throw. Unless it's within `regrip` s of
+   * the hold starting: then it's often the thumb from your last stride coming
+   * up to grip again (the hold started on the other thumb's press), so the
+   * throw waits, and doesn't happen if both are down again inside the window.
+   */
   lift(side, e) {
-    if (this.state === 'run' && this.holdT != null && !this.thumbs.bothDown) this.letGo(e.t);
+    if (this.state !== 'run' || this.holdT == null || this.thumbs.bothDown) return;
+    if (e.t - this.holdT < this.cfg.regrip) this.liftT ??= e.t;
+    else this.letGo(e.t);
   }
 
-  /** A hold, checked every step: both thumbs down in the zone and not yet holding (the event loop takes presses as they come). */
-  holdGates() {
+  /** A hold, checked every step at `end`: both thumbs down in the zone and not yet holding (the event loop takes presses as they come). */
+  holdGates(end) {
+    if (this.state === 'run' && this.liftT != null) {
+      if (this.thumbs.bothDown) this.liftT = null; // gripped again: still holding
+      else if (end >= this.holdT + this.cfg.regrip) return this.letGo(this.liftT); // it was a throw, when the thumb came up
+    }
     if (this.state !== 'run' || this.runUp.striding || this.holdT != null) return;
     const t2 = this.thumbs.both(this.runUp.armT);
     if (t2 != null) this.holdT = Math.max(t2, this.now);

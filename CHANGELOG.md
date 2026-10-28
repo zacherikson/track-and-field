@@ -6,6 +6,20 @@ Gameplay and tuning changes, newest first. When you change a number in
 From 1.0.0 every push to master bumps `src/version.js` and heads its section
 here with the version.
 
+## 1.10.3 — Javelin: a re-grip no longer throws at the lowest angle
+- The bug: with a thumb still down from your last stride as the pads lit,
+  the hold started on your other thumb's press. Your stride thumb then came
+  up to grip again, and that lift was taken as letting go: the javelin went
+  about 0.05 s into the hold, at 9°. More likely with the glide (1.10.0),
+  where taps do nothing but your thumbs still count as down.
+- The fix (`javelin.js` `lift`): a thumb that comes up within `regrip`
+  (0.3 s) of the hold starting doesn't throw if both thumbs are down again
+  inside that window; you're still holding, and the throw comes when you
+  really let go. If they aren't, it's thrown as before, at the angle from
+  when the thumb came up (only shown up to 0.3 s later).
+- Tuning: **Re-grip window** under Javelin (0 = any lift throws, as before).
+- Tests #17b and #17c.
+
 ## 1.10.2 — 33 m of tapping in every field event
 - Every run-up now has 33 m of strides before the glide and the zone, as the
   long jump's does: javelin runway 55 → 58 m (was 30 m of tapping), pole

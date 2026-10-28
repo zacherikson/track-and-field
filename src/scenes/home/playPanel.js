@@ -33,6 +33,8 @@ const PULL_EVERY = 60000; // ms
 // Menu after a race comes back to it.
 let lastList = null;
 
+
+const NOTICE_Y = 292; // the contract news card's top (it sits over the track)
 /**
  * The home screen's middle tab: where you play. Two big buttons, vs Computer
  * and Live, over your athlete warming up on the track; each opens its list.
@@ -469,8 +471,13 @@ export class PlayPanel {
         if (this.game.scene !== this.home) return; // off to another screen
         continue;
       }
-      // Your athlete on the track: tap them to change who it is.
-      if (!this.list && ev.y >= this.trackTop && ev.y <= this.trackBottom) this.home.show(0);
+      // The contract news card (over the track): a tap puts it away, and you stay here.
+      if (this.onNotice(ev)) {
+        this.noticeT = Math.min(this.noticeT, 0.25);
+        continue;
+      }
+      // Your athlete on the track: tap them to change who it is (the Athlete tab).
+      if (!this.list && ev.y >= this.trackTop && ev.y <= this.trackBottom) this.home.showTab('athlete');
     }
     this.allButtons.forEach((b) => b.update(dt));
     this.sideshow.update(dt);
@@ -553,13 +560,26 @@ export class PlayPanel {
     this.drawWarning(ctx, view);
   }
 
+  /** The contract news card's box ({ x, y, w, h }, its gold edge included). */
+  noticeBox(view) {
+    const pw = Math.min(view.w - 40, 560);
+    return { x: view.w / 2 - pw / 2 - 3, y: NOTICE_Y - 3, w: pw + 6, h: 86 + 6 };
+  }
+
+  /** True if `ev` lands on the contract news card while it's up. */
+  onNotice(ev) {
+    if (this.noticeT <= 0) return false;
+    const b = this.noticeBox(this.game.view);
+    return ev.x >= b.x && ev.x <= b.x + b.w && ev.y >= b.y && ev.y <= b.y + b.h;
+  }
+
   /** Contract news (contractNews): a gold-edged ink card over the track, fading out. */
   drawNotice(ctx, view) {
     if (this.noticeT <= 0) return;
     ctx.save();
     ctx.globalAlpha *= Math.min(1, this.noticeT * 2);
     const pw = Math.min(view.w - 40, 560);
-    const y = 292;
+    const y = NOTICE_Y;
     slab(ctx, view.w / 2 - pw / 2 - 3, y - 3, pw + 6, 86, { face: PAL.gold, lip: PAL.goldShade, lipH: 6, c: 9 });
     slab(ctx, view.w / 2 - pw / 2, y, pw, 78, { face: PAL.ink, lip: PAL.inkShade, lipH: 5, c: 8 });
     ctx.font = `900 24px ${FONT_DISPLAY}`;

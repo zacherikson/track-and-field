@@ -68,6 +68,11 @@ export class HomeScene {
     this.panels.forEach((p) => p.layout(view, this.barTop));
   }
 
+  /** Goes to the tab called `name` ('shop', 'athlete', ...: TABS). */
+  showTab(name) {
+    this.show(TABS.indexOf(name));
+  }
+
   /** Goes to tab `i` (clamped to the ends). */
   show(i) {
     i = Math.max(0, Math.min(TABS.length - 1, i));

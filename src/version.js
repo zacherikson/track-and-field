@@ -4,4 +4,4 @@
  * (patch for tuning and fixes, minor for new features) and head the
  * CHANGELOG section with it.
  */
-export const VERSION = '1.10.4';
+export const VERSION = '1.10.5';

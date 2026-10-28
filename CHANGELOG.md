@@ -6,6 +6,16 @@ Gameplay and tuning changes, newest first. When you change a number in
 From 1.0.0 every push to master bumps `src/version.js` and heads its section
 here with the version.
 
+## 1.10.5 — Tapping the Contract Pay card keeps you on Play
+- The bug: the contract news card ("Contract pay +150 Coins today") sits over
+  the track on the Play tab, and a tap on the track went to tab 0. That was
+  the Athlete tab (tap your athlete to change who it is) until the Shop
+  became the first tab; since then, tapping the pay card opened the Shop.
+- A tap on the card now puts it away, and you stay on Play
+  (`playPanel.js` `onNotice`).
+- A tap on your athlete on the track goes to the Athlete tab again, by name
+  (`HomeScene.showTab('athlete')`), not by position.
+
 ## 1.10.4 — A stall as you let go no longer throws the javelin low
 - The bug: when the phone stalls for a moment (a frame longer than 0.1 s,
   `loop.maxFrameDt`), the game's clock only moves on 0.1 s, but a touch's

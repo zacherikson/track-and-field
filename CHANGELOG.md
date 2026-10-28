@@ -6,6 +6,14 @@ Gameplay and tuning changes, newest first. When you change a number in
 From 1.0.0 every push to master bumps `src/version.js` and heads its section
 here with the version.
 
+## 1.10.2 — 33 m of tapping in every field event
+- Every run-up now has 33 m of strides before the glide and the zone, as the
+  long jump's does: javelin runway 55 → 58 m (was 30 m of tapping), pole
+  vault 65 → 59 m to the box (was about 39 m; the plant is 4.03 m short of
+  the box, so 32.97 m). Long jump stays at 50 m.
+- Simulator: pole vault good 4.51 → 4.58 m, perfect 6.50 → 6.44; javelin
+  good 85.0 → 84.7 m, perfect 100.7 → 101.0.
+
 ## 1.10.1 — Runways 5 m longer, for the glide
 - The glide (1.10.0) took 5 m of tapping off each run-up. The runways are 5 m
   longer to give it back: long jump 45 → 50 m, javelin 50 → 55 m, pole vault

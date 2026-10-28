@@ -6,6 +6,17 @@ Gameplay and tuning changes, newest first. When you change a number in
 From 1.0.0 every push to master bumps `src/version.js` and heads its section
 here with the version.
 
+## 1.9.4 — The 100m record is worth 1250
+- 1.9.3 set the 100m's 1200 at 8.15 s, the simulator's 5.7-taps-a-second
+  player, faster than any event's perfect player and than anyone has run.
+  The 100m's players bunch up at the top (its expert runs 8.27), so the
+  board's best, rawnald's 8.28 s, only came to 1088.
+- `scoring.js` 100m rows: expert 8.25 → 8.50 s (1100), and the top row
+  8.15 s (1200) → 8.28 s (1250), the best anyone runs. Casual and good stay
+  (650 at 9.70, 900 at 8.75), so rivals score as in 1.9.3.
+- rawnald's bests now come to 6008 (was 5846). The simulator's expert totals
+  5664, good 4502.
+
 ## 1.9.3 — Even tournament scoring: about 6000 for a perfect tournament
 The tournament scored the official decathlon tables, made for real marks, and
 the game's marks run past them unevenly: rawnald's best long jump (10.53 m)

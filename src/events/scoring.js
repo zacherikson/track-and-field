@@ -13,9 +13,14 @@
  * hurdles' "machine"), with 0 where the official decathlon tables give 0:
  *
  *            zero    casual 650   good 900   expert 1100   perfect 1200
+ *
+ * (100m: 8.5 s for 1100 and 8.28 s, the best on the board, for 1250.)
  */
 const TABLE = {
-  sprint100: [[18, 0], [9.7, 650], [8.75, 900], [8.25, 1100], [8.15, 1200]], // s
+  // The 100m's top is the best anyone runs (the board's 8.28), not the
+  // simulator's 5.7-taps-a-second player (8.15): its players bunch up there
+  // (its expert already runs 8.27), so that would leave real records at expert.
+  sprint100: [[18, 0], [9.7, 650], [8.75, 900], [8.5, 1100], [8.28, 1250]], // s
   hurdles110: [[28.5, 0], [14.4, 650], [12.3, 900], [11.6, 1100], [11.25, 1200]], // s
   longjump: [[2.2, 0], [6.85, 650], [8.1, 900], [9.5, 1100], [10.35, 1200]], // m
   polevault: [[1, 0], [3.65, 650], [4.5, 900], [5.8, 1100], [6.5, 1200]], // m

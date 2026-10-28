@@ -81,7 +81,7 @@ export class Input {
 
   push(clientX, clientY, id, wall) {
     const p = this.toLogical(clientX, clientY);
-    this.queue.push({ type: 'down', x: p.x, y: p.y, id, wall });
+    this.enqueue({ type: 'down', x: p.x, y: p.y, id, wall });
     this.pointers.set(id, p);
   }
 
@@ -132,7 +132,7 @@ export class Input {
       const p = this.toLogical(t.clientX, t.clientY);
       const ev = { type: 'up', x: p.x, y: p.y, id: 't' + t.identifier, wall };
       if (cancel) ev.cancel = true;
-      this.queue.push(ev);
+      this.enqueue(ev);
     }
   }
 
@@ -140,11 +140,11 @@ export class Input {
     if (e.pointerType !== 'touch') this.pointers.delete(e.pointerId);
     if (!this.wantReleases || e.pointerType === 'touch') return;
     const p = this.toLogical(e.clientX, e.clientY);
-    this.queue.push({ type: 'up', x: p.x, y: p.y, id: e.pointerId, wall: this.wallTime(e) });
+    this.enqueue({ type: 'up', x: p.x, y: p.y, id: e.pointerId, wall: this.wallTime(e) });
   }
 
   onKeyUp(e) {
-    if (this.wantReleases) this.queue.push({ type: 'keyup', code: e.code, wall: this.wallTime(e) });
+    if (this.wantReleases) this.enqueue({ type: 'keyup', code: e.code, wall: this.wallTime(e) });
   }
 
   onPointerDown(e) {
@@ -156,7 +156,19 @@ export class Input {
   onKey(e) {
     if (e.repeat) return;
     if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space'].includes(e.code)) e.preventDefault();
-    this.queue.push({ type: 'key', code: e.code, wall: this.wallTime(e) });
+    this.enqueue({ type: 'key', code: e.code, wall: this.wallTime(e) });
+  }
+
+  /**
+   * Queue an event, never earlier than the sim time already on the screen
+   * (`floor`: where the last frame had got to). After a stall, the loop's
+   * clock only moves on `maxFrameDt`, so mapping a touch's wall time back
+   * would date it before what you'd already seen: a javelin let go at the
+   * 36° on the screen thrown at 12°.
+   */
+  enqueue(ev) {
+    ev.floor = this.simRef;
+    this.queue.push(ev);
   }
 
   /** Called once per frame by the loop: "wall-clock time `wallMs` == sim time `simSec`". */
@@ -172,7 +184,7 @@ export class Input {
     const keep = [];
     for (const ev of this.queue) {
       let t = this.simRef + (ev.wall - this.wallRef) / 1000;
-      t = Math.max(t, this.lastConsumed); // keep time monotonic across lag spikes
+      t = Math.max(t, ev.floor ?? 0, this.lastConsumed); // never before what was on the screen; monotonic across lag spikes
       if (t <= until) out.push({ ...ev, t });
       else keep.push(ev);
     }

@@ -312,6 +312,25 @@ test('#17c javelin: a thumb up inside the re-grip window and not back down: thro
   });
 });
 
+test('#17d javelin: a phone stall as you let go: thrown at the angle on the screen, not dated back into the hold', () => {
+  const { sc, rig, z } = S.javelin({ v: 6 });
+  both(rig, z + 0.2, null);
+  rig.runTo(z + 1.5);
+  const shown = sc.heldAngle();
+  // A 1.2 s stall with both thumbs coming up 0.1 s into it; the loop then moves the sim on only maxFrameDt.
+  const wall0 = rig.time;
+  rig.input.onTouchEnd({ target: null, timeStamp: (wall0 + 0.1) * 1000, changedTouches: [{ identifier: 1, clientX: LX, clientY: 300 }, { identifier: 2, clientX: RX, clientY: 300 }], preventDefault() {} });
+  const sim1 = rig.time + CONFIG.loop.maxFrameDt;
+  rig.input.syncClock((wall0 + 1.2) * 1000, sim1);
+  while (rig.time + STEP <= sim1 + 1e-9 && sc.state === 'run') {
+    sc.update(STEP, rig.time);
+    rig.game.time += STEP;
+  }
+  assert.ok(sc.shot, 'thrown');
+  assert.ok(sc.shot.deg >= shown - 1e-6, `thrown at ${sc.shot.deg}, ${shown} on the screen`);
+  assert.ok(sc.shot.deg < shown + CONFIG.javelin.angle.rate * 0.02, `thrown at ${sc.shot.deg}, ${shown} on the screen`);
+});
+
 // ---------------------------------------------------------------- keyboard, cancels
 
 test('#18 keyboard: Space held 2 s works as a 2 s two-thumb hold in every event', () => {

@@ -6,6 +6,19 @@ Gameplay and tuning changes, newest first. When you change a number in
 From 1.0.0 every push to master bumps `src/version.js` and heads its section
 here with the version.
 
+## 1.10.4 — A stall as you let go no longer throws the javelin low
+- The bug: when the phone stalls for a moment (a frame longer than 0.1 s,
+  `loop.maxFrameDt`), the game's clock only moves on 0.1 s, but a touch's
+  time is its real time. Mapped onto the game's clock, a lift during the
+  stall was dated back into your hold, by up to the length of the stall:
+  a javelin let go at 36° on the screen went at 12°, apparently at random.
+- The fix (`core/input.js` `enqueue`): no press or lift is ever dated before
+  the moment the game had already shown when it arrived. Normal frames
+  don't change (a touch already maps after that). This covers every event,
+  not just the javelin: a tap, hold or lift caught in a stall now counts from
+  where the game was, not from a moment you'd already seen go by.
+- Test #17d (a 1.2 s stall as both thumbs come up).
+
 ## 1.10.3 — Javelin: a re-grip no longer throws at the lowest angle
 - The bug: with a thumb still down from your last stride as the pads lit,
   the hold started on your other thumb's press. Your stride thumb then came

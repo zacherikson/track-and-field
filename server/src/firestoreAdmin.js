@@ -1,7 +1,7 @@
 import { applyChange, cleanWallet, ledgerId, WALLET_VERSION, WalletError, MEDALS } from '../../src/economy/wallet.js';
 import { levelOf } from '../../src/economy/levels.js';
 import { cleanContract, countRaces, localDay } from '../../src/economy/contracts.js';
-import { cleanInventory } from '../../src/economy/shop.js';
+import { cleanInventory, cleanCounts, cleanOffers } from '../../src/economy/shop.js';
 
 /**
  * THE SERVER'S ADMIN ACCESS TO FIRESTORE: what lets it, and only it, write
@@ -23,8 +23,11 @@ import { cleanInventory } from '../../src/economy/shop.js';
  *                                 (src/economy/levels.js), written with every wallet change
  *   contracts/{uid}             = your contract (src/economy/contracts.js), private to you: changed in
  *                                 the same transaction as the wallet (its pay, its clause's races)
- *   inventory/{uid}             = { items: [item id] }: the gear you've bought (src/economy/shop.js),
- *                                 private to you, changed in the same transaction as the price is paid
+ *   inventory/{uid}             = { items: [item id], counts: { offer id: n } }: the gear you've bought and
+ *                                 how many times you've bought each offer (src/economy/shop.js), private
+ *                                 to you: changed in the same transaction as the wallet (what it cost)
+ *   shop/current                = { offers: [offer], plannedTo: day }: what the shop sells (src/economy/shop.js),
+ *                                 public. Only the server writes it (shopStore.js, tools/shop.mjs)
  */
 const SCOPE = 'https://www.googleapis.com/auth/datastore';
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
@@ -110,6 +113,15 @@ async function call(env, path, body, opts) {
 const int = (n) => ({ integerValue: String(n) });
 const str = (s) => ({ stringValue: String(s) });
 
+/** A plain JS value (whole numbers, strings, booleans, lists, maps) as a REST value. */
+function rest(v) {
+  if (Array.isArray(v)) return { arrayValue: { values: v.map(rest) } };
+  if (v && typeof v === 'object') return { mapValue: { fields: Object.fromEntries(Object.entries(v).filter(([, x]) => x !== undefined).map(([k, x]) => [k, rest(x)])) } };
+  if (typeof v === 'boolean') return { booleanValue: v };
+  if (typeof v === 'number') return Number.isInteger(v) ? int(v) : { doubleValue: v };
+  return str(v ?? '');
+}
+
 /** A REST doc's number fields as plain numbers (wallets only hold numbers). */
 function numbers(fields = {}) {
   return Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, Number(v.integerValue ?? v.doubleValue ?? NaN)]));
@@ -143,6 +155,29 @@ export async function readWallet(env, uid, opts = {}) {
   return cleanWallet(numbers(res.find((r) => r.found)?.found.fields));
 }
 
+const shopName = (env) => `${root(env)}/shop/current`;
+
+/** The shop as kept: { offers, plannedTo } (src/economy/shop.js, shopPlan.js); empty if there's none yet. */
+export async function readShop(env, opts = {}) {
+  const res = await call(env, ':batchGet', { documents: [shopName(env)] }, opts);
+  const d = fieldsOf(res.find((r) => r.found)?.found.fields);
+  return { offers: cleanOffers(d.offers), plannedTo: Number.isInteger(d.plannedTo) ? d.plannedTo : 0 };
+}
+
+/** Replaces the shop. */
+export async function writeShop(env, { offers, plannedTo = 0 }, opts = {}) {
+  const fields = { offers: rest(cleanOffers(offers)), plannedTo: int(plannedTo), v: int(1) };
+  await call(env, ':commit', { writes: [{ update: { name: shopName(env), fields }, updateTransforms: [{ fieldPath: 'updatedAt', setToServerValue: 'REQUEST_TIME' }] }] }, opts);
+}
+
+/** `uid`'s gear and purchase counts: { inventory, counts }. */
+export async function readInventory(env, uid, opts = {}) {
+  checkUid(uid);
+  const res = await call(env, ':batchGet', { documents: [inventoryName(env, uid)] }, opts);
+  const d = fieldsOf(res.find((r) => r.found)?.found.fields);
+  return { inventory: cleanInventory(d.items), counts: cleanCounts(d.counts) };
+}
+
 /** `uid`'s saved progress (src/online/progress.js: { beaten, top, ... }), as plain JS, or null. */
 export async function readProgress(env, uid, opts = {}) {
   checkUid(uid);
@@ -157,7 +192,7 @@ export async function readProgress(env, uid, opts = {}) {
  * transaction with a ledger entry each. A change whose ledger entry is already
  * there (that payout landed before) is skipped.
  *
- * Or `changes` is a plan: ({ wallet, contract, inventory, now }) => { changes, contract, inventory },
+ * Or `changes` is a plan: ({ wallet, contract, inventory, counts, now }) => { changes, contract, inventory, counts },
  * which works out the changes from the wallet, contract and inventory as they
  * are now (contract pay, signing, buying: api.js), and the contract and
  * inventory to save with them.
@@ -165,7 +200,7 @@ export async function readProgress(env, uid, opts = {}) {
  * Races that land (XP changes with reason 'race', carrying `place`) count
  * toward your contract's clause (src/economy/contracts.js countRaces).
  *
- * Resolves to { wallet, contract, inventory, entries, entry (the first), duplicate
+ * Resolves to { wallet, contract, inventory, counts, entries, entry (the first), duplicate
  * (nothing new landed) }. Throws WalletError if a change can't be made (not
  * enough money, fines off): then none of them is.
  * `opts.now` (ms): the time (tests).
@@ -187,13 +222,16 @@ export async function changeWallet(env, uid, changes, opts = {}) {
     const before = cleanWallet(numbers(doc(walletName(env, uid))?.fields));
     const hadContract = !!doc(contractName(env, uid));
     const stored = cleanContract(hadContract ? fieldsOf(doc(contractName(env, uid)).fields) : null);
-    const owned = cleanInventory(fieldsOf(doc(inventoryName(env, uid))?.fields).items);
+    const invDoc = fieldsOf(doc(inventoryName(env, uid))?.fields);
+    const owned = cleanInventory(invDoc.items);
+    const counted = cleanCounts(invDoc.counts);
+    let counts = counted;
     let list;
     let contract = stored;
     let inventory = owned;
     let ids;
     try {
-      if (plan) ({ changes: list = [], contract = stored, inventory = owned } = plan({ wallet: before, contract: stored, inventory: owned, now }));
+      if (plan) ({ changes: list = [], contract = stored, inventory = owned, counts = counted } = plan({ wallet: before, contract: stored, inventory: owned, counts: counted, now }));
       else list = Array.isArray(changes) ? changes : [changes];
       ids = list.map(ledgerId);
       if (new Set(ids).size !== ids.length) throw new WalletError('invalid', 'the same change twice');
@@ -222,10 +260,11 @@ export async function changeWallet(env, uid, changes, opts = {}) {
     if (places.length && (contract.tier || contract.lost)) contract = countRaces(contract, localDay(now, contract.tz), places).contract;
     const contractChanged = JSON.stringify(contract) !== JSON.stringify(stored);
     inventory = cleanInventory(inventory);
-    const inventoryChanged = JSON.stringify(inventory) !== JSON.stringify(owned);
+    counts = cleanCounts(counts);
+    const inventoryChanged = JSON.stringify([inventory, counts]) !== JSON.stringify([owned, counted]);
     if (!entries.length && !contractChanged && !inventoryChanged) {
       await rollback();
-      return { wallet: before, contract, inventory: owned, entries, entry: null, duplicate: true };
+      return { wallet: before, contract, inventory: owned, counts: counted, entries, entry: null, duplicate: true };
     }
     const stamp = [{ fieldPath: 'updatedAt', setToServerValue: 'REQUEST_TIME' }];
     const entryFields = (entry) => ({
@@ -246,10 +285,10 @@ export async function changeWallet(env, uid, changes, opts = {}) {
       );
     }
     if (contractChanged) writes.push({ update: { name: contractName(env, uid), fields: { ...contractFields(contract), v: int(1) } }, updateTransforms: stamp });
-    if (inventoryChanged) writes.push({ update: { name: inventoryName(env, uid), fields: { items: { arrayValue: { values: inventory.map(str) } }, v: int(1) } }, updateTransforms: stamp });
+    if (inventoryChanged) writes.push({ update: { name: inventoryName(env, uid), fields: { items: rest(inventory), counts: rest(counts), v: int(1) } }, updateTransforms: stamp });
     try {
       await call(env, ':commit', { writes, transaction }, opts);
-      return { wallet, contract, inventory, entries, entry: entries[0]?.entry ?? null, duplicate: !entries.length };
+      return { wallet, contract, inventory, counts, entries, entry: entries[0]?.entry ?? null, duplicate: !entries.length };
     } catch (e) {
       // 409: another change to this wallet got there first; read it again and retry.
       if (e.status !== 409 || attempt >= RETRIES) throw e;

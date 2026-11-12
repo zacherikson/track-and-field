@@ -1,10 +1,10 @@
 import { verifyToken } from './auth.js';
 import { changeWallet, readWallet, readProgress, hasAdmin } from './firestoreAdmin.js';
+import { allOffers } from './shopStore.js';
 import { xpForRace, xpDay, levelOf } from '../../src/economy/levels.js';
 import { WalletError } from '../../src/economy/wallet.js';
 import { advance, collect, contractView, localDay, offers, setZone, sign } from '../../src/economy/contracts.js';
-import { shopDay, shopFor, cantBuy, priceChanges } from '../../src/economy/shop.js';
-import { itemById } from '../../src/economy/items.js';
+import { liveOffers, cantBuy, purchase } from '../../src/economy/shop.js';
 
 /**
  * THE GAME'S HTTP CALLS to the server (besides the live sockets), under /api/:
@@ -23,13 +23,17 @@ import { itemById } from '../../src/economy/items.js';
  *                  with its signing bonus, then the same. `tz` = your time zone (minutes behind UTC).
  *                  → { contract, offers, paid, bonus, news, wallet }
  *
- *   POST /api/shop  { action: 'open' | 'buy', id? }  (same sign-in)
- *                  The shop (src/economy/shop.js: today's, the same for everyone) and the gear you
- *                  own. 'buy': item `id`, if it's on sale today, you're at its level, don't have it
- *                  yet and can pay; its price comes out of your wallet as it goes in your inventory.
- *                  → { shop, inventory, wallet, bought }   (a refused buy: 409 { error: 'funds' | ... })
+ *   POST /api/shop  { action: 'open' | 'buy', id? }  (same sign-in; a guest can 'open')
+ *                  The shop (src/economy/shop.js): the offers on sale now, read from the database
+ *                  (shopStore.js), with the gear you own and how many of each offer you've bought.
+ *                  'buy': offer `id`, if it's on sale, you're at its level, haven't had all you're
+ *                  allowed and can pay: its price comes out of your wallet, and what it grants goes
+ *                  into your wallet and inventory, in one transaction.
+ *                  → { offers, inventory, counts, wallet, now, bought }
+ *                  (a refused buy: 409 { error: 'funds' | 'level' | 'owned' | 'bought' | 'not-for-sale' };
+ *                  a guest: wallet null, nothing owned)
  *
- * Signed in with Google only: a guest earns nothing (`guest`). Any website may
+ * Signed in with Google only: a guest earns nothing (`guest`), but can look at the shop. Any website may
  * call it (CORS *): it does nothing without a player's own token.
  */
 const CORS = {
@@ -55,7 +59,7 @@ export async function handleApi(request, env, path, deps = {}) {
   const token = (request.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '');
   const who = await (deps.verify ?? verifyToken)(token, env);
   if (!who) return json({ error: 'auth' }, 401);
-  if (who.provider === 'anonymous') return json({ error: 'guest' }, 403);
+  const guest = who.provider === 'anonymous';
   let body;
   try {
     const text = await request.text();
@@ -64,8 +68,9 @@ export async function handleApi(request, env, path, deps = {}) {
   } catch {
     return json({ error: 'bad-json' }, 400);
   }
+  if (guest && !(path === 'shop' && body?.action === 'open')) return json({ error: 'guest' }, 403);
   if (path === 'contract') return contract(env, who.uid, body, deps);
-  if (path === 'shop') return shop(env, who.uid, body, deps);
+  if (path === 'shop') return shop(env, guest ? null : who.uid, body, deps);
   const claims = Array.isArray(body?.claims) ? body.claims.slice(0, MAX_CLAIMS) : [];
   const change = deps.change ?? changeWallet;
   const read = deps.read ?? readWallet;
@@ -139,23 +144,27 @@ async function contract(env, uid, body, deps) {
   }
 }
 
-/** POST /api/shop: today's shop and your gear, or an item bought. */
+/** POST /api/shop: what's on sale now and what you have, or an offer bought. `uid` null: a guest, looking. */
 async function shop(env, uid, body, deps) {
   const action = body?.action;
   if (action !== 'open' && action !== 'buy') return json({ error: 'bad-action' }, 400);
   const change = deps.change ?? changeWallet;
+  const offers = deps.offers ?? allOffers;
   try {
-    let day;
-    const r = await change(env, uid, ({ wallet, inventory, now }) => {
-      day = shopDay(now);
+    const time = deps.now?.() ?? Date.now();
+    const all = await offers(env, time);
+    if (!uid) return json({ offers: liveOffers(all, time), inventory: [], counts: {}, wallet: null, now: time, bought: null });
+    let at = time;
+    const r = await change(env, uid, ({ wallet, inventory, counts, now }) => {
+      at = now;
       if (action === 'open') return { changes: [] };
-      const item = itemById(body.id);
-      const why = cantBuy(item, day, { level: levelOf(wallet.xp), inventory, wallet });
+      const offer = typeof body.id === 'string' ? all.find((o) => o.id === body.id) : null;
+      const why = cantBuy(offer, now, { level: levelOf(wallet.xp), inventory, counts, wallet });
       if (why) throw new WalletError(why);
-      return { changes: priceChanges(item), inventory: [...inventory, item.id] };
+      return purchase(offer, { inventory, counts });
     });
     const { earned, premium, xp, gold, silver, bronze } = r.wallet;
-    return json({ shop: shopFor(day), inventory: r.inventory, wallet: { earned, premium, xp, gold, silver, bronze }, bought: action === 'buy' ? body.id : null });
+    return json({ offers: liveOffers(all, at), inventory: r.inventory, counts: r.counts, wallet: { earned, premium, xp, gold, silver, bronze }, now: at, bought: action === 'buy' ? body.id : null });
   } catch (e) {
     if (e instanceof WalletError) return json({ error: e.code }, 409);
     console.warn('api shop', e?.message);

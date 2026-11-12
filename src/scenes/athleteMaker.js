@@ -134,7 +134,7 @@ export class AthleteMakerScene {
       this.rows = GEAR_ROWS.map((r, i) => {
         const y = rowsTop + i * rowH;
         // None first, then the starter set (locked until its level) and what you've bought; the rest is in the Shop.
-        const items = [null, ...slotItems(r.slot).filter((i) => i.price == null || this.inventory.includes(i.id))];
+        const items = [null, ...slotItems(r.slot).filter((i) => i.avail === 'level' || this.inventory.includes(i.id))];
         return { ...r, y, h: rowH, labelX: rx, items, tiles: items.map((_, k) => ({ x: rx + labelW + k * (t + gap), y: y + (rowH - t) / 2, s: t })) };
       });
       this.noteY = bottom - 12;

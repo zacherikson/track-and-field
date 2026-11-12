@@ -51,7 +51,14 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // The gear you've bought (src/economy/shop.js): yours to read, nobody's to write.
+    // What the shop sells (src/economy/shop.js: offers): anyone's to read, nobody's to
+    // write. The meet server keeps it (server/src/shopStore.js, server/tools/shop.mjs).
+    match /shop/{doc} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // The gear you've bought, and how many of each offer (src/economy/shop.js): yours to read, nobody's to write.
     // The meet server keeps it, with your wallet (server/src/api.js /api/shop).
     match /inventory/{uid} {
       allow read: if isMember(uid);

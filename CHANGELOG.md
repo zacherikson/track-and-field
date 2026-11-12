@@ -6,6 +6,48 @@ Gameplay and tuning changes, newest first. When you change a number in
 From 1.0.0 every push to master bumps `src/version.js` and heads its section
 here with the version.
 
+## 1.11.0 — The shop is offers the server sends
+The game no longer works out the shop. The server keeps a list of offers in
+the database and sends what's on sale; the Shop tab draws what it's sent. A
+sale, a bundle or a new price is a change to that list, with no new build.
+- **An offer** (`src/economy/shop.js`): what it grants (gear, Coins, Gems, or
+  several), its price (or free), a level, how many times one player can buy
+  it, when it starts and ends, and its section in the shop.
+- **In the database:** `shop/current` holds the offers (anyone can read, only
+  the server writes). `inventory/{uid}` now also counts how many of each
+  offer you've bought, so limits hold and every purchase has ledger entries
+  of its own.
+- **The server plans its own offers** (`server/src/shopPlan.js`), as before:
+  7 basics always, 2 weekly picks (Monday to Monday UTC), 4 daily picks. When
+  the shop is read with under 2 days of plan left, it plans 14 days on. No
+  scheduled jobs. Prices moved here from `items.js`: the game's code has no
+  prices in it any more.
+- **New in the plan** (placeholders, like the prices):
+  - **Daily gift:** 50 Coins, free, once a day.
+  - **Exchange:** 10 Gems for 1,000 Coins, as often as you like (the rate in
+    `CONFIG.economy.premiumToEarned`).
+- **Offers by hand:** `server/tools/shop.mjs` (`show`, `add <offer.json>`,
+  `remove <id>`, `replan`). They show within a minute and are never touched
+  by the server's planning.
+- **`POST /api/shop`:** `open` returns `{ offers, inventory, counts, wallet,
+  now }`; `buy` takes an offer's id. Refusals: `funds`, `level`, `owned`,
+  `bought` (limit reached), `not-for-sale`. Guests can now `open` (look), with
+  no wallet.
+- **Shop tab** (`home/shopPanel.js`): sections and cards come from the offers,
+  in the order sent; countdowns from each offer's end, by the server's clock.
+  Cards for Coins and Gems; FREE, GOT IT and BOUGHT alongside OWNED and the
+  level lock. A free offer is collected without the confirm box. The phone
+  keeps the last offers it was sent, so the tab opens at once.
+- **Removed:** `shopFor`, `onSale` and the date maths from the game;
+  `price` and `avail: 'always' | 'rotation'` from items (shop items are
+  `avail: 'shop'`); `CONFIG.economy.shop`.
+- **Database rules:** `shop/{doc}` readable by anyone, written by nobody
+  (published by CI with this push).
+- **Tests:** offers (cleaning, dates, order, every refusal, bundles, repeat
+  purchases); the server's plan and top-up; the server end to end against a
+  fake Firestore (first plan written, gear, the gift once a day, the
+  exchange, a hand-made bundle, guests looking).
+
 ## 1.10.6 — Firestore rules publish from CI
 - A push to `master` that changes `firestore.rules` now publishes them to the
   Firebase project (`.github/workflows/firestore-rules.yml`, `firebase.json`),

@@ -1,48 +1,75 @@
 import { isSignedIn, knownUid } from './firebase.js';
 import { serverHttp, token } from './net.js';
 import { rememberWallet } from './wallet.js';
-import { shopDay, shopFor } from '../economy/shop.js';
+import { cleanOffers, liveOffers, cleanCounts, cleanInventory } from '../economy/shop.js';
 
 /**
- * THE SHOP, as the game sees it (the rules: src/economy/shop.js; the server
- * sells: server/src/api.js /api/shop). Today's shop is the same for everyone
- * and worked out from the date, so it shows offline too; buying, and the gear
- * you own, go through the server (signed in with Google only). The phone keeps
- * what you own as it was last told, for the Athlete Maker.
+ * THE SHOP, as the game sees it (the rules: src/economy/shop.js). The meet
+ * server says what's on sale (server/src/api.js /api/shop: offers it reads
+ * from the database) and does the selling; the game draws what it's sent and
+ * knows nothing else about prices or dates. A guest can look; buying, and the
+ * gear you own, need a Google sign-in.
+ *
+ * The phone keeps the last offers it was sent (so the Shop tab shows at once,
+ * and offline what was on sale then and still is), and what you own and have
+ * bought as last told, for the Athlete Maker.
  */
-const KEY = 'trackroyale.inventory';
+const SHOP = 'trackroyale.shop'; // { offers, skew }: the same for everyone
+const MINE = 'trackroyale.inventory'; // { uid, items, counts }
 
-/** Today's shop (economy/shop.js shopFor). */
-export function todaysShop(now = Date.now()) {
-  return shopFor(shopDay(now));
+const load = (key) => {
+  try {
+    return JSON.parse(localStorage.getItem(key)) ?? null;
+  } catch {
+    return null;
+  }
+};
+const store = (key, v) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(v));
+  } catch {}
+};
+
+/** The time by the server's clock (as of the last answer): what offers' dates are read against. */
+export function shopTime() {
+  return Date.now() + (Number(load(SHOP)?.skew) || 0);
 }
+
+/** The offers on sale now, from the last the server sent ([] if it never has). */
+export function shopOffers() {
+  return liveOffers(cleanOffers(load(SHOP)?.offers), shopTime());
+}
+
+const mine = () => {
+  const saved = load(MINE);
+  return saved && saved.uid === knownUid() ? saved : null;
+};
 
 /** The gear you own as last told by the server ([item id]); [] as a guest or before it's been asked. */
 export function myInventory() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(KEY));
-    return saved && saved.uid === knownUid() && Array.isArray(saved.items) ? saved.items : [];
-  } catch {
-    return [];
-  }
+  return cleanInventory(mine()?.items);
 }
 
-/** Forgets it (you signed out). */
+/** How many times you've bought each offer, as last told ({ [offer id]: n }). */
+export function myCounts() {
+  return cleanCounts(mine()?.counts);
+}
+
+/** Forgets what you own (you signed out). */
 export function forgetInventory() {
   try {
-    localStorage.removeItem(KEY);
+    localStorage.removeItem(MINE);
   } catch {}
 }
 
-/** Asks the server for your gear (and the shop). Resolves to { shop, inventory, wallet }, or null as a guest. */
+/** Asks the server for the shop (and, signed in, your gear and wallet). Resolves to { offers, inventory, counts, wallet }; rejects offline. */
 export function openShop() {
-  if (!isSignedIn()) return Promise.resolve(null);
   return call({ action: 'open' });
 }
 
-/** Buys item `id`. Resolves to the server's answer; rejects with Error('funds' | 'level' | 'owned' | 'not-for-sale' | ...). */
-export function buyItem(id) {
-  return call({ action: 'buy', id });
+/** Buys offer `id`. Resolves to the server's answer; rejects with Error('funds' | 'level' | 'owned' | 'bought' | 'not-for-sale' | 'guest' | ...). */
+export function buyOffer(id) {
+  return isSignedIn() ? call({ action: 'buy', id }) : Promise.reject(new Error('guest'));
 }
 
 async function call(body) {
@@ -54,10 +81,11 @@ async function call(body) {
   });
   const answer = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(answer.error ?? `shop ${res.status}`);
-  if (uid !== knownUid()) return null;
-  try {
-    localStorage.setItem(KEY, JSON.stringify({ uid, items: answer.inventory ?? [] }));
-  } catch {}
-  rememberWallet(answer.wallet ?? {});
+  store(SHOP, { offers: answer.offers ?? [], skew: Number.isFinite(answer.now) ? answer.now - Date.now() : 0 });
+  if (uid !== knownUid()) return null; // signed in as someone else meanwhile
+  if (answer.wallet) {
+    store(MINE, { uid, items: answer.inventory ?? [], counts: answer.counts ?? {} });
+    rememberWallet(answer.wallet);
+  }
   return answer;
 }

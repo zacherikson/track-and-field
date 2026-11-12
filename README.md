@@ -510,8 +510,15 @@ even if its recording can't be. Boards and recordings are read with
 plain `fetch()` calls to Firestore's REST API (they're public), so viewing a
 board doesn't wait for the Firebase SDK; the SDK is loaded only to post. The web
 config in `src/online/firebase.js` is public by design. The security rules in
-[`firestore.rules`](firestore.rules) protect the data (paste them into Firebase
-console > Firestore Database > Rules after changing them). They only
+[`firestore.rules`](firestore.rules) protect the data. A push to `master` that
+changes them publishes them
+([`.github/workflows/firestore-rules.yml`](.github/workflows/firestore-rules.yml)),
+once the repo has a `FIREBASE_RULES_DEPLOYER` secret: the JSON key of a
+service account in the Firebase project with the **Firebase Rules Admin** and
+**Service Usage Consumer** roles (Google Cloud console > IAM & Admin > Service
+Accounts; not the meet server's key, which can write wallets). Without the
+secret, paste them into Firebase console > Firestore Database > Rules as
+before. They only
 sanity-check marks; nothing replays a run on the server yet, so a determined
 cheater could post a fake time.
 

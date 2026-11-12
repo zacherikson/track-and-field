@@ -6,6 +6,12 @@ Gameplay and tuning changes, newest first. When you change a number in
 From 1.0.0 every push to master bumps `src/version.js` and heads its section
 here with the version.
 
+## 1.10.6 — Firestore rules publish from CI
+- A push to `master` that changes `firestore.rules` now publishes them to the
+  Firebase project (`.github/workflows/firestore-rules.yml`, `firebase.json`),
+  with the repo's `FIREBASE_RULES_DEPLOYER` secret. No more pasting them into
+  the Firebase console. Nothing in the game changes.
+
 ## 1.10.5 — Tapping the Contract Pay card keeps you on Play
 - The bug: the contract news card ("Contract pay +150 Coins today") sits over
   the track on the Play tab, and a tap on the track went to tab 0. That was

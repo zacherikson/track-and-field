@@ -1,0 +1,40 @@
+# Publishes firestore.rules to the Firebase project on pushes to master that
+# change them, once the repo has the FIREBASE_RULES_DEPLOYER secret (README:
+# "Online leaderboards and ghosts"). Without it this does nothing, and the
+# rules are pasted into the Firebase console as before.
+name: Firestore rules
+
+on:
+  push:
+    branches: [master]
+    paths: [firestore.rules, firebase.json, .github/workflows/firestore-rules.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: firestore-rules
+      cancel-in-progress: false
+    env:
+      FIREBASE_PROJECT: track-royale-f18ad
+      HAS_KEY: ${{ secrets.FIREBASE_RULES_DEPLOYER != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        if: env.HAS_KEY == 'true'
+        with:
+          node-version: 22
+      - uses: google-github-actions/auth@v2
+        if: env.HAS_KEY == 'true'
+        with:
+          credentials_json: ${{ secrets.FIREBASE_RULES_DEPLOYER }}
+      - name: Publish the rules
+        if: env.HAS_KEY == 'true'
+        run: npx --yes firebase-tools@13 deploy --only firestore:rules --project "$FIREBASE_PROJECT" --non-interactive
+      - name: No key yet
+        if: env.HAS_KEY != 'true'
+        run: echo "::notice::FIREBASE_RULES_DEPLOYER isn't set, so the rules weren't published."

@@ -37,7 +37,7 @@ jobs:
           mkdir -p _site
           shopt -s dotglob nullglob
           for f in *; do
-            case "$f" in .git|.github|_site|server|test) ;; *) cp -r "$f" _site/ ;; esac
+            case "$f" in .git|.github|_site|server|test|firebase.json) ;; *) cp -r "$f" _site/ ;; esac
           done
           mkdir -p "_site/$v"
           cp -r src "_site/$v/src"

@@ -6,6 +6,26 @@ Gameplay and tuning changes, newest first. When you change a number in
 From 1.0.0 every push to master bumps `src/version.js` and heads its section
 here with the version.
 
+## 1.17.0 — Live results are checked before a room pays
+A public live room pays Coins, medals and Gems from the marks its phones
+send. The server now looks at each mark before it counts. Nothing about
+playing changes: the game itself has no new code in this version.
+- **What a result has to be to count** (`server/src/roomCore.js`):
+  - **The first one sent for a stage.** A second result for the same stage is
+    dropped, and isn't passed on to the other phones.
+  - **Possible at all:** the same limits as the online boards
+    (`server/src/marks.js`).
+  - **For a race, not in too soon.** The room knows when it started and when
+    each player's last result came, so a 9.5 s 100m can't arrive 3 s after
+    the start. 0.75 s of slack; the gun comes a second or two after the
+    room's start, so an honest run is never close.
+- **One that fails counts as no mark** (a DNF, or a foul in a field event)
+  when the room settles, and the others move up. The phones still show each
+  other what was sent; only what gets paid is the server's.
+- Squad Practice rooms don't pay, so this changes nothing there.
+- **Tests:** a result in too soon, an impossible one, a changed one, a field
+  mark past the limit, a tournament's races timed from the result before.
+
 ## 1.16.0 — The server keeps your saved progress
 Your campaign progress, top marks and athlete were saved to your account by
 the phone writing the database itself. Now the phone sends them and the

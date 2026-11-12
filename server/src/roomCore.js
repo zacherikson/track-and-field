@@ -1,9 +1,12 @@
 import { applyPatch } from '../../src/meet/protocol.js';
 import { roomStandings } from '../../src/online/liveResults.js';
 import { CONFIG } from '../../src/config.js';
+import { BOARDS } from './marks.js';
 
 const NO_SHOW = 5000; // ms after the start that a player who never connected counts as gone
 const EMPTY_FOR = 120000; // ms with nobody connected before the room ends
+const EARLY = 750; // ms a race's result may come before the race could have been run (clocks and rounding)
+const RES = /^res\/(\d+)-([a-z0-9]+)(?:-\d+)?$/; // a result's path in a doc: res/{step}-{event}[-{round}]
 
 /**
  * ONE LIVE ROOM's play (src/online/live.js LiveSession), from its waiting
@@ -20,6 +23,15 @@ const EMPTY_FOR = 120000; // ms with nobody connected before the room ends
  * hands them to `io.settle` (the Room pays out from them: index.js), once.
  * `sendTo` gets a word to one player (their payout).
  *
+ * WHAT A RESULT HAS TO BE to count when the room settles (the phones still
+ * show each other whatever they sent; this is only what gets paid):
+ * - the first one sent for a stage: it can't be changed afterwards;
+ * - possible at all (marks.js BOARDS: the same limits as the online boards);
+ * - for a race, not in before the race could have been run: the room knows
+ *   when it started, and when each player's last result came, so a 9.5 s
+ *   100m can't arrive 3 s after the start.
+ * One that fails counts as no mark (a DNF, or a foul in a field event).
+ *
  * `io`: { now(), ended(), settle?(standings) }.
  */
 export class RoomCore {
@@ -33,6 +45,7 @@ export class RoomCore {
     this.over = false;
     this.settled = false;
     this.lastResultAt = null; // when the last result came in (server ms)
+    this.resultAt = new Map(); // uid -> { [res path]: when it first came (server ms) }
   }
 
   /** From the waiting room: who plays. */
@@ -82,19 +95,69 @@ export class RoomCore {
     if (this.settled || !this.info || !this.io.settle) return;
     const players = this.info.players;
     const gone = new Set(players.filter((p) => this.docs.get(p.uid)?.left).map((p) => p.uid));
-    let s = roomStandings(this.info.kind, players, this.docs, gone);
+    const docs = this.vetted();
+    let s = roomStandings(this.info.kind, players, docs, gone);
     if (!s) return; // a kind settled some other way (live survival)
     if (!s.done) {
       // Someone's result never came: a while after the last one, it's settled without them.
       if (this.lastResultAt == null || this.io.now() - this.lastResultAt < CONFIG.economy.live.giveUp) return;
-      s = roomStandings(this.info.kind, players, this.docs, new Set(players.map((p) => p.uid)));
+      s = roomStandings(this.info.kind, players, docs, new Set(players.map((p) => p.uid)));
     }
     this.settled = true;
     this.io.settle(s);
   }
 
-  /** Applies `p` to `uid`'s doc and passes it on. */
+  /**
+   * The docs as the room settles them: each result that isn't possible, or
+   * came before its race could have been run, replaced by no mark.
+   */
+  vetted() {
+    const out = new Map();
+    for (const [uid, doc] of this.docs) {
+      const at = this.resultAt.get(uid) ?? {};
+      const res = {};
+      for (const [key, r] of Object.entries(doc.res && typeof doc.res === 'object' ? doc.res : {})) {
+        const why = this.wrong(key, r, at);
+        if (why) console.warn('result not counted', this.info?.id, uid, key, why);
+        res[key] = why ? { status: 'void' } : r;
+      }
+      out.set(uid, { ...doc, res });
+    }
+    return out;
+  }
+
+  /** Why result `r` at `key` (a doc's res path, less 'res/') doesn't count, or null. `at` = when each of that player's results came. */
+  wrong(key, r, at) {
+    const m = RES.exec(`res/${key}`);
+    const board = m && Object.hasOwn(BOARDS, m[2]) ? BOARDS[m[2]] : null;
+    if (!board || !r || typeof r !== 'object' || !Number.isFinite(r.mark)) return null; // no mark to doubt (or an event with no limits)
+    if (board.lower ? r.mark < board.min : r.mark > board.max) return 'impossible';
+    if (board.unit !== 's') return null;
+    // A race: it began no sooner than the room did, or than this player's last result before it.
+    const step = Number(m[1]);
+    const came = at[`res/${key}`];
+    const before = Object.entries(at)
+      .filter(([path]) => Number(RES.exec(path)?.[1]) < step)
+      .map(([, t]) => t);
+    const since = Math.max(this.info.startAt, ...before);
+    return came != null && came - since < r.mark * 1000 - EARLY ? 'too soon' : null;
+  }
+
+  /** Applies `p` to `uid`'s doc and passes it on. A result already in stands: a second one for the same stage is dropped. */
   patch(uid, p) {
+    const at = this.resultAt.get(uid) ?? {};
+    this.resultAt.set(uid, at);
+    const now = this.io.now();
+    p = Object.fromEntries(
+      Object.entries(p).filter(([path]) => {
+        if (path === 'res') return false; // results come one by one
+        if (!path.startsWith('res/')) return true;
+        if (!RES.test(path) || at[path] != null) return false;
+        at[path] = now;
+        return true;
+      }),
+    );
+    if (!Object.keys(p).length) return;
     const doc = this.docs.get(uid) ?? {};
     applyPatch(doc, p);
     this.docs.set(uid, doc);

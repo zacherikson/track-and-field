@@ -1,4 +1,4 @@
-import { text, slab, chamfer, titlePlate, PAL } from '../../core/ui.js';
+import { Button, text, slab, chamfer, titlePlate, PAL } from '../../core/ui.js';
 import { drawIcon } from '../../core/icons.js';
 import { getCustom, setCustom, setCharacter, getPlayerName } from '../../core/storage.js';
 import { parse, encode, cleanAthleteName, DEFAULT_NAME } from '../../athletes/custom.js';
@@ -35,8 +35,11 @@ const COIN = { earned: { face: '#F2B632', edge: '#B9851B', mark: 'C' }, premium:
  * sections (this week's, today's, the basics, or any the server makes up),
  * with a countdown on the ones that end. A card shows what you get (gear on
  * your athlete close up, or the Coins or Gems), its name and its price (or
- * FREE, OWNED, or the level it needs). Tap a card to buy it; the server takes
- * the price and keeps it for you, then you can wear gear straight away.
+ * FREE, OWNED, or the level it needs). Tap a card and it opens up over the
+ * shop (the SHEET: what you get, bigger, with Buy and Cancel); the server takes
+ * the price and keeps it for you, and the sheet then offers to put gear on
+ * straight away. Something free is yours on the first tap. Tapping gear you
+ * own opens the sheet to wear it.
  */
 export class ShopPanel {
   constructor(home) {
@@ -58,11 +61,15 @@ export class ShopPanel {
     this.gear = mine?.gear ?? noGear();
     this.cards = [];
     this.labels = [];
+    this.sheet = null; // the offer opened up: { offer, item, stage: 'buy' | 'wear', said, note }
+    this.okBtn = new Button({ label: 'Buy', w: 170, h: 50, color: PAL.liveGreen, lip: PAL.liveShade, onTap: () => this.confirm() });
+    this.noBtn = new Button({ label: 'Cancel', look: 'chip', w: 120, h: 46, onTap: () => this.closeSheet() });
     if (this.home.panels[this.home.tab] === this) this.onShow(); // the home screen opened on this tab
   }
 
   /** Coming to this tab: your athlete may have changed, and the shop and what you own (asked again: no network until you look). */
   onShow() {
+    if (!this.busy) this.sheet = null;
     const mine = parse(getCustom());
     this.look = mine?.look ?? MODEL;
     this.gear = mine?.gear ?? noGear();
@@ -96,6 +103,7 @@ export class ShopPanel {
    */
   layout(view, bottom) {
     this.bottom = bottom;
+    if (this.sheet) this.layoutSheet();
     this.cards = [];
     this.labels = [];
     const sections = [];
@@ -139,8 +147,15 @@ export class ShopPanel {
 
   /** `events`: this tab's taps and keys (the home screen has sorted out swipes). */
   update(dt, events) {
+    this.okBtn.update(dt);
+    this.noBtn.update(dt);
     for (const e of events) {
       if (e.type !== 'down') continue;
+      if (this.sheet) {
+        // Everything goes to the sheet while it's up; a tap off it puts it away.
+        if (!this.okBtn.tap(e.x, e.y) && !this.noBtn.tap(e.x, e.y) && !inside(this.sheetBox, e.x, e.y)) this.closeSheet();
+        continue;
+      }
       const card = this.cards.find((c) => e.x >= c.x && e.x <= c.x + c.w && e.y >= c.y && e.y <= c.y + c.h);
       if (card) this.tapCard(card);
     }
@@ -171,32 +186,73 @@ export class ShopPanel {
       this.status = { text: why === 'level' ? `${name} needs level ${offer.level}. You’re level ${this.level}.` : WHY[why] ?? why, color: WARN };
       return;
     }
-    if (!isFree(offer)) {
-      const sure = window.confirm(`Buy ${name} for ${priceText(offer)}?`);
-      this.game.input.clear(); // the dialog swallowed the rest of that tap
-      if (!sure) return;
-    }
+    if (isFree(offer)) return this.buy(offer, item); // nothing to think over
+    this.openSheet({ offer, item, stage: 'buy', said: '', note: null });
+  }
+
+  openSheet(sheet) {
+    this.sheet = sheet;
+    this.status = null;
+    this.layoutSheet();
+  }
+
+  closeSheet() {
+    if (this.busy) return; // the server's answer is on its way
+    this.sheet = null;
+  }
+
+  /** Where the sheet and its buttons go: the middle of the shop, above the tab bar. */
+  layoutSheet() {
+    const view = this.game.view;
+    const w = Math.min(460, view.w - 40);
+    const h = Math.min(236, this.bottom - view.safe.t - 24);
+    this.sheetBox = { x: view.w / 2 - w / 2, y: view.safe.t + (this.bottom - view.safe.t - h) / 2, w, h };
+    const wear = this.sheet?.stage === 'wear';
+    Object.assign(this.okBtn, { label: this.busy ? 'Buying…' : wear ? 'Wear it' : 'Buy', enabled: !this.busy });
+    Object.assign(this.noBtn, { label: wear ? 'Not now' : 'Cancel', enabled: !this.busy });
+    const by = this.sheetBox.y + h - 66;
+    Object.assign(this.okBtn, { x: this.sheetBox.x + w - 20 - this.okBtn.w, y: by });
+    Object.assign(this.noBtn, { x: this.okBtn.x - 12 - this.noBtn.w, y: by + 2 });
+  }
+
+  /** The sheet's green button: Buy, or Wear it. */
+  confirm() {
+    const sh = this.sheet;
+    if (!sh || this.busy) return;
+    if (sh.stage === 'wear') {
+      this.wear(sh.item);
+      this.sheet = null;
+    } else this.buy(sh.offer, sh.item);
+  }
+
+  /** Asks the server to sell you `offer`. Gear bought: the sheet turns to wearing it. */
+  buy(offer, item) {
+    const name = offerName(offer);
     this.busy = true;
-    this.status = { text: isFree(offer) ? 'Collecting…' : 'Buying…', color: DIM };
+    if (this.sheet) this.layoutSheet();
+    else this.status = { text: 'Collecting…', color: DIM };
     buyOffer(offer.id)
       .then((a) => {
+        this.busy = false;
         if (a) this.take(a);
         const said = isFree(offer) ? `${name}: ${grantText(offer)}!` : `Bought ${name}!`;
+        this.sheet = null;
         this.status = { text: said, color: OK };
         if (item) this.offerWear(item, said);
       })
       .catch((e) => {
-        this.status = { text: WHY[e?.message] ?? 'Couldn’t reach the server. Nothing was bought.', color: WARN };
-      })
-      .finally(() => {
         this.busy = false;
+        const text = WHY[e?.message] ?? 'Couldn’t reach the server. Nothing was bought.';
+        if (this.sheet) {
+          this.sheet.note = text;
+          this.layoutSheet();
+        } else this.status = { text, color: WARN };
       });
   }
 
-  /** Puts `item` on the athlete you made, if you'd like (or says how to wear it). */
+  /** Offers to put `item` on the athlete you made: the sheet, on Wear it (or says how to wear it). */
   offerWear(item, said) {
-    const code = getCustom();
-    const mine = parse(code);
+    const mine = parse(getCustom());
     if (!mine) {
       this.status = { text: `${said} Make your own athlete (Athlete tab) to wear it.`, color: OK };
       return;
@@ -205,9 +261,13 @@ export class ShopPanel {
       this.status = { text: `${said} Your athlete is wearing it.`, color: OK };
       return;
     }
-    const sure = window.confirm(`${said} Wear ${item.name} now?`);
-    this.game.input.clear();
-    if (!sure) return;
+    this.openSheet({ offer: null, item, stage: 'wear', said, note: null });
+  }
+
+  /** Puts `item` on your athlete, here and on the server's copy. */
+  wear(item) {
+    const mine = parse(getCustom());
+    if (!mine) return;
     const gear = { ...mine.gear, [item.slot]: item.n };
     const next = encode(mine.look, cleanAthleteName(getPlayerName()) || DEFAULT_NAME, gear);
     setCustom(next);
@@ -234,6 +294,50 @@ export class ShopPanel {
       text(ctx, `${l.text}${until}`, l.x, l.y, { size: 15, font: 'display', track: 2, color: PAL.gold, align: 'left' });
     }
     for (const c of this.cards) this.drawCard(ctx, c);
+    if (this.sheet) this.drawSheet(ctx, view);
+  }
+
+  /** The offer opened up over the shop: what you get on the left, its name, what it is and its price, and the buttons. */
+  drawSheet(ctx, view) {
+    const { offer, item, stage, said, note } = this.sheet;
+    const b = this.sheetBox;
+    ctx.fillStyle = 'rgba(23,20,58,0.78)';
+    ctx.fillRect(0, 0, view.w, this.bottom);
+    const tint = (item && RARITY_COLOR[item.rarity]) ?? PAL.gold;
+    slab(ctx, b.x, b.y, b.w, b.h, { face: PAL.cream, lip: PAL.creamShade, lipH: 6, c: 9 });
+    ctx.fillStyle = tint;
+    ctx.fillRect(b.x + 8, b.y + 8, b.w - 16, 6);
+    // What you get, close up.
+    const s = Math.min(b.h - 104, 150);
+    const px = b.x + 20;
+    const py = b.y + 28;
+    ctx.save();
+    chamfer(ctx, px, py, s, s, 7);
+    ctx.clip();
+    ctx.fillStyle = '#FBEBC4';
+    ctx.fillRect(px, py, s, s);
+    const money = offer?.grants.find((g) => g.currency);
+    if (item) drawWearing(ctx, px, py, s, this.look, { ...this.gear, [item.slot]: item.n }, item.slot);
+    else if (money) drawCoins(ctx, px, py, s, money.currency);
+    ctx.restore();
+    // What it is.
+    const tx = px + s + 18;
+    const tw = b.x + b.w - 20 - tx;
+    const left = { align: 'left', maxWidth: tw };
+    text(ctx, stage === 'wear' ? item.name : offerName(offer), tx, py + 14, { size: 24, font: 'display', track: 1, color: PAL.ink, ...left });
+    if (item) text(ctx, `${item.rarity.toUpperCase()} ${SLOT_NAMES[item.slot].toUpperCase()}`, tx, py + 40, { size: 13, font: 'display', track: 1.5, color: item.rarity === 'common' ? PAL.muted : tint, ...left });
+    if (stage === 'wear') {
+      text(ctx, said, tx, py + 68, { size: 17, font: 'body', weight: 800, color: PAL.liveGreen, ...left });
+      text(ctx, 'Put it on your athlete now?', tx, py + 92, { size: 16, font: 'body', weight: 600, color: PAL.ink, ...left });
+    } else {
+      if (offer.grants.length > 1 || (offer.title && !item)) text(ctx, grantText(offer), tx, py + (item ? 62 : 44), { size: 15, font: 'body', weight: 600, color: PAL.muted, ...left });
+      text(ctx, priceText(offer), tx, py + (item ? 90 : 78), { size: 22, font: 'body', weight: 800, color: PAL.ink, ...left });
+      const w = this.wallet;
+      if (w) text(ctx, `You have ${Object.keys(offer.price).map((c) => formatAmount(c, w[c])).join(' + ')}`, tx, py + (item ? 112 : 100), { size: 13, font: 'body', weight: 600, color: PAL.muted, ...left });
+    }
+    if (note) text(ctx, note, tx, this.okBtn.y - 13, { size: 14, font: 'body', weight: 700, color: PAL.brick, ...left });
+    this.noBtn.draw(ctx);
+    this.okBtn.draw(ctx);
   }
 
   /** A card: the rarity's band, what you get (gear on your athlete close up, or the money), its name and price (or FREE, OWNED, its level). */
@@ -277,6 +381,8 @@ export class ShopPanel {
     }
   }
 }
+
+const inside = (b, x, y) => !!b && x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h;
 
 const isFree = (offer) => !Object.keys(offer.price).length;
 

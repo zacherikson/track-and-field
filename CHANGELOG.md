@@ -6,6 +6,20 @@ Gameplay and tuning changes, newest first. When you change a number in
 From 1.0.0 every push to master bumps `src/version.js` and heads its section
 here with the version.
 
+## 1.13.0 — A buy sheet in the Shop
+Buying and wearing no longer use the browser's own confirm box.
+- **Tap a card and it opens up over the shop** (`home/shopPanel.js`): what you
+  get, bigger, its name and rarity, its price, how much you have, and **Buy**
+  and **Cancel**. A tap off the sheet puts it away.
+- While the server answers, the button says Buying… and the sheet stays. If
+  it's refused (not enough, gone from the shop, no connection), the reason
+  shows on the sheet and you can try again or cancel.
+- **Gear bought:** the sheet turns to **Wear it** / **Not now**. Tapping gear
+  you already own opens it the same way.
+- Something free (the daily gift) is still yours on the first tap, with no
+  sheet.
+- Leaving the tab closes the sheet.
+
 ## 1.12.0 — The server keeps your athlete
 Until now what you looked like in a live race was whatever your phone said: an
 athlete travels as a code, which is just text, so anyone could wear anything.

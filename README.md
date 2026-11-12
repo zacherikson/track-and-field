@@ -622,7 +622,7 @@ src/scenes/profileScene.js      your username (unique, saved in Firebase), Googl
 src/scenes/lobbyScene.js        the live waiting room (any event, or the tournament)
 src/scenes/podiumScene.js       the podium after a live event: the top three, their medals, what you won
 src/scenes/home/contractPanel.js the Contract tab: your contract (pay, the clause this week), your offers and Sign, the standards
-src/scenes/home/shopPanel.js    the Shop tab: a card for each offer the server has on sale, in its sections; buying and wearing it
+src/scenes/home/shopPanel.js    the Shop tab: a card for each offer the server has on sale, in its sections; the buy sheet; wearing what you bought
 src/scenes/gearPreview.js       gear close up on your athlete (the shop's cards, the Athlete Maker's Gear tab)
 src/meet/             squad meets (docs/meets.md): the rules shared with the meet server (rules, scoring,
                       heats, relayLegs, protocol), the meet you're in (meet.js), sign-up and lobby

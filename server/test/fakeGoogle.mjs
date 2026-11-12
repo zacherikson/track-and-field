@@ -35,7 +35,11 @@ export function fakeGoogle({ conflicts = 0 } = {}) {
         return json({ error: 'ABORTED' }, 409);
       }
       for (const w of body.writes) if (w.currentDocument?.exists === false && docs.has(w.update.name)) return json({}, 400);
-      for (const w of body.writes) docs.set(w.update.name, w.update.fields);
+      for (const w of body.writes) {
+        // `updateMask`: only those fields change (the document must be there already or it's made of them).
+        if (w.updateMask) docs.set(w.update.name, { ...(docs.get(w.update.name) ?? {}), ...Object.fromEntries(w.updateMask.fieldPaths.map((f) => [f, w.update.fields[f]])) });
+        else docs.set(w.update.name, w.update.fields);
+      }
       return json({});
     }
     return json({}, 404);

@@ -524,9 +524,12 @@ service account in the Firebase project with the **Firebase Rules Admin** and
 **Service Usage Consumer** roles (Google Cloud console > IAM & Admin > Service
 Accounts; not the meet server's key, which can write wallets). Without the
 secret, paste them into Firebase console > Firestore Database > Rules as
-before. They only
-sanity-check marks; nothing replays a run on the server yet, so a determined
-cheater could post a fake time.
+before. The boards themselves are written only by the meet server
+([`server/src/marks.js`](server/src/marks.js)): a phone posts a mark through
+`POST /api/mark`, and the server checks it is possible at all and, for the
+100m, runs the recorded inputs through the game's physics again and takes the
+time that comes out. The other events' marks are only checked against limits:
+their recordings are pictures of the attempt and can't be re-run.
 
 ## Architecture
 

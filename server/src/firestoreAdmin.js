@@ -115,8 +115,8 @@ async function call(env, path, body, opts) {
 const int = (n) => ({ integerValue: String(n) });
 const str = (s) => ({ stringValue: String(s) });
 
-/** A plain JS value (whole numbers, strings, booleans, lists, maps) as a REST value. */
-function rest(v) {
+/** A plain JS value (numbers, strings, booleans, lists, maps) as a REST value. */
+export function rest(v) {
   if (Array.isArray(v)) return { arrayValue: { values: v.map(rest) } };
   if (v && typeof v === 'object') return { mapValue: { fields: Object.fromEntries(Object.entries(v).filter(([, x]) => x !== undefined).map(([k, x]) => [k, rest(x)])) } };
   if (typeof v === 'boolean') return { booleanValue: v };
@@ -155,6 +155,34 @@ export async function readWallet(env, uid, opts = {}) {
   checkUid(uid);
   const res = await call(env, ':batchGet', { documents: [walletName(env, uid)] }, opts);
   return cleanWallet(numbers(res.find((r) => r.found)?.found.fields));
+}
+
+/**
+ * Reads documents by their paths ('leaderboards/sprint100/runs/<uid>'): each as
+ * plain JS, or null where there's none.
+ */
+export async function getDocs(env, paths, opts = {}) {
+  const names = paths.map((p) => `${root(env)}/${p}`);
+  const res = await call(env, ':batchGet', { documents: names }, opts);
+  return names.map((name) => {
+    const doc = res.find((r) => r.found?.name === name)?.found;
+    return doc ? fieldsOf(doc.fields) : null;
+  });
+}
+
+/**
+ * Writes documents in one go: [{ path, data, stamp?, only? }]. `data` is plain
+ * JS; `stamp` names a field to set to the server's time; `only` lists the
+ * fields to change, leaving the rest of the document as it was (else it's
+ * replaced).
+ */
+export async function setDocs(env, docs, opts = {}) {
+  const writes = docs.map(({ path, data, stamp, only }) => ({
+    update: { name: `${root(env)}/${path}`, fields: rest(data).mapValue.fields },
+    ...(only ? { updateMask: { fieldPaths: only } } : {}),
+    ...(stamp ? { updateTransforms: [{ fieldPath: stamp, setToServerValue: 'REQUEST_TIME' }] } : {}),
+  }));
+  if (writes.length) await call(env, ':commit', { writes }, opts);
 }
 
 const athleteName = (env, uid) => `${root(env)}/athletes/${uid}`;

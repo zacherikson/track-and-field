@@ -296,54 +296,33 @@ export async function learnUid() {
   return true;
 }
 
-const DOC_VERSION = 1;
-
-const runs = (fs, db, boardId) => fs.collection(db, 'leaderboards', boardId, 'runs');
-const ghostRuns = (fs, db, boardId) => fs.collection(db, 'ghosts', boardId, 'runs');
-
-/** True if mark `a` beats mark `b` on this board. */
-const beats = (board, a, b) => (board.lowerIsBetter ? a < b : a > b);
-
-/** Your place on the board for a mark (1 = best). */
-async function rankOf(fs, db, board, mark) {
-  const better = fs.where('mark', board.lowerIsBetter ? '<' : '>', mark);
-  const n = await fs.getCountFromServer(fs.query(runs(fs, db, board.id), better));
-  return n.data().count + 1;
-}
-
 /**
- * Posts a mark (with `ghost`, its recording, when there is one) if it beats
- * your mark on the board. Resolves to { improved, best, rank, lost }, where
- * `lost` says why a recording didn't go up with the mark (the mark still did).
+ * Posts a mark (with `ghost`, its recording, when there is one) to its board.
+ * The meet server keeps the boards (server/src/marks.js, POST /api/mark): it
+ * checks the mark (the 100m is run again from its inputs), and puts it up if
+ * it beats yours there. Resolves to { improved, best, rank, lost } (`lost`:
+ * always null now; a recording goes up with its mark or neither does).
+ * Rejects with Error(code): 'guest', or why the server refused it
+ * ('implausible', 'replay', 'bad-ghost', 'no-name', ...).
  */
 export async function submitMark(board, mark, ghost = null) {
-  const { fs, db, uid, auth: a } = await connect();
-  if (a.currentUser?.isAnonymous !== false) throw Object.assign(new Error('guest'), { code: 'guest' });
-  const ref = fs.doc(runs(fs, db, board.id), uid);
-  const prev = await fs.getDoc(ref);
-  const prevMark = prev.exists() ? prev.data().mark : null;
-  if (prevMark != null && !beats(board, mark, prevMark)) return { improved: false, best: prevMark, rank: await rankOf(fs, db, board, prevMark) };
-  const doc = { name: getPlayerName(), mark, v: DOC_VERSION, createdAt: fs.serverTimestamp() };
-  let lost = null;
-  if (ghost?.kind === 'trace') {
-    // The mark and its recording land together. If the recording can't go up,
-    // the mark still does, on its own.
-    try {
-      const batch = fs.writeBatch(db);
-      batch.set(ref, { ...doc, traced: true });
-      batch.set(fs.doc(ghostRuns(fs, db, board.id), uid), { mark, ghost: toWire(ghost), v: DOC_VERSION, createdAt: fs.serverTimestamp() });
-      await batch.commit();
-    } catch (err) {
-      console.warn('recording not uploaded', err);
-      lost = err?.code ?? err?.message ?? 'error';
-      await fs.setDoc(ref, doc);
-    }
-  } else {
-    if (ghost) doc.ghost = ghost;
-    await fs.setDoc(ref, doc);
-  }
-  boards.delete(board.id); // your row changed
-  return { improved: true, best: mark, rank: await rankOf(fs, db, board, mark), lost };
+  if (!isSignedIn()) throw Object.assign(new Error('guest'), { code: 'guest' });
+  const answer = await markCall({ action: 'post', board: board.id, mark, ghost: ghost?.kind === 'trace' ? toWire(ghost) : ghost });
+  if (answer.improved) boards.delete(board.id); // your row changed
+  return { improved: !!answer.improved, best: answer.best, rank: await restRank(board, answer.best), lost: null };
+}
+
+/** POST /api/mark on the meet server, as you. */
+async function markCall(body) {
+  const { serverHttp, token } = await import('./net.js'); // (net.js needs this file to load first)
+  const res = await fetch(`${serverHttp()}/api/mark`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${await token()}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const answer = await res.json().catch(() => ({}));
+  if (!res.ok) throw Object.assign(new Error(answer.error ?? `mark ${res.status}`), { code: answer.error ?? String(res.status) });
+  return answer;
 }
 
 // ---------------------------------------------------------------- REST reads
@@ -496,27 +475,14 @@ export async function fetchGhost(board, row) {
 }
 
 /**
- * Changes your name on your existing board entries: every board read at once,
- * then a write per board, all at once too. Boards stand on their own, so one
- * that can't be read or written doesn't hold up the others; resolves to false
- * if any of them didn't go through. A board still showing an old name catches
- * up the next time you post a mark there (submitMark writes your name with it).
+ * Puts your username, as it now is, on your existing board entries. The meet
+ * server does it (it keeps the boards: POST /api/mark 'rename'). A board still
+ * showing an old name catches up the next time you post a mark there.
  */
-async function renameOnBoards(name) {
-  const { fs, db, uid } = await connect();
-  const refs = ONLINE_EVENTS.map((eventId) => fs.doc(runs(fs, db, eventId), uid));
-  const reads = await Promise.allSettled(refs.map((ref) => fs.getDoc(ref)));
-  const writes = [];
-  reads.forEach((read, i) => {
-    if (read.status === 'fulfilled' && read.value.exists()) writes.push(fs.updateDoc(refs[i], { name }));
-  });
-  const failed = [...reads, ...(await Promise.allSettled(writes))].filter((r) => r.status === 'rejected');
-  if (failed.length) console.warn('name not changed on every board', failed[0].reason);
-  return failed.length === 0;
+async function renameOnBoards() {
+  await markCall({ action: 'rename' }); // the server reads your username itself
+  return true;
 }
-
-// Every board (registry.js BOARDS ids; firestore.rules lists the same).
-const ONLINE_EVENTS = ['sprint100', 'longjump', 'hurdles110', 'polevault', 'javelin', 'tournament', 'teamtournament', 'survival'];
 
 /** The key a name is claimed under: names are unique regardless of case. */
 export const nameKey = (name) => name.toLowerCase();

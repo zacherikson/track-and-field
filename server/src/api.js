@@ -1,7 +1,8 @@
 import { verifyToken } from './auth.js';
-import { changeWallet, readWallet, readProgress, hasAdmin } from './firestoreAdmin.js';
+import { changeWallet, readWallet, readProgress, hasAdmin, getDocs, setDocs } from './firestoreAdmin.js';
 import { allOffers } from './shopStore.js';
-import { saveAthlete } from './athletes.js';
+import { saveAthlete, playersAthlete } from './athletes.js';
+import { BOARDS, MarkError, beats, checkMark } from './marks.js';
 import { xpForRace, xpDay, levelOf } from '../../src/economy/levels.js';
 import { WalletError } from '../../src/economy/wallet.js';
 import { advance, collect, contractView, localDay, offers, setZone, sign } from '../../src/economy/contracts.js';
@@ -39,10 +40,19 @@ import { liveOffers, cantBuy, purchase } from '../../src/economy/shop.js';
  *                  show the athlete kept here, not one a phone sends.
  *                  → { athlete }   (the code kept; 400 { error: 'bad-athlete' } if it isn't one)
  *
+ *   POST /api/mark  { action?: 'post', board, mark, ghost? } | { action: 'rename' }  (Google sign-in)
+ *                  The online leaderboards (marks.js): only the server writes them. 'post': a mark
+ *                  you made, with its recording. It's checked (possible at all; the 100m is run
+ *                  again from its inputs) and goes on the board if it beats yours there, under
+ *                  your username, its recording with it. 'rename': your username, as it is now, on
+ *                  all your entries.
+ *                  → { improved, best } | { renamed }
+ *                  (refused: 409 { error: 'implausible' | 'bad-ghost' | 'replay' | 'bad-mark' | 'no-name' })
+ *
  * Any sign-in will do, a guest's too (Firebase's anonymous sign-in: an id for that phone): guests
  * have a wallet, earn XP and money and buy gear like anyone. Linking the guest to a Google account
- * keeps the same id, so it all carries over. Only contracts need a Google sign-in (`guest`): their
- * offers come from the progress kept on an account. Any website may
+ * keeps the same id, so it all carries over. Contracts and the leaderboards need a Google sign-in
+ * (`guest`): contract offers come from the progress kept on an account. Any website may
  * call it (CORS *): it does nothing without a player's own token.
  */
 const CORS = {
@@ -51,10 +61,11 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Authorization, Content-Type',
   'Access-Control-Max-Age': '86400',
 };
-const PATHS = ['xp', 'contract', 'shop', 'athlete'];
+const PATHS = ['xp', 'contract', 'shop', 'athlete', 'mark'];
 const REF = /^[A-Za-z0-9_-]{8,64}$/;
 const MAX_CLAIMS = 20; // a request at most; the phone sends the rest next time
 const MAX_BODY = 8000; // characters
+const MAX_MARK_BODY = 260000; // a mark comes with its recording (up to 200,000 characters of frames)
 
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
 
@@ -73,13 +84,14 @@ export async function handleApi(request, env, path, deps = {}) {
   let body;
   try {
     const text = await request.text();
-    if (text.length > MAX_BODY) return json({ error: 'too-big' }, 413);
+    if (text.length > (path === 'mark' ? MAX_MARK_BODY : MAX_BODY)) return json({ error: 'too-big' }, 413);
     body = JSON.parse(text);
   } catch {
     return json({ error: 'bad-json' }, 400);
   }
   if (path === 'athlete') return athlete(env, who.uid, body, deps);
-  if (guest && path === 'contract') return json({ error: 'guest' }, 403);
+  if (guest && (path === 'contract' || path === 'mark')) return json({ error: 'guest' }, 403);
+  if (path === 'mark') return mark(env, who.uid, body, deps);
   if (path === 'contract') return contract(env, who.uid, body, deps);
   if (path === 'shop') return shop(env, who.uid, body, deps);
   const claims = Array.isArray(body?.claims) ? body.claims.slice(0, MAX_CLAIMS) : [];
@@ -108,6 +120,44 @@ export async function handleApi(request, env, path, deps = {}) {
     console.warn('api xp', e?.message);
     // What landed before the failure is done; the rest the phone sends again.
     return json({ error: 'server', done }, 502);
+  }
+}
+
+/** POST /api/mark: a mark for a board, checked and kept if it beats yours; or your username put on your entries. */
+async function mark(env, uid, body, deps) {
+  const get = deps.getDocs ?? getDocs;
+  const set = deps.setDocs ?? setDocs;
+  try {
+    const name = (await get(env, [`users/${uid}`]))[0]?.name;
+    if (typeof name !== 'string' || !name) return json({ error: 'no-name' }, 409);
+    if (body?.action === 'rename') {
+      const ids = Object.keys(BOARDS);
+      const mine = await get(env, ids.map((id) => `leaderboards/${id}/runs/${uid}`));
+      const stale = ids.filter((id, i) => mine[i] && mine[i].name !== name);
+      await set(env, stale.map((id) => ({ path: `leaderboards/${id}/runs/${uid}`, data: { name }, only: ['name'] })));
+      return json({ renamed: stale.length });
+    }
+    const checked = checkMark(body?.board, body?.mark, body?.ghost ?? null);
+    const id = body.board;
+    const entry = `leaderboards/${id}/runs/${uid}`;
+    const prev = (await get(env, [entry]))[0]?.mark;
+    if (typeof prev === 'number' && !beats(checked.board, checked.mark, prev)) return json({ improved: false, best: prev });
+    const doc = { name, mark: checked.mark, v: 1 };
+    const docs = [{ path: entry, data: doc, stamp: 'createdAt' }];
+    if (checked.ghost) {
+      // Its runner looks like the athlete the server keeps for you (athletes.js), not one the phone names.
+      checked.ghost.athlete = (await playersAthlete(env, uid, '', deps.athlete ?? {})) || null;
+      if (checked.traced) {
+        doc.traced = true;
+        docs.push({ path: `ghosts/${id}/runs/${uid}`, data: { mark: checked.mark, ghost: checked.ghost, v: 1 }, stamp: 'createdAt' });
+      } else doc.ghost = checked.ghost;
+    }
+    await set(env, docs);
+    return json({ improved: true, best: checked.mark });
+  } catch (e) {
+    if (e instanceof MarkError) return json({ error: e.code }, e.code === 'bad-board' ? 400 : 409);
+    console.warn('api mark', e?.message);
+    return json({ error: 'server' }, 502);
   }
 }
 

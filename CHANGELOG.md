@@ -6,6 +6,42 @@ Gameplay and tuning changes, newest first. When you change a number in
 From 1.0.0 every push to master bumps `src/version.js` and heads its section
 here with the version.
 
+## 1.15.0 — The server keeps the leaderboards
+Phones used to write their own marks straight onto the online boards, with
+only a loose sanity check. Now a phone asks the server, and the server looks
+at the mark before it goes up. Nothing about playing changes.
+- **`POST /api/mark`** (`server/src/marks.js`, `api.js`): a mark, its board
+  and its recording. If it passes and beats your entry, the server writes it,
+  under the username it reads from your profile, with the athlete it keeps
+  for you on the recording.
+- **Every board:** the mark must be to the hundredth (or whole points) and
+  inside what's possible. The limits sit a good way past the simulator's
+  perfect player: 100m 7.90 s, hurdles 10.60 s, long jump 11.60 m, pole vault
+  7.30 m, javelin 112 m, tournament 7,200 points.
+- **The 100m is run again.** Its recording is the run's inputs, so the server
+  puts them through the game's own physics, with its own numbers (never the
+  ones sent along), and the time that comes out has to be the time claimed.
+  The inputs have to be ones a phone could make: in order, each stride timed
+  inside the physics step it landed in, no stumble that speeds you up, no
+  more than 10 taps a second.
+  - Checked against the 7 runs on the live 100m board: the 5 made with
+    today's physics replay to the hundredth. The other 2 are from September,
+    before `coastDecel` and `carryDecel` changed, and replay 0.01 to 0.02 s
+    off with today's numbers. They stay on the board; they just couldn't be
+    posted again.
+- **The other events** are recorded as pictures, not inputs, so they can't be
+  re-run: their recording is checked for shape and size only.
+- **Renames:** changing your username asks the server to put it on your
+  entries (`action: 'rename'`).
+- **Database rules:** `leaderboards/` and `ghosts/` are read-only; the rules
+  that used to vet a phone's write are gone.
+- **Game:** `firebase.js` `submitMark` posts through the server; the board
+  reads are unchanged. A refused mark shows why on the results line (for
+  example "unavailable (replay)" from a build with older physics).
+- **Tests:** honest runs replaying to their own time; a faster time claimed,
+  souped-up physics, mistimed and impossible inputs; limits; recordings;
+  posting, not improving, refusals, guests, renames.
+
 ## 1.14.0 — Guests have a wallet
 A guest used to earn nothing and could only look at the shop. Now a guest
 earns and buys like anyone, under their phone's own id.

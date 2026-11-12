@@ -19,7 +19,8 @@ src/firestore.js      reads a squad's members from Firestore (public), to let on
 src/firestoreAdmin.js writes wallets (and contracts and inventories, in the same transaction) as the Firebase project's
                       service account (the only thing that can)
 src/api.js            the game's HTTP calls: POST /api/xp (the races you finished, for XP), POST /api/contract
-                      (your contract: the day's pay, signing an offer), POST /api/shop (what's on sale, buying an offer)
+                      (your contract: the day's pay, signing an offer), POST /api/shop (what's on sale, buying an offer), POST /api/athlete (saving your athlete)
+src/athletes.js       keeps each player's athlete (less any gear they don't have); rooms and meets use that one
 src/shopPlan.js       the offers the server puts in the shop itself: basics, weekly and daily picks, the daily gift, prices
 src/shopStore.js      the shop as kept in the database (shop/current), read once a minute, planned on as it runs out
 tools/shop.mjs        looks at the shop, adds or removes an offer, from your computer

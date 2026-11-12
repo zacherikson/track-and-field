@@ -87,12 +87,12 @@ export function player() {
 }
 
 /**
- * Another player's athlete in event `eventId`, from what their phone sent:
- * { athlete, lineup? }. Phones from before the lineup went away still send a
- * `lineup`, and show who they had in that event.
+ * Another player's athlete, as the server says: { athlete } (the one it keeps
+ * for them: server/src/athletes.js). `eventId`: from when each event had its
+ * own athlete; no longer used.
  */
 export function theirAthlete(p, eventId) {
-  return byId(p?.lineup?.[eventId]) ?? byId(p?.athlete) ?? CHARACTERS[0];
+  return byId(p?.athlete) ?? CHARACTERS[0];
 }
 
 /** An athlete's height as a share of everyone else's (Joey: 2/3). */

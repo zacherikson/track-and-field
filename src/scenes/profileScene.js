@@ -10,6 +10,7 @@ import { cachedWallet, refreshWallet, forgetWallet } from '../online/wallet.js';
 import { myLevel, forgetXp } from '../online/xp.js';
 import { forgetContract } from '../online/contracts.js';
 import { forgetInventory } from '../online/shop.js';
+import { forgetAthlete } from '../online/athlete.js';
 import { levelProgress } from '../economy/levels.js';
 import { CURRENCIES, formatAmount } from '../economy/currencies.js';
 
@@ -161,6 +162,7 @@ export class ProfileScene {
         forgetXp();
         forgetContract();
         forgetInventory();
+        forgetAthlete();
         setOnboarded(false); // the next player sets up from the start
         location.reload();
       })

@@ -6,6 +6,39 @@ Gameplay and tuning changes, newest first. When you change a number in
 From 1.0.0 every push to master bumps `src/version.js` and heads its section
 here with the version.
 
+## 1.12.0 — The server keeps your athlete
+Until now what you looked like in a live race was whatever your phone said: an
+athlete travels as a code, which is just text, so anyone could wear anything.
+Now the server keeps each player's athlete and shows that one.
+- **Kept by the server** (`server/src/athletes.js`, `athletes/{uid}` in the
+  database: anyone can read, only the server writes). `POST /api/athlete`
+  saves yours; the server takes off any gear you don't have (starter gear by
+  your level, the shop's by your inventory) and keeps the rest. Guests too
+  (a look and level 1 gear).
+- **Live play uses the kept one.** A public waiting room, a squad's Practice
+  room and a meet sign-up take your athlete from the server, not from the
+  message your phone sends. A meet gets its athletes from the sign-up.
+  - Nothing kept yet, or the database out of reach: what the phone sent, with
+    all gear off (a look is free; gear isn't).
+  - A local dev server (no admin access) takes what's sent, so bots work.
+  - Each phone's messages are handled in order, even while one waits on the
+    database (a quick Leave can't overtake its Join).
+  - The old per-event `lineup` is dropped: it named athletes too.
+- **The game saves through it** (`src/online/athlete.js`): whenever your
+  athlete differs from the one the server last confirmed. That's at the menu,
+  after Wear in the Shop, and before joining a live room or a meet (it waits
+  up to 2.5 s for the save). If the server took gear off, the phone takes its
+  answer as your athlete.
+- **Leaderboard ghosts** look like their player does now (the kept athlete);
+  with none kept, as recorded, with any gear off.
+- `custom.js`: `wearable(code, have)` (a code with only the gear you have),
+  `hasGear`.
+- **Still the phone's word:** the athlete in your own saved progress (private
+  to you), and marks and results themselves.
+- **Tests:** gear stripping; saving (yours, not yours, by level, guests,
+  junk); the kept athlete winning over a forged one; a waiting room showing
+  it; messages staying in order.
+
 ## 1.11.0 — The shop is offers the server sends
 The game no longer works out the shop. The server keeps a list of offers in
 the database and sends what's on sale; the Shop tab draws what it's sent. A

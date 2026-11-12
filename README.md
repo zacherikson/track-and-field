@@ -397,6 +397,12 @@ rooms and meets (the others see your athlete, on a build that knows codes;
 older ones show Juno), ghosts, and the home screens' sideshow, where they
 join in.
 
+What other players see of you in live play is the copy of your athlete the
+meet server keeps (`athletes/{uid}`, [`server/src/athletes.js`](server/src/athletes.js)),
+not what your phone sends. The game saves yours there whenever it changes
+([`src/online/athlete.js`](src/online/athlete.js)), and the server takes off
+any gear you don't have before keeping it.
+
 (There used to be a lineup, a different athlete per event, and a Team
 tournament for it. Both are gone for now; the Team Tournament's board,
 `teamtournament`, stays in the database but isn't shown.)
@@ -593,6 +599,7 @@ src/online/
   wallet.js           your wallet, read-only (the meet server writes it), with the last balance kept for offline
   xp.js               reports each race you finish for XP (queued offline), and your level as last told
   contracts.js        your contract: opened at the menu (collects the day's pay), offers, signing
+  athlete.js          your athlete on the server: saved there whenever it changes; what others see live is that copy
   shop.js             the shop: the offers the server last sent, buying one, the gear you own
   liveResults.js      a live room's standings from every player's results (the server settles with it)
   live.js             live play: the waiting rooms (public, and each squad's Practice), shared start times, sending and receiving players

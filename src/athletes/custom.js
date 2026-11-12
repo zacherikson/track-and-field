@@ -15,7 +15,7 @@
  *
  * Looks only: everyone runs on the same physics, whatever their height.
  */
-import { SLOTS, noGear, itemAt, gearColors } from '../economy/items.js';
+import { SLOTS, noGear, itemAt, gearColors, owns } from '../economy/items.js';
 
 export const LOOK = {
   skin: ['#f8dfc8', '#f3d3b8', '#f1c9a5', '#eccb9f', '#d9a77c', '#c68863', '#a46a45', '#7a4a2e', '#5c3a24', '#3f2718'],
@@ -93,6 +93,23 @@ export function parse(code) {
     at += SLOTS.length;
   }
   return { look, gear, name: cleanAthleteName(code.slice(at)) || DEFAULT_NAME };
+}
+
+/** Does `code` carry gear (a made athlete with something on)? */
+export const hasGear = (code) => typeof code === 'string' && code.startsWith(GEAR_PREFIX);
+
+/**
+ * `code` with only the gear `have` ({ level, inventory }: items.js owns) has:
+ * anything else comes off. Not a made athlete's code, or nothing to take off:
+ * `code` as it was. The meet server runs an athlete through this before it
+ * keeps it (server/src/athletes.js), so nobody wears what they haven't got.
+ */
+export function wearable(code, have) {
+  const p = parse(code);
+  if (!p) return code;
+  const gear = Object.fromEntries(SLOTS.map((s) => [s, owns(itemAt(s, p.gear[s]), have) ? p.gear[s] : 0]));
+  if (SLOTS.every((s) => gear[s] === p.gear[s])) return code;
+  return encode(p.look, p.name, gear);
 }
 
 /** What a look and gear look like on the figure: drawFigure's colors. */

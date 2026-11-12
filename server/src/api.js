@@ -1,6 +1,7 @@
 import { verifyToken } from './auth.js';
 import { changeWallet, readWallet, readProgress, hasAdmin } from './firestoreAdmin.js';
 import { allOffers } from './shopStore.js';
+import { saveAthlete } from './athletes.js';
 import { xpForRace, xpDay, levelOf } from '../../src/economy/levels.js';
 import { WalletError } from '../../src/economy/wallet.js';
 import { advance, collect, contractView, localDay, offers, setZone, sign } from '../../src/economy/contracts.js';
@@ -33,7 +34,14 @@ import { liveOffers, cantBuy, purchase } from '../../src/economy/shop.js';
  *                  (a refused buy: 409 { error: 'funds' | 'level' | 'owned' | 'bought' | 'not-for-sale' };
  *                  a guest: wallet null, nothing owned)
  *
- * Signed in with Google only: a guest earns nothing (`guest`), but can look at the shop. Any website may
+ *   POST /api/athlete  { code }  (any sign-in, guests too)
+ *                  Saves the athlete you play as (src/athletes/custom.js: its code). The server takes
+ *                  off any gear you don't have and keeps the rest (athletes.js): live rooms and meets
+ *                  show the athlete kept here, not one a phone sends.
+ *                  → { athlete }   (the code kept; 400 { error: 'bad-athlete' } if it isn't one)
+ *
+ * Signed in with Google only: a guest earns nothing (`guest`), but can look at the shop and save their
+ * athlete. Any website may
  * call it (CORS *): it does nothing without a player's own token.
  */
 const CORS = {
@@ -42,6 +50,7 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Authorization, Content-Type',
   'Access-Control-Max-Age': '86400',
 };
+const PATHS = ['xp', 'contract', 'shop', 'athlete'];
 const REF = /^[A-Za-z0-9_-]{8,64}$/;
 const MAX_CLAIMS = 20; // a request at most; the phone sends the rest next time
 const MAX_BODY = 8000; // characters
@@ -53,7 +62,7 @@ const json = (body, status = 200) => new Response(JSON.stringify(body), { status
  */
 export async function handleApi(request, env, path, deps = {}) {
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
-  if (path !== 'xp' && path !== 'contract' && path !== 'shop') return json({ error: 'not-found' }, 404);
+  if (!PATHS.includes(path)) return json({ error: 'not-found' }, 404);
   if (request.method !== 'POST') return json({ error: 'method' }, 405);
   if (!hasAdmin(env) && !deps.change) return json({ error: 'not-set-up' }, 503);
   const token = (request.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '');
@@ -68,6 +77,7 @@ export async function handleApi(request, env, path, deps = {}) {
   } catch {
     return json({ error: 'bad-json' }, 400);
   }
+  if (path === 'athlete') return athlete(env, who.uid, guest, body, deps);
   if (guest && !(path === 'shop' && body?.action === 'open')) return json({ error: 'guest' }, 403);
   if (path === 'contract') return contract(env, who.uid, body, deps);
   if (path === 'shop') return shop(env, guest ? null : who.uid, body, deps);
@@ -97,6 +107,17 @@ export async function handleApi(request, env, path, deps = {}) {
     console.warn('api xp', e?.message);
     // What landed before the failure is done; the rest the phone sends again.
     return json({ error: 'server', done }, 502);
+  }
+}
+
+/** POST /api/athlete: the athlete you play as, kept by the server less any gear you don't have. */
+async function athlete(env, uid, guest, body, deps) {
+  try {
+    const kept = await saveAthlete(env, uid, body?.code, { guest }, deps.athlete ?? {});
+    return kept ? json({ athlete: kept }) : json({ error: 'bad-athlete' }, 400);
+  } catch (e) {
+    console.warn('api athlete', e?.message);
+    return json({ error: 'server' }, 502);
   }
 }
 

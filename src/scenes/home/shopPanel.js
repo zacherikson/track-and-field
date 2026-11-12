@@ -10,6 +10,7 @@ import { isSignedIn } from '../../online/firebase.js';
 import { cachedWallet } from '../../online/wallet.js';
 import { myLevel } from '../../online/xp.js';
 import { shopOffers, shopTime, myInventory, myCounts, openShop, buyOffer } from '../../online/shop.js';
+import { syncAthlete } from '../../online/athlete.js';
 import { drawWearing, RARITY_COLOR } from '../gearPreview.js';
 
 const WARN = '#ffb35c';
@@ -211,6 +212,7 @@ export class ShopPanel {
     const next = encode(mine.look, cleanAthleteName(getPlayerName()) || DEFAULT_NAME, gear);
     setCustom(next);
     setCharacter(next);
+    syncAthlete(); // the server's copy, for live play
     this.gear = gear;
     this.status = { text: `You’re wearing ${item.name}.`, color: OK };
   }

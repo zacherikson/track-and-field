@@ -51,6 +51,14 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // The athlete each player plays as (src/athletes/custom.js: its code): anyone's to
+    // read, nobody's to write. The meet server keeps it, with gear the player doesn't
+    // have taken off (server/src/athletes.js, POST /api/athlete).
+    match /athletes/{uid} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // What the shop sells (src/economy/shop.js: offers): anyone's to read, nobody's to
     // write. The meet server keeps it (server/src/shopStore.js, server/tools/shop.mjs).
     match /shop/{doc} {

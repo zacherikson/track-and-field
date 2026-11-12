@@ -1,5 +1,6 @@
 import { getPlayerName, setPlayerName } from '../core/storage.js';
 import { toWire, fromWire } from './trace.js';
+import { athleteOf, withoutGear } from './athlete.js';
 
 /**
  * ONLINE LEADERBOARD (Firebase: Firestore + anonymous or Google sign-in).
@@ -487,7 +488,11 @@ export async function fetchGhost(board, row) {
   const doc = await rest(`${board.ghosts ? 'leaderboards' : 'ghosts'}/${board.id}/runs/${row.uid}`);
   const d = doc?.fields ? fields(doc.fields) : null;
   if (!d || d.mark !== row.mark) return null;
-  return board.ghosts ? d.ghost : fromWire(d.ghost);
+  const ghost = board.ghosts ? d.ghost : fromWire(d.ghost);
+  // Its runner looks like its player does now (the athlete the server keeps for them:
+  // online/athlete.js); failing that, as recorded, with any gear off: the phone wrote it.
+  if (ghost) ghost.athlete = (await athleteOf(row.uid)) ?? withoutGear(ghost.athlete);
+  return ghost;
 }
 
 /**

@@ -4,6 +4,7 @@ import { range, hill } from '../render/posterScenery.js';
 import { getBest } from '../core/storage.js';
 import { Conn, meetServer } from '../online/net.js';
 import { serverNow } from '../online/live.js';
+import { athleteSynced } from '../online/athlete.js';
 import { liveAthletes } from '../tournament/tournament.js';
 import { EVENTS } from '../events/registry.js';
 import { CONFIG } from '../config.js';
@@ -79,7 +80,7 @@ export class MeetScene {
     if (s === 'open') {
       const who = liveAthletes();
       const pbs = Object.fromEntries(EVENTS.map((ev) => [ev.id, getBest(ev.id)]));
-      this.hub.send({ t: 'signup', athlete: who.athlete, pbs });
+      athleteSynced().then(() => this.hub?.send({ t: 'signup', athlete: who.athlete, pbs })); // the server signs you up as the athlete it keeps for you: saved first
     } else if (s === 'denied') this.note = { text: 'The meet server didn’t let you in. Are you still in the squad?', color: '#ffb35c' };
     else if (s === 'reload') this.note = { text: 'There’s a new version of the game: reload the page to play meets.', color: '#ffb35c' };
   }

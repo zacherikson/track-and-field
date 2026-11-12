@@ -26,6 +26,8 @@ import { cleanInventory, cleanCounts, cleanOffers } from '../../src/economy/shop
  *   inventory/{uid}             = { items: [item id], counts: { offer id: n } }: the gear you've bought and
  *                                 how many times you've bought each offer (src/economy/shop.js), private
  *                                 to you: changed in the same transaction as the wallet (what it cost)
+ *   athletes/{uid}              = { code }: the athlete you play as (src/athletes/custom.js), public. Only the
+ *                                 server writes it, with gear you don't have taken off (athletes.js)
  *   shop/current                = { offers: [offer], plannedTo: day }: what the shop sells (src/economy/shop.js),
  *                                 public. Only the server writes it (shopStore.js, tools/shop.mjs)
  */
@@ -155,6 +157,22 @@ export async function readWallet(env, uid, opts = {}) {
   return cleanWallet(numbers(res.find((r) => r.found)?.found.fields));
 }
 
+const athleteName = (env, uid) => `${root(env)}/athletes/${uid}`;
+
+/** The athlete kept for `uid` (its code), or null if there's none yet. */
+export async function readAthlete(env, uid, opts = {}) {
+  checkUid(uid);
+  const res = await call(env, ':batchGet', { documents: [athleteName(env, uid)] }, opts);
+  const code = fieldsOf(res.find((r) => r.found)?.found.fields).code;
+  return typeof code === 'string' && code ? code : null;
+}
+
+/** Keeps `code` as `uid`'s athlete. */
+export async function writeAthlete(env, uid, code, opts = {}) {
+  checkUid(uid);
+  await call(env, ':commit', { writes: [{ update: { name: athleteName(env, uid), fields: { code: str(code), v: int(1) } }, updateTransforms: [{ fieldPath: 'updatedAt', setToServerValue: 'REQUEST_TIME' }] }] }, opts);
+}
+
 const shopName = (env) => `${root(env)}/shop/current`;
 
 /** The shop as kept: { offers, plannedTo } (src/economy/shop.js, shopPlan.js); empty if there's none yet. */
@@ -176,6 +194,18 @@ export async function readInventory(env, uid, opts = {}) {
   const res = await call(env, ':batchGet', { documents: [inventoryName(env, uid)] }, opts);
   const d = fieldsOf(res.find((r) => r.found)?.found.fields);
   return { inventory: cleanInventory(d.items), counts: cleanCounts(d.counts) };
+}
+
+/**
+ * What `uid` has, for checking the gear they wear (src/economy/items.js owns):
+ * { level, inventory }, in one read.
+ */
+export async function readHave(env, uid, opts = {}) {
+  checkUid(uid);
+  const res = await call(env, ':batchGet', { documents: [walletName(env, uid), inventoryName(env, uid)] }, opts);
+  const doc = (name) => res.find((r) => r.found?.name === name)?.found;
+  const wallet = cleanWallet(numbers(doc(walletName(env, uid))?.fields));
+  return { level: levelOf(wallet.xp), inventory: cleanInventory(fieldsOf(doc(inventoryName(env, uid))?.fields).items) };
 }
 
 /** `uid`'s saved progress (src/online/progress.js: { beaten, top, ... }), as plain JS, or null. */

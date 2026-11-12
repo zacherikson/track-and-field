@@ -5,6 +5,7 @@ import { hasAdmin, readWallet, changeWallet } from './firestoreAdmin.js';
 import { livePayouts } from '../../src/economy/payouts.js';
 import { xpDay } from '../../src/economy/levels.js';
 import { handleApi } from './api.js';
+import { inOrder, withAthlete } from './athletes.js';
 import { MeetCore } from './meetCore.js';
 import { SquadHubCore } from './squadHubCore.js';
 import { MatchmakerCore } from './matchmakerCore.js';
@@ -120,8 +121,9 @@ export class SquadHub extends DurableObject {
     const core = await this.hub(nameFrom(request));
     return acceptSocket(request, this.env, {
       onPeer: (peer, hello) => core.connect(peer, hello),
-      onMessage: (peer, msg) => core.message(peer, msg),
-      onClose: (peer) => core.disconnect(peer),
+      // An athlete (a Practice room, a meet sign-up) is the one the server keeps for that player (athletes.js).
+      onMessage: (peer, msg) => inOrder(peer, async () => core.message(peer, await withAthlete(this.env, peer, msg))),
+      onClose: (peer) => inOrder(peer, () => core.disconnect(peer)),
     });
   }
 
@@ -221,12 +223,13 @@ export class Lobby extends DurableObject {
     this.timer ??= setInterval(() => this.core.tick(), 250);
     return acceptSocket(request, this.env, {
       onPeer: () => true,
-      onMessage: (peer, msg) => {
-        if (msg.t === 'join') this.core.join(peer, msg);
-        else if (msg.t === 'leave') this.core.leave(peer);
-        else if (msg.t === 'ready') this.core.ready(peer, msg.on !== false);
-      },
-      onClose: (peer) => this.core.leave(peer),
+      onMessage: (peer, msg) =>
+        inOrder(peer, async () => {
+          if (msg.t === 'join') this.core.join(peer, await withAthlete(this.env, peer, msg)); // as the athlete the server keeps (athletes.js)
+          else if (msg.t === 'leave') this.core.leave(peer);
+          else if (msg.t === 'ready') this.core.ready(peer, msg.on !== false);
+        }),
+      onClose: (peer) => inOrder(peer, () => this.core.leave(peer)),
     });
   }
 }

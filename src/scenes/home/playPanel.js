@@ -15,6 +15,7 @@ import { syncWorldRecords } from '../../online/worldRecords.js';
 import { myLevel, onXp, flushXp } from '../../online/xp.js';
 import { syncProgress } from '../../online/progress.js';
 import { openContract } from '../../online/contracts.js';
+import { syncAthlete } from '../../online/athlete.js';
 import { tierOf } from '../../economy/contracts.js';
 import { formatAmount } from '../../economy/currencies.js';
 import { EventTile } from './eventTile.js';
@@ -176,6 +177,8 @@ export class PlayPanel {
     syncWorldRecords(EVENTS).catch(() => {});
     // Races finished offline go toward your XP now (online/xp.js).
     flushXp().catch(() => {});
+    // The server's copy of your athlete (what others see in live play) follows yours (online/athlete.js).
+    syncAthlete();
     // Opening the game collects your contract's pay for today (online/contracts.js).
     openContract()
       .then((a) => a && this.game.scene === this.home && this.contractNews(a))

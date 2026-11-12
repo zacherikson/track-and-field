@@ -2,6 +2,7 @@ import { getPlayerName } from '../core/storage.js';
 import { applyPatch } from '../meet/protocol.js';
 import { Conn, meetServer } from './net.js';
 import { MAX_PLAYERS, CLOSE_BEFORE } from './liveRules.js';
+import { athleteSynced } from './athlete.js';
 
 export { MAX_PLAYERS, CLOSE_BEFORE };
 
@@ -93,7 +94,7 @@ export class Lobby {
             this.onChange(this.view());
           },
           status: (s) => {
-            if (s === 'open') this.conn.send({ t: 'join', kind: this.kind, name: getPlayerName(), ...this.who }); // again after a reconnect
+            if (s === 'open') athleteSynced().then(() => this.conn?.send({ t: 'join', kind: this.kind, name: getPlayerName(), ...this.who })); // again after a reconnect; the server shows the athlete it keeps for you, so it's saved first
             if (s === 'denied' || s === 'reload') reject(new Error(s));
           },
         },

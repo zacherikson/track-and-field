@@ -115,3 +115,22 @@ test('counts and inventories as stored', () => {
   assert.deepEqual(cleanInventory(['spikes-chrome-01', 'spikes-chrome-01', 'nope', 'spikes-plain-01', 3]), ['spikes-chrome-01']);
   assert.ok(itemById('spikes-chrome-01'));
 });
+
+test('wearable: gear you do not have comes off, the rest of the athlete stays', async () => {
+  const { encode, parse, wearable, hasGear, randomLook } = await import('../src/athletes/custom.js');
+  const look = randomLook();
+  const lavaItem = itemById('spikes-lava-01');
+  const gold = itemById('spikes-gold-01'); // a starter item, free at its level
+  const bought = encode(look, 'Kai', { spikes: lavaItem.n, socks: 1 });
+  assert.equal(hasGear(bought), true);
+  assert.equal(wearable(bought, { level: 1, inventory: [lavaItem.id] }), bought, 'all yours: untouched');
+  assert.deepEqual(parse(wearable(bought, { level: 1, inventory: [] })), { look, name: 'Kai', gear: { ...parse(bought).gear, spikes: 0 } });
+  assert.deepEqual(parse(wearable(bought, { level: 99, inventory: [] })).gear.spikes, 0, 'a level never unlocks shop gear');
+  const early = encode(look, 'Kai', { spikes: gold.n });
+  const off = wearable(early, { level: gold.level - 1 });
+  assert.equal(hasGear(off), false, 'nothing left on: the plain code');
+  assert.equal(wearable(early, { level: gold.level }), early);
+  assert.equal(hasGear(wearable(bought, { level: 0, inventory: [] })), false, 'level 0 (the check failed): everything off');
+  assert.equal(wearable('juno', { level: 1 }), 'juno', 'one of the cast');
+  assert.equal(wearable('~2zz', { level: 1 }), '~2zz', 'not a code this build reads: left alone');
+});

@@ -6,6 +6,29 @@ Gameplay and tuning changes, newest first. When you change a number in
 From 1.0.0 every push to master bumps `src/version.js` and heads its section
 here with the version.
 
+## 1.19.0 — Request limits and an audit trail
+The last piece of moving what matters onto the server. Server only: the
+game's own code doesn't change in this version.
+- **Request limits** (`server/src/limiterCore.js`): each player may only call
+  each HTTP endpoint so often. Past it the server answers 429 `slow-down`.
+  Per minute / per hour: XP 30 / 600, contract 20 / 300, shop 30 / 600,
+  athlete 12 / 120, mark 12 / 240, progress 20 / 300. Nobody playing gets
+  near them; they stop one account with a script from using up the
+  database's daily writes, or keeping the server replaying 100m runs.
+  - A new Durable Object per player, `Limiter`, holds the counts
+    (`wrangler.toml` migration v3). If it can't be reached, the call goes
+    through.
+  - `GET /api/balance` isn't limited, and browsers may keep it five minutes.
+- **Audit trail** (`server/src/audit.js`): a note in the database, `audit/`,
+  each time the server turns down something a phone claimed: a mark for the
+  boards that isn't possible or doesn't replay, a live result that came too
+  soon. Who, what, why, when. Only the server can read or write it
+  (`firestore.rules`).
+  - `server/tools/audit.mjs` lists the latest from your computer.
+  - A note that can't be written never fails the call it's about.
+- **Tests:** the limits (per minute, per hour, per endpoint, per player);
+  429 from the API; notes for refused marks and live results, once each.
+
 ## 1.18.0 — The server owns the economy's numbers
 What a race pays, the level curve and what contracts are worth lived in
 `config.js` with the game's feel, and each phone showed the numbers in its

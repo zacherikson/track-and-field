@@ -21,6 +21,8 @@ src/firestoreAdmin.js writes wallets (and contracts and inventories, in the same
 src/api.js            the game's HTTP calls: POST /api/xp (the races you finished, for XP), POST /api/contract
                       (your contract: the day's pay, signing an offer), POST /api/shop (what's on sale, buying an offer), POST /api/athlete (saving your athlete), POST /api/mark (posting a mark to a board),
                       POST /api/progress (saving your progress), GET /api/balance (the economy's numbers)
+src/limiterCore.js    how often one player may call each HTTP endpoint (a Limiter object per player counts)
+src/audit.js          notes in the database of what the server turned down (tools/audit.mjs lists them)
 src/marks.js          checks a mark for the online boards (possible at all; the 100m re-run from its inputs) before it's kept
 src/athletes.js       keeps each player's athlete (less any gear they don't have); rooms and meets use that one
 src/shopPlan.js       the offers the server puts in the shop itself: basics, weekly and daily picks, the daily gift, prices

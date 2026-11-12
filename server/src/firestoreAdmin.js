@@ -28,6 +28,8 @@ import { cleanInventory, cleanCounts, cleanOffers } from '../../src/economy/shop
  *                                 to you: changed in the same transaction as the wallet (what it cost)
  *   athletes/{uid}              = { code }: the athlete you play as (src/athletes/custom.js), public. Only the
  *                                 server writes it, with gear you don't have taken off (athletes.js)
+ *   audit/{time-random}         = { uid, kind, why, detail, at }: a note of something the server turned down
+ *                                 (audit.js). Nobody but the server reads or writes it
  *   shop/current                = { offers: [offer], plannedTo: day }: what the shop sells (src/economy/shop.js),
  *                                 public. Only the server writes it (shopStore.js, tools/shop.mjs)
  */
@@ -184,6 +186,12 @@ export async function setDocs(env, docs, opts = {}) {
     ...(stamp ? { updateTransforms: [{ fieldPath: stamp, setToServerValue: 'REQUEST_TIME' }] } : {}),
   }));
   if (writes.length) await call(env, ':commit', { writes }, opts);
+}
+
+/** The newest `n` documents of a top-level collection whose ids sort by time (audit/): [{ id, ...fields }]. */
+export async function recentDocs(env, collection, n = 50, opts = {}) {
+  const res = await call(env, ':runQuery', { structuredQuery: { from: [{ collectionId: collection }], orderBy: [{ field: { fieldPath: '__name__' }, direction: 'DESCENDING' }], limit: n } }, opts);
+  return (Array.isArray(res) ? res : []).filter((r) => r.document).map((r) => ({ id: r.document.name.slice(r.document.name.lastIndexOf('/') + 1), ...fieldsOf(r.document.fields) }));
 }
 
 const athleteName = (env, uid) => `${root(env)}/athletes/${uid}`;

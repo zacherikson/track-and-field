@@ -32,7 +32,7 @@ const RES = /^res\/(\d+)-([a-z0-9]+)(?:-\d+)?$/; // a result's path in a doc: re
  *   100m can't arrive 3 s after the start.
  * One that fails counts as no mark (a DNF, or a foul in a field event).
  *
- * `io`: { now(), ended(), settle?(standings) }.
+ * `io`: { now(), ended(), settle?(standings), audit?(note) }: `audit` gets a note of each result that didn't count (audit.js).
  */
 export class RoomCore {
   constructor(io) {
@@ -46,6 +46,7 @@ export class RoomCore {
     this.settled = false;
     this.lastResultAt = null; // when the last result came in (server ms)
     this.resultAt = new Map(); // uid -> { [res path]: when it first came (server ms) }
+    this.noted = new Set(); // results already noted as not counted
   }
 
   /** From the waiting room: who plays. */
@@ -118,7 +119,11 @@ export class RoomCore {
       const res = {};
       for (const [key, r] of Object.entries(doc.res && typeof doc.res === 'object' ? doc.res : {})) {
         const why = this.wrong(key, r, at);
-        if (why) console.warn('result not counted', this.info?.id, uid, key, why);
+        if (why && !this.noted.has(`${uid}/${key}`)) {
+          this.noted.add(`${uid}/${key}`); // once: a room is vetted every time it looks at settling
+          console.warn('result not counted', this.info?.id, uid, key, why);
+          this.io.audit?.({ uid, kind: 'live-result', why, detail: `${this.info?.id ?? ''} ${key} ${r?.mark}` });
+        }
         res[key] = why ? { status: 'void' } : r;
       }
       out.set(uid, { ...doc, res });

@@ -60,6 +60,12 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // The server's notes of what it turned down (server/src/audit.js): nobody's to
+    // read or write but the server's.
+    match /audit/{id} {
+      allow read, write: if false;
+    }
+
     // What the shop sells (src/economy/shop.js: offers): anyone's to read, nobody's to
     // write. The meet server keeps it (server/src/shopStore.js, server/tools/shop.mjs).
     match /shop/{doc} {

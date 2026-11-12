@@ -6,6 +6,8 @@ import { livePayouts } from '../../src/economy/payouts.js';
 import { xpDay } from '../../src/economy/levels.js';
 import { handleApi } from './api.js';
 import { inOrder, withAthlete } from './athletes.js';
+import { LimiterCore } from './limiterCore.js';
+import { audit } from './audit.js';
 import { MeetCore } from './meetCore.js';
 import { SquadHubCore } from './squadHubCore.js';
 import { MatchmakerCore } from './matchmakerCore.js';
@@ -14,8 +16,8 @@ import { RoomCore } from './roomCore.js';
 import { LIVE_KINDS } from '../../src/online/liveRules.js';
 
 /**
- * THE MEET SERVER (docs/meets.md): a Cloudflare Worker and five kinds of
- * Durable Object. The game connects with a WebSocket to
+ * THE MEET SERVER (docs/meets.md): a Cloudflare Worker and six kinds of
+ * Durable Object (the sixth, a Limiter per player, counts their HTTP calls). The game connects with a WebSocket to
  *
  *   /squad/<squad key>   that squad's SquadHub: the Squad tab, meet sign-up, Practice waiting rooms
  *   /meet/<meet id>      a Meet: its lobby, then the meet itself
@@ -210,6 +212,19 @@ export class Meet extends DurableObject {
   }
 }
 
+/** One player's request limits (limiterCore.js): how often they may call each of the game's HTTP endpoints (api.js). */
+export class Limiter extends DurableObject {
+  constructor(ctx, env) {
+    super(ctx, env);
+    this.core = new LimiterCore();
+  }
+
+  // RPC from the Worker (api.js).
+  async hit(what) {
+    return this.core.hit(what, Date.now());
+  }
+}
+
 /** The public live waiting rooms (lobbyCore.js), one for each event and the tournament. */
 export class Lobby extends DurableObject {
   constructor(ctx, env) {
@@ -242,6 +257,7 @@ export class Room extends DurableObject {
       now: () => Date.now(),
       ended: () => clearInterval(this.timer),
       settle: (standings) => this.payOut(standings).catch((e) => console.error('payout', e)),
+      audit: (note) => later('audit', () => audit(this.env, note)),
     });
     this.timer = null;
   }

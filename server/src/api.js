@@ -6,6 +6,7 @@ import { BOARDS, MarkError, beats, checkMark } from './marks.js';
 import { clean as cleanProgress, merge as mergeProgress, same as sameProgress } from '../../src/online/progressRules.js';
 import { STANDARD_EVENTS } from '../../src/economy/contracts.js';
 import { BALANCE, BALANCE_VERSION } from '../../src/economy/balance.js';
+import { audit } from './audit.js';
 import { xpForRace, xpDay, levelOf } from '../../src/economy/levels.js';
 import { WalletError } from '../../src/economy/wallet.js';
 import { advance, collect, contractView, localDay, offers, setZone, sign } from '../../src/economy/contracts.js';
@@ -66,6 +67,9 @@ import { liveOffers, cantBuy, purchase } from '../../src/economy/shop.js';
  *                  → { improved, best } | { renamed }
  *                  (refused: 409 { error: 'implausible' | 'bad-ghost' | 'replay' | 'bad-mark' | 'no-name' })
  *
+ * Each player may only call each of these so often (limiterCore.js: 429 { error: 'slow-down' } past
+ * it), and a mark the server turns down is noted in the audit trail (audit.js).
+ *
  * Any sign-in will do, a guest's too (Firebase's anonymous sign-in: an id for that phone): guests
  * have a wallet, earn XP and money and buy gear like anyone. Linking the guest to a Google account
  * keeps the same id, so it all carries over. Contracts and the leaderboards need a Google sign-in
@@ -88,11 +92,26 @@ const MAX_MARK_BODY = 260000; // a mark comes with its recording (up to 200,000 
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
 
 /**
+ * Whether `uid` may call `path` now: their Limiter says (index.js, limiterCore.js).
+ * A server without one (tests, local dev), or one that can't be reached, lets it through.
+ */
+async function allowed(env, uid, path, deps) {
+  if (deps.limit) return deps.limit(uid, path);
+  if (!env.LIMITS) return true;
+  try {
+    return await env.LIMITS.get(env.LIMITS.idFromName(uid)).hit(path);
+  } catch (e) {
+    console.warn('limiter', e?.message);
+    return true;
+  }
+}
+
+/**
  * `path` = what follows /api/. `deps` (tests): { verify, change, read, now }.
  */
 export async function handleApi(request, env, path, deps = {}) {
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
-  if (path === 'balance') return json({ v: BALANCE_VERSION, balance: BALANCE });
+  if (path === 'balance') return new Response(JSON.stringify({ v: BALANCE_VERSION, balance: BALANCE }), { headers: { ...CORS, 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=300' } });
   if (!PATHS.includes(path)) return json({ error: 'not-found' }, 404);
   if (request.method !== 'POST') return json({ error: 'method' }, 405);
   if (!hasAdmin(env) && !deps.change) return json({ error: 'not-set-up' }, 503);
@@ -100,6 +119,7 @@ export async function handleApi(request, env, path, deps = {}) {
   const who = await (deps.verify ?? verifyToken)(token, env);
   if (!who) return json({ error: 'auth' }, 401);
   const guest = who.provider === 'anonymous';
+  if (!(await allowed(env, who.uid, path, deps))) return json({ error: 'slow-down' }, 429);
   let body;
   try {
     const text = await request.text();
@@ -210,7 +230,11 @@ async function mark(env, uid, body, deps) {
     await set(env, docs);
     return json({ improved: true, best: checked.mark });
   } catch (e) {
-    if (e instanceof MarkError) return json({ error: e.code }, e.code === 'bad-board' ? 400 : 409);
+    if (e instanceof MarkError) {
+      // Worth a note: a mark that couldn't be, or a run that doesn't come to its time (not a mistyped board).
+      if (e.code !== 'bad-board') await audit(env, { uid, kind: 'mark', why: e.code, detail: `${String(body?.board).slice(0, 24)} ${String(body?.mark).slice(0, 24)}: ${e.message}` }, deps.audit ?? {});
+      return json({ error: e.code }, e.code === 'bad-board' ? 400 : 409);
+    }
     console.warn('api mark', e?.message);
     return json({ error: 'server' }, 502);
   }

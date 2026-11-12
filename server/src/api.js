@@ -24,24 +24,25 @@ import { liveOffers, cantBuy, purchase } from '../../src/economy/shop.js';
  *                  with its signing bonus, then the same. `tz` = your time zone (minutes behind UTC).
  *                  → { contract, offers, paid, bonus, news, wallet }
  *
- *   POST /api/shop  { action: 'open' | 'buy', id? }  (same sign-in; a guest can 'open')
+ *   POST /api/shop  { action: 'open' | 'buy', id? }  (same sign-in)
  *                  The shop (src/economy/shop.js): the offers on sale now, read from the database
  *                  (shopStore.js), with the gear you own and how many of each offer you've bought.
  *                  'buy': offer `id`, if it's on sale, you're at its level, haven't had all you're
  *                  allowed and can pay: its price comes out of your wallet, and what it grants goes
  *                  into your wallet and inventory, in one transaction.
  *                  → { offers, inventory, counts, wallet, now, bought }
- *                  (a refused buy: 409 { error: 'funds' | 'level' | 'owned' | 'bought' | 'not-for-sale' };
- *                  a guest: wallet null, nothing owned)
+ *                  (a refused buy: 409 { error: 'funds' | 'level' | 'owned' | 'bought' | 'not-for-sale' })
  *
- *   POST /api/athlete  { code }  (any sign-in, guests too)
+ *   POST /api/athlete  { code }  (same sign-in)
  *                  Saves the athlete you play as (src/athletes/custom.js: its code). The server takes
  *                  off any gear you don't have and keeps the rest (athletes.js): live rooms and meets
  *                  show the athlete kept here, not one a phone sends.
  *                  → { athlete }   (the code kept; 400 { error: 'bad-athlete' } if it isn't one)
  *
- * Signed in with Google only: a guest earns nothing (`guest`), but can look at the shop and save their
- * athlete. Any website may
+ * Any sign-in will do, a guest's too (Firebase's anonymous sign-in: an id for that phone): guests
+ * have a wallet, earn XP and money and buy gear like anyone. Linking the guest to a Google account
+ * keeps the same id, so it all carries over. Only contracts need a Google sign-in (`guest`): their
+ * offers come from the progress kept on an account. Any website may
  * call it (CORS *): it does nothing without a player's own token.
  */
 const CORS = {
@@ -77,10 +78,10 @@ export async function handleApi(request, env, path, deps = {}) {
   } catch {
     return json({ error: 'bad-json' }, 400);
   }
-  if (path === 'athlete') return athlete(env, who.uid, guest, body, deps);
-  if (guest && !(path === 'shop' && body?.action === 'open')) return json({ error: 'guest' }, 403);
+  if (path === 'athlete') return athlete(env, who.uid, body, deps);
+  if (guest && path === 'contract') return json({ error: 'guest' }, 403);
   if (path === 'contract') return contract(env, who.uid, body, deps);
-  if (path === 'shop') return shop(env, guest ? null : who.uid, body, deps);
+  if (path === 'shop') return shop(env, who.uid, body, deps);
   const claims = Array.isArray(body?.claims) ? body.claims.slice(0, MAX_CLAIMS) : [];
   const change = deps.change ?? changeWallet;
   const read = deps.read ?? readWallet;
@@ -111,9 +112,9 @@ export async function handleApi(request, env, path, deps = {}) {
 }
 
 /** POST /api/athlete: the athlete you play as, kept by the server less any gear you don't have. */
-async function athlete(env, uid, guest, body, deps) {
+async function athlete(env, uid, body, deps) {
   try {
-    const kept = await saveAthlete(env, uid, body?.code, { guest }, deps.athlete ?? {});
+    const kept = await saveAthlete(env, uid, body?.code, deps.athlete ?? {});
     return kept ? json({ athlete: kept }) : json({ error: 'bad-athlete' }, 400);
   } catch (e) {
     console.warn('api athlete', e?.message);
@@ -165,7 +166,7 @@ async function contract(env, uid, body, deps) {
   }
 }
 
-/** POST /api/shop: what's on sale now and what you have, or an offer bought. `uid` null: a guest, looking. */
+/** POST /api/shop: what's on sale now and what you have, or an offer bought. */
 async function shop(env, uid, body, deps) {
   const action = body?.action;
   if (action !== 'open' && action !== 'buy') return json({ error: 'bad-action' }, 400);
@@ -174,7 +175,6 @@ async function shop(env, uid, body, deps) {
   try {
     const time = deps.now?.() ?? Date.now();
     const all = await offers(env, time);
-    if (!uid) return json({ offers: liveOffers(all, time), inventory: [], counts: {}, wallet: null, now: time, bought: null });
     let at = time;
     const r = await change(env, uid, ({ wallet, inventory, counts, now }) => {
       at = now;

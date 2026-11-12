@@ -6,7 +6,6 @@ import { itemById, noGear, SLOT_NAMES } from '../../economy/items.js';
 import { cantBuy, offerItems, SECTION_NAMES } from '../../economy/shop.js';
 import { levelOf } from '../../economy/levels.js';
 import { formatAmount } from '../../economy/currencies.js';
-import { isSignedIn } from '../../online/firebase.js';
 import { cachedWallet } from '../../online/wallet.js';
 import { myLevel } from '../../online/xp.js';
 import { shopOffers, shopTime, myInventory, myCounts, openShop, buyOffer } from '../../online/shop.js';
@@ -24,7 +23,6 @@ const WHY = {
   owned: 'You already have that.',
   bought: 'You’ve already had that one.',
   'not-for-sale': 'That’s gone from the shop.',
-  guest: 'Sign in with Google (Athlete tab) to buy gear.',
 };
 const ROW_MAX = 8; // cards across at most
 const COIN = { earned: { face: '#F2B632', edge: '#B9851B', mark: 'C' }, premium: { face: '#59C9E8', edge: '#2A86A8', mark: 'G' } };
@@ -55,7 +53,7 @@ export class ShopPanel {
     this.level = myLevel()?.level ?? 1;
     this.busy = false;
     this.asked = false;
-    this.status = isSignedIn() ? null : { text: WHY.guest, color: WARN };
+    this.status = null;
     const mine = parse(getCustom());
     this.look = mine?.look ?? MODEL;
     this.gear = mine?.gear ?? noGear();
@@ -171,8 +169,7 @@ export class ShopPanel {
   /** What stops you buying `offer` now, or null (as the server will decide it). */
   why(offer) {
     const why = cantBuy(offer, shopTime(), { level: this.level, inventory: this.inventory, counts: this.counts, wallet: this.wallet ?? {} });
-    if (why === 'owned' || why === 'bought' || why === 'not-for-sale') return why;
-    return isSignedIn() ? why : 'guest';
+    return why;
   }
 
   tapCard(card) {
@@ -283,7 +280,7 @@ export class ShopPanel {
     titlePlate(ctx, view, 'SHOP', '', { face: PAL.gold, ink: PAL.ink, maxW: view.w - 340 });
     // Your wallet, top right.
     const w = this.wallet;
-    const money = w ? `${formatAmount('earned', w.earned)}  ·  ${formatAmount('premium', w.premium)}` : isSignedIn() ? '…' : 'Guest';
+    const money = w ? `${formatAmount('earned', w.earned)}  ·  ${formatAmount('premium', w.premium)}` : '…';
     text(ctx, money, view.w - 16 - Math.max(view.safe.l, view.safe.r), 36 + view.safe.t, { size: 19, font: 'body', weight: 800, color: PAL.gold, align: 'right' });
     text(ctx, `Level ${this.level}`, view.w - 16 - Math.max(view.safe.l, view.safe.r), 58 + view.safe.t, { size: 14, font: 'body', weight: 700, color: DIM, align: 'right' });
     if (this.status) text(ctx, this.status.text, view.w / 2, 76 + view.safe.t, { size: 16, font: 'body', weight: 700, color: this.status.color, maxWidth: view.w - 40 });

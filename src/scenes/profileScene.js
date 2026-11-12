@@ -57,7 +57,7 @@ export class ProfileScene {
     accountInfo()
       .then((a) => {
         this.account = a;
-        if (!a.guest) this.loadWallet();
+        this.loadWallet(); // a guest has one too
       })
       .catch(() => {
         this.account = 'offline';
@@ -223,7 +223,7 @@ export class ProfileScene {
     ctx.fillRect(x0, by + 16, w, 26);
     text(ctx, 'USERNAME', cx, by + 30, { size: 18, font: 'display', track: 3, color: PAL.cream });
     // Your level on the band's right, and how far into it you are along the bib's foot.
-    const lv = this.account?.guest ? null : this.level;
+    const lv = this.level;
     if (lv) {
       text(ctx, `LEVEL ${lv.level}`, x0 + w - 18, by + 30, { size: 18, font: 'display', track: 2, color: PAL.ink, align: 'right' });
       const share = lv.to == null ? 1 : (lv.xp - lv.from) / (lv.to - lv.from);
@@ -258,7 +258,7 @@ export class ProfileScene {
     const wy = 334;
     slab(ctx, x0, wy, w, 44, { face: PAL.ink2, lip: PAL.inkShade, lipH: 5, c: 7 });
     text(ctx, 'WALLET', x0 + 18, wy + 22, { size: 16, font: 'display', track: 3, color: PAL.gold, align: 'left' });
-    const cabinet = !!this.wallet && !this.account?.guest; // your medals, on the right
+    const cabinet = !!this.wallet; // your medals, on the right
     text(ctx, walletLine(this.account, this.wallet), cabinet ? x0 + 104 : cx + 40, wy + 22, { size: 20, font: 'body', weight: 800, color: PAL.cream, align: cabinet ? 'left' : 'center', maxWidth: cabinet ? w - 290 : w - 140 });
     if (cabinet) drawMedals(ctx, x0 + w - 186, wy + 22, this.wallet);
 
@@ -301,7 +301,6 @@ function drawMedals(ctx, x, y, wallet) {
 
 /** The wallet's line: your balance in every currency, or why there isn't one. */
 function walletLine(account, wallet) {
-  if (account?.guest) return 'Sign in to earn and keep your winnings';
   if (!wallet) return account === 'offline' ? 'Shown once you’re back online' : 'Checking…';
   return CURRENCIES.map((c) => formatAmount(c, wallet[c])).join('  ·  ');
 }

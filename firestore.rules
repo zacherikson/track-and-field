@@ -32,14 +32,15 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // (Guests have a wallet and an inventory too: any sign-in reads its own.)
     // Your wallet (src/economy/wallet.js) and its ledger: yours to read, nobody's to
     // write. Only the meet server changes wallets, as the project's service account,
     // which these rules don't apply to (server/src/firestoreAdmin.js).
     match /wallets/{uid} {
-      allow read: if isMember(uid);
+      allow read: if isMe(uid);
       allow write: if false;
       match /ledger/{entry} {
-        allow read: if isMember(uid);
+        allow read: if isMe(uid);
         allow write: if false;
       }
     }
@@ -69,7 +70,7 @@ service cloud.firestore {
     // The gear you've bought, and how many of each offer (src/economy/shop.js): yours to read, nobody's to write.
     // The meet server keeps it, with your wallet (server/src/api.js /api/shop).
     match /inventory/{uid} {
-      allow read: if isMember(uid);
+      allow read: if isMe(uid);
       allow write: if false;
     }
 

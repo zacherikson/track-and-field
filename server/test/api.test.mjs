@@ -41,9 +41,14 @@ test('finished races add XP once each, and say when you level up', async () => {
   assert.equal(many.levelUp, true, `${many.xp} XP is past level 2`);
 });
 
-test('guests, bad tokens and junk get nothing', async () => {
+test('guests earn XP too; bad tokens and junk get nothing', async () => {
   const f = fake();
-  assert.equal((await handleApi(post({ claims: [win('race0001')] }, 'guest'), {}, 'xp', f)).status, 403);
+  const guest = await (await handleApi(post({ claims: [win('race0001')] }, 'guest'), {}, 'xp', f)).json();
+  assert.equal(guest.gained, CONFIG.economy.xp.computer.finish + CONFIG.economy.xp.computer.place[0], 'under the guest\'s own id');
+  assert.equal(f.wallets.get('g1').xp, guest.gained);
+  f.wallets.clear();
+  const contract = await handleApi(new Request('https://x/api/contract', { method: 'POST', headers: { Authorization: 'Bearer guest' }, body: JSON.stringify({ action: 'open', tz: 0 }) }), {}, 'contract', f);
+  assert.deepEqual([contract.status, (await contract.json()).error], [403, 'guest'], 'contracts need an account');
   assert.equal((await handleApi(post({ claims: [win('race0001')] }, 'nope'), {}, 'xp', f)).status, 401);
   assert.equal((await handleApi(post('not json'), {}, 'xp', f)).status, 400);
   const r = await (await handleApi(post({ claims: [{ ref: 'x', mode: 'live', place: 1, field: 2 }, { ref: 'race0009', mode: 'live', place: 9, field: 2 }] }), {}, 'xp', f)).json();

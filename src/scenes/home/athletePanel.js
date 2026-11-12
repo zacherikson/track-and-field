@@ -155,11 +155,11 @@ export class AthletePanel {
     text(ctx, name.toUpperCase(), tx, b.y + 46, { size: 46, font: 'display', align: 'left', track: 2, color: PAL.ink, maxWidth: tw });
     // Level (signed in) or guest, and their height.
     const signedIn = isSignedIn();
-    const lv = signedIn ? myLevel() : null;
-    const bits = [signedIn ? (lv ? `Level ${lv.level}` : null) : 'Guest', `${(CONFIG.figure.height * heightOf(c.colors)).toFixed(2)} m`];
+    const lv = myLevel(); // a guest levels up too
+    const bits = [signedIn ? null : 'Guest', lv ? `Level ${lv.level}` : null, `${(CONFIG.figure.height * heightOf(c.colors)).toFixed(2)} m`];
     text(ctx, bits.filter(Boolean).join('  ·  '), tx + 2, b.y + 88, { size: 18, font: 'body', weight: 700, align: 'left', color: PAL.muted, maxWidth: tw });
     if (!signedIn) {
-      text(ctx, this.status ?? 'Sign in to keep your progress and winnings and go on the leaderboards.', tx + 2, b.y + 122, { size: 15, font: 'body', weight: 600, align: 'left', color: this.status ? PAL.brick : PAL.ink, maxWidth: tw });
+      text(ctx, this.status ?? 'Sign in to keep your progress and winnings on any phone, go on the leaderboards and get contracts.', tx + 2, b.y + 122, { size: 15, font: 'body', weight: 600, align: 'left', color: this.status ? PAL.brick : PAL.ink, maxWidth: tw });
     }
     for (const btn of this.buttons) btn.draw(ctx);
   }

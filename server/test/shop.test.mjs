@@ -91,10 +91,12 @@ test('open: an empty database gets its plan; what is on sale now comes back', as
   const kept = await s.shop();
   assert.equal(kept.plannedTo, day + HORIZON);
   assert.deepEqual(kept.offers, planOffers(day), 'kept in the database, read back whole');
-  // A guest can look, with nothing of their own.
+  // A guest has a wallet of their own, and can buy.
   const g = await s.call({ action: 'open' }, 'guest');
-  assert.deepEqual([g.status, g.wallet, g.offers.length], [200, null, r.offers.length]);
-  assert.equal((await s.call({ action: 'buy', id: `gift-${day}` }, 'guest')).status, 403);
+  assert.deepEqual([g.status, g.wallet.earned, g.offers.length], [200, 0, r.offers.length]);
+  const gift = await s.call({ action: 'buy', id: `gift-${day}` }, 'guest');
+  assert.deepEqual([gift.status, gift.wallet.earned, gift.counts], [200, 50, { [`gift-${day}`]: 1 }]);
+  assert.equal((await s.call({ action: 'open' })).wallet.earned, 0, 'the guest\'s, not yours');
   assert.equal((await s.call({ action: 'open' }, 'nope')).status, 401);
   assert.equal((await s.call({ action: 'sell' })).error, 'bad-action');
 });
@@ -160,9 +162,9 @@ test('an offer made by hand is on sale within a minute, at its own price, and a 
 test('the shop is read once a minute, however many ask', async () => {
   const s = server();
   await s.call({ action: 'open' });
-  const reads = () => s.g.log.filter((u) => u.endsWith(':batchGet')).length;
-  const before = reads();
+  const shopReads = () => s.g.log.filter((u, i) => u.endsWith(':batchGet') && !s.g.log[i - 1]?.endsWith(':beginTransaction')).length;
+  const before = shopReads();
   await s.call({ action: 'open' }, 'guest');
-  await s.call({ action: 'open' }, 'guest');
-  assert.equal(reads(), before, 'guests: no reads at all');
+  await s.call({ action: 'open' });
+  assert.equal(shopReads(), before, 'only each player\'s own wallet is read again');
 });

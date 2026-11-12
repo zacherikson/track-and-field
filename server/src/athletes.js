@@ -13,14 +13,13 @@ import { parse, encode, wearable } from '../../src/athletes/custom.js';
 
 /**
  * Saves `code` as `uid`'s athlete, less any gear they don't have: resolves to
- * the code kept, or null if `code` isn't a made athlete. `guest`: no wallet
- * or inventory to read (level 1, nothing bought).
+ * the code kept, or null if `code` isn't a made athlete.
  * `deps` (tests): { have, write }.
  */
-export async function saveAthlete(env, uid, code, { guest = false } = {}, deps = {}) {
+export async function saveAthlete(env, uid, code, deps = {}) {
   const p = typeof code === 'string' && code.length <= 32 ? parse(code) : null;
   if (!p) return null;
-  const have = guest ? { level: 1, inventory: [] } : await (deps.have ?? readHave)(env, uid);
+  const have = await (deps.have ?? readHave)(env, uid);
   const kept = wearable(encode(p.look, p.name, p.gear), have);
   await (deps.write ?? writeAthlete)(env, uid, kept);
   return kept;

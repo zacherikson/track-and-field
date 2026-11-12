@@ -51,15 +51,16 @@ test('saving: kept as sent when it\'s all yours; gear you don\'t have comes off'
   assert.equal((await s.api({ code: starter })).athlete, starter);
 });
 
-test('saving: guests keep a look and level 1 gear; junk is refused', async () => {
+test('saving: a guest\'s athlete is checked like anyone\'s; junk is refused', async () => {
   const s = setup();
   const look = randomLook();
   const g = await s.api({ code: encode(look, 'Guest', { spikes: lava.n, socks: 1 }) }, 'guest');
   assert.deepEqual([g.status, parse(g.athlete).gear.spikes, parse(g.athlete).gear.socks], [200, 0, 1]);
-  assert.equal(s.g.log.filter((u) => u.endsWith(':batchGet')).length, 0, 'a guest has nothing to read');
+  await s.own('g1', lava.id); // a guest can buy gear too
+  assert.equal(parse((await s.api({ code: encode(look, 'Guest', { spikes: lava.n }) }, 'guest')).athlete).gear.spikes, lava.n);
   for (const code of ['juno', '', null, 12, '~1', `~1${'z'.repeat(40)}`]) assert.deepEqual([(await s.api({ code })).status, (await s.api({ code })).error], [400, 'bad-athlete'], String(code));
   assert.equal((await s.api({ code: encode(look, 'Kai') }, 'nope')).status, 401);
-  assert.equal(await saveAthlete(env, 'u1', 'juno', {}, s.deps), null);
+  assert.equal(await saveAthlete(env, 'u1', 'juno', s.deps), null);
 });
 
 test('the athlete a player plays as: the one kept, whatever the phone sends', async () => {
@@ -73,7 +74,7 @@ test('the athlete a player plays as: the one kept, whatever the phone sends', as
   assert.equal(await playersAthlete(env, 'u1', 'juno', s.deps), 'juno', 'one of the cast: as it is');
   assert.equal(await playersAthlete(env, 'u1', undefined, s.deps), '');
   // Kept: that one, not the forgery.
-  const kept = await saveAthlete(env, 'u1', encode(look, 'Kai', { socks: 1 }), {}, s.deps);
+  const kept = await saveAthlete(env, 'u1', encode(look, 'Kai', { socks: 1 }), s.deps);
   assert.equal(await playersAthlete(env, 'u1', forged, s.deps), kept);
   // The database out of reach: what was sent, gear off. No admin access (local dev): as sent.
   assert.equal(hasGear(await playersAthlete(env, 'u1', forged, { read: async () => { throw new Error('down'); } })), false);
@@ -82,7 +83,7 @@ test('the athlete a player plays as: the one kept, whatever the phone sends', as
 
 test('a live waiting room shows the kept athlete; a peer\'s messages stay in order while one waits', async () => {
   const s = setup();
-  const kept = await saveAthlete(env, 'u1', encode(randomLook(), 'Kai', { socks: 1 }), {}, s.deps);
+  const kept = await saveAthlete(env, 'u1', encode(randomLook(), 'Kai', { socks: 1 }), s.deps);
   const forged = encode(randomLook(), 'Kai', { spikes: lava.n });
   const core = new LobbyCore({ now: () => 0, newId: () => 'room1', openRoom: () => {}, changed: () => {} }, new Set(['sprint100']));
   const sent = [];

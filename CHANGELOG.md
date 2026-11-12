@@ -6,6 +6,31 @@ Gameplay and tuning changes, newest first. When you change a number in
 From 1.0.0 every push to master bumps `src/version.js` and heads its section
 here with the version.
 
+## 1.14.0 — Guests have a wallet
+A guest used to earn nothing and could only look at the shop. Now a guest
+earns and buys like anyone, under their phone's own id.
+- **What a guest gets:** XP and levels for every race, Coins, medals and Gems
+  from public live races, the daily gift, and anything in the shop they can
+  afford. Their wallet, level and medals show on the Profile screen, the
+  Athlete tab and the Shop.
+- **Signing in keeps it.** Signing in with Google links the same id, so the
+  wallet, level, gear and athlete carry over. If that Google account already
+  has a player, the phone switches to that player as before, and what the
+  guest earned stays behind with the guest (nothing is merged: merging would
+  let throwaway guests feed an account).
+- **Still needs a Google sign-in:** contracts (their offers come from the
+  progress kept on an account) and the online leaderboards.
+- **Server** (`server/src/api.js`): `/api/xp` and `/api/shop` take a guest's
+  sign-in; `/api/contract` still answers `guest`. A guest's athlete is checked
+  against their own level and inventory like anyone's.
+- **Database rules:** `wallets/{uid}`, its ledger and `inventory/{uid}` are
+  readable by whoever's id it is, guest or not (still only the server writes).
+- **Game:** races are reported for guests (`online/xp.js`; a brand-new guest's
+  id is learned on the first report), the wallet is read for guests
+  (`online/wallet.js`), and the Shop's "Sign in to buy" is gone.
+- **Tests:** a guest earning XP, opening the shop with a wallet, collecting
+  the gift, wearing gear they bought; contracts refused.
+
 ## 1.13.0 — A buy sheet in the Shop
 Buying and wearing no longer use the browser's own confirm box.
 - **Tap a card and it opens up over the shop** (`home/shopPanel.js`): what you

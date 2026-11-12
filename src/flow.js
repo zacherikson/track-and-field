@@ -30,7 +30,6 @@ import { startLive, endLive, currentLive } from './online/live.js';
 import { resetScars } from './brawl/wounds.js';
 import { getCampaign, setCampaign, markBeaten, canTune } from './core/storage.js';
 import { reportRace } from './online/xp.js';
-import { isSignedIn } from './online/firebase.js';
 import { xpForRace } from './economy/levels.js';
 import { PodiumScene } from './scenes/podiumScene.js';
 
@@ -46,7 +45,7 @@ function reportFinish(ev, results, stats) {
   const mode = stats?.live ? 'live' : getCampaign() || survival.active || ev.special || tournament.active ? 'computer' : 'training';
   const race = { mode, place: field.indexOf(me) + 1, field: Math.min(12, field.length) };
   // A public live room is settled and paid by the server, XP and all (server/src/roomCore.js): just say what it's worth.
-  if (serverPays(stats)) return isSignedIn() ? xpForRace(race) : 0;
+  if (serverPays(stats)) return xpForRace(race);
   return reportRace(race);
 }
 

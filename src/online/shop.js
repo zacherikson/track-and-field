@@ -1,4 +1,4 @@
-import { isSignedIn, knownUid } from './firebase.js';
+import { knownUid } from './firebase.js';
 import { serverHttp, token } from './net.js';
 import { rememberWallet } from './wallet.js';
 import { cleanOffers, liveOffers, cleanCounts, cleanInventory } from '../economy/shop.js';
@@ -7,8 +7,8 @@ import { cleanOffers, liveOffers, cleanCounts, cleanInventory } from '../economy
  * THE SHOP, as the game sees it (the rules: src/economy/shop.js). The meet
  * server says what's on sale (server/src/api.js /api/shop: offers it reads
  * from the database) and does the selling; the game draws what it's sent and
- * knows nothing else about prices or dates. A guest can look; buying, and the
- * gear you own, need a Google sign-in.
+ * knows nothing else about prices or dates. Guests buy too: what they own is
+ * kept under this phone's id, and stays theirs when they sign in with Google.
  *
  * The phone keeps the last offers it was sent (so the Shop tab shows at once,
  * and offline what was on sale then and still is), and what you own and have
@@ -45,7 +45,7 @@ const mine = () => {
   return saved && saved.uid === knownUid() ? saved : null;
 };
 
-/** The gear you own as last told by the server ([item id]); [] as a guest or before it's been asked. */
+/** The gear you own as last told by the server ([item id]); [] before it's been asked. */
 export function myInventory() {
   return cleanInventory(mine()?.items);
 }
@@ -67,9 +67,9 @@ export function openShop() {
   return call({ action: 'open' });
 }
 
-/** Buys offer `id`. Resolves to the server's answer; rejects with Error('funds' | 'level' | 'owned' | 'bought' | 'not-for-sale' | 'guest' | ...). */
+/** Buys offer `id`. Resolves to the server's answer; rejects with Error('funds' | 'level' | 'owned' | 'bought' | 'not-for-sale' | ...). */
 export function buyOffer(id) {
-  return isSignedIn() ? call({ action: 'buy', id }) : Promise.reject(new Error('guest'));
+  return call({ action: 'buy', id });
 }
 
 async function call(body) {

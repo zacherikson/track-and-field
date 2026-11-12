@@ -1,4 +1,4 @@
-import { isSignedIn, knownUid } from './firebase.js';
+import { knownUid, learnUid } from './firebase.js';
 import { serverHttp, token } from './net.js';
 import { xpForRace, levelProgress } from '../economy/levels.js';
 
@@ -8,8 +8,9 @@ import { xpForRace, levelProgress } from '../economy/levels.js';
  * what each is worth and adds it (server/src/api.js, up to a daily cap).
  *
  * Reports wait in a queue on the phone, so a race run offline counts once
- * you're back online; each carries its own ref, so none counts twice. Signed in
- * with Google only: a guest's races aren't reported (they earn nothing).
+ * you're back online; each carries its own ref, so none counts twice. Guests
+ * earn too: their XP is kept under this phone's id, and stays theirs when they
+ * sign in with Google (the same id).
  *
  * The phone keeps the level it was last told, to show at once and offline.
  */
@@ -61,11 +62,10 @@ export function onXp(fn) {
 /**
  * A race you finished: { mode: 'training' | 'computer' | 'live', place, field }.
  * Queues it for the server and sends what's waiting. Returns the XP it should
- * be worth (0 for a guest, or a race worth nothing); the server's answer
+ * be worth (0 for a race worth nothing); the server's answer
  * (the daily cap, a level up) comes to onXp.
  */
 export function reportRace(race) {
-  if (!isSignedIn()) return 0;
   const xp = xpForRace(race);
   if (!xp) return 0;
   const queue = load(QUEUE, []);
@@ -85,9 +85,10 @@ export function flushXp() {
 }
 
 async function send() {
-  if (!isSignedIn()) return null;
+  if (!load(QUEUE, []).length) return null;
+  await learnUid(); // a new guest's id, the first time (a race queued before it was known is theirs)
   const uid = knownUid();
-  const mine = load(QUEUE, []).filter((c) => c.uid === uid).slice(0, 20);
+  const mine = load(QUEUE, []).filter((c) => c.uid === uid || c.uid == null).slice(0, 20);
   if (!mine.length) return null;
   const res = await fetch(`${serverHttp()}/api/xp`, {
     method: 'POST',
@@ -102,6 +103,6 @@ async function send() {
   store(LEVEL, { uid, xp: body.xp });
   for (const fn of listeners) fn(body);
   // More than one request's worth was waiting: the next lot goes next.
-  if (done.size && load(QUEUE, []).some((c) => c.uid === uid)) setTimeout(() => flushXp().catch(() => {}), 0);
+  if (done.size && load(QUEUE, []).some((c) => c.uid === uid || c.uid == null)) setTimeout(() => flushXp().catch(() => {}), 0);
   return body;
 }

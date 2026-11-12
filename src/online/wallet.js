@@ -1,4 +1,4 @@
-import { connectSDK, isSignedIn, knownUid } from './firebase.js';
+import { connectSDK, knownUid } from './firebase.js';
 import { cleanWallet } from '../economy/wallet.js';
 import { rememberXp } from './xp.js';
 
@@ -36,9 +36,8 @@ export function rememberWallet(balances) {
   return wallet;
 }
 
-/** Reads your wallet from your account: resolves to it, or null as a guest. Rejects offline. */
+/** Reads your wallet from the server's database: resolves to it (a guest's too). Rejects offline. */
 export async function refreshWallet() {
-  if (!isSignedIn()) return null;
   const { fs, db, uid } = await connectSDK();
   const snap = await fs.getDoc(fs.doc(db, 'wallets', uid));
   const wallet = cleanWallet(snap.exists() ? snap.data() : null); // none yet: all zero

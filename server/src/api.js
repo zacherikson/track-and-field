@@ -1,8 +1,10 @@
 import { verifyToken } from './auth.js';
-import { changeWallet, readWallet, readProgress, hasAdmin, getDocs, setDocs } from './firestoreAdmin.js';
+import { changeWallet, readWallet, hasAdmin, getDocs, setDocs } from './firestoreAdmin.js';
 import { allOffers } from './shopStore.js';
 import { saveAthlete, playersAthlete } from './athletes.js';
 import { BOARDS, MarkError, beats, checkMark } from './marks.js';
+import { clean as cleanProgress, merge as mergeProgress, same as sameProgress } from '../../src/online/progressRules.js';
+import { STANDARD_EVENTS } from '../../src/economy/contracts.js';
 import { xpForRace, xpDay, levelOf } from '../../src/economy/levels.js';
 import { WalletError } from '../../src/economy/wallet.js';
 import { advance, collect, contractView, localDay, offers, setZone, sign } from '../../src/economy/contracts.js';
@@ -21,7 +23,8 @@ import { liveOffers, cantBuy, purchase } from '../../src/economy/shop.js';
  *   POST /api/contract  { action: 'open' | 'sign', tz, tier? }  (same sign-in)
  *                  Your contract (src/online/contracts.js). 'open' (the game at its menu): today's
  *                  pay if it isn't collected yet, after catching up on the weeks gone by. 'sign':
- *                  signs your offer for `tier` (worked out here, from your progress and medals),
+ *                  signs your offer for `tier` (worked out here: the campaigns your progress says
+ *                  you've beaten, your medals, and your marks on the boards the server keeps),
  *                  with its signing bonus, then the same. `tz` = your time zone (minutes behind UTC).
  *                  → { contract, offers, paid, bonus, news, wallet }
  *
@@ -39,6 +42,13 @@ import { liveOffers, cantBuy, purchase } from '../../src/economy/shop.js';
  *                  off any gear you don't have and keeps the rest (athletes.js): live rooms and meets
  *                  show the athlete kept here, not one a phone sends.
  *                  → { athlete }   (the code kept; 400 { error: 'bad-athlete' } if it isn't one)
+ *
+ *   POST /api/progress  { progress }  (Google sign-in)
+ *                  Your campaign progress, top marks and athlete (src/online/progress.js), kept on
+ *                  your account: only the server writes it. What the phone sends is tidied (only
+ *                  the campaigns and events there are; marks that aren't possible dropped) and
+ *                  merged into what's kept (src/online/progressRules.js): nothing is ever lost.
+ *                  → { progress }   (the account's copy after it)
  *
  *   POST /api/mark  { action?: 'post', board, mark, ghost? } | { action: 'rename' }  (Google sign-in)
  *                  The online leaderboards (marks.js): only the server writes them. 'post': a mark
@@ -61,10 +71,11 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Authorization, Content-Type',
   'Access-Control-Max-Age': '86400',
 };
-const PATHS = ['xp', 'contract', 'shop', 'athlete', 'mark'];
+const PATHS = ['xp', 'contract', 'shop', 'athlete', 'mark', 'progress'];
 const REF = /^[A-Za-z0-9_-]{8,64}$/;
 const MAX_CLAIMS = 20; // a request at most; the phone sends the rest next time
 const MAX_BODY = 8000; // characters
+const MAX_PROGRESS_BODY = 40000;
 const MAX_MARK_BODY = 260000; // a mark comes with its recording (up to 200,000 characters of frames)
 
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
@@ -84,13 +95,14 @@ export async function handleApi(request, env, path, deps = {}) {
   let body;
   try {
     const text = await request.text();
-    if (text.length > (path === 'mark' ? MAX_MARK_BODY : MAX_BODY)) return json({ error: 'too-big' }, 413);
+    if (text.length > (path === 'mark' ? MAX_MARK_BODY : path === 'progress' ? MAX_PROGRESS_BODY : MAX_BODY)) return json({ error: 'too-big' }, 413);
     body = JSON.parse(text);
   } catch {
     return json({ error: 'bad-json' }, 400);
   }
   if (path === 'athlete') return athlete(env, who.uid, body, deps);
-  if (guest && (path === 'contract' || path === 'mark')) return json({ error: 'guest' }, 403);
+  if (guest && (path === 'contract' || path === 'mark' || path === 'progress')) return json({ error: 'guest' }, 403);
+  if (path === 'progress') return progress(env, who.uid, body, deps);
   if (path === 'mark') return mark(env, who.uid, body, deps);
   if (path === 'contract') return contract(env, who.uid, body, deps);
   if (path === 'shop') return shop(env, who.uid, body, deps);
@@ -120,6 +132,41 @@ export async function handleApi(request, env, path, deps = {}) {
     console.warn('api xp', e?.message);
     // What landed before the failure is done; the rest the phone sends again.
     return json({ error: 'server', done }, 502);
+  }
+}
+
+/**
+ * What contract offers are worked out from: the campaigns your saved progress
+ * says you've beaten (the phone's word), and, for the standards, your marks on
+ * the boards, which the server keeps and checks (marks.js), not the ones in
+ * your progress.
+ */
+async function accountProgress(env, uid, deps) {
+  const get = deps.getDocs ?? getDocs;
+  const [saved, ...entries] = await get(env, [`progress/${uid}`, ...STANDARD_EVENTS.map((id) => `leaderboards/${id}/runs/${uid}`)]);
+  const top = Object.fromEntries(STANDARD_EVENTS.map((id, i) => [id, typeof entries[i]?.mark === 'number' ? [{ mark: entries[i].mark }] : []]));
+  return { beaten: cleanProgress(saved).beaten, top };
+}
+
+/** POST /api/progress: the phone's progress merged into your account's; the result comes back. */
+async function progress(env, uid, body, deps) {
+  const get = deps.getDocs ?? getDocs;
+  const set = deps.setDocs ?? setDocs;
+  try {
+    const sent = cleanProgress(body?.progress, true);
+    // Marks on a board the server knows have to be possible there (marks.js); the rest go.
+    for (const [id, list] of Object.entries(sent.top)) {
+      const board = Object.hasOwn(BOARDS, id) ? BOARDS[id] : null;
+      if (board) sent.top[id] = list.filter((e) => e.mark >= board.min && e.mark <= board.max);
+    }
+    const [doc] = await get(env, [`progress/${uid}`]);
+    const kept = doc ? cleanProgress(doc) : null;
+    const merged = cleanProgress(mergeProgress(sent, kept));
+    if (!kept || !sameProgress(merged, kept)) await set(env, [{ path: `progress/${uid}`, data: { ...merged, v: 1 }, stamp: 'updatedAt' }]);
+    return json({ progress: merged });
+  } catch (e) {
+    console.warn('api progress', e?.message);
+    return json({ error: 'server' }, 502);
   }
 }
 
@@ -181,7 +228,7 @@ async function contract(env, uid, body, deps) {
   const change = deps.change ?? changeWallet;
   let out;
   try {
-    const progress = await (deps.progress ?? readProgress)(env, uid);
+    const progress = await accountProgress(env, uid, deps);
     const r = await change(env, uid, ({ wallet, contract: stored, now }) => {
       let c = Number.isInteger(body.tz) ? setZone(stored, body.tz, localDay(now, stored.tz)) : stored;
       const day = localDay(now, c.tz);

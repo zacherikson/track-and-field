@@ -598,7 +598,8 @@ src/online/
   squads.js           squads: start, find, join and leave one; your squad and its members
   post.js             posts a finished mark to its board and reports how it went
   bests.js            personal bests: your board entries, synced to the phone's copy
-  progress.js         campaign progress, top five marks and your athlete, synced to your account (merged)
+  progress.js         campaign progress, top five marks and your athlete, sent to the server to keep on your account
+  progressRules.js    how two copies of your progress merge (pure: the game and the server)
   wallet.js           your wallet, read-only (the meet server writes it), with the last balance kept for offline
   xp.js               reports each race you finish for XP (queued offline), and your level as last told
   contracts.js        your contract: opened at the menu (collects the day's pay), offers, signing

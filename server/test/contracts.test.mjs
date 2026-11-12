@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { handleApi } from '../src/api.js';
-import { changeWallet, readWallet, readProgress, resetToken } from '../src/firestoreAdmin.js';
+import { changeWallet, readWallet, getDocs, setDocs, resetToken } from '../src/firestoreAdmin.js';
 import { CONFIG } from '../../src/config.js';
 import { PROJECT, env, fakeGoogle } from './fakeGoogle.mjs';
 
@@ -28,10 +28,15 @@ function server() {
     verify: async (t) => (t === 'good' ? { uid: 'u1', provider: 'google.com' } : null),
     change: (e, uid, ch) => changeWallet(e, uid, ch, { fetcher: g.fetcher, now }),
     read: (e, uid) => readWallet(e, uid, { fetcher: g.fetcher }),
-    progress: (e, uid) => readProgress(e, uid, { fetcher: g.fetcher }), // through the real decoder
+    getDocs: (e, paths) => getDocs(e, paths, { fetcher: g.fetcher }), // through the real decoder
+    setDocs: (e, docs) => setDocs(e, docs, { fetcher: g.fetcher }),
     now: () => now,
   };
-  const progress = (p) => g.docs.set(`${base}/progress/u1`, Object.fromEntries(Object.entries(p).map(([k, v]) => [k, rest(v)])));
+  // Your saved progress (what you've beaten), and your marks on the boards the server keeps (`top`: the standards come from those).
+  const progress = (p) => {
+    g.docs.set(`${base}/progress/u1`, Object.fromEntries(Object.entries({ ...p, top: {} }).map(([k, v]) => [k, rest(v)])));
+    for (const [id, list] of Object.entries(p.top ?? {})) g.docs.set(`${base}/leaderboards/${id}/runs/u1`, { name: rest('Kai'), mark: rest(list[0].mark), v: rest(1) });
+  };
   const call = async (path, body) => (await handleApi(new Request(`https://x/api/${path}`, { method: 'POST', headers: { Authorization: 'Bearer good' }, body: JSON.stringify(body) }), env, path, deps)).json();
   return { g, progress, call, days: (n) => (now += n * DAY) };
 }
@@ -99,4 +104,38 @@ test('lost after two missed weeks; top-3 finishes bring offers back', async () =
   const back = await s.call('contract', { action: 'open', tz: UTAH });
   assert.equal(back.contract.requal, K.requalify);
   assert.deepEqual(back.offers.map((o) => o.tier), ['scholarship']);
+});
+
+test('standards come from the boards the server keeps, not from marks in your saved progress', async () => {
+  const s = server();
+  // Progress claiming every standard, and nothing on the boards: beaten counts, the marks don't.
+  s.g.docs.set(`${base}/progress/u1`, Object.fromEntries(Object.entries({ beaten: { highschool: { tournament: true } }, top: { sprint100: [{ mark: 8.5 }], longjump: [{ mark: 10 }] }, v: 1 }).map(([k, v]) => [k, rest(v)])));
+  const open = await s.call('contract', { action: 'open', tz: UTAH });
+  assert.deepEqual(open.offers.map((o) => [o.tier, o.met]), [['scholarship', []]]);
+  s.g.docs.set(`${base}/leaderboards/longjump/runs/u1`, { name: rest('Kai'), mark: rest(7.1), v: rest(1) });
+  assert.deepEqual((await s.call('contract', { action: 'open', tz: UTAH })).offers[0].met, ['longjump']);
+});
+
+test('progress: the phone\'s copy is tidied and merged into the account\'s; nothing is lost, junk is dropped', async () => {
+  const s = server();
+  const mark = (m, at) => ({ mark: m, at, who: 'Kai', where: 'pro' });
+  const first = await s.call('progress', { progress: { beaten: { highschool: { sprint100: true, tournament: true }, moon: { sprint100: true } }, top: { longjump: [mark(8.1, 5), mark(99, 6)], 'BAD ID': [mark(1, 1)] }, lineup: {}, character: '~1abc', lineupAt: 10, hacked: true } });
+  assert.deepEqual(first.progress.beaten, { highschool: { sprint100: true, tournament: true } }, 'only the campaigns there are');
+  assert.deepEqual(first.progress.top, { longjump: [mark(8.1, 5)] }, 'an impossible mark and a bad board id are dropped');
+  assert.equal('hacked' in first.progress, false);
+  // Another phone: more beaten, a better mark, an older athlete.
+  const second = await s.call('progress', { progress: { beaten: { highschool: { javelin: true, bogus: true }, pro: { tournament: true } }, top: { longjump: [mark(8.4, 7)] }, lineup: {}, character: '~1old', lineupAt: 3 } });
+  assert.deepEqual(second.progress.beaten, { highschool: { sprint100: true, tournament: true, javelin: true }, pro: { tournament: true } });
+  assert.deepEqual(second.progress.top.longjump.map((e) => e.mark), [8.4, 8.1], 'best first');
+  assert.deepEqual([second.progress.character, second.progress.lineupAt], ['~1abc', 10], 'the athlete changed last');
+  // Kept on the account, nulls and all; sending the same again changes nothing.
+  const kept = (await getDocs(env, ['progress/u1'], { fetcher: s.g.fetcher }))[0];
+  assert.deepEqual([kept.v, kept.top.longjump[0], kept.character], [1, mark(8.4, 7), '~1abc']);
+  const before = s.g.log.filter((u) => u.endsWith(':commit')).length;
+  const again = await s.call('progress', { progress: second.progress });
+  assert.deepEqual(again.progress, second.progress);
+  assert.equal(s.g.log.filter((u) => u.endsWith(':commit')).length, before, 'no write when nothing changed');
+  assert.deepEqual((await s.call('progress', {})).progress, second.progress, 'nothing sent: the account\'s copy');
+  // What it says you've beaten is what contract offers read.
+  assert.deepEqual((await s.call('contract', { action: 'open', tz: UTAH })).offers.map((o) => o.tier), ['scholarship']);
 });

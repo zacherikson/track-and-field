@@ -119,9 +119,10 @@ const str = (s) => ({ stringValue: String(s) });
 export function rest(v) {
   if (Array.isArray(v)) return { arrayValue: { values: v.map(rest) } };
   if (v && typeof v === 'object') return { mapValue: { fields: Object.fromEntries(Object.entries(v).filter(([, x]) => x !== undefined).map(([k, x]) => [k, rest(x)])) } };
+  if (v == null) return { nullValue: null };
   if (typeof v === 'boolean') return { booleanValue: v };
   if (typeof v === 'number') return Number.isInteger(v) ? int(v) : { doubleValue: v };
-  return str(v ?? '');
+  return str(v);
 }
 
 /** A REST doc's number fields as plain numbers (wallets only hold numbers). */

@@ -6,6 +6,30 @@ Gameplay and tuning changes, newest first. When you change a number in
 From 1.0.0 every push to master bumps `src/version.js` and heads its section
 here with the version.
 
+## 1.16.0 — The server keeps your saved progress
+Your campaign progress, top marks and athlete were saved to your account by
+the phone writing the database itself. Now the phone sends them and the
+server does the saving. Nothing about playing changes, and nothing already
+saved is lost.
+- **`POST /api/progress`** (`server/src/api.js`): the phone's copy is tidied
+  (only the campaigns and events there are; marks that aren't possible on
+  their board dropped) and merged into your account's: everything either has
+  beaten, the best five marks of both, the athlete changed last. The merged
+  copy comes back and the phone takes it, as before.
+- The merging rules moved to `src/online/progressRules.js`, shared by the
+  game and the server (they were in `progress.js`).
+- **Contract standards come from the boards.** How good a contract offer is
+  depends on the qualifying standards your best marks meet. Those marks are
+  now read from your entries on the online boards, which the server keeps and
+  checks (1.15.0), not from the marks in your saved progress. Which campaigns
+  you've beaten is still your phone's word.
+- **Database rules:** `progress/{uid}` is yours to read and nobody's to write.
+- The server now writes an empty value as empty (it wrote it as an empty
+  piece of text), so a mark with no details reads back as it was saved.
+- **Tests:** tidying and merging on the server (junk, impossible marks,
+  two phones in turn, no write when nothing changed); standards read from
+  the boards.
+
 ## 1.15.0 — The server keeps the leaderboards
 Phones used to write their own marks straight onto the online boards, with
 only a loose sanity check. Now a phone asks the server, and the server looks

@@ -6,10 +6,10 @@ rules_version = '2';
 // Paste into Firebase console > Firestore Database > Rules, then Publish.
 //
 // Anyone can read. Every player is signed in, as a guest (anonymous sign-in)
-// or with Google, and can only write their own profile, name claim, squad
-// membership and saved progress. Everything that's won or ranked (wallets,
-// gear, athletes, the shop, the leaderboards and their recordings) is written
-// only by the meet server.
+// or with Google, and can only write their own profile, name claim and squad
+// membership. Everything that's won, ranked or saved to an account (wallets,
+// gear, athletes, the shop, progress, the leaderboards and their recordings)
+// is written only by the meet server.
 service cloud.firestore {
   match /databases/{database}/documents {
     // Your profile. Saved in the same transaction as the name claim below,
@@ -25,11 +25,11 @@ service cloud.firestore {
     }
 
     // Your progress (online/progress.js): campaign progress, top marks, lineup.
-    // Private: only you, signed in with an account (not as a guest), can read or write it.
+    // Private: only you, signed in with an account (not as a guest), can read it. The meet
+    // server writes it (server/src/api.js POST /api/progress), merging in what your phone sends.
     match /progress/{uid} {
       allow read: if isMember(uid);
-      allow create, update: if isMember(uid) && validProgress(request.resource.data);
-      allow delete: if false;
+      allow write: if false;
     }
 
     // (Guests have a wallet and an inventory too: any sign-in reads its own.)
@@ -214,19 +214,6 @@ service cloud.firestore {
     // You, signed in with an account rather than as a guest.
     function isMember(uid) {
       return isMe(uid) && request.auth.token.firebase.sign_in_provider != 'anonymous';
-    }
-
-    // The shape of progress/{uid}. Sanity and size only: it's yours alone.
-    function validProgress(d) {
-      return d.keys().hasOnly(['beaten', 'top', 'lineup', 'character', 'lineupAt', 'v', 'updatedAt'])
-        && d.keys().hasAll(['beaten', 'top', 'lineup', 'character', 'lineupAt', 'v', 'updatedAt'])
-        && d.v == 1
-        && d.updatedAt == request.time
-        && d.beaten is map && d.beaten.keys().hasOnly(['highschool', 'amateur', 'pro']) // 'amateur' is Collegiate (its old name)
-        && d.top is map && d.top.size() <= 30
-        && d.lineup is map && d.lineup.size() <= 30
-        && (d.character == null || (d.character is string && d.character.size() <= 32))
-        && d.lineupAt is number;
     }
 
     // 1-16 characters, no '/', not starting with '_', '.' or a space.

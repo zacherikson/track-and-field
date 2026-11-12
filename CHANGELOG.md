@@ -6,6 +6,31 @@ Gameplay and tuning changes, newest first. When you change a number in
 From 1.0.0 every push to master bumps `src/version.js` and heads its section
 here with the version.
 
+## 1.18.0 — The server owns the economy's numbers
+What a race pays, the level curve and what contracts are worth lived in
+`config.js` with the game's feel, and each phone showed the numbers in its
+own build. Now they have a file of their own, the server serves them, and
+every phone shows the server's. No number changed, and nothing about playing
+does.
+- **`src/economy/balance.js`:** the economy's numbers, moved out of
+  `config.js` as they were. `CONFIG.economy` is the same object, so everything
+  that read it still does.
+- **`GET /api/balance`** (no sign-in): the numbers as the server has them.
+- **The game takes the server's** (`src/online/balance.js`): asked at the
+  menu, at most every ten minutes, and laid over the copy in the build. The
+  last answer is kept on the phone and laid over as the game loads, so what's
+  shown is right at once and offline.
+- **Only what's the same shape is taken** (`applyBalance`): a number for a
+  number, a list for a list. A bad or old copy can't break anything.
+- **What this means when you change a number:** edit `balance.js` and push.
+  The server pays by it as soon as it deploys, and every phone shows it the
+  next time it's at the menu, whichever build it has cached. Before, a phone
+  on an old build showed the old amount while the server paid the new one.
+- The server never takes a number from a phone, so a stale or doctored copy
+  on a phone only changes what that phone displays.
+- **Tests:** the overlay (taken, followed by XP, levels and contract pay;
+  bad and old copies ignored); the endpoint.
+
 ## 1.17.0 — Live results are checked before a room pays
 A public live room pays Coins, medals and Gems from the marks its phones
 send. The server now looks at each mark before it counts. Nothing about

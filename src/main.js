@@ -10,6 +10,7 @@ import { preloadSprites } from './athletes/sprites.js';
 import { takeInviteLink } from './online/squads.js';
 import { openInvite } from './scenes/inviteScreen.js';
 import { loadFonts } from './core/ui.js';
+import './online/balance.js'; // the economy's numbers as the server last sent them, before anything shows one
 
 // Apply any settings saved from the in-game tuning panel before the first race.
 // Only the owner tunes; everyone else plays the shipped numbers (settings a

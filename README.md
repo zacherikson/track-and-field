@@ -585,7 +585,8 @@ src/render/runway.js  long jump runway, board and sand pit (on the stadium rende
 src/render/javelinField.js  javelin runway, foul line and sector; the flight shot (sky, hills, sea) down to where it sticks in the grass
 src/render/vaultArena.js  pole vault runway, plant box, landing mat, uprights with height marks, tall sky
 src/render/road.js    time trial road side on (real hills, exaggerated), scenery, arches; the rider on a TT bike
-src/economy/          the economy's shared rules (game and meet server): currencies.js (the ids and the
+src/economy/          the economy's shared rules (game and meet server): balance.js (its numbers: the
+                      server's copy is the one every phone shows), currencies.js (the ids and the
                       one table of names players see), wallet.js (changes, never below zero, fines off),
                       levels.js (XP per race by mode and place, the daily cap, the level curve),
                       payouts.js (a public live room's prize money, medals, Gems and XP, for the server),
@@ -603,6 +604,7 @@ src/online/
   wallet.js           your wallet, read-only (the meet server writes it), with the last balance kept for offline
   xp.js               reports each race you finish for XP (queued offline), and your level as last told
   contracts.js        your contract: opened at the menu (collects the day's pay), offers, signing
+  balance.js          the economy's numbers as the server has them, laid over the build's
   athlete.js          your athlete on the server: saved there whenever it changes; what others see live is that copy
   shop.js             the shop: the offers the server last sent, buying one, the gear you own
   liveResults.js      a live room's standings from every player's results (the server settles with it)

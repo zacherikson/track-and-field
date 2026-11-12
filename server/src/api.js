@@ -5,6 +5,7 @@ import { saveAthlete, playersAthlete } from './athletes.js';
 import { BOARDS, MarkError, beats, checkMark } from './marks.js';
 import { clean as cleanProgress, merge as mergeProgress, same as sameProgress } from '../../src/online/progressRules.js';
 import { STANDARD_EVENTS } from '../../src/economy/contracts.js';
+import { BALANCE, BALANCE_VERSION } from '../../src/economy/balance.js';
 import { xpForRace, xpDay, levelOf } from '../../src/economy/levels.js';
 import { WalletError } from '../../src/economy/wallet.js';
 import { advance, collect, contractView, localDay, offers, setZone, sign } from '../../src/economy/contracts.js';
@@ -43,6 +44,12 @@ import { liveOffers, cantBuy, purchase } from '../../src/economy/shop.js';
  *                  show the athlete kept here, not one a phone sends.
  *                  → { athlete }   (the code kept; 400 { error: 'bad-athlete' } if it isn't one)
  *
+ *   GET /api/balance  (no sign-in: nothing here is anyone's)
+ *                  The economy's numbers as this server has them (src/economy/balance.js): what a race
+ *                  pays, the level curve, what contracts are worth. The game shows these, not the
+ *                  ones in its own build (src/online/balance.js).
+ *                  → { v, balance }
+ *
  *   POST /api/progress  { progress }  (Google sign-in)
  *                  Your campaign progress, top marks and athlete (src/online/progress.js), kept on
  *                  your account: only the server writes it. What the phone sends is tidied (only
@@ -67,7 +74,7 @@ import { liveOffers, cantBuy, purchase } from '../../src/economy/shop.js';
  */
 const CORS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Authorization, Content-Type',
   'Access-Control-Max-Age': '86400',
 };
@@ -85,6 +92,7 @@ const json = (body, status = 200) => new Response(JSON.stringify(body), { status
  */
 export async function handleApi(request, env, path, deps = {}) {
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
+  if (path === 'balance') return json({ v: BALANCE_VERSION, balance: BALANCE });
   if (!PATHS.includes(path)) return json({ error: 'not-found' }, 404);
   if (request.method !== 'POST') return json({ error: 'method' }, 405);
   if (!hasAdmin(env) && !deps.change) return json({ error: 'not-set-up' }, 503);

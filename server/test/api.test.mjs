@@ -63,3 +63,13 @@ test('answers the browser preflight, and only /api/xp', async () => {
   assert.equal(pre.headers.get('Access-Control-Allow-Origin'), '*');
   assert.equal((await handleApi(post({}), {}, 'other', fake())).status, 404);
 });
+
+test('the economy\'s numbers are public: no sign-in, a plain GET', async () => {
+  const { BALANCE, BALANCE_VERSION, applyBalance } = await import('../../src/economy/balance.js');
+  const res = await handleApi(new Request('https://x/api/balance'), {}, 'balance', fake());
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get('Access-Control-Allow-Origin'), '*');
+  const sent = await res.json();
+  assert.deepEqual(sent, { v: BALANCE_VERSION, balance: JSON.parse(JSON.stringify(BALANCE)) });
+  assert.equal(applyBalance(sent), true, 'a phone takes it as it comes');
+});

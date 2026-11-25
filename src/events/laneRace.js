@@ -22,6 +22,7 @@ import { LiveTrace, TraceStream } from '../online/liveTrace.js';
 import { Venue } from '../brawl/venue.js';
 import { Aftermath } from '../brawl/aftermath.js';
 import { Thumbs } from '../core/thumbs.js';
+import * as audio from '../core/audio.js';
 
 
 const LIVE_SURVIVAL_LANES = 10; // live survival's Colosseum track (online/liveRules.js: ten can play)
@@ -267,8 +268,7 @@ export class LaneRace {
       a.crouchDelay = rand(...c.crouchDelay);
       a.setDelay = rand(...c.setDelay);
     }
-    this.state = 'ready';
-    this.stateT = t;
+    this.setState('ready', t);
     this.setT = t + c.readyTime;
     this.goT = this.setT + rand(c.setMin, c.setMax);
     // Live: the same gun on every phone.
@@ -282,6 +282,7 @@ export class LaneRace {
   setState(state, t) {
     this.state = state;
     this.stateT = t;
+    audio.onState(state, { fail: this.player?.mark == null }); // the hush at SET, the gun, a cheer at the line (a groan if out of time)
   }
 
   get raceTime() {
@@ -351,6 +352,7 @@ export class LaneRace {
     // 3. Simulation.
     if (racing) {
       this.simulate(dt, t);
+      if (this.state === 'race') audio.heat(this.player.runner.x / this.cfg.distance); // louder nearer the line
       this.stepN++;
       if (this.live) this.sendLive();
     }

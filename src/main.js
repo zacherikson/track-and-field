@@ -10,6 +10,7 @@ import { preloadSprites } from './athletes/sprites.js';
 import { takeInviteLink } from './online/squads.js';
 import { openInvite } from './scenes/inviteScreen.js';
 import { loadFonts } from './core/ui.js';
+import * as audio from './core/audio.js';
 import './online/balance.js'; // the economy's numbers as the server last sent them, before anything shows one
 
 // Apply any settings saved from the in-game tuning panel before the first race.
@@ -28,6 +29,7 @@ const signingIn = finishGoogleSignIn();
 await loadFonts();
 
 const game = new Game(document.getElementById('game'));
+audio.init(); // the music and the crowd, from the first touch (core/audio.js)
 if (!isOnboarded()) {
   // A new player (or the first time since it came in): set up first, sign-in, username and athlete.
   // Back from Google's sign-in mid-setup lands here too; an invite waits until you're done.

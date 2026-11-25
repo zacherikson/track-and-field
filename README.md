@@ -543,6 +543,7 @@ src/core/
   input.js            raw multi-touch + mouse + keyboard queue with precise timestamps
   thumbs.js           which thumbs are down (presses and lifts): the orange pads take holds as well as taps
   camera.js           side-scroll camera with smoothing + look-ahead
+  audio.js            music in the menus, the stadium crowd and the cues (gun, cheer, applause, groan): made in code, or a recording from audio/ (RECORDINGS)
   ui.js, math.js, storage.js
 src/athletes/
   runner.js           shared runner physics (player and AI)

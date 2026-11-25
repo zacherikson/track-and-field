@@ -6,6 +6,31 @@ Gameplay and tuning changes, newest first. When you change a number in
 From 1.0.0 every push to master bumps `src/version.js` and heads its section
 here with the version.
 
+## 1.20.0 — Music and the crowd
+The game has sound. Everything is in `src/core/audio.js`; nothing in play
+or tuning changes.
+- **Menus:** an upbeat 8-bar music loop (made in code, 116 bpm).
+- **Events:** the music fades out and a stadium crowd fades in. It goes
+  quiet at GET SET, the gun fires at GO, the 100m and hurdles get louder the
+  nearer you are to the line, and there's a cheer at the finish (a groan if
+  you run out of time). The field events build through the run-up, cheer a
+  good landing and groan at a foul or failed vault. Results and the podium
+  get applause.
+- **Recordings:** the crowd and the cheer are "Crowd Cheering in Stadium" by
+  vishiv (Pixabay): its first 7 s looped (`audio/crowd.m4a`), and its swell
+  (`audio/cheer.m4a`). The gun, applause, groan and music are made in code.
+  `RECORDINGS` in `audio.js` swaps in a file for any of them; every sound is
+  levelled to the same loudness either way, and a file that won't load falls
+  back to the made sound.
+- **Music and Sound switches:** two icon chips left of your profile on the
+  home screen, crossed out when off, remembered on the phone. (On a 4:3
+  screen, How to play now shows just its icon to make room.)
+- **Phones:** sound starts on the first touch. The audio session is
+  `ambient` where the browser allows it: the silent switch mutes the game,
+  and the player's own music keeps playing. Sound pauses when the app is in
+  the background. The sounds are made one at a time after launch, so the
+  game never stalls making them.
+
 ## 1.19.0 — Request limits and an audit trail
 The last piece of moving what matters onto the server. Server only: the
 game's own code doesn't change in this version.

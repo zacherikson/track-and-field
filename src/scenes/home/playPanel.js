@@ -21,6 +21,7 @@ import { tierOf } from '../../economy/contracts.js';
 import { formatAmount } from '../../economy/currencies.js';
 import { EventTile } from './eventTile.js';
 import { Sideshow } from './sideshow.js';
+import { musicOn, soundOn, setMusicOn, setSoundOn } from '../../core/audio.js';
 
 const SHORT = { sprint100: '100m', longjump: 'Long jump', hurdles110: 'Hurdles', polevault: 'Pole vault', javelin: 'Javelin' };
 
@@ -170,6 +171,9 @@ export class PlayPanel {
     this.showLevel();
     this.stopXp = onXp(() => this.showLevel());
     this.fsButton = document.fullscreenEnabled ? chip({ label: '', icon: 'fullscreen', w: 48, onTap: () => toggleFullscreen() }) : null;
+    // Music and Sound (the crowd and the rest) on or off, left of your profile: crossed out when off.
+    this.musicButton = chip({ label: '', icon: 'music', w: 48, onTap: () => setMusicOn(!musicOn()) });
+    this.soundButton = chip({ label: '', icon: 'sound', w: 48, onTap: () => setSoundOn(!soundOn()) });
     // Your bests come from the online boards: catch up with them, then show them.
     syncBests()
       .then((changed) => changed && this.game.scene === this.home && this.showBests())
@@ -391,11 +395,13 @@ export class PlayPanel {
     this.backBtn.x = 14 + view.safe.l;
     if (this.fsButton) this.fsButton.x = view.w - 48 - 14 - view.safe.r;
     this.profileButton.x = (this.fsButton ? this.fsButton.x - 10 : view.w - 14 - view.safe.r) - this.profileButton.w;
+    this.soundButton.x = this.profileButton.x - 10 - this.soundButton.w;
+    this.musicButton.x = this.soundButton.x - 8 - this.musicButton.w;
     // How to play next to the Leaderboard (just its icon where the words won't fit).
     const helpX = this.onlineButton.x + this.onlineButton.w + 8;
-    const hw = 172 + 10 <= this.profileButton.x - helpX ? 172 : 48;
+    const hw = 172 + 10 <= this.musicButton.x - helpX ? 172 : 48;
     Object.assign(this.helpButton, { x: helpX, w: hw, label: hw > 48 ? 'How to play' : '' });
-    for (const b of [this.tuneButton, this.onlineButton, this.helpButton, this.backBtn, this.fsButton, this.profileButton]) if (b) b.y = top;
+    for (const b of [this.tuneButton, this.onlineButton, this.helpButton, this.backBtn, this.fsButton, this.profileButton, this.musicButton, this.soundButton]) if (b) b.y = top;
 
     // The two big buttons, side by side.
     const bigs = [this.offlineBig, this.liveBig];
@@ -465,7 +471,7 @@ export class PlayPanel {
     if (this.list === 'offline') return [this.backBtn, ...this.gridButtons];
     if (this.list === 'live') return [this.backBtn, ...this.liveButtons];
     if (this.list === 'special') return [this.backBtn, ...this.specialButtons, ...this.rivalButtons];
-    return [this.fsButton, this.tuneButton, this.onlineButton, this.helpButton, this.profileButton, this.offlineBig, this.liveBig].filter(Boolean);
+    return [this.fsButton, this.tuneButton, this.onlineButton, this.helpButton, this.musicButton, this.soundButton, this.profileButton, this.offlineBig, this.liveBig].filter(Boolean);
   }
 
   /** `events`: this tab's taps and keys (the home screen has sorted out swipes). */
@@ -513,7 +519,9 @@ export class PlayPanel {
 
   renderButtons(ctx, view) {
     wordmark(ctx, view.w / 2, 94, 58);
-    for (const b of [this.fsButton, this.tuneButton, this.onlineButton, this.helpButton, this.profileButton, this.offlineBig, this.liveBig]) b?.draw(ctx);
+    for (const b of [this.fsButton, this.tuneButton, this.onlineButton, this.helpButton, this.musicButton, this.soundButton, this.profileButton, this.offlineBig, this.liveBig]) b?.draw(ctx);
+    if (!musicOn()) crossOut(ctx, this.musicButton);
+    if (!soundOn()) crossOut(ctx, this.soundButton);
 
     // Your athlete, warming up on the track, their name on an ink tag.
     const { me } = this;
@@ -845,3 +853,21 @@ function toggleFullscreen() {
 
 /** What's on offer, as a key: a new or better offer changes it. */
 const offerKey = (offers) => offers.map((o) => `${o.tier}${o.grade}`).join(',');
+
+/** A chip's icon struck through (Music or Sound turned off): a cream slash with a gap of the chip's colour round it. */
+function crossOut(ctx, b) {
+  const top = b.y + (b.pressT > 0 ? 3 : 0);
+  const cx = b.x + b.w / 2;
+  const cy = top + (b.h - 4) / 2;
+  ctx.save();
+  ctx.lineCap = 'round';
+  for (const [w, c] of [[8, PAL.ink], [3, PAL.cream]]) {
+    ctx.beginPath();
+    ctx.moveTo(cx - 13, cy - 13);
+    ctx.lineTo(cx + 13, cy + 13);
+    ctx.lineWidth = w;
+    ctx.strokeStyle = c;
+    ctx.stroke();
+  }
+  ctx.restore();
+}

@@ -8,6 +8,7 @@ import { VENUES } from '../render/venues.js';
 import { GREEN, ORANGE, drawPad, drawX } from '../render/pads.js';
 import { getSpecialLevel } from '../core/storage.js';
 import { flow } from '../flow.js';
+import * as audio from '../core/audio.js';
 
 const LEFT_KEYS = ['ArrowLeft', 'KeyA', 'KeyZ', 'KeyF'];
 const RIGHT_KEYS = ['ArrowRight', 'KeyD', 'KeyX', 'KeyJ'];
@@ -88,6 +89,7 @@ export class TimeTrial {
   setState(s) {
     this.state = s;
     this.stateT = this.game.time;
+    audio.onState(s, { fail: this.player?.mark == null }); // the hush at the count, the gun, a cheer at the line (a groan if out of time)
   }
 
   get bike() {

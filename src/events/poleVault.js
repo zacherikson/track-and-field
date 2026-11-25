@@ -19,6 +19,7 @@ import { Venue, FIELD_DEPTH } from '../brawl/venue.js';
 import { startFieldLateHits, fieldLateStep, fieldLateRender } from '../brawl/fieldLateHits.js';
 import { FieldGhost } from '../online/fieldGhost.js';
 import { LiveField } from '../online/liveField.js';
+import * as audio from '../core/audio.js';
 
 const LEFT_KEYS = ['ArrowLeft', 'KeyA', 'KeyZ', 'KeyF'];
 const RIGHT_KEYS = ['ArrowRight', 'KeyD', 'KeyX', 'KeyJ'];
@@ -191,6 +192,7 @@ export class PoleVault {
   setState(s) {
     this.state = s;
     this.stateT = this.now;
+    audio.onState(s, this.mark); // the crowd: building on the run-up, a cheer or a groan at the landing
   }
 
   // ---------------------------------------------------------------- input

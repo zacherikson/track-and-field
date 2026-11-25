@@ -312,6 +312,28 @@ export function setGhostOn(on) {
   save(data);
 }
 
+/** Whether the menu music plays (the speaker chips on the home screen; on unless turned off). */
+export function getMusicOn() {
+  return load().music !== false;
+}
+
+export function setMusicOn(on) {
+  const data = load();
+  data.music = on;
+  save(data);
+}
+
+/** Whether the crowd and the other sounds play (on unless turned off). */
+export function getSoundOn() {
+  return load().sound !== false;
+}
+
+export function setSoundOn(on) {
+  const data = load();
+  data.sound = on;
+  save(data);
+}
+
 // Your best recorded attempt per event, raced as a ghost (see online/ghost.js and
 // online/trace.js). Kept under its own key: a recording is a few KB and the main
 // save stays small.

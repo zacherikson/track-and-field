@@ -2,6 +2,7 @@ import { CONFIG } from '../config.js';
 import { Input } from './input.js';
 import { text } from './ui.js';
 import { takeGearTap, drawGear } from '../tuning/gear.js';
+import * as audio from './audio.js';
 
 /**
  * The Game owns three things: the view (canvas sizing), the loop, and the
@@ -57,6 +58,7 @@ export class Game {
     this.input.clear(); // don't let a tap from the old scene leak into the new one
     this.input.wantReleases = !!scene.wantsReleases; // press-and-hold scenes also get finger lifts / key releases
     scene.enter?.();
+    audio.scene(scene); // music in the menus, the crowd at an event
   }
 
   start(firstScene) {

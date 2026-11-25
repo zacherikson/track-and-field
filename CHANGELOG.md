@@ -6,6 +6,13 @@ Gameplay and tuning changes, newest first. When you change a number in
 From 1.0.0 every push to master bumps `src/version.js` and heads its section
 here with the version.
 
+## 1.21.1 — No crowd in Training or Survival
+- The screen before an event (the intro) now plays the venue it's for.
+  It used to keep the last venue's sound, so after a stadium event the
+  Training or Survival intro still had that crowd. Training is only the
+  park's birds and Survival only the jungle, from the intro to the results.
+  The starting gun and the late hits' punches still play.
+
 ## 1.21.0 — Every venue sounds like itself, and the late hits land
 Recordings from Pixabay (free to use, credited in `src/core/audio.js`),
 trimmed and levelled into `audio/`. Nothing in play or tuning changes.

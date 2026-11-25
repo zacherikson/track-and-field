@@ -183,12 +183,12 @@ const soundsOf = (v) => (v ? [...(v.bed ?? []), ...(v.cheer ?? []), ...(v.start 
 
 /**
  * A new scene: music in the menus, the venue's background at an event, applause for results.
- * An event's own scene says which venue (its live room or the mode being played); the screens
- * around it (intro, results) stay where you are.
+ * An event and its intro say which venue (their live room, or the mode being played: Training
+ * is the park, Survival the jungle, neither with a crowd); results stay where the event was.
  */
 export function scene(sc) {
   mood = sc?.ev ? 'stadium' : 'menu';
-  if (sc?.ev && typeof sc.setState === 'function') {
+  if (sc?.ev && !sc.results) {
     venue = VENUE_SOUNDS[venueFor(sc.live).id] ?? VENUE_SOUNDS.pro;
     fetchSounds(soundsOf(venue));
   }

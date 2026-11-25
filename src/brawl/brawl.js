@@ -5,6 +5,7 @@ import { drawFigure, handPos, headCircle } from '../athletes/stickFigure.js';
 import { Fighter, WALK, INVULN } from './fighter.js';
 import { PUNCH, KICK, SLAM } from './poses.js';
 import { wound, drawWounds } from './wounds.js';
+import * as audio from '../core/audio.js';
 
 /**
  * LATE HITS: once an event is over, everyone who took part hangs around where
@@ -160,6 +161,7 @@ export class Brawl {
       const w = wound(v.wounds, kind, seed);
       this.bleed(v, w && w.type !== 'bruise' && w.type !== 'eye' ? 4 : 1, a.facing);
     }
+    if (kind !== 'slam') audio.hit(kind, a.isMe || v.isMe); // a slam sounds when they land (land())
     if (a.isMe || v.isMe) this.shake = Math.max(this.shake, kind === 'punch' ? 0.12 : 0.2);
     if (v.isMe) navigator.vibrate?.(kind === 'punch' ? 40 : 80);
     else if (a.isMe) navigator.vibrate?.(20);
@@ -180,6 +182,7 @@ export class Brawl {
     }
     v.vx = 0;
     this.setState(v, 'down', t);
+    audio.hit('slam', v.isMe || !!a?.isMe);
     wound(v.wounds, 'slam', v.dropSeed);
     this.bleed(v, 4, a?.facing ?? 1, 0.2);
     if (v.isMe || a?.isMe) this.shake = Math.max(this.shake, 0.3);
@@ -235,6 +238,7 @@ export class Brawl {
       case 'fly':
         f.vx = 0;
         this.setState(f, 'down', t);
+        audio.hit('down', f.isMe); // knocked off their feet: they land
         break;
       case 'down':
         this.setState(f, 'getup', t);
@@ -314,14 +318,14 @@ export class Brawl {
     const u = t - a.st;
     if (a.hitDone) return;
     if (a.state === 'punch' && u >= PUNCH.hitFrom) {
-      if (u > PUNCH.hitTo) return void (a.hitDone = true);
+      if (u > PUNCH.hitTo) return void this.missed(a);
       const v = this.target(a, PUNCH.reach, t);
       if (v) {
         a.hitDone = true;
         this.applyHit(a, v, 'punch', t);
       }
     } else if (a.state === 'kick' && u >= KICK.hitFrom) {
-      if (u > KICK.hitTo) return void (a.hitDone = true);
+      if (u > KICK.hitTo) return void this.missed(a);
       const v = this.target(a, KICK.reach, t);
       if (v) {
         a.hitDone = true;
@@ -331,7 +335,14 @@ export class Brawl {
       a.hitDone = true;
       const v = this.target(a, SLAM.reach, t);
       if (v) this.applyHit(a, v, 'slam', t);
+      else audio.hit('miss', a.isMe);
     }
+  }
+
+  /** An attack that found nobody: a swing through the air. */
+  missed(a) {
+    a.hitDone = true;
+    audio.hit('miss', a.isMe);
   }
 
   /** Athletes standing too close step apart. */

@@ -1,56 +1,100 @@
 import { getMusicOn, getSoundOn, setMusicOn as saveMusicOn, setSoundOn as saveSoundOn } from './storage.js';
+import { venueFor } from '../render/venues.js';
 
 /**
- * The game's sound: music in the menus, the stadium crowd during an event, and
- * one-off cues (the starting gun, a cheer, applause, a groan).
+ * The game's sound: music in the menus, each venue's own background during an
+ * event (a crowd, the park's birds, the jungle), one-off cues (the start, a
+ * cheer, applause, a groan) and the late hits' punches, kicks and slams.
  *
- * Each sound is either a recording (RECORDINGS, files in audio/) or made right
- * here with the Web Audio API (noise shaped into a crowd, a short synth loop
- * for the music). A recording that won't load falls back to the made sound.
+ * Sounds are recordings (FILES, in audio/) or made right here with the Web
+ * Audio API (noise shaped into a crowd, a short synth loop for the music).
+ * Where a recording won't load, its venue falls back to the made sound.
  *
  * HOW IT FITS IN
- *   - Game.setScene calls scene(): a scene with an event (`scene.ev`) is in the
- *     stadium (the crowd), anything else is a menu (the music). A scene with
- *     results gets applause as it opens.
+ *   - Game.setScene calls scene(): an event's scene (`scene.ev`) is in its
+ *     venue (VENUE_SOUNDS: its background, cheers and start signal), anything
+ *     else is a menu (the music). A scene with results gets applause.
  *   - Each event's setState calls onState(): the crowd goes quiet at SET, the
- *     gun fires at GO, a cheer at the line or the landing, a groan at a foul.
+ *     start sounds at GO, a cheer at the line or the landing, a groan at a foul.
+ *     A venue with no crowd (the park, the jungle) skips the crowd's part.
  *   - The 100m and hurdles call heat() as the race goes: the crowd gets louder
  *     the nearer you are to the line.
+ *   - The late hits (brawl/brawl.js) call hit() for each punch, kick, slam,
+ *     knockdown and miss.
  *
  * PHONES: nothing can play until the player touches the screen (iOS and
  * Chrome both insist), so init() listens for the first touch, click or key
  * and starts the sound then. The audio session is 'ambient' where the browser
  * lets us say so: the ring/silent switch mutes the game, and music the player
- * is already playing keeps going under it.
+ * is already playing keeps going under it. A venue's recordings load when you
+ * first go there, so the first load stays small.
  *
  * Safe to import in Node (the tests): with no AudioContext every call does nothing.
  */
 
-// A recording to play instead of the made sound: a path from the site root (e.g. 'audio/crowd.m4a'), or null.
-// crowd.m4a and cheer.m4a: "Crowd Cheering in Stadium" by vishiv (Pixabay, free to use): its first 7 s, and its swell (8.3-14.3 s, faded in and out).
-export const RECORDINGS = { music: null, crowd: 'audio/crowd.m4a', gun: null, cheer: 'audio/cheer.m4a', applause: null, groan: null };
+// The recordings (all from Pixabay, free to use), by name.
+//   crowd, cheer: "Crowd Cheering in Stadium" by vishiv: its first 7 s, and its swell (8.3-14.3 s).
+//   highschool-crowd: "county fair crowd walla 1" (freesound_community), 104-150 s.
+//   highschool-cheer: "Crowd Cheering" (freesound_community, 6229).
+//   collegiate-cheer-1..3: "Crowd Cheering" by VoiceBosch: its three cheers.
+//   park: "020188_Bird Park Ambience" (freesound_community), 16-64 s.
+//   jungle: "Nature sounds.tropical,jungle,birds" by Placidplace, 340-390 s.
+//   jungle-calls: "Jungle And Forest Ambient Atmospheric Effect" by vishiv.
+//   horn: "War Horn Blast" (freesound_community), from its first sound, 6 s.
+//   punch: "Punch 03" by Universfield, from its first sound.
+const FILES = {
+  crowd: { url: 'audio/crowd.m4a', loop: 1 },
+  cheer: { url: 'audio/cheer.m4a' },
+  'highschool-crowd': { url: 'audio/highschool-crowd.m4a', loop: 1.5 },
+  'highschool-cheer': { url: 'audio/highschool-cheer.m4a' },
+  'collegiate-cheer-1': { url: 'audio/collegiate-cheer-1.m4a' },
+  'collegiate-cheer-2': { url: 'audio/collegiate-cheer-2.m4a' },
+  'collegiate-cheer-3': { url: 'audio/collegiate-cheer-3.m4a' },
+  park: { url: 'audio/park.m4a', loop: 1.5, loudness: 0.09 },
+  jungle: { url: 'audio/jungle.m4a', loop: 2, loudness: 0.1 },
+  'jungle-calls': { url: 'audio/jungle-calls.m4a', loop: 1, loudness: 0.05 },
+  horn: { url: 'audio/horn.m4a', loudness: 0.35 },
+  punch: { url: 'audio/punch.m4a', loudness: 0.3 },
+};
+// `loop`: seconds of its end faded into its start, so it joins up when it loops.
+// `loudness`: instead of the usual for its kind (LOUDNESS: a loop like the crowd, a one-off like a cheer).
 
-// A recorded loop that doesn't join up by itself: its last this-many seconds are faded into its start.
-const SEAM = { crowd: 1 };
+// Each venue (render/venues.js ids): its background (one or more loops played together), its cheers (one
+// picked at random each time), its start signal; `crowd: false` for one with nobody watching (no cheers,
+// applause or groans, and the background doesn't hush at SET). Missing ones use the made sounds.
+const VENUE_SOUNDS = {
+  training: { bed: ['park'], crowd: false },
+  highschool: { bed: ['highschool-crowd'], cheer: ['highschool-cheer'] },
+  collegiate: { bed: ['crowd'], cheer: ['collegiate-cheer-1', 'collegiate-cheer-2', 'collegiate-cheer-3'] },
+  pro: { bed: ['crowd'], cheer: ['cheer'] },
+  survival: { bed: ['jungle', 'jungle-calls'], crowd: false },
+  colosseum: { bed: ['crowd'], cheer: ['cheer'], start: ['horn'] },
+};
+// Loaded with the game: the fights happen everywhere.
+const ALWAYS = ['punch'];
 
 // How loud each part plays, at most (0..1).
 const LEVEL = { music: 0.3, crowd: 0.55, cues: 0.8 };
 
 // Every sound, made or recorded, is levelled to these first, so they sit right against each other:
 // a loop by its average loudness (RMS), a one-off by its loudest moment (the loudest 50 ms).
-const LOUDNESS = { music: 0.15, crowd: 0.13, gun: 0.4, cheer: 0.2, applause: 0.2, groan: 0.15 };
+const LOUDNESS = { loop: 0.13, cue: 0.2, music: 0.15, gun: 0.4, applause: 0.2, groan: 0.15, thud: 0.35, whoosh: 0.15 };
 
-// The crowd's level (0..1 of LEVEL.crowd) through an event.
+// The crowd's level (0..1 of LEVEL.crowd) through an event; a background with no crowd stays at NATURE.
 const CROWD = { idle: 0.45, hush: 0.1, race: 0.6, peak: 1 };
+const NATURE = 0.9;
 
 let ctx = null; // the AudioContext, made on the first touch
 let bus = null; // { music, crowd, cues }: a gain each, into the master
 const buffers = {}; // name -> AudioBuffer, once made or loaded
-let making = null; // the promise making them
-let mood = 'menu'; // 'menu' (music) | 'stadium' (the crowd)
+const loading = {}; // file name -> its promise
+let making = null; // the promise making the made sounds
+let mood = 'menu'; // 'menu' (music) | 'stadium' (the venue's background)
+let venue = VENUE_SOUNDS.pro;
 let crowdLevel = 0; // what the crowd is heading for now (0..1)
 let lastHeat = -1;
-const loops = {}; // 'music' | 'crowd' -> { src, gain, stopTimer }
+let lastRoar = 0; // when the crowd last cheered a knockdown (s)
+const loops = {}; // name -> { src, gain, stopTimer }
 
 const canPlay = () => typeof window !== 'undefined' && !!(window.AudioContext || window.webkitAudioContext);
 
@@ -63,8 +107,9 @@ export function init() {
     if (document.visibilityState === 'hidden') ctx.suspend();
     else ctx.resume();
   });
-  // Made in the background (an offline render each), a moment after the first frame.
-  setTimeout(() => prepare(), 400);
+  // Made in the background (an offline render each), a moment after the first frame; then the fights'
+  // sounds and the venue you're most likely to play in next.
+  setTimeout(() => prepare().then(() => fetchSounds([...ALWAYS, ...soundsOf(VENUE_SOUNDS[venueFor().id])])), 400);
 }
 
 /** Every touch: make the AudioContext the first time, and wake it if the phone put it to sleep. */
@@ -86,18 +131,13 @@ function unlock() {
   if (ctx.state !== 'running') ctx.resume();
 }
 
+/** The made sounds: one at a time (the music first: the menus want it soonest), a frame apart, so the game never stalls for long. */
 function prepare() {
   if (!canPlay()) return Promise.resolve();
-  // One at a time (the music first: the menus want it soonest), a frame apart, so the game never stalls for long.
   making ??= (async () => {
     for (const [name, make] of Object.entries(MAKERS)) {
       try {
-        let buf = null;
-        if (RECORDINGS[name]) {
-          buf = await load(RECORDINGS[name]).catch((e) => console.warn(`recording "${name}" not loaded, making it instead`, e));
-          if (buf && SEAM[name]) buf = loopable(buf, SEAM[name]);
-        }
-        buffers[name] = level(buf ?? (await make()), LOUDNESS[name], name === 'music' || name === 'crowd');
+        buffers[name] = level(await make(), LOUDNESS[name] ?? (name === 'made-crowd' ? LOUDNESS.loop : LOUDNESS.cue), name === 'music' || name === 'made-crowd');
       } catch (e) {
         console.warn(`sound "${name}" not made`, e);
       }
@@ -106,6 +146,25 @@ function prepare() {
     }
   })();
   return making;
+}
+
+/** Loads these recordings (each once), levelled and ready to loop; plays the venue's background as it arrives. */
+function fetchSounds(names) {
+  if (!canPlay()) return Promise.resolve();
+  return Promise.all(
+    names.map((name) => {
+      const f = FILES[name];
+      if (!f) return null;
+      loading[name] ??= load(f.url)
+        .then((buf) => {
+          if (f.loop) buf = loopable(buf, f.loop);
+          buffers[name] = level(buf, f.loudness ?? (f.loop ? LOUDNESS.loop : LOUDNESS.cue), !!f.loop);
+          applyMood();
+        })
+        .catch((e) => console.warn(`recording "${name}" not loaded`, e));
+      return loading[name];
+    }),
+  );
 }
 
 async function load(url) {
@@ -117,16 +176,27 @@ async function load(url) {
   return dc.decodeAudioData(data);
 }
 
+/** Every recording a venue uses. */
+const soundsOf = (v) => (v ? [...(v.bed ?? []), ...(v.cheer ?? []), ...(v.start ?? [])] : []);
+
 // ---------------------------------------------------------------- what the game calls
 
-/** A new scene: music in the menus, the crowd in the stadium, applause for results. */
+/**
+ * A new scene: music in the menus, the venue's background at an event, applause for results.
+ * An event's own scene says which venue (its live room or the mode being played); the screens
+ * around it (intro, results) stay where you are.
+ */
 export function scene(sc) {
   mood = sc?.ev ? 'stadium' : 'menu';
+  if (sc?.ev && typeof sc.setState === 'function') {
+    venue = VENUE_SOUNDS[venueFor(sc.live).id] ?? VENUE_SOUNDS.pro;
+    fetchSounds(soundsOf(venue));
+  }
   if (mood === 'stadium' && crowdLevel === 0) crowdLevel = CROWD.idle;
   if (mood === 'menu') crowdLevel = 0;
   lastHeat = -1;
   applyMood();
-  if (sc?.results) cue('applause', 0.7);
+  if (sc?.results) crowdCue('applause', 0.7);
 }
 
 /** An event changed state (`mark`: its result so far, if it has one: a foul, a failed vault or a race out of time groans). */
@@ -141,7 +211,7 @@ export function onState(state, mark = null) {
       return crowd(CROWD.hush, 0.5); // the hush before the gun
     case 'race':
     case 'ride':
-      cue('gun', 0.6);
+      cue(pick(venue.start) ?? 'gun', 0.6);
       return crowd(CROWD.race, 0.3);
     case 'run':
       return crowd(CROWD.race, 1.5); // the run-up: building
@@ -150,14 +220,14 @@ export function onState(state, mark = null) {
     case 'vault':
       return crowd(0.85, 0.4);
     case 'finished':
-      cue(bad ? 'groan' : 'cheer');
+      crowdCue(bad ? 'groan' : 'cheer');
       return crowd(CROWD.race, 2.5);
     case 'landed':
-      cue(bad ? 'groan' : 'cheer');
+      crowdCue(bad ? 'groan' : 'cheer');
       return crowd(CROWD.idle, 3);
     case 'overrun':
     case 'balk':
-      cue('groan');
+      crowdCue('groan');
       return crowd(CROWD.idle, 3);
     case 'mark':
       return crowd(CROWD.idle, 2);
@@ -172,15 +242,62 @@ export function heat(k) {
   crowd(CROWD.race + (CROWD.peak - CROWD.race) * k * k, 0.4);
 }
 
-/** Plays a one-off sound (`vol` 0..1). */
-export function cue(name, vol = 1) {
-  if (!ctx || !buffers[name] || ctx.state !== 'running') return;
+/**
+ * A late hit: 'punch', 'kick', 'slam' (someone slammed down), 'down' (knocked off their feet) or
+ * 'miss' (a swing at nobody). `near`: you're in it (louder than two others fighting).
+ */
+export function hit(kind, near = true) {
+  const vol = near ? 1 : 0.5;
+  const vary = () => 0.92 + Math.random() * 0.16; // no two quite the same
+  switch (kind) {
+    case 'punch':
+      return cue('punch', vol, vary());
+    case 'kick': // the punch, heavier
+      cue('punch', vol, 0.78 * vary());
+      return cue('thud', vol * 0.4, vary());
+    case 'slam':
+      cue('thud', vol, 0.9 * vary());
+      cue('punch', vol * 0.6, 0.6 * vary());
+      return roar();
+    case 'down':
+      cue('thud', vol * 0.6, vary());
+      return roar();
+    case 'miss':
+      return cue('whoosh', vol * 0.8, vary());
+  }
+}
+
+/** The crowd loves a knockdown (now and then: not every one). */
+function roar() {
+  const now = performance.now() / 1000;
+  if (now - lastRoar < 4) return;
+  lastRoar = now;
+  crowdCue('cheer', 0.45);
+}
+
+/** Plays a one-off sound (`vol` 0..1, `rate` its speed: under 1 is lower and slower). */
+export function cue(name, vol = 1, rate = 1) {
+  if (!ctx || !name || !buffers[name] || ctx.state !== 'running') return;
   const src = ctx.createBufferSource();
   src.buffer = buffers[name];
+  src.playbackRate.value = rate;
   const g = ctx.createGain();
   g.gain.value = vol;
   src.connect(g).connect(bus.cues);
   src.start();
+}
+
+/** A crowd's cue ('cheer', 'groan', 'applause'), if this venue has a crowd: its own cheers where it has them. */
+function crowdCue(kind, vol = 1) {
+  if (venue.crowd === false) return;
+  if (kind === 'cheer') return cue(pick(venue.cheer) ?? 'made-cheer', vol);
+  cue(kind, vol);
+}
+
+/** One of these that's ready, at random (null if none is). */
+function pick(names) {
+  const ready = (names ?? []).filter((n) => buffers[n]);
+  return ready.length ? ready[Math.floor(Math.random() * ready.length)] : null;
 }
 
 export const musicOn = () => getMusicOn();
@@ -207,17 +324,30 @@ function applySettings(secs = 0.3) {
   set(bus.cues, getSoundOn() ? LEVEL.cues : 0);
 }
 
+/** The venue's background loops (the made crowd while a crowd's recording isn't here yet). */
+function beds() {
+  const ready = (venue.bed ?? []).filter((n) => buffers[n]);
+  return ready.length || venue.crowd === false ? ready : ['made-crowd'];
+}
+
 function applyMood() {
   if (!ctx) return;
   fadeLoop('music', 'music', mood === 'menu' ? 1 : 0, mood === 'menu' ? 1.5 : 0.8);
-  fadeLoop('crowd', 'crowd', mood === 'stadium' ? crowdLevel : 0, 1);
+  const on = mood === 'stadium' ? beds() : [];
+  for (const name of new Set([...Object.keys(loops), ...on])) {
+    if (name === 'music') continue;
+    fadeLoop(name, 'crowd', on.includes(name) ? bedLevel() : 0, 1);
+  }
 }
 
-/** The crowd heads for `level` (0..1) over about `secs`. */
+const bedLevel = () => (venue.crowd === false ? NATURE : crowdLevel);
+
+/** The crowd heads for `level` (0..1) over about `secs` (a background with no crowd stays as it is). */
 function crowd(level, secs) {
   if (mood !== 'stadium') return;
   crowdLevel = level;
-  fadeLoop('crowd', 'crowd', level, secs);
+  if (venue.crowd === false) return;
+  for (const name of beds()) fadeLoop(name, 'crowd', level, secs);
 }
 
 /** A looping sound (started if it isn't playing) heads for `level`; one faded right out stops. */
@@ -231,7 +361,7 @@ function fadeLoop(name, busName, level, secs) {
     const gain = ctx.createGain();
     gain.gain.value = 0;
     src.connect(gain).connect(bus[busName]);
-    src.start(0, name === 'crowd' ? Math.random() * buffers[name].duration : 0);
+    src.start(0, name === 'music' ? 0 : Math.random() * buffers[name].duration);
     l = loops[name] = { src, gain, stopTimer: null };
   }
   if (!l) return;
@@ -277,7 +407,8 @@ const SR = 44100;
 const rnd = (a, b) => a + Math.random() * (b - a);
 const midiHz = (m) => 440 * 2 ** ((m - 69) / 12);
 
-const MAKERS = { music: makeMusic, crowd: makeCrowd, gun: makeGun, cheer: makeCheer, applause: makeApplause, groan: makeGroan };
+// The made sounds; 'made-crowd' and 'made-cheer' stand in where a venue's recording isn't here.
+const MAKERS = { music: makeMusic, 'made-crowd': makeCrowd, gun: makeGun, 'made-cheer': makeCheer, applause: makeApplause, groan: makeGroan, thud: makeThud, whoosh: makeWhoosh };
 
 /** Renders `secs` of stereo sound: `build(oc, out)` wires it up. */
 function render(secs, build) {
@@ -558,6 +689,49 @@ function makeGun() {
     thump.connect(tg).connect(clip);
     thump.start();
     thump.stop(0.4);
+  });
+}
+
+/** A body hitting the ground: a low thump and a short dull crunch (~0.5 s). */
+function makeThud() {
+  return render(0.6, (oc, dest) => {
+    const o = oc.createOscillator();
+    o.frequency.setValueAtTime(110, 0);
+    o.frequency.exponentialRampToValueAtTime(38, 0.18);
+    const og = oc.createGain();
+    og.gain.setValueAtTime(1, 0);
+    og.gain.setTargetAtTime(0, 0.02, 0.09);
+    o.connect(og).connect(dest);
+    o.start();
+    o.stop(0.6);
+    const n = source(oc, noise(oc, 0.3), false);
+    const lp = oc.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 700;
+    const ng = oc.createGain();
+    ng.gain.setValueAtTime(0.8, 0);
+    ng.gain.setTargetAtTime(0, 0.005, 0.04);
+    n.connect(lp).connect(ng).connect(dest);
+    n.start();
+  });
+}
+
+/** A swing through the air: noise through a band that sweeps up and back down (~0.3 s). */
+function makeWhoosh() {
+  return render(0.35, (oc, dest) => {
+    const n = source(oc, noise(oc, 0.4), false);
+    const bp = oc.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.Q.value = 1.4;
+    bp.frequency.setValueAtTime(500, 0);
+    bp.frequency.exponentialRampToValueAtTime(2400, 0.12);
+    bp.frequency.exponentialRampToValueAtTime(700, 0.3);
+    const g = oc.createGain();
+    g.gain.setValueAtTime(0, 0);
+    g.gain.linearRampToValueAtTime(1, 0.1);
+    g.gain.linearRampToValueAtTime(0, 0.3);
+    n.connect(bp).connect(g).connect(dest);
+    n.start();
   });
 }
 

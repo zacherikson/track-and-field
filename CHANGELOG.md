@@ -6,6 +6,27 @@ Gameplay and tuning changes, newest first. When you change a number in
 From 1.0.0 every push to master bumps `src/version.js` and heads its section
 here with the version.
 
+## 1.21.0 — Every venue sounds like itself, and the late hits land
+Recordings from Pixabay (free to use, credited in `src/core/audio.js`),
+trimmed and levelled into `audio/`. Nothing in play or tuning changes.
+- **Each venue's own sound** (`VENUE_SOUNDS` in `audio.js`):
+  - **Pinebrook Park:** birds. Nobody's watching, so no cheers, groans or
+    applause, and no hush at SET.
+  - **Westfield High:** county fair chatter, and a smaller cheer with
+    whistles.
+  - **Wasatch University:** three different cheers, one at random each time.
+  - **Olympic Stadium:** the stadium crowd and its swell, as before.
+  - **The Lost Stadium:** the jungle (a 50 s loop with a 15 s loop of
+    animal calls over it, so they take minutes to repeat). No crowd.
+  - **The Colosseum:** a war horn instead of the starting gun.
+  - A venue's recordings load when you first go there (about 1 MB at most);
+    the made crowd stands in for the second before they arrive.
+- **Late hits** (`brawl/brawl.js` calls `audio.hit()`): a punch on every
+  punch; a kick is the punch heavier, with a thump; a slam lands with a
+  thud and the crowd cheers it (at most every 4 s); a knockdown thuds; a
+  swing at nobody whooshes. Each plays at a slightly different pitch, and
+  two others fighting sound half as loud as a fight you're in.
+
 ## 1.20.0 — Music and the crowd
 The game has sound. Everything is in `src/core/audio.js`; nothing in play
 or tuning changes.

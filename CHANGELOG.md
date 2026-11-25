@@ -6,6 +6,14 @@ Gameplay and tuning changes, newest first. When you change a number in
 From 1.0.0 every push to master bumps `src/version.js` and heads its section
 here with the version.
 
+## 1.21.2 — The deploy retries by itself
+Nothing in the game changes.
+- **`.github/workflows/pages.yml`:** GitHub sometimes can't see the site's
+  upload yet when the deploy step asks for it a second later, and the
+  deploy fails ("No artifacts named github-pages were found"). It did for
+  1.21.0 and 1.21.1, and both needed re-running by hand. Now a failed
+  deploy waits 20 s and tries again, then 60 s and once more.
+
 ## 1.21.1 — No crowd in Training or Survival
 - The screen before an event (the intro) now plays the venue it's for.
   It used to keep the last venue's sound, so after a stadium event the

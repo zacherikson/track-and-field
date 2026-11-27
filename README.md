@@ -158,7 +158,9 @@ Keyboard: 1 to 5 or Q / E change tab, Esc goes back to Play.
 **▶ Watch demo** (on each How to play page, and in the event card's How to
 play pop-up) shows the event playing itself, like the original's attract
 mode: the real event, played by a bot through the same taps you'd make, at
-the Pro stadium against Pro rivals. Two see-through thumbs press the pads,
+the Pro stadium against Pro rivals, the running at about half speed so a new
+player can follow each tap (the time trial fast-forwards its long stretches).
+Two see-through thumbs press the pads,
 and a bar along the bottom says what's going on (the time trial's is at the
 top, over its gears). It slows down for the presses that are all about timing:
 the lean, the takeoff and stretch, the plant and the release, the javelin's

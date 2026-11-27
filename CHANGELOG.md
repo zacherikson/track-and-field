@@ -6,6 +6,21 @@ Gameplay and tuning changes, newest first. When you change a number in
 From 1.0.0 every push to master bumps `src/version.js` and heads its section
 here with the version.
 
+## 1.22.1 — The demos slow down
+The demos went by too fast for someone new to follow (`src/demo/demoBots.js`).
+- **The running plays at 0.55× speed** in every demo (the races, the run-ups,
+  the relay's legs, the pedalling), so you can see each target and the tap
+  that hits it.
+- **Slow motion is slower:** 0.4× → 0.3× for the lean, the takeoff and
+  stretch, the plant and release and the bike throw; 0.5× → 0.4× for the
+  hurdles' first set, the javelin's tip rising and the handover.
+- **The time trial fast-forwards** (1.6×, the tag says FAST) through its
+  climb and flats once you've seen the pedalling, slowing again for the tuck,
+  the last 45 m and the throw. Slowed down all the way it took 98 s.
+- To watch now: 100m 25 s, hurdles 30 s, long jump 16 s, pole vault 19 s,
+  javelin 18 s, relay 25 s, time trial 54 s. `test/demo.test.mjs` checks
+  each is slower than it plays and under a minute.
+
 ## 1.22.0 — Every event has a demo
 Like the original's attract mode: **▶ Watch demo** on each How to play page
 (and in the event card's How to play pop-up) plays the event by itself, so

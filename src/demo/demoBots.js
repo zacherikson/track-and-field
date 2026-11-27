@@ -21,7 +21,10 @@ import { gearFor, idealThrow } from '../events/cyclingRules.js';
  * the demo looks like something you could do.
  */
 
-const SLOW = 0.4; // the demos' slow motion
+const RUN = 0.55; // the demos' speed while the athlete runs (or rides): slow enough to follow each tap
+const SLOW = 0.3; // and their slow motion, for the presses that are all about timing
+const FAST = 1.6; // fast-forward, through the long stretches once their lesson's been shown (the time trial)
+const SLOWISH = 0.4; // for the ones that take a moment (the first set of buttons, the javelin's tip rising, the handover)
 const STRIDE_RATE = 4.7; // taps/s on the green targets: quick, but a pace a person keeps up
 const jitter = (k) => 1 + (Math.random() * 2 - 1) * k;
 
@@ -68,7 +71,13 @@ function leaner(line) {
 }
 
 /** Slow motion through a lane race's lean zone, until the line. */
-const leanSlow = (s) => (s.state === 'race' && s.player.mark == null && s.player.runner.mode !== 'run' ? SLOW : 1);
+const leanSlow = (s) => {
+  if (s.state !== 'race' || s.player.mark != null) return 1;
+  return s.player.runner.mode === 'run' ? RUN : SLOW;
+};
+
+/** A field event's run-up at RUN speed. */
+const runUpSlow = (s) => (s.state === 'ready' || (s.state === 'run' && s.runUp.striding) ? RUN : 1);
 
 /** Done once the player's crossed the line and pulled up a little. */
 const raceDone = (scene, t) => scene.player?.mark != null && scene.stateT != null && t - scene.stateT > 2.2;
@@ -143,7 +152,7 @@ const BOTS = {
         if (mode === 'run') return { icon: 'nums', text: 'Tap 1, 2, 3 in order: at GO and after every hurdle' };
         return { icon: 'both', text: 'After the last hurdle, press both to lean' };
       },
-      slow: (s) => (s.state === 'race' && s.set?.sets === 1 && !s.set.done ? 0.5 : leanSlow(s)), // the first set, and the lean
+      slow: (s) => (s.state === 'race' && s.set?.sets === 1 && !s.set.done ? SLOWISH : leanSlow(s)), // the first set, and the lean
       done: raceDone,
     };
   },
@@ -176,7 +185,7 @@ const BOTS = {
         if (s.state === 'air' || s.state === 'landed') return { icon: 'both', text: 'Stretched out: legs forward into the sand' };
         return { badge: '×3', text: 'Three jumps. Your best counts' };
       },
-      slow: (s) => ((s.state === 'run' && !s.runUp.striding) || (s.state === 'air' && s.jump.stretchT == null) ? SLOW : 1),
+      slow: (s) => ((s.state === 'run' && !s.runUp.striding) || (s.state === 'air' && s.jump.stretchT == null) ? SLOW : runUpSlow(s)),
       done: markDone,
     };
   },
@@ -215,7 +224,7 @@ const BOTS = {
         if (s.state === 'vault' || s.state === 'fly' || s.state === 'air') return { icon: 'letgo', text: '…and let go as it reaches your hands' };
         return { badge: '×3', text: 'Three vaults. Your best height counts' };
       },
-      slow: (s) => ((s.state === 'run' && !s.runUp.striding) || (s.state === 'vault' && s.releaseT == null) ? SLOW : 1),
+      slow: (s) => ((s.state === 'run' && !s.runUp.striding) || (s.state === 'vault' && s.releaseT == null) ? SLOW : runUpSlow(s)),
       done: markDone,
     };
   },
@@ -249,7 +258,7 @@ const BOTS = {
         if (s.state === 'run') return { icon: 'angle', text: 'Let go at about 36°, before the line' };
         return { icon: 'angle', text: 'Let go before the line, or it’s a foul' };
       },
-      slow: (s) => (s.state === 'run' && s.holdT != null ? 0.5 : 1), // the tip rising
+      slow: (s) => (s.state === 'run' && s.holdT != null ? SLOWISH : runUpSlow(s)), // the tip rising
       done: markDone,
     };
   },
@@ -291,7 +300,7 @@ const BOTS = {
         if (handT != null) return { icon: 'blue', glyph: 'TAKE', text: 'Handed over! Now run the next leg' };
         return { icon: 'tap', text: 'Tap the green targets. Your teammate sets off as you get close' };
       },
-      slow: (s) => (s.batonUp ? 0.5 : 1),
+      slow: (s) => (s.state !== 'race' ? 1 : s.batonUp ? SLOWISH : RUN),
       done: (s, t) => handT != null && t - handT > 3,
     };
   },
@@ -302,6 +311,7 @@ const BOTS = {
     let nextT = 0;
     let shiftT = -Infinity;
     let tucked = false;
+    let tuckT = null; // when the first tuck began
     let thrown = false;
     const lift = (pad, t) => {
       pad.up('L', t);
@@ -330,6 +340,7 @@ const BOTS = {
         if (spunOut && !tucked && !s.throwZone) {
           both(pad, P.L, P.R, t, null);
           tucked = true;
+          tuckT ??= t;
         }
         if (tucked) {
           if (spunOut) return;
@@ -362,7 +373,14 @@ const BOTS = {
         }
         return { icon: 'tap', text: 'Pedal with the big pads, left and right in turn: green is next' };
       },
-      slow: (s) => (s.throwZone ? 0.5 : 1),
+      // Slow for the first pedal strokes, the tuck going on and the throw; fast-forward through the rest of the 620 m.
+      slow: (s) => {
+        if (s.state !== 'ride') return 1;
+        if (s.throwZone) return SLOW;
+        const now = s.game.time;
+        if (now - s.goT < 8 || (tuckT != null && now - tuckT < 2.5) || s.road.length - s.bike.front < 45) return RUN;
+        return FAST;
+      },
       captionY: 54, // its gears are along the bottom
       done: (s, t) => s.state === 'finished' && t - s.stateT > 1.6,
     };

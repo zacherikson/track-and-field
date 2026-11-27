@@ -16,7 +16,7 @@ const { getCampaign, setCampaign, getSpecialLevel, setSpecialLevel } = await imp
 const ALL = [...EVENTS, ...SPECIAL_EVENTS];
 
 /** A game around a DemoScene: no screen taps, its own clock, and where it went when it left. */
-function play(ev, maxS = 120) {
+function play(ev, maxS = 240) {
   const went = [];
   const game = {
     time: 10,
@@ -49,7 +49,7 @@ function play(ev, maxS = 120) {
   } finally {
     Object.getPrototypeOf(inner).finish = original;
   }
-  return { scene, inner, game, went, finished, demoTime: scene.clock - 10 };
+  return { scene, inner, game, went, finished, demoTime: scene.clock - 10, watchTime: game.time - 10 };
 }
 
 test('every event on How to Play has a demo', () => {
@@ -60,8 +60,13 @@ for (const ev of ALL) {
   test(`${ev.id}: the demo plays itself to the end, with a fair mark`, () => {
     setCampaign('highschool');
     setSpecialLevel('collegiate');
-    const { scene, inner, finished, demoTime } = play(ev);
-    assert.ok(scene.ended, `${ev.id}: still going after 120 s`);
+    const { scene, inner, finished, demoTime, watchTime } = play(ev);
+    // Slowed down to follow: it takes longer to watch than it plays (the time trial fast-forwards its long
+    // stretches instead), and none takes more than a minute.
+    if (ev.id !== 'timetrial') assert.ok(watchTime > demoTime * 1.3, `${ev.id}: ${watchTime.toFixed(1)} s to watch, ${demoTime.toFixed(1)} s of play`);
+    assert.ok(watchTime < 60, `${ev.id}: ${watchTime.toFixed(1)} s to watch`);
+    console.log(`# ${ev.id}: ${watchTime.toFixed(1)} s to watch`);
+    assert.ok(scene.ended, `${ev.id}: still going after 240 s`);
     assert.equal(finished, null, 'the results never come up');
     assert.ok(demoTime > 5, `${ev.id}: over after ${demoTime.toFixed(1)} s`);
     if (ev.id === 'relay4x100') {

@@ -247,7 +247,7 @@ export class DemoScene {
 
   /**
    * The bar along the bottom (over the ad boards; the time trial's at the top):
-   * on the left a gold DEMO tag (SLOW-MO while it is, the ▶ blinking like an
+   * on the left a gold DEMO tag (SLOW-MO or FAST while it is, the ▶ blinking like an
    * arcade's attract mode, "tap to skip" under it), then what's happening now:
    * the control's icon and one line.
    */
@@ -268,8 +268,9 @@ export class DemoScene {
     chamfer(ctx, x, y, w, h, 8);
     ctx.fill();
     // The tag.
-    const slow = this.speed < 0.8;
-    ctx.fillStyle = slow ? PAL.college : PAL.gold;
+    const slow = this.speed < 0.45; // slow motion proper, not just the slowed-down running
+    const fast = this.speed > 1.2; // fast-forwarding
+    ctx.fillStyle = slow ? PAL.college : fast ? PAL.cream : PAL.gold;
     chamfer(ctx, x + 5, y + 5, tagW - 10, h - 10, 5);
     ctx.fill();
     if (Math.floor(this.age * 1.6) % 2 === 0) {
@@ -280,7 +281,7 @@ export class DemoScene {
       ctx.lineTo(x + 15, y + 29);
       ctx.fill();
     }
-    text(ctx, slow ? 'SLOW-MO' : 'DEMO', x + 30, y + 23, { size: slow ? 20 : 22, font: 'display', track: 1, align: 'left', color: PAL.ink });
+    text(ctx, slow ? 'SLOW-MO' : fast ? 'FAST' : 'DEMO', x + 30, y + 23, { size: slow ? 20 : 22, font: 'display', track: 1, align: 'left', color: PAL.ink });
     text(ctx, 'tap to skip', x + tagW / 2, y + 41, { size: 12, font: 'body', weight: 700, color: 'rgba(38,34,79,0.75)' });
     if (!c) return;
     // The line.

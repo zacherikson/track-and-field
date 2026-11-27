@@ -52,6 +52,12 @@ export class IntroScene {
     // Tap to start, as a real button (a live event: its countdown, on ink).
     this.startBtn = new Button({ label: 'Tap to start', w: 280, h: 56, size: 27, color: PAL.orange, lip: PAL.orangeShade });
     this.howOpen = false;
+    // From the steps, a demo of the event playing itself (demo/demoScene.js), and back here. Not with a clock running (live,
+    // a meet) or a run on (a tournament, survival: the demo would play at their venue, against their rivals).
+    this.demoBtn =
+      tournament.active || survival.active || liveSurvival.active || meet.active
+        ? null
+        : new Button({ label: '▶ Watch demo', w: 220, h: 50, size: 20, color: PAL.gold, lip: PAL.goldShade, onTap: () => this.watchDemo() });
     this.best = getBest(this.ev.id);
     this.live = this.meet ? meet.session : tournament.active ? tournament.live : liveSurvival.active ? liveSurvival.live : null;
     this.stage = this.live?.eventStage(this.ev.id);
@@ -75,6 +81,8 @@ export class IntroScene {
       if (this.age < 0.35) continue;
       // The steps are up: any tap (or key) puts them away.
       if (this.howOpen) {
+        if (e.type === 'down' && this.demoBtn?.tap(e.x, e.y)) return;
+        if (e.type === 'key' && e.code === 'KeyD' && this.demoBtn) return this.demoBtn.onTap();
         if (e.type === 'down' || e.type === 'key') this.howOpen = false;
         continue;
       }
@@ -89,6 +97,12 @@ export class IntroScene {
     // Live: to the event a few seconds before it starts (it counts down the rest there).
     const start = this.live?.startOf(this.stage);
     if (start != null && serverNow() >= start - ON_TRACK) flow.play(this.game, this.ev);
+  }
+
+  /** The demo, then back to this card (Back and Try it both: you were about to play it). */
+  watchDemo() {
+    const back = (g) => flow.intro(g, this.ev);
+    flow.demo(this.game, this.ev, { back, tryIt: back });
   }
 
   /** The line at the bottom: what a tap does, or when a live tournament's event starts. */
@@ -197,13 +211,19 @@ export class IntroScene {
     ctx.fillStyle = 'rgba(23,20,58,0.78)';
     ctx.fillRect(0, 0, view.w, view.h);
     const rowH = 54;
-    const h = stepsHeight(this.ev.id, rowH) + 132;
+    const demo = this.demoBtn;
+    const h = stepsHeight(this.ev.id, rowH) + 132 + (demo ? 62 : 0);
     const y = Math.max(16, (view.h - h) / 2);
     slab(ctx, cx - cw / 2, y, cw, h, { face: PAL.ink, lip: PAL.inkShade, lipH: 7, c: 10 });
     ctx.fillStyle = PAL.gold;
     ctx.fillRect(cx - cw / 2 + 10, y, cw - 20, 5);
     text(ctx, `HOW TO PLAY · ${this.ev.name.toUpperCase()}`, cx, y + 30, { size: 26, font: 'display', track: 1.5, color: PAL.gold, maxWidth: cw - 40 });
     drawSteps(ctx, this.ev.id, cx - cw / 2 + 10, y + 50, cw - 20, rowH);
+    if (demo) {
+      Object.assign(demo, { x: cx - demo.w / 2, y: y + h - 104 });
+      demo.update(0);
+      demo.draw(ctx);
+    }
     text(ctx, 'Tap to close', cx, y + h - 24, { size: 16, font: 'body', color: 'rgba(245,234,208,0.6)' });
   }
 

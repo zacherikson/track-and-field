@@ -6,6 +6,29 @@ Gameplay and tuning changes, newest first. When you change a number in
 From 1.0.0 every push to master bumps `src/version.js` and heads its section
 here with the version.
 
+## 1.22.0 — Every event has a demo
+Like the original's attract mode: **▶ Watch demo** on each How to play page
+(and in the event card's How to play pop-up) plays the event by itself, so
+you can see how it goes before you try it. Nothing in play or tuning changes.
+- **The real event, played by a bot** (`src/demo/demoBots.js`, one per
+  event) through the same taps a thumb makes: the 100m's targets, the
+  hurdles' 1 2 3, the long jump's takeoff and stretch, the pole vault's
+  plant and release, the javelin's hold to 36°, the relay's PASS and TAKE,
+  the time trial's pedalling, shifting, tuck and bike throw. It plays well,
+  at a pace a person keeps up.
+- **Two see-through thumbs** press the pads as it plays, and a bar along the
+  bottom says what's going on, with the control's icon from How to play.
+- **Slow motion** for the presses that are all about timing (the lean, the
+  takeoff and stretch, the plant and release, the javelin's tip rising, the
+  handover, the bike throw).
+- At the Pro stadium against Pro rivals. The races run to the line, the field
+  events one attempt, the relay to the first handover. Tap to skip to Watch
+  again, Try it and Back.
+- **Nothing counts:** the event never reaches its results (no mark, XP, ghost
+  or leaderboard post), and your campaign and RIVALS level are put back.
+- `?demo=<event id>` in the URL opens a demo straight away, to screen-record
+  it. `test/demo.test.mjs` checks every demo plays through with a fair mark.
+
 ## 1.21.2 — The deploy retries by itself
 Nothing in the game changes.
 - **`.github/workflows/pages.yml`:** GitHub sometimes can't see the site's

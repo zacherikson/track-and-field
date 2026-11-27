@@ -12,6 +12,7 @@ import { LeaderboardScene } from './scenes/leaderboardScene.js';
 import { ProfileScene } from './scenes/profileScene.js';
 import { AthleteMakerScene } from './scenes/athleteMaker.js';
 import { TutorialScene } from './scenes/tutorialScene.js';
+import { DemoScene } from './demo/demoScene.js';
 import { LobbyScene } from './scenes/lobbyScene.js';
 import { StandingsScene } from './tournament/standingsScene.js';
 import { MeetScene } from './meet/meetScene.js';
@@ -136,6 +137,10 @@ export const flow = {
   },
   // How to play (the Play tab's ❓): a tab per event, `id` open (or the last one looked at).
   tutorial: (game, id = null) => game.setScene(new TutorialScene(id)),
+  // A demo of event `ev` (demo/demoScene.js): it plays itself. Back goes to `back(game)` (How to play by default),
+  // Try it to `tryIt(game)` (by default its card in Training; a special event at its RIVALS level).
+  demo: (game, ev, { back = (g) => flow.tutorial(g, ev.id), tryIt = (g) => (setCampaign(null), flow.intro(g, ev)) } = {}) =>
+    game.setScene(new DemoScene(ev, { back, tryIt })),
   // The Athlete Maker: make (or change) the athlete of your own; Save or Cancel go back to the Athlete tab.
   maker: (game) => game.setScene(new AthleteMakerScene()),
   // Your profile; Back returns to the home screen's `tab`.

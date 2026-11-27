@@ -14,8 +14,9 @@ let lastId = null; // the tab you looked at last, for the next visit
 
 /**
  * How to Play (the Play tab's How to play button): a tab per event, the five then the
- * special events, each with its steps (howTo.js) and a Practice button that
- * takes you to its card (Training for the five). Back goes to the Play tab.
+ * special events, each with its steps (howTo.js), Watch demo (the event playing
+ * itself: demo/demoScene.js) and a Practice button that takes you to its card
+ * (Training for the five). Back goes to the Play tab.
  */
 export class TutorialScene {
   constructor(id = null) {
@@ -26,6 +27,7 @@ export class TutorialScene {
     this.list = list();
     this.backBtn = new Button({ label: 'Back', icon: 'back', look: 'chip', w: 112, h: 46, onTap: () => flow.menu(this.game) });
     this.playBtn = new Button({ label: 'Practice', icon: 'next', w: 210, h: 54, color: PAL.liveGreen, lip: PAL.liveShade, onTap: () => this.practice() });
+    this.demoBtn = new Button({ label: '▶ Watch demo', w: 210, h: 54, color: PAL.gold, lip: PAL.goldShade, onTap: () => flow.demo(this.game, this.ev) });
     this.tabs = this.list.map((ev) => new Button({ label: TAB_LABELS[ev.id] ?? ev.name, icon: ev.id, h: 40, size: 16, color: PAL.ink2, onTap: () => this.show(ev.id) }));
     this.show(this.id);
     this.layout(this.game.view);
@@ -64,11 +66,12 @@ export class TutorialScene {
     const tabsW = Math.min(900, view.w - 32 - view.safe.l - view.safe.r);
     const tw = (tabsW - gap * (this.tabs.length - 1)) / this.tabs.length;
     this.tabs.forEach((t, i) => Object.assign(t, { x: view.w / 2 - tabsW / 2 + i * (tw + gap), y: 70, w: tw }));
-    Object.assign(this.playBtn, { x: view.w / 2 - this.playBtn.w / 2, y: BOX_Y + BOX_H + 10 });
+    Object.assign(this.demoBtn, { x: view.w / 2 - this.demoBtn.w - 8, y: BOX_Y + BOX_H + 10 });
+    Object.assign(this.playBtn, { x: view.w / 2 + 8, y: BOX_Y + BOX_H + 10 });
   }
 
   get buttons() {
-    return [this.backBtn, this.playBtn, ...this.tabs];
+    return [this.backBtn, this.demoBtn, this.playBtn, ...this.tabs];
   }
 
   update(dt, t) {
@@ -76,6 +79,7 @@ export class TutorialScene {
       if (e.type === 'down') this.buttons.some((b) => b.tap(e.x, e.y));
       else if (e.code === 'Escape' || e.code === 'Backspace') return flow.menu(this.game);
       else if (e.code === 'Enter') return this.practice();
+      else if (e.code === 'KeyD' || e.code === 'Space') return flow.demo(this.game, this.ev);
       else if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
         const i = this.list.findIndex((ev) => ev.id === this.id) + (e.code === 'ArrowLeft' ? -1 : 1);
         this.show(this.list[(i + this.list.length) % this.list.length].id);

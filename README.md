@@ -155,6 +155,24 @@ event's steps over the card (any tap closes them; in live play the countdown
 carries on underneath). H on a keyboard opens them too.
 Keyboard: 1 to 5 or Q / E change tab, Esc goes back to Play.
 
+**▶ Watch demo** (on each How to play page, and in the event card's How to
+play pop-up) shows the event playing itself, like the original's attract
+mode: the real event, played by a bot through the same taps you'd make, at
+the Pro stadium against Pro rivals. Two see-through thumbs press the pads,
+and a bar along the bottom says what's going on (the time trial's is at the
+top, over its gears). It slows down for the presses that are all about timing:
+the lean, the takeoff and stretch, the plant and the release, the javelin's
+tip rising, PASS and TAKE, the bike throw. The races run to the line, the
+field events one attempt, the relay to the first handover. Tap anywhere to
+skip to the end: **Watch again**, **Try it** (How to play: the event's card in
+Training; the event card: back to it) and **Back**. Nothing counts: the
+event never reaches its results (no mark, XP, ghost or leaderboard), and your
+campaign and RIVALS level are put back after. `?demo=<event id>` in the URL
+(`sprint100`, `hurdles110`, `longjump`, `polevault`, `javelin`, `relay4x100`,
+`timetrial`) opens one straight away, e.g. to screen-record it. The bots are
+in [`src/demo/demoBots.js`](src/demo/demoBots.js), and
+`test/demo.test.mjs` checks each plays its event through with a fair mark.
+
 **The sideshow.** In the background of every tab the other athletes (and the
 referee) are up to no good, one little skit at a time: punching out the
 referee for showing a red card, a body slam, two fighters who both deck the
@@ -623,7 +641,8 @@ src/scenes/home/                its panels: athletePanel.js (pick your athlete),
                                 playPanel.js (the events, tournament and settings), squadPanel.js (your squad, Practice),
                                 sideshow.js + skits.js (the skits in the background of all three)
 src/scenes/leaderboardScene.js  online leaderboards, a tab per event, with Race buttons
-src/scenes/tutorialScene.js     How to play: a tab per event with its steps, and Practice
+src/scenes/tutorialScene.js     How to play: a tab per event with its steps, Watch demo, and Practice
+src/demo/                       the demos: demoScene.js plays an event with the bot's taps (demoBots.js: one per event)
 src/scenes/howTo.js             each event's steps and controls strip, and their icons (drawn with the game's pads)
 src/scenes/profileScene.js      your username (unique, saved in Firebase), Google sign-in, level, wallet and medals
 src/scenes/lobbyScene.js        the live waiting room (any event, or the tournament)
@@ -637,7 +656,7 @@ src/meet/             squad meets (docs/meets.md): the rules shared with the mee
 src/events/meetRelay.js  a meet's 4x100m relay: one leg per phone, exchanges decided by the taker's phone
 src/online/net.js     the meet server connection; meetSession.js: a meet as the events see a live room
 server/               the meet server: Cloudflare Worker + Durable Objects (server/README.md)
-test/                 tests (node --test test/*.test.mjs): meet rules, run-up, relay, the orange pads, the sideshow's skits
+test/                 tests (node --test test/*.test.mjs): meet rules, run-up, relay, the orange pads, the sideshow's skits, the demos
                       (orangePad.test.mjs drives the real event scenes through the real Input, test/helpers/rig.mjs)
 src/tuning/           in-game tuning panel (params list, saved overrides, live estimates)
 tools/simulate.mjs    headless tuning simulator

@@ -11,6 +11,8 @@ import { takeInviteLink } from './online/squads.js';
 import { openInvite } from './scenes/inviteScreen.js';
 import { loadFonts } from './core/ui.js';
 import * as audio from './core/audio.js';
+import { flow } from './flow.js';
+import { EVENTS, SPECIAL_EVENTS } from './events/registry.js';
 import './online/balance.js'; // the economy's numbers as the server last sent them, before anything shows one
 
 // Apply any settings saved from the in-game tuning panel before the first race.
@@ -37,6 +39,10 @@ if (!isOnboarded()) {
 } else {
   game.start(signingIn ? new ProfileScene(signingIn) : new HomeScene(invite ? 'squad' : 'play'));
   if (invite && !signingIn) openInvite(game, invite);
+  // ?demo=<event id> (sprint100, javelin, timetrial…): straight into that event's demo, e.g. to record it.
+  const demo = new URLSearchParams(location.search).get('demo');
+  const demoEv = !invite && !signingIn && [...EVENTS, ...SPECIAL_EVENTS].find((e) => e.id === demo);
+  if (demoEv) flow.demo(game, demoEv);
 }
 
 // Handy from the desktop devtools console.
